@@ -7,6 +7,7 @@ import {
   type CardCharge,
   type Deposit,
   type Purchase,
+  type PersonPayment,
   type Refund,
   type Transfer,
   type Cents,
@@ -78,6 +79,11 @@ export function transfer(id: string, date: IsoDate, amount: Cents, from: Transfe
   return { kind: 'transfer', id, from, to, date, amount, description: `TRANSFER ${from} TO ${to}` };
 }
 
+// Money sent to a person (Zelle and the like), always from checking.
+export function payPerson(id: string, date: IsoDate, amount: Cents, payee: string): PersonPayment {
+  return { kind: 'payment-to-person', id, account: 'checking', date, amount, description: `ZELLE TO ${payee}` };
+}
+
 export function deposit(
   id: string,
   date: IsoDate,
@@ -130,6 +136,9 @@ export class TestBank {
         break;
       case 'card-charge':
         this.#spend(txn.account, txn.amount);
+        break;
+      case 'payment-to-person':
+        this.checking -= txn.amount;
         break;
       case 'transfer':
         this[txn.from] -= txn.amount;

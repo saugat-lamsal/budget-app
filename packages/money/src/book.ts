@@ -3,7 +3,7 @@ import { addCents, assertCents, assertPositiveCents, subtractCents, type Cents }
 import { assertIsoDate, daysBetween, type IsoDate } from './dates.js';
 import { MoneyError } from './errors.js';
 import { splitPaycheck, type PaycheckSplit } from './payday.js';
-import { checkRules, findRule, isMoneyInChoice, type MoneyInChoice, type SortingRule } from './rules.js';
+import { checkRules, findRule, isMoneyInChoice, isPersonPaymentChoice, type MoneyInChoice, type SortingRule } from './rules.js';
 import { matchesTextRule, validateSettings, type Settings } from './settings.js';
 import {
   checkTransaction,
@@ -11,6 +11,7 @@ import {
   type BankTransaction,
   type CardCharge,
   type Deposit,
+  type PersonPayment,
   type Purchase,
   type Refund,
   type Transfer,
@@ -74,10 +75,15 @@ export interface SplitPart {
 // How you sort something in review, or re-sort it later (4.7).
 export type SortChoice = MoneyInChoice | { readonly split: readonly SplitPart[] };
 
-export type SpendingSort = { readonly to: 'unsorted' } | { readonly to: SplitBucket } | { readonly split: readonly SplitPart[] };
+export type SpendingSort =
+  | { readonly to: 'unsorted' }
+  | { readonly to: SplitBucket }
+  | { readonly split: readonly SplitPart[] }
+  // A payment to a person that was not your spending (7.2).
+  | { readonly to: 'not-mine' };
 
 // debt-payoff is a payment to the old card (5.2).
-export type SpendingKind = 'purchase' | 'card-fee' | 'card-interest' | 'debt-payoff';
+export type SpendingKind = 'purchase' | 'card-fee' | 'card-interest' | 'debt-payoff' | 'person-payment';
 
 export type ReviewItem =
   | {
@@ -94,7 +100,7 @@ export type ReviewItem =
       readonly date: IsoDate;
       readonly amount: Cents;
       readonly description: string;
-      readonly reason: 'no-rule' | 'card-fee' | 'card-interest' | 'split-changed' | 'old-card-from-savings';
+      readonly reason: 'no-rule' | 'card-fee' | 'card-interest' | 'split-changed' | 'old-card-from-savings' | 'person-payment';
       readonly suggestion: SplitBucket | null;
     }
   | {
@@ -140,6 +146,13 @@ export interface Period {
   readonly startDate: IsoDate;
 }
 
+// Rule 7.3: held for others should come back to zero. Negative means
+// someone owes you.
+export interface OthersMoney {
+  readonly heldForOthers: Cents;
+  readonly meaning: 'settled' | 'holding-for-others' | 'owed-to-you';
+}
+
 export interface SavingsTransfer {
   readonly shouldBeInSavings: Cents;
   readonly savingsAccountBalance: Cents;
@@ -168,7 +181,7 @@ interface MoneyInEntry {
 interface SpendEntry {
   readonly kind: 'spend';
   readonly id: string;
-  readonly txn: Purchase | CardCharge | Transfer;
+  readonly txn: Purchase | CardCharge | Transfer | PersonPayment;
   readonly spendingKind: SpendingKind;
   postedTxn: Purchase | null;
   pending: boolean;
@@ -331,6 +344,12 @@ export class Book {
     return { shouldBeInSavings, savingsAccountBalance, stillToMove: subtractCents(shouldBeInSavings, savingsAccountBalance) };
   }
 
+  othersMoney(): OthersMoney {
+    const heldForOthers = this.#totals.heldForOthers;
+    const meaning = heldForOthers === 0 ? 'settled' : heldForOthers > 0 ? 'holding-for-others' : 'owed-to-you';
+    return { heldForOthers, meaning };
+  }
+
   // ----- Bank activity -----
 
   receive(txn: BankTransaction): Received {
@@ -353,7 +372,16 @@ export class Book {
         return this.#addSpending(copy, copy.charge === 'fee' ? 'card-fee' : 'card-interest', { to: 'unsorted' });
       case 'transfer':
         return this.#receiveTransfer(copy);
+      case 'payment-to-person':
+        return this.#receivePersonPayment(copy);
     }
+  }
+
+  // Rule 7.4: a payment to a person waits in review unless a rule covers
+  // that person.
+  #receivePersonPayment(txn: PersonPayment): Received {
+    const rule = findRule(this.#rules, 'person', txn.description);
+    return this.#addSpending(txn, 'person-payment', rule === undefined ? { to: 'unsorted' } : { to: rule.choice.to });
   }
 
   #knownTransaction(id: string): BankTransaction | undefined {
@@ -432,7 +460,7 @@ export class Book {
     return this.#addSpending(txn, 'purchase', rule === undefined ? { to: 'unsorted' } : { to: rule.bucket });
   }
 
-  #addSpending(txn: Purchase | CardCharge | Transfer, spendingKind: SpendingKind, sortedTo: SpendingSort): Received {
+  #addSpending(txn: Purchase | CardCharge | Transfer | PersonPayment, spendingKind: SpendingKind, sortedTo: SpendingSort): Received {
     const pending = txn.kind === 'purchase' && txn.pending;
     const entry: SpendEntry = {
       kind: 'spend',
@@ -492,6 +520,8 @@ export class Book {
       for (const part of now.split) effect[part.bucket] = subtractCents(effect[part.bucket] ?? 0, part.amount);
     } else if (now.to === 'unsorted') {
       effect = { unsortedOut: net };
+    } else if (now.to === 'not-mine') {
+      effect = { heldForOthers: -net };
     } else {
       effect = { [now.to]: -net };
     }
@@ -577,9 +607,12 @@ export class Book {
     this.#review.delete(id);
   }
 
-  // Rules 4.3, 4.4, 4.7, 4.8.
+  // Rules 4.3, 4.4, 4.7, 4.8, 7.2.
   #sortSpending(entry: SpendEntry, choice: SortChoice): void {
-    if ('split' in choice) {
+    if (entry.spendingKind === 'person-payment') {
+      if (!isPersonPaymentChoice(choice)) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');
+      entry.sortedTo = Object.freeze({ to: choice.to });
+    } else if ('split' in choice) {
       if (!Array.isArray(choice.split)) throw new MoneyError('bad-choice', 'a split needs a list of parts');
       const parts = choice.split.map((part) => {
         if (!isSpendingBucket(part.bucket)) throw new MoneyError('bad-choice', `spending can go to needs or wants, not ${String(part.bucket)}`);
@@ -670,7 +703,8 @@ export class Book {
               ? 'old-card-from-savings'
               : entry.spendingKind;
         const description = (entry.postedTxn ?? entry.txn).description;
-        const suggestion = entry.spendingKind === 'purchase' ? null : 'needs';
+        // Fees, interest, and old card payments suggest needs (4.8, 5.2).
+        const suggestion = entry.spendingKind === 'purchase' || entry.spendingKind === 'person-payment' ? null : 'needs';
         return { type: 'spending', id: entry.id, date: entry.txn.date, amount: entry.amount - entry.refunded, description, reason, suggestion };
       }
       case 'leftover':

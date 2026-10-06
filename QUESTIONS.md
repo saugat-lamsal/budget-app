@@ -158,3 +158,14 @@ B18. Income uses the mom reserve and its cap exactly like a paycheck
 
 B19. A 3.7 early paycheck in review gets the same three choices as any
      other deposit (6.1). 3.7 itself does not list choices. See A5.
+
+B20. A payment to a person can be sorted to needs, wants, or not mine. It
+     cannot be split: 4.4 talks about purchases only (7.4).
+
+B21. A person rule matches the payee as the bank shows it, for example
+     "ZELLE TO <name>" (7.4).
+
+B22. Held for others (7.3) is shown with what it means: settled (zero),
+     holding money for others (positive), or someone owes you (negative).
+     Nothing nags you when it stays above or below zero; section 10 lists
+     no alert for it.

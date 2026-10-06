@@ -551,5 +551,54 @@
     "find": "    if (!matchesTextRule(s.paycheckRule, txn.description)) {\n      const rule",
     "replace": "    if (!matchesTextRule(s.paycheckRule, txn.description) || findRule(this.#rules, 'deposit', txn.description)) {\n      const rule",
     "why": "6.2 let a deposit rule take over a paycheck"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "      effect = { heldForOthers: -net };",
+    "replace": "      effect = { heldForOthers: net };",
+    "why": "7.2 raise held for others when paying out for someone"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "      effect = { heldForOthers: -net };",
+    "replace": "      effect = { wants: -net };",
+    "why": "7.2 count a not-mine payment as spending"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "heldForOthers === 0 ? 'settled' : heldForOthers > 0 ? 'holding-for-others' : 'owed-to-you'",
+    "replace": "heldForOthers === 0 ? 'settled' : heldForOthers >= 0 ? 'owed-to-you' : 'holding-for-others'",
+    "why": "7.3 swap who owes whom"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "heldForOthers === 0 ? 'settled' : heldForOthers > 0",
+    "replace": "heldForOthers === 1 ? 'settled' : heldForOthers > 0",
+    "why": "7.3 shift settled off zero by one cent"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "rule === undefined ? { to: 'unsorted' } : { to: rule.choice.to });\n  }",
+    "replace": "{ to: 'unsorted' });\n  }",
+    "why": "7.4 ignore rules for people"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "if (!isPersonPaymentChoice(choice)) throw",
+    "replace": "if (false) throw",
+    "why": "7.4 let a payment to a person be split or sent to savings"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/rules.ts",
+    "find": "return choice.to === 'not-mine' || isSpendingBucket(choice.to);",
+    "replace": "return choice.to === 'not-mine' || isSpendingBucket(choice.to) || choice.to === 'savings';",
+    "why": "7.4 let a person rule pick savings"
   }
 ]

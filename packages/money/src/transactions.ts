@@ -54,6 +54,17 @@ export interface CardCharge {
   readonly charge: 'fee' | 'interest';
 }
 
+// Money sent to a person from checking, such as Zelle (7.4, 8.1).
+export interface PersonPayment {
+  readonly kind: 'payment-to-person';
+  readonly id: string;
+  readonly account: 'checking';
+  readonly date: IsoDate;
+  readonly amount: Cents;
+  // Who it went to, as the bank shows it.
+  readonly description: string;
+}
+
 // Money moved between your own accounts, including card payments
 // (section 5).
 export interface Transfer {
@@ -66,13 +77,14 @@ export interface Transfer {
   readonly description: string;
 }
 
-export type BankTransaction = Deposit | Purchase | Refund | CardCharge | Transfer;
+export type BankTransaction = Deposit | Purchase | Refund | CardCharge | PersonPayment | Transfer;
 
 const ACCOUNTS_FOR: Record<Exclude<BankTransaction['kind'], 'transfer'>, readonly string[]> = {
   deposit: ['checking', 'savings'],
   purchase: ['checking', 'everyday-card', 'old-card'],
   refund: ['checking', 'everyday-card', 'old-card'],
   'card-charge': ['everyday-card', 'old-card'],
+  'payment-to-person': ['checking'],
 };
 
 // Refuses anything malformed before the book changes at all. Bank ids may
@@ -104,6 +116,7 @@ export function checkTransaction(txn: BankTransaction): void {
       if (txn.charge !== 'fee' && txn.charge !== 'interest') bad('a card charge is a fee or interest');
       break;
     case 'deposit':
+    case 'payment-to-person':
     case 'transfer':
       break;
   }

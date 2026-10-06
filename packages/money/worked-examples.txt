@@ -230,3 +230,31 @@ Step 3. Your roommate sends 60.00 for a utility bill you will pay for
 Nothing is left waiting in review.
 
 Check: mom reserve 3,000.00 | savings 1,550.00 | needs 150.00 | wants 125.00 | held for others 60.00 | unsorted money in 0.00
+
+
+========================================================================
+EXAMPLE 8. Other people's money (rules 7.1 to 7.5)
+========================================================================
+
+Before: Wants 200.00 | Held for others 0.00
+
+Step 1. Your roommate sends you 90.00 for their part of a bill. You mark
+        it "not mine" (7.1). It is not income and is not split.
+        Held for others  0.00 + 90.00 = 90.00
+
+Step 2. You send that 90.00 on to the landlord, and mark it "not mine"
+        (7.2). It is not spending.
+        Held for others 90.00 - 90.00 = 0.00   (back to zero, 7.3)
+
+Step 3. You pay 45.00 for a friend's concert ticket and sort it to wants.
+        Wants  200.00 - 45.00 = 155.00
+
+Step 4. The friend pays you back 45.00. A payback goes into the bucket you
+        pick (7.5, 6.1). You pick wants.
+        Wants  155.00 + 45.00 = 200.00
+
+Step 5. You pay 30.00 for a neighbor's package and mark it "not mine".
+        Held for others  0.00 - 30.00 = -30.00
+        Negative means someone owes you (7.3): the neighbor owes 30.00.
+
+Check: wants 200.00 | held for others -30.00 | unsorted spending 0.00

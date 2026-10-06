@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseDollars, type Book, type Cents } from '../src/index.js';
 import text from '../worked-examples.txt?raw';
-import { cardCharge, deposit, openTestBook, paycheck, posted, purchase, refund, transfer } from './helpers.js';
+import { cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, transfer } from './helpers.js';
 
 interface Example {
   number: number;
@@ -108,6 +108,20 @@ const examples: Record<number, () => Record<string, Cents>> = {
     book.sort('friend', { to: 'wants' }, '2026-10-06');
     book.receive(deposit('roommate', '2026-10-07', parseDollars('60.00'), 'MADE UP ROOMMATE'));
     book.sort('roommate', { to: 'not-mine' }, '2026-10-07');
+    return buckets(book);
+  },
+  8: () => {
+    const book = openTestBook({ pots: { wants: parseDollars('200.00') } });
+    book.receive(deposit('roommate', '2026-10-05', parseDollars('90.00'), 'MADE UP ROOMMATE'));
+    book.sort('roommate', { to: 'not-mine' }, '2026-10-05');
+    book.receive(payPerson('landlord', '2026-10-06', parseDollars('90.00'), 'MADE UP LANDLORD'));
+    book.sort('landlord', { to: 'not-mine' }, '2026-10-06');
+    book.receive(payPerson('ticket', '2026-10-07', parseDollars('45.00'), 'MADE UP TICKETS'));
+    book.sort('ticket', { to: 'wants' }, '2026-10-07');
+    book.receive(deposit('payback', '2026-10-08', parseDollars('45.00'), 'MADE UP FRIEND'));
+    book.sort('payback', { to: 'wants' }, '2026-10-08');
+    book.receive(payPerson('package', '2026-10-09', parseDollars('30.00'), 'MADE UP COURIER'));
+    book.sort('package', { to: 'not-mine' }, '2026-10-09');
     return buckets(book);
   },
 };

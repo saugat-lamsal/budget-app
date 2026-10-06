@@ -16,7 +16,7 @@ import {
   type SortChoice,
   type SortingRule,
 } from '../src/index.js';
-import { TestBank, appSide, cardCharge, deposit, openTestBook, paycheck, posted, purchase, refund, transfer, START_DATE } from './helpers.js';
+import { TestBank, appSide, cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, transfer, START_DATE } from './helpers.js';
 
 const splitArb = fc
   .integer({ min: 0, max: 100 })
@@ -77,7 +77,8 @@ type Step =
   | { type: 'transfer'; amount: number; from: 'checking' | 'savings'; to: 'checking' | 'savings' | 'everyday-card' | 'old-card' }
   | { type: 'old-card'; amount: number; what: 'purchase' | 'pending' | 'fee' | 'interest' | 'refund' }
   | { type: 'acknowledge'; pick: number }
-  | { type: 'resort-money-in'; pick: number; seed: number };
+  | { type: 'resort-money-in'; pick: number; seed: number }
+  | { type: 'pay-person'; amount: number; payee: string };
 
 const gapArb = fc.integer({ min: 0, max: 20 });
 const smallAmountArb = fc.oneof(fc.integer({ min: 1, max: 50_000 }), fc.constantFrom(1, 2, 100));
@@ -121,6 +122,7 @@ const stepArb: fc.Arbitrary<Step> = fc.oneof(
   fc.record({ type: fc.constant('old-card' as const), amount: smallAmountArb, what: fc.constantFrom('purchase' as const, 'pending' as const, 'fee' as const, 'interest' as const, 'refund' as const) }),
   fc.record({ type: fc.constant('acknowledge' as const), pick: fc.nat() }),
   fc.record({ type: fc.constant('resort-money-in' as const), pick: fc.nat(), seed: fc.nat() }),
+  fc.record({ type: fc.constant('pay-person' as const), amount: smallAmountArb, payee: fc.constantFrom('MADE UP FRIEND', 'MADE UP LANDLORD', 'MADE UP ROOMMATE') }),
 );
 
 const potArb = fc.integer({ min: -1_000_000, max: 10_000_000 });
@@ -132,14 +134,18 @@ const RULES: SortingRule[] = [
   { id: 'bonus', for: 'deposit', contains: 'BONUS', choice: { to: 'income' } },
   { id: 'roommate', for: 'deposit', contains: 'ROOMMATE', choice: { to: 'not-mine' } },
   { id: 'friend', for: 'deposit', contains: 'FRIEND', choice: { to: 'wants' } },
+  { id: 'landlord', for: 'person', contains: 'LANDLORD', choice: { to: 'needs' } },
+  { id: 'roommate-out', for: 'person', contains: 'ROOMMATE', choice: { to: 'not-mine' } },
 ];
 
 function pick<T>(list: readonly T[], index: number): T | undefined {
   return list[index % Math.max(1, list.length)];
 }
 
-// A valid way to sort spending of this amount, chosen by the seed.
-function spendingChoice(amount: number, seed: number): SortChoice {
+// A valid way to sort spending of this amount, chosen by the seed. A
+// payment to a person can also be not mine, but cannot be split.
+function spendingChoice(amount: number, seed: number, toPerson = false): SortChoice {
+  if (toPerson) return { to: (['needs', 'wants', 'not-mine'] as const)[seed % 3] ?? 'needs' };
   if (seed % 3 === 2 && amount >= 2) {
     const needs = 1 + (seed % (amount - 1));
     return { split: [{ bucket: 'needs', amount: needs }, { bucket: 'wants', amount: amount - needs }] };
@@ -210,13 +216,13 @@ function runLife(book: Book, bank: TestBank, steps: Step[]): void {
         break;
       case 'sort': {
         const item = pick(book.reviewItems().filter((i) => i.type !== 'leftover'), step.pick);
-        if (item?.type === 'spending') book.sort(item.id, spendingChoice(item.amount, step.seed), date);
+        if (item?.type === 'spending') book.sort(item.id, spendingChoice(item.amount, step.seed, item.reason === 'person-payment'), date);
         if (item?.type === 'money-in') book.sort(item.id, moneyInChoice(step.seed, item.reason === 'refund'), date);
         break;
       }
       case 'resort': {
         const target = pick(book.purchases().filter((p) => p.kind !== 'debt-payoff'), step.pick);
-        if (target) book.sort(target.id, spendingChoice(target.amount - target.refunded, step.seed), date);
+        if (target) book.sort(target.id, spendingChoice(target.amount - target.refunded, step.seed, target.kind === 'person-payment'), date);
         break;
       }
       case 'transfer': {
@@ -244,6 +250,9 @@ function runLife(book: Book, bank: TestBank, steps: Step[]): void {
         if (target) book.sort(target.id, moneyInChoice(step.seed, target.isRefund), date);
         break;
       }
+      case 'pay-person':
+        send(payPerson(`t${n++}`, date, step.amount, step.payee));
+        break;
       case 'acknowledge': {
         const item = pick(book.reviewItems().filter((i) => i.type === 'old-card-purchase'), step.pick);
         if (item) book.acknowledge(item.id, date);
