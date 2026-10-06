@@ -269,7 +269,10 @@ export type ChangeLogEntry =
 export interface SavingsTransfer {
   readonly shouldBeInSavings: Cents;
   readonly savingsAccountBalance: Cents;
+  // What still needs to go into the savings account; $0 when it holds enough.
   readonly stillToMove: Cents;
+  // Only when the account holds more than it should: by how much (3.8).
+  readonly extraInSavings?: Cents;
 }
 
 interface PaycheckEntry {
@@ -654,8 +657,11 @@ export class Book {
     const onItsWay = this.inTransit()
       .items.filter((item) => item.to === 'savings' && item.seen === 'left')
       .map((item) => item.amount);
-    const stillToMove = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));
-    return { shouldBeInSavings, savingsAccountBalance, stillToMove };
+    const gap = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));
+    // 3.8: nothing to move when the account already holds enough; anything
+    // over is shown on its own.
+    if (gap >= 0) return { shouldBeInSavings, savingsAccountBalance, stillToMove: gap };
+    return { shouldBeInSavings, savingsAccountBalance, stillToMove: 0, extraInSavings: -gap };
   }
 
   // Section 10: the alerts due now. The low and empty bucket alerts come

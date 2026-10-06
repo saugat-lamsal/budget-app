@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, changeSettings, splitPaycheck } from '../src/index.js';
-import { codeOf, deposit, openTestBook, paycheck, LAST_PAYCHECK } from './helpers.js';
+import { codeOf, deposit, openTestBook, paycheck, sent, LAST_PAYCHECK } from './helpers.js';
 
 const RULES = DEFAULT_SETTINGS; // 50/30/20, $1,500 reserve, $3,000 cap
 
@@ -385,9 +385,23 @@ describe('3.8 on payday: how much should be in the savings account, and how much
     expect(book.savingsTransfer(600_000).stillToMove).toBe(0);
   });
 
-  it('3.8 a negative "still to move" means the account holds more than the buckets say', () => {
+  it('3.8 when the account holds more than it should, nothing is left to move and the extra is shown separately', () => {
     const book = openTestBook({ pots: { savings: 500_000, momReserve: 100_000 } });
-    expect(book.savingsTransfer(600_001).stillToMove).toBe(-1);
+    expect(book.savingsTransfer(600_001)).toEqual({ shouldBeInSavings: 600_000, savingsAccountBalance: 600_001, stillToMove: 0, extraInSavings: 1 });
+    expect(book.savingsTransfer(1_000_000)).toMatchObject({ stillToMove: 0, extraInSavings: 400_000 });
+  });
+
+  it('3.8 no extra is shown when the account holds exactly enough, or less', () => {
+    const book = openTestBook({ pots: { savings: 500_000, momReserve: 100_000 } });
+    expect(book.savingsTransfer(600_000)).toEqual({ shouldBeInSavings: 600_000, savingsAccountBalance: 600_000, stillToMove: 0 });
+    expect(book.savingsTransfer(599_999)).toEqual({ shouldBeInSavings: 600_000, savingsAccountBalance: 599_999, stillToMove: 1 });
+  });
+
+  it('3.8 money on its way that would overfill the account shows as extra (B46)', () => {
+    const book = openTestBook({ pots: { savings: 500_000, momReserve: 100_000 } });
+    book.receive(sent('t1', '2026-10-02', 50_000, 'checking', 'savings'));
+    // 580,000 in the account + 50,000 on its way = 630,000, 30,000 more than 600,000.
+    expect(book.savingsTransfer(580_000)).toMatchObject({ stillToMove: 0, extraInSavings: 30_000 });
   });
 
   it('3.8 refuses a balance that is not whole cents', () => {

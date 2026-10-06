@@ -533,17 +533,24 @@ class Life {
     const month = date.slice(0, 7);
     if (this.#book.paychecks().filter((p) => p.date.slice(0, 7) === month).length === 3) this.#stats.threePaycheckMonths++;
     // 3.8: the person moves what should be in savings, that evening or the
-    // next day, keeping some money in checking.
+    // next day, keeping some money in checking. Money on its way counts as
+    // moved (B46). When the account holds more than it should, there is
+    // nothing to move and the extra is shown on its own; if checking is
+    // low, the person brings some of it back.
     const move = (): void => {
       const pots = this.#book.pots();
       const onItsWay = this.#bank.halvesShowing().reduce((sum, h) => sum + (h.kind === 'transfer-sent' && h.to === 'savings' ? h.amount : 0), 0);
-      const expectedToMove = pots.savings + pots.momReserve - (this.#bank.posted.savings + onItsWay);
-      const { stillToMove } = this.#book.savingsTransfer(this.#bank.posted.savings);
-      if (stillToMove !== expectedToMove) throw new CheckFailed('3.8 what still needs to move', `the app says ${stillToMove}, expected ${expectedToMove} (B46)`);
+      const shouldBeInSavings = pots.savings + pots.momReserve;
+      const savingsAccountBalance = this.#bank.posted.savings;
+      const gap = shouldBeInSavings - (savingsAccountBalance + onItsWay);
+      const expected = gap >= 0 ? { shouldBeInSavings, savingsAccountBalance, stillToMove: gap } : { shouldBeInSavings, savingsAccountBalance, stillToMove: 0, extraInSavings: -gap };
+      const transfer = this.#book.savingsTransfer(savingsAccountBalance);
+      if (!same(transfer, expected)) throw new CheckFailed('3.8 what still needs to move', `the app says ${JSON.stringify(transfer)}, expected ${JSON.stringify(expected)}`);
       const spare = this.#bank.posted.checking - 50_000;
-      if (stillToMove > 0 && spare > 0) this.#moveBetweenOwn('checking', 'savings', Math.min(stillToMove, spare));
-      else if (stillToMove < 0 && this.#bank.posted.checking < 100_000 && this.#bank.posted.savings > 0) {
-        this.#moveBetweenOwn('savings', 'checking', Math.min(-stillToMove, this.#bank.posted.savings));
+      const extra = transfer.extraInSavings ?? 0;
+      if (transfer.stillToMove > 0 && spare > 0) this.#moveBetweenOwn('checking', 'savings', Math.min(transfer.stillToMove, spare));
+      else if (extra > 0 && this.#bank.posted.checking < 100_000 && savingsAccountBalance > 0) {
+        this.#moveBetweenOwn('savings', 'checking', Math.min(extra, savingsAccountBalance));
       }
     };
     if (this.#random.chance(1, 3)) this.#laterOn(addDays(this.#date, 1), move);

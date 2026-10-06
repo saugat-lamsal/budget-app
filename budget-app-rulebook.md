@@ -58,6 +58,8 @@ number so a test can point at it. Nothing gets coded until you approve this.
      one goes to review instead of splitting automatically.
 3.8  On payday the app tells you how much should be sitting in the savings
      account (savings plus mom reserve) and how much you still need to move.
+     If the account already holds more than it should, the amount to move
+     is $0 and the extra is shown separately.
 
 
 ## 4. Spending
@@ -277,3 +279,5 @@ e.  Old card payoff countdown: the debt the app tracks, divided by the
     paydays after today and before the promo end date (not on it), each
     share rounded up to the cent. With no paydays left, all of it is due
     now; with nothing owed, $0 (9.5, QUESTIONS.md A7).
+f.  A savings account holding more than it should: the amount to move is
+    $0, and the extra is shown separately (3.8).

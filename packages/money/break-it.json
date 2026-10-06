@@ -254,9 +254,30 @@
   {
     "section": "3",
     "file": "packages/money/src/book.ts",
-    "find": "const stillToMove = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));",
-    "replace": "const stillToMove = subtractCents(addCents(savingsAccountBalance, ...onItsWay), shouldBeInSavings);",
+    "find": "const gap = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));",
+    "replace": "const gap = subtractCents(addCents(savingsAccountBalance, ...onItsWay), shouldBeInSavings);",
     "why": "3.8 flip the sign of still-to-move"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "if (gap >= 0) return { shouldBeInSavings, savingsAccountBalance, stillToMove: gap };",
+    "replace": "return { shouldBeInSavings, savingsAccountBalance, stillToMove: gap };",
+    "why": "3.8 show a negative amount to move again"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "if (gap >= 0) return { shouldBeInSavings",
+    "replace": "if (gap > 0) return { shouldBeInSavings",
+    "why": "3.8 call an exact match extra"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "stillToMove: 0, extraInSavings: -gap };",
+    "replace": "stillToMove: 0 };",
+    "why": "3.8 leave out the extra"
   },
   {
     "section": "3",
@@ -1192,8 +1213,8 @@
   {
     "section": "12",
     "file": "packages/money/src/book.ts",
-    "find": "const stillToMove = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));",
-    "replace": "const stillToMove = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance));",
+    "find": "const gap = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));",
+    "replace": "const gap = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance));",
     "why": "12.5 ask you to move money already on its way to savings"
   },
   {
