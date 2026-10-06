@@ -34,6 +34,32 @@ core things wrong. Correctness comes before features, every time.
 - Any bug found later becomes a test first, then gets fixed.
 
 
+## Testing bar for every phase
+
+This applies to every phase and every session, cloud or local.
+
+1. Tests before code. At least one test per numbered rule, named after the
+   rule number. Watch each test fail before writing the code that makes it
+   pass.
+2. Edge cases for every rule: zero, one cent, negative, very large amounts,
+   and exact boundaries (exactly at the mom cap, exactly at the alert level,
+   a paycheck smaller than the reserve).
+3. Break-it check. After a section passes, break the code on purpose in
+   several ways (flip a sign, change a rounding, shift a boundary by one
+   cent). Some test must fail each time. If none does, add the missing test.
+   Restore the code afterward.
+4. Random-scenario tests as soon as a section exists, for things that must
+   always be true: paycheck parts add up exactly, no cent is created or
+   lost, own-account transfers never change a bucket, the self-check holds.
+5. Worked examples. Keep a plain-text file of examples with made-up numbers,
+   calculated step by step, that Saugat can check by hand
+   (packages/money/worked-examples.txt). Each one is also a test.
+6. Type-check and run the full test suite (`npm test`) before every commit.
+   Never skip, weaken, or delete a failing test.
+7. End-of-phase report: a table of every rule and its tests, the test
+   count, the break-it results, and anything not tested and why.
+
+
 ## Technical decisions already made
 
 - TypeScript everywhere.
