@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 5)
+# Budget App Rulebook (draft 6)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -141,9 +141,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
      usually means interest on the rest.
      Old card: reminders stop once the payments the app sees since the
      statement add up to at least the minimum.
-9.4  If the due date passes with no payment seen, you get an overdue alert.
-     On the old card, payments since the statement that add up to less
-     than the minimum also leave it overdue.
+9.4  If the due date passes and the payments the app sees since the
+     statement add up to less than the minimum, you get an overdue alert.
+     This works the same on both cards.
 9.5  Old card payoff countdown: balance divided by the paychecks left before
      the promo ends, counted from the pay schedule.
 
@@ -267,3 +267,6 @@ b.  Old card: payments since the statement add up. Reminders and the
 c.  Low bucket alert: 20% of what the bucket started the pay period with,
     including rollover. A bucket that starts at zero or below gets no low
     alert; the empty alert covers it (10.1).
+d.  Everyday card: the overdue alert works like the old card's. It stops
+    once the payments since the statement total at least the minimum
+    (9.4).

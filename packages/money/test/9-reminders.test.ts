@@ -174,7 +174,7 @@ describe('9.3 which payments count, for either card', () => {
   });
 });
 
-describe('9.4 the due date passes with no payment seen: overdue alert', () => {
+describe('9.4 the due date passes and payments since the statement add up to less than the minimum: overdue alert', () => {
   it('9.4 the day after the due date with no payment, the alert shows', () => {
     expect(cardNotices('2026-10-27', EVERYDAY, [], DEFAULT_SETTINGS)).toEqual([
       { kind: 'overdue', card: 'everyday-card', dueDate: '2026-10-26', minimumPayment: 3_500 },
@@ -185,8 +185,14 @@ describe('9.4 the due date passes with no payment seen: overdue alert', () => {
     expect(cardNotices('2026-10-26', EVERYDAY, [], DEFAULT_SETTINGS)).toEqual([]);
   });
 
-  it('9.4 everyday card: any payment seen since the statement means it is not overdue (QUESTIONS.md A6)', () => {
-    expect(cardNotices('2026-10-27', EVERYDAY, [{ date: '2026-10-26', amount: 1 }], DEFAULT_SETTINGS)).toEqual([]);
+  it('9.4 everyday card: payments since the statement that add up to less than the minimum leave it overdue (A6)', () => {
+    const overdue = [{ kind: 'overdue', card: 'everyday-card', dueDate: '2026-10-26', minimumPayment: 3_500 }];
+    expect(cardNotices('2026-10-27', EVERYDAY, [{ date: '2026-10-26', amount: 1 }], DEFAULT_SETTINGS)).toEqual(overdue);
+    const short = [
+      { date: '2026-10-05', amount: 1_750 },
+      { date: '2026-10-15', amount: 1_749 },
+    ];
+    expect(cardNotices('2026-10-27', EVERYDAY, short, DEFAULT_SETTINGS)).toEqual(overdue);
   });
 
   it('9.4 it applies to the old card too', () => {
@@ -243,6 +249,31 @@ describe('9.4 the due date passes with no payment seen: overdue alert', () => {
 
   it('9.4 on the everyday card, a payment of just the minimum means it is not overdue', () => {
     expect(cardNotices('2026-10-27', EVERYDAY, [{ date: '2026-10-20', amount: 3_500 }], DEFAULT_SETTINGS)).toEqual([]);
+  });
+
+  it('9.4 everyday card: payments that add up to the minimum mean it is not overdue (A6)', () => {
+    const inTwo = [
+      { date: '2026-10-05', amount: 1_750 },
+      { date: '2026-10-15', amount: 1_750 },
+    ];
+    expect(cardNotices('2026-10-27', EVERYDAY, inTwo, DEFAULT_SETTINGS)).toEqual([]);
+  });
+
+  it('9.4 everyday card: a payment after the due date that brings the total to the minimum ends the overdue alert (A6)', () => {
+    const late = [
+      { date: '2026-10-10', amount: 2_000 },
+      { date: '2026-10-28', amount: 1_500 },
+    ];
+    expect(cardNotices('2026-10-27', EVERYDAY, late, DEFAULT_SETTINGS)).toHaveLength(1);
+    expect(cardNotices('2026-10-28', EVERYDAY, late, DEFAULT_SETTINGS)).toEqual([]);
+  });
+
+  it('9.4 everyday card: the book\'s list of payments, added up, is what counts (A6)', () => {
+    const b = openTestBook();
+    b.receive(transfer('t1', '2026-10-05', 1_750, 'checking', 'everyday-card'));
+    expect(cardNotices('2026-10-27', EVERYDAY, b.cardPayments('everyday-card'), DEFAULT_SETTINGS)).toHaveLength(1);
+    b.receive(sent('s2', '2026-10-20', 1_750, 'savings', 'everyday-card'));
+    expect(cardNotices('2026-10-27', EVERYDAY, b.cardPayments('everyday-card'), DEFAULT_SETTINGS)).toEqual([]);
   });
 });
 

@@ -65,21 +65,14 @@ A5. ANSWERED Oct 6, built. Does "income" from review start a new pay
     new pay period. Rulebook 6.1 and 18a updated. Worked examples 7 and
     15. The readings I had to pick while building it are B52 to B55.
 
-A6. PARTLY ANSWERED Oct 6. Paying the old card in more than one payment
-    (9.3), and payments below the minimum (9.4).
-    Your answer, built: on the old card, payments since the statement add
-    up. Reminders and the overdue alert stop once they total at least the
-    minimum. Rulebook 9.3, 9.4 and 18b updated. (The everyday card already
-    adds its payments up toward the full balance, as you confirmed.)
-    Still open: the overdue alert on the everyday card.
-    Now (the literal reading of 9.4): any payment at all, even below the
-    minimum, means the everyday card is not overdue.
-    Option 1 (now): as above.
-    Option 2: same as the old card. If the payments since the statement
-    add up to less than the minimum on the due date, you get the overdue
-    alert.
-    Recommendation: option 2, for the same reason you gave for the old
-    card: the bank charges a late fee when less than the minimum is paid.
+A6. ANSWERED Oct 6, built. Paying a card in more than one payment (9.3),
+    and payments below the minimum (9.4).
+    Your answers: on the old card, payments since the statement add up,
+    and reminders and the overdue alert stop once they total at least the
+    minimum (18b). The everyday card's overdue alert now works the same
+    way (option 2, 18d). Its reminders still continue until the full
+    statement balance is paid (9.3). Rulebook 9.3, 9.4, 18b and 18d
+    updated.
 
 A7. Old card payoff countdown (9.5). Not built yet; it shows "off".
     The promo end date is still missing (rulebook section 16), and these
@@ -202,18 +195,21 @@ B14. Paying the old card more than it owes leaves a negative debt (a
 B15. A pending old card purchase that posts at a new amount changes only
      the debt (5.4). It stays flagged until you have seen it.
 
-B16. A store refund the app cannot match (4.5) can be payback or not mine,
-     but not income.
+B16. Updated after your A5 answer. A store refund the app cannot match
+     (4.5) can be payback or not mine, but not "this is my paycheck" or
+     "other income".
 
 B17. Deposit rules (6.2) never apply to a paycheck. The paycheck rule is
      checked first, and an early paycheck (3.7) always goes to review.
 
-B18. Income uses the mom reserve and its cap exactly like a paycheck
-     (3.2), including when the income is smaller than the reserve
-     (worked example 7).
+B18. Updated after your A5 answer. "Other income" takes nothing for the
+     mom reserve; it is only split by the percentages. "This is my
+     paycheck" is a paycheck, so the reserve comes off first, up to its
+     cap, even when the deposit is smaller than the reserve (B1). Worked
+     examples 7 and 15.
 
-B19. A 3.7 early paycheck in review gets the same three choices as any
-     other deposit (6.1). 3.7 itself does not list choices. See A5.
+B19. Updated after your A5 answer. A 3.7 early paycheck in review gets the
+     same four choices as any other deposit. Rulebook 6.1 now says so.
 
 B20. A payment to a person can be sorted to needs, wants, or not mine. It
      cannot be split: 4.4 talks about purchases only (7.4).
@@ -242,9 +238,12 @@ B25. Same-day order. Things are applied in the order the bank sends them.
 B26. Only payments to people (Zelle and the like) are checked against the
      mom rule (8.1).
 
-B27. If you re-sort income after mom was already paid from the reserve it
-     filled, the reserve can drop below zero. A mom payment then takes
-     nothing from the reserve and all of it waits in review (8.3).
+B27. Updated after your A5 answer. Re-sorting money in can no longer pull
+     the mom reserve below zero: other income never fills the reserve,
+     and "this is my paycheck" cannot be re-sorted (B52). A hand move you
+     confirm can still take it below zero (13.4). Whenever the reserve is
+     at zero or below, a mom payment takes nothing from it and all of it
+     waits in review (8.3).
 
 B28. Card reminders go out exactly 7 and 2 days before the due date
      (calendar days; both are settings). A payment counts toward a
@@ -257,8 +256,10 @@ B29. Updated with your review of 9.3. Everyday card: a statement with
      no reminder. Neither card gets an overdue alert when the minimum is
      $0, since nothing was due.
 
-B30. The overdue alert (9.4) is due on every day after the due date until
-     a payment is seen. Making sure it reaches the phone once is Phase 5.
+B30. Updated after your A6 answers. The overdue alert (9.4) is due on
+     every day after the due date until the payments seen since the
+     statement add up to at least the minimum, on either card. Making
+     sure it reaches the phone once is Phase 5.
 
 B31. Changed after your review: see 10.2 in the rulebook. The empty-bucket
      alert now comes once per bucket per pay period. The book remembers
@@ -294,9 +295,11 @@ B37. When the totals do not match (0.5), the app holds back the
      the days to payday, which does not depend on the bank.
 
 B38. "The split or the mom reserve" (13.1) covers the split and both mom
-     reserve numbers: the amount per paycheck and the cap. Income sorted
-     before the next paycheck still uses this pay period's split. Every
-     other setting applies right away.
+     reserve numbers: the amount per paycheck and the cap. Other income
+     sorted before the next paycheck still uses this pay period's split.
+     "This is my paycheck" starts a new pay period, so it uses the new
+     split (updated after your A5 answer). Every other setting applies
+     right away.
 
 B39. Changed after your review: see 13.6 in the rulebook. A rule made by
      correcting something ("always do this") goes just ahead of the rule
