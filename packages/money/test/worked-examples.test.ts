@@ -2,9 +2,9 @@
 // come from the "Check:" line in the text file itself, so the file you
 // check by hand and the test can never drift apart.
 import { describe, expect, it } from 'vitest';
-import { parseDollars, withPendingCharges, type Book, type Cents } from '../src/index.js';
+import { parseDollars, startTracking, withPendingCharges, type Book, type Cents } from '../src/index.js';
 import text from '../worked-examples.txt?raw';
-import { MOM_NAME, cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, transfer } from './helpers.js';
+import { MOM_NAME, TEST_SETTINGS, cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, transfer } from './helpers.js';
 
 interface Example {
   number: number;
@@ -186,6 +186,33 @@ const examples: Record<number, () => Record<string, Cents>> = {
     book.receive(paycheck('pay', '2026-10-23', parseDollars('3,000.00')));
     if (book.changeLog().length !== 3) throw new Error(`change log: ${JSON.stringify(book.changeLog())}`);
     return buckets(book);
+  },
+  13: () => {
+    const bankBalances = { checking: parseDollars('2,500.00'), savings: parseDollars('4,000.00'), everydayCard: parseDollars('300.00') };
+    const pendingCharges = [purchase('dinner', '2026-10-05', parseDollars('45.00'), 'MADE UP CAFE', { pending: true })];
+    const input = {
+      date: '2026-10-06',
+      bankBalances,
+      pendingCharges,
+      oldCardBalance: parseDollars('2,900.00'),
+      lastPaycheckDate: '2026-09-25',
+      settings: TEST_SETTINGS,
+    };
+    const assignment = {
+      savings: parseDollars('4,000.00'),
+      needs: parseDollars('1,000.00'),
+      wants: parseDollars('500.00'),
+      momReserve: parseDollars('600.00'),
+      heldForOthers: parseDollars('50.00'),
+    };
+    const first = startTracking({ ...input, assignment });
+    if (first.ok) throw new Error('the first try should not start');
+    const second = startTracking({ ...input, assignment: { ...assignment, heldForOthers: parseDollars('55.00') } });
+    if (!second.ok) throw new Error('the second try should start');
+    const book = second.book;
+    book.receive(posted('dinner-posted', 'dinner', '2026-10-07', parseDollars('52.00'), 'MADE UP CAFE'));
+    book.sort('dinner', { to: 'wants' }, '2026-10-07');
+    return { ...buckets(book), 'old card debt': book.oldCardDebt(), 'left to assign on the first try': first.difference };
   },
 };
 

@@ -999,5 +999,68 @@
     "find": "    this.#moveCount += 1;\n",
     "replace": "",
     "why": "13.3 give two moves the same id"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "return bankSide(withPendingCharges(posted, pendingCharges));",
+    "replace": "return bankSide(posted);",
+    "why": "14.1 leave pending charges out of the starting money"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "if (assigned !== money) return",
+    "replace": "if (Math.abs(assigned - money) > 1) return",
+    "why": "14.3 start tracking one cent off"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "difference: subtractCents(money, assigned) };",
+    "replace": "difference: subtractCents(assigned, money) };",
+    "why": "14.3 flip the sign of what is left to assign"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "oldCardDebt: addCents(input.oldCardBalance, ...oldCardPending),",
+    "replace": "oldCardDebt: input.oldCardBalance,",
+    "why": "14.1 leave old card pending charges out of the debt"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/book.ts",
+    "find": "return entry.amount - entry.refunded - entry.countedAtSetup;",
+    "replace": "return entry.amount - entry.refunded;",
+    "why": "14.2 count a setup-day pending charge twice"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/book.ts",
+    "find": "    if ('to' in sorted && sorted.to === 'counted-at-setup' && net !== 0) entry.sortedTo = { to: 'unsorted' };\n",
+    "replace": "",
+    "why": "14.2 swallow the difference when a setup-day charge posts"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/book.ts",
+    "find": "else this.#setEffect(entry, { oldCardDebt: txn.amount - entry.countedAtSetup });",
+    "replace": "else this.#setEffect(entry, { oldCardDebt: txn.amount });",
+    "why": "14.1 count a setup-day old card charge twice"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "if (charge.kind !== 'purchase' || !charge.pending) throw",
+    "replace": "if (charge.kind !== 'purchase') throw",
+    "why": "14.1 accept a posted charge as pending at setup"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "    if (ids.has(charge.id)) throw new MoneyError('conflicting-id', `two pending charges have the id ${charge.id}`);\n",
+    "replace": "",
+    "why": "14.1 accept the same pending charge twice"
   }
 ]

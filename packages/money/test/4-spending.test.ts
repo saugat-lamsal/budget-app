@@ -29,7 +29,7 @@ describe('4.1 a purchase comes out of a bucket on the day of the purchase', () =
     b.receive(purchase('e1', '2026-10-03', 1_299, 'MADE UP CAFE', { pending: true }));
     expect(b.pots().wants).toBe(48_701);
     expect(b.purchases()).toEqual([
-      { id: 'e1', date: '2026-10-03', description: 'MADE UP CAFE', amount: 1_299, refunded: 0, pending: true, kind: 'purchase', sortedTo: { to: 'wants' } },
+      { id: 'e1', date: '2026-10-03', description: 'MADE UP CAFE', amount: 1_299, refunded: 0, countedAtSetup: 0, pending: true, kind: 'purchase', sortedTo: { to: 'wants' } },
     ]);
   });
 
@@ -241,7 +241,7 @@ describe('4.6 a pending charge counts once; the posted charge replaces it', () =
     expect(b.receive(posted('post', 'pend', '2026-10-05', 4_000, 'MADE UP CAFE')).outcome).toBe('posted');
     expect(b.pots().wants).toBe(46_000);
     expect(b.purchases()).toEqual([
-      { id: 'pend', date: '2026-10-03', description: 'MADE UP CAFE', amount: 4_000, refunded: 0, pending: false, kind: 'purchase', sortedTo: { to: 'wants' } },
+      { id: 'pend', date: '2026-10-03', description: 'MADE UP CAFE', amount: 4_000, refunded: 0, countedAtSetup: 0, pending: false, kind: 'purchase', sortedTo: { to: 'wants' } },
     ]);
   });
 

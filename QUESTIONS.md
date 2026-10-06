@@ -135,6 +135,18 @@ A9. Setting the paycheck rule or the mom rule after the first sync.
     comes out of the mom reserve.
     Recommendation: option 2.
 
+A10. Charges still pending on setup day (14.2 with 4.6).
+     The starting money includes them (12.1), so they come out of no
+     bucket. The rulebook does not say what happens when one later posts
+     at a different amount, or is refunded.
+     Now: only the difference waits in review, and you pick the bucket.
+     Posting at the same amount changes nothing. Worked example 13.
+     Option 1 (now): as above.
+     Option 2: on setup day, you also pick a bucket for each pending
+     charge, so it behaves like any other purchase from then on.
+     Recommendation: option 1. Setup day usually has only a few pending
+     charges, and most post at the same amount.
+
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
@@ -305,3 +317,14 @@ B40. Hand moves (13.3) can take a bucket below zero, and held for others
 B41. The change log (13.5) records settings changes, rule changes, and
      hand moves, each with its date. How each transaction was sorted is
      kept on the transaction itself.
+
+B42. Setup day also asks for the date of your last paycheck. Section 14
+     does not list it, but the pay schedule (section 2, 11.2) and the
+     10-day check (3.7) need somewhere to count from until the first
+     paycheck arrives.
+
+B43. Setup day takes the bank's posted balances and its list of pending
+     charges, and works out the starting money with the pending charges
+     included, the same way as the self-check (12.1). The assignment has
+     to match it to the cent (14.3). Starting money can be below zero, if
+     the everyday card owes more than checking and savings hold.

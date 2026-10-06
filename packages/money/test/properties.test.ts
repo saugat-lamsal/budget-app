@@ -8,6 +8,8 @@ import {
   addDays,
   changeSettings,
   splitPaycheck,
+  startTracking,
+  startingMoney,
   type BankTransaction,
   type Book,
   type Purchase,
@@ -17,7 +19,7 @@ import {
   type SortChoice,
   type SortingRule,
 } from '../src/index.js';
-import { MOM_NAME, TestBank, appSide, cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, transfer, START_DATE } from './helpers.js';
+import { MOM_NAME, TEST_SETTINGS, TestBank, appSide, cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, transfer, START_DATE } from './helpers.js';
 
 const splitArb = fc
   .integer({ min: 0, max: 100 })
@@ -179,12 +181,12 @@ function moneyInChoice(seed: number, isRefund: boolean): SortChoice {
   return { to: choices[seed % choices.length] ?? 'savings' };
 }
 
-function runLife(book: Book, bank: TestBank, steps: Step[]): void {
+function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: readonly Purchase[] = []): void {
   let date = START_DATE;
   let n = 0;
   const received: BankTransaction[] = [];
   // Pending purchases the bank has not posted yet, on any account.
-  const pending: Purchase[] = [];
+  const pending: Purchase[] = [...pendingAtSetup];
   // Money in that can be sorted and re-sorted (not paychecks or matched refunds).
   const moneyIn: { id: string; isRefund: boolean }[] = [];
   const send = (txn: BankTransaction): void => {
@@ -243,7 +245,7 @@ function runLife(book: Book, bank: TestBank, steps: Step[]): void {
       }
       case 'resort': {
         const target = pick(book.purchases().filter((p) => p.kind !== 'debt-payoff'), step.pick);
-        if (target) book.sort(target.id, spendingChoice(target.amount - target.refunded, step.seed, target.kind), date);
+        if (target) book.sort(target.id, spendingChoice(target.amount - target.refunded - target.countedAtSetup, step.seed, target.kind), date);
         break;
       }
       case 'transfer': {
@@ -318,6 +320,50 @@ describe('random scenarios: the whole book', () => {
         runLife(book, bank, steps);
       }),
       { numRuns: 500 },
+    );
+  });
+});
+
+describe('random scenarios: setup day (section 14)', () => {
+  const pendingArb = fc.array(
+    fc.record({
+      amount: fc.integer({ min: 1, max: 50_000 }),
+      account: fc.constantFrom('checking' as const, 'everyday-card' as const, 'old-card' as const),
+    }),
+    { maxLength: 4 },
+  );
+
+  it('14.3 any setup that adds up starts with a passing self-check, and it keeps passing through a random life', () => {
+    fc.assert(
+      fc.property(
+        fc.record({ checking: fc.integer({ min: 0, max: 5_000_000 }), savings: fc.integer({ min: 0, max: 5_000_000 }), everydayCard: fc.integer({ min: 0, max: 500_000 }) }),
+        pendingArb,
+        fc.array(fc.integer({ min: -1_000_000, max: 1_000_000 }), { minLength: 4, maxLength: 4 }),
+        fc.array(stepArb, { maxLength: 40 }),
+        (posted, charges, parts, steps) => {
+          const pendingCharges = charges.map((c, i) => purchase(`setup${i}`, '2026-09-30', c.amount, 'MADE UP CAFE', { account: c.account, pending: true }));
+          const money = startingMoney(posted, pendingCharges);
+          // Any four amounts, with savings taking whatever makes it add up.
+          const [needs = 0, wants = 0, momReserve = 0, heldForOthers = 0] = parts;
+          const assignment = { savings: money - needs - wants - momReserve - heldForOthers, needs, wants, momReserve, heldForOthers };
+          const result = startTracking({
+            date: START_DATE,
+            bankBalances: posted,
+            pendingCharges,
+            oldCardBalance: 300_000,
+            assignment,
+            lastPaycheckDate: '2026-09-25',
+            settings: TEST_SETTINGS,
+            rules: RULES,
+          });
+          if (!result.ok) throw new Error('setup that adds up must start');
+          const bank = new TestBank({ ...posted, oldCard: 300_000 });
+          for (const charge of pendingCharges) bank.apply(charge);
+          expect(result.book.selfCheck(bank)).toMatchObject({ ok: true });
+          runLife(result.book, bank, steps, pendingCharges);
+        },
+      ),
+      { numRuns: 300 },
     );
   });
 });

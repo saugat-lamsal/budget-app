@@ -57,6 +57,9 @@ export interface OpenBookInput {
   readonly lastPaycheckDate: IsoDate;
   readonly settings: Settings;
   readonly rules?: readonly SortingRule[];
+  // Charges pending on setup day. They are already in the starting money,
+  // so they start out counted (see startTracking).
+  readonly countedAtSetup?: readonly Purchase[];
 }
 
 export type ReceiveOutcome = 'paycheck' | 'sorted' | 'posted' | 'review' | 'duplicate';
@@ -81,7 +84,9 @@ export type SpendingSort =
   | { readonly to: SplitBucket }
   | { readonly split: readonly SplitPart[] }
   // A payment to a person that was not your spending (7.2).
-  | { readonly to: 'not-mine' };
+  | { readonly to: 'not-mine' }
+  // A charge pending on setup day, already counted in the starting money.
+  | { readonly to: 'counted-at-setup' };
 
 // debt-payoff is a payment to the old card (5.2). mom-difference is the part
 // of a mom payment the reserve could not cover (8.3).
@@ -102,7 +107,15 @@ export type ReviewItem =
       readonly date: IsoDate;
       readonly amount: Cents;
       readonly description: string;
-      readonly reason: 'no-rule' | 'card-fee' | 'card-interest' | 'split-changed' | 'old-card-from-savings' | 'person-payment' | 'mom-difference';
+      readonly reason:
+        | 'no-rule'
+        | 'card-fee'
+        | 'card-interest'
+        | 'split-changed'
+        | 'old-card-from-savings'
+        | 'person-payment'
+        | 'mom-difference'
+        | 'setup-difference';
       readonly suggestion: SplitBucket | null;
     }
   | {
@@ -130,6 +143,8 @@ export interface PurchaseView {
   readonly description: string;
   readonly amount: Cents;
   readonly refunded: Cents;
+  // The part already counted in the starting money on setup day.
+  readonly countedAtSetup: Cents;
   readonly pending: boolean;
   readonly kind: SpendingKind;
   readonly sortedTo: SpendingSort;
@@ -239,6 +254,8 @@ interface SpendEntry {
   pending: boolean;
   amount: Cents;
   refunded: Cents;
+  // The part already taken out of the starting money on setup day.
+  readonly countedAtSetup: Cents;
   sortedTo: SpendingSort;
   // True when a split stopped adding up and was sent back to review.
   splitChanged: boolean;
@@ -288,6 +305,8 @@ interface OldCardEntry {
   postedTxn: Purchase | null;
   pending: boolean;
   amount: Cents;
+  // The part already in the old card balance on setup day.
+  readonly countedAtSetup: Cents;
   effect: Effect;
 }
 
@@ -302,6 +321,24 @@ interface LeftoverEntry {
 }
 
 type Entry = PaycheckEntry | MoneyInEntry | SpendEntry | RefundEntry | MomEntry | TransferEntry | OldCardEntry | LeftoverEntry | MoveEntry;
+
+// Why spending of each kind is waiting in review.
+function spendingReason(kind: SpendingKind): 'no-rule' | 'card-fee' | 'card-interest' | 'old-card-from-savings' | 'person-payment' | 'mom-difference' {
+  switch (kind) {
+    case 'purchase':
+      return 'no-rule';
+    case 'debt-payoff':
+      return 'old-card-from-savings';
+    default:
+      return kind;
+  }
+}
+
+// What a spending entry takes from the buckets: its amount, less refunds,
+// less any part already counted on setup day.
+function netOf(entry: SpendEntry): Cents {
+  return entry.amount - entry.refunded - entry.countedAtSetup;
+}
 
 function splitSettingsOf(settings: Settings): SplitSettings {
   const { split, momReservePerPaycheck, momReserveCap } = settings;
@@ -351,6 +388,36 @@ export class Book {
     this.#rules = checkRules(input.rules ?? []);
     this.#lastPaycheckDate = input.lastPaycheckDate;
     this.#period = { number: 0, startDate: input.date };
+    for (const txn of input.countedAtSetup ?? []) this.#countAtSetup(txn);
+  }
+
+  // A charge pending on setup day changes nothing now: it is already in the
+  // starting money (or the old card balance). It is kept so that, when it
+  // posts, only the difference counts (QUESTIONS.md A10).
+  #countAtSetup(txn: Purchase): void {
+    checkTransaction(txn);
+    if (!txn.pending) throw new MoneyError('bad-transaction', `${txn.id} was not pending on setup day`);
+    const copy = Object.freeze({ ...txn });
+    if (copy.account === 'old-card') {
+      this.#add({ kind: 'old-card', id: copy.id, txn: copy, postedTxn: null, pending: true, amount: copy.amount, countedAtSetup: copy.amount, effect: {} }, {});
+      return;
+    }
+    const entry: SpendEntry = {
+      kind: 'spend',
+      id: copy.id,
+      txn: copy,
+      spendingKind: 'purchase',
+      postedTxn: null,
+      pending: true,
+      amount: copy.amount,
+      refunded: 0,
+      countedAtSetup: copy.amount,
+      sortedTo: { to: 'counted-at-setup' },
+      splitChanged: false,
+      effect: {},
+    };
+    this.#register(entry);
+    this.#refreshSpending(entry);
   }
 
   // ----- Reading -----
@@ -407,7 +474,17 @@ export class Book {
     for (const e of this.#entries.values()) {
       if (e.kind !== 'spend') continue;
       const description = (e.postedTxn ?? e.txn).description;
-      views.push({ id: e.id, date: e.txn.date, description, amount: e.amount, refunded: e.refunded, pending: e.pending, kind: e.spendingKind, sortedTo: e.sortedTo });
+      views.push({
+        id: e.id,
+        date: e.txn.date,
+        description,
+        amount: e.amount,
+        refunded: e.refunded,
+        countedAtSetup: e.countedAtSetup,
+        pending: e.pending,
+        kind: e.spendingKind,
+        sortedTo: e.sortedTo,
+      });
     }
     return views;
   }
@@ -550,6 +627,7 @@ export class Book {
       pending: false,
       amount: difference,
       refunded: 0,
+      countedAtSetup: 0,
       sortedTo: { to: 'unsorted' },
       splitChanged: false,
       effect: {},
@@ -575,7 +653,8 @@ export class Book {
   // 5.4 and 5.5: old card activity changes the debt shown and no bucket. A
   // new purchase is flagged in review.
   #addOldCard(txn: Purchase | CardCharge | Refund): Received {
-    const entry: OldCardEntry = { kind: 'old-card', id: txn.id, txn, postedTxn: null, pending: txn.kind === 'purchase' && txn.pending, amount: txn.amount, effect: {} };
+    const pending = txn.kind === 'purchase' && txn.pending;
+    const entry: OldCardEntry = { kind: 'old-card', id: txn.id, txn, postedTxn: null, pending, amount: txn.amount, countedAtSetup: 0, effect: {} };
     this.#add(entry, { oldCardDebt: txn.kind === 'refund' ? -txn.amount : txn.amount });
     if (txn.kind !== 'purchase') return { id: txn.id, outcome: 'sorted' };
     this.#review.add(entry.id);
@@ -636,6 +715,7 @@ export class Book {
       pending,
       amount: txn.amount,
       refunded: 0,
+      countedAtSetup: 0,
       sortedTo,
       splitChanged: false,
       effect: {},
@@ -652,7 +732,7 @@ export class Book {
     entry.amount = txn.amount;
     this.#aliases.set(txn.id, entry.id);
     if (entry.kind === 'spend') this.#refreshSpending(entry);
-    else this.#setEffect(entry, { oldCardDebt: txn.amount });
+    else this.#setEffect(entry, { oldCardDebt: txn.amount - entry.countedAtSetup });
     return { id: txn.id, outcome: 'posted' };
   }
 
@@ -672,12 +752,15 @@ export class Book {
   // longer adds up (after a refund, or posting at a new amount) goes back to
   // review to be split again.
   #refreshSpending(entry: SpendEntry): void {
-    const net = entry.amount - entry.refunded;
+    const net = netOf(entry);
     const sorted = entry.sortedTo;
     if ('split' in sorted && sorted.split.reduce((sum, part) => sum + part.amount, 0) !== net) {
       entry.sortedTo = { to: 'unsorted' };
       entry.splitChanged = true;
     }
+    // A charge counted at setup that posted at a new amount, or was
+    // refunded: the difference waits in review.
+    if ('to' in sorted && sorted.to === 'counted-at-setup' && net !== 0) entry.sortedTo = { to: 'unsorted' };
     const now = entry.sortedTo;
     let effect: Effect;
     if ('split' in now) {
@@ -687,6 +770,8 @@ export class Book {
       effect = { unsortedOut: net };
     } else if (now.to === 'not-mine') {
       effect = { heldForOthers: -net };
+    } else if (now.to === 'counted-at-setup') {
+      effect = {};
     } else {
       effect = { [now.to]: -net };
     }
@@ -789,7 +874,7 @@ export class Book {
         return Object.freeze({ bucket: part.bucket, amount: part.amount });
       });
       const total = addCents(0, ...parts.map((part) => part.amount));
-      const net = entry.amount - entry.refunded;
+      const net = netOf(entry);
       if (total !== net) throw new MoneyError('split-does-not-add-up', `the parts add up to ${total}, the purchase is ${net}`);
       entry.sortedTo = Object.freeze({ split: Object.freeze(parts) });
     } else if (isSpendingBucket(choice.to)) {
@@ -954,17 +1039,11 @@ export class Book {
         return { type: 'money-in', id, date, amount, description, reason: entry.reason };
       }
       case 'spend': {
-        const reason = entry.splitChanged
-          ? 'split-changed'
-          : entry.spendingKind === 'purchase'
-            ? 'no-rule'
-            : entry.spendingKind === 'debt-payoff'
-              ? 'old-card-from-savings'
-              : entry.spendingKind;
+        const reason = entry.countedAtSetup > 0 ? 'setup-difference' : entry.splitChanged ? 'split-changed' : spendingReason(entry.spendingKind);
         const description = (entry.postedTxn ?? entry.txn).description;
         // Fees, interest, and old card payments suggest needs (4.8, 5.2).
         const suggestion = ['purchase', 'person-payment', 'mom-difference'].includes(entry.spendingKind) ? null : 'needs';
-        return { type: 'spending', id: entry.id, date: entry.txn.date, amount: entry.amount - entry.refunded, description, reason, suggestion };
+        return { type: 'spending', id: entry.id, date: entry.txn.date, amount: netOf(entry), description, reason, suggestion };
       }
       case 'leftover':
         return { type: 'leftover', id: entry.id, date: entry.date, bucket: entry.bucket, amount: entry.amount };

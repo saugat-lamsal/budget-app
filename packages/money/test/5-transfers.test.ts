@@ -53,7 +53,7 @@ describe('5.2 checking to the old card is spending from needs, on a debt payoff 
     expect(b.pots()).toEqual({ ...START, needs: 80_000 });
     expect(b.oldCardDebt()).toBe(280_000);
     expect(b.purchases()).toEqual([
-      { id: 't1', date: '2026-10-05', description: 'TRANSFER checking TO old-card', amount: 20_000, refunded: 0, pending: false, kind: 'debt-payoff', sortedTo: { to: 'needs' } },
+      { id: 't1', date: '2026-10-05', description: 'TRANSFER checking TO old-card', amount: 20_000, refunded: 0, countedAtSetup: 0, pending: false, kind: 'debt-payoff', sortedTo: { to: 'needs' } },
     ]);
     expect(b.reviewItems()).toEqual([]);
   });
