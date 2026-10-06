@@ -786,9 +786,51 @@
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "if (book.settings().oldCardPromoEndDate === null) return { on: false, reason: 'no-promo-end-date' };",
+    "find": "if (end === null) return { on: false, reason: 'no-promo-end-date' };",
     "replace": "",
     "why": "9.5 forget why the countdown is off"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "daysBetween(payday, end) > 0;",
+    "replace": "daysBetween(payday, end) >= 0;",
+    "why": "9.5 count a payday on the promo end date"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "if (daysBetween(today, payday) > 0) paydaysLeft += 1;",
+    "replace": "if (daysBetween(today, payday) >= 0) paydaysLeft += 1;",
+    "why": "9.5 count a payday that falls today"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "perPayday = (owed - rest) / paydaysLeft + (rest === 0 ? 0 : 1);",
+    "replace": "perPayday = (owed - rest) / paydaysLeft;",
+    "why": "9.5 round the share down instead of up"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "const { oldCardPromoEndDate: end, payScheduleDays: every } = book.settings();",
+    "replace": "const { oldCardPromoEndDate: end } = book.settings();\n  const every = 14;",
+    "why": "9.5 hard-code 14 days instead of using the pay schedule"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "else if (paydaysLeft === 0) perPayday = owed;",
+    "replace": "else if (paydaysLeft === 0) perPayday = 0;",
+    "why": "9.5 show nothing due when no paydays are left"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "if (owed <= 0) perPayday = 0;",
+    "replace": "if (owed === 0) perPayday = 0;",
+    "why": "9.5 let a credit show as a negative share"
   },
   {
     "section": "9",

@@ -74,21 +74,15 @@ A6. ANSWERED Oct 6, built. Paying a card in more than one payment (9.3),
     statement balance is paid (9.3). Rulebook 9.3, 9.4, 18b and 18d
     updated.
 
-A7. Old card payoff countdown (9.5). Not built yet; it shows "off".
-    The promo end date is still missing (rulebook section 16), and these
-    details are not in the rule:
-    a. Which paychecks count as "left": paydays after today and before the
-       promo end date? What if a payday falls on the end date itself?
-    b. Rounding: the balance rarely divides evenly. Round each share up to
-       the cent (the last payment comes out slightly smaller), or show the
-       exact share and let the extra cents fall on the last payment?
-    c. If no paychecks are left before the promo ends, show the whole
-       balance as due now?
-    d. Which balance: the old card debt the app tracks (5.4, 5.5), or the
-       last statement balance?
-    Recommendation: a. paydays after today and before the end date, not on
-    it; b. round up to the cent; c. yes, the whole balance; d. the debt the
-    app tracks.
+A7. ANSWERED Oct 6, built. Old card payoff countdown (9.5).
+    Your answer, the recommendation: a. the paydays left are the ones
+    after today and before the promo end date, not on it; b. each share is
+    rounded up to the cent, so the last payment comes out a little
+    smaller; c. with no paydays left, the whole amount is due now; d. it
+    divides the old card debt the app tracks (5.4, 5.5). Also: with nothing
+    owed, $0 per payday. It stays off until you enter the promo end date
+    (section 16). Rulebook 9.5 and 18e updated. Worked example 17. The
+    reading I had to pick while building it is B59.
 
 A8. ANSWERED Oct 6, built. Low bucket alert (10.1).
     Your answer: 20% of what the bucket started the pay period with,
@@ -429,3 +423,12 @@ B58. At zero or below only the empty alert comes, never both at once. If
      money then comes back in (a payback, a hand move) and the bucket is
      above zero but still under the level, the low alert comes then, if
      it has not come yet this pay period.
+
+
+## Part B, added with the A7 answer (Oct 6). Tell me if any is wrong.
+
+B59. The countdown (9.5) counts paydays from the pay schedule, starting at
+     the last paycheck. If a payday passes and that paycheck has not come
+     yet, the payday is behind today, so it is not one of the paydays left,
+     even though the money will still come. Until it does, the countdown
+     asks a little more per payday.

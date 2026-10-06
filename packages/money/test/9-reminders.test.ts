@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, changeSettings, cardNotices, payoffCountdown, type CardStatement } from '../src/index.js';
-import { arrived, codeOf, openTestBook, sent, transfer } from './helpers.js';
+import { DEFAULT_SETTINGS, changeSettings, cardNotices, payoffCountdown, type CardStatement, type Cents, type IsoDate, type Settings } from '../src/index.js';
+import { arrived, cardCharge, codeOf, openTestBook, purchase, sent, transfer } from './helpers.js';
 
 const EVERYDAY: CardStatement = {
   card: 'everyday-card',
@@ -283,9 +283,75 @@ describe('9.5 old card payoff countdown', () => {
     expect(payoffCountdown(b, '2026-10-06')).toEqual({ on: false, reason: 'no-promo-end-date' });
   });
 
-  it('9.5 with a promo end date it waits on the open questions (QUESTIONS.md A7)', () => {
-    const b = openTestBook({ oldCardDebt: 300_000, settings: { oldCardPromoEndDate: '2027-06-30' } });
-    expect(payoffCountdown(b, '2026-10-06')).toEqual({ on: false, reason: 'waiting-on-rule' });
+  // Paydays come from the pay schedule: the last paycheck, Sep 25, plus 14
+  // days at a time: Oct 9, Oct 23, Nov 6, Nov 20, Dec 4, Dec 18, Jan 1,
+  // Jan 15, and so on.
+  const withPromo = (end: IsoDate, owed: Cents = 300_000, settings: Partial<Settings> = {}) =>
+    openTestBook({ oldCardDebt: owed, settings: { oldCardPromoEndDate: end, ...settings } });
+
+  it('9.5 what the old card owes, divided by the paydays left before the promo ends, each share rounded up to the cent (A7)', () => {
+    // After Oct 6 and before Jan 10: Oct 9 to Jan 1, 7 paydays.
+    // 3,000.00 / 7 = 428.5714..., rounded up to 428.58.
+    expect(payoffCountdown(withPromo('2027-01-10'), '2026-10-06')).toEqual({ on: true, owed: 300_000, promoEndDate: '2027-01-10', paydaysLeft: 7, perPayday: 42_858 });
+  });
+
+  it('9.5 an amount that divides evenly is not rounded up', () => {
+    expect(payoffCountdown(withPromo('2027-01-10', 280_000), '2026-10-06')).toMatchObject({ paydaysLeft: 7, perPayday: 40_000 });
+  });
+
+  it('9.5 a payday on the promo end date does not count; one the day before does', () => {
+    expect(payoffCountdown(withPromo('2027-01-01'), '2026-10-06')).toMatchObject({ paydaysLeft: 6, perPayday: 50_000 });
+    expect(payoffCountdown(withPromo('2027-01-02'), '2026-10-06')).toMatchObject({ paydaysLeft: 7 });
+  });
+
+  it('9.5 only paydays after today count, not one today', () => {
+    expect(payoffCountdown(withPromo('2027-01-10'), '2026-10-09')).toMatchObject({ paydaysLeft: 6, perPayday: 50_000 });
+    expect(payoffCountdown(withPromo('2027-01-10'), '2026-10-08')).toMatchObject({ paydaysLeft: 7 });
+  });
+
+  it('9.5 a late paycheck whose payday has passed is not counted (QUESTIONS.md B59)', () => {
+    // No paycheck since Sep 25, and Oct 9 has passed by Oct 12.
+    expect(payoffCountdown(withPromo('2027-01-10'), '2026-10-12')).toMatchObject({ paydaysLeft: 6 });
+  });
+
+  it('9.5 the pay schedule is a setting', () => {
+    // Every 15 days from Sep 25: Oct 10, Oct 25, Nov 9, Nov 24, Dec 9, Dec 24,
+    // then Jan 8, after the Jan 5 end. Every 14 days, Jan 1 still counts.
+    expect(payoffCountdown(withPromo('2027-01-05', 300_000, { payScheduleDays: 15 }), '2026-10-06')).toMatchObject({ paydaysLeft: 6, perPayday: 50_000 });
+    expect(payoffCountdown(withPromo('2027-01-05'), '2026-10-06')).toMatchObject({ paydaysLeft: 7 });
+  });
+
+  it('9.5 with no paydays left before the promo ends, all of it is due now', () => {
+    // The next payday, Oct 9, is the end date itself.
+    expect(payoffCountdown(withPromo('2026-10-09'), '2026-10-06')).toEqual({ on: true, owed: 300_000, promoEndDate: '2026-10-09', paydaysLeft: 0, perPayday: 300_000 });
+    // The promo already ended.
+    expect(payoffCountdown(withPromo('2026-09-30'), '2026-10-06')).toMatchObject({ paydaysLeft: 0, perPayday: 300_000 });
+  });
+
+  it('9.5 with nothing owed, $0 per payday; a credit is not paid out', () => {
+    expect(payoffCountdown(withPromo('2027-01-10', 0), '2026-10-06')).toMatchObject({ owed: 0, paydaysLeft: 7, perPayday: 0 });
+    expect(payoffCountdown(withPromo('2027-01-10', -500), '2026-10-06')).toMatchObject({ owed: -500, perPayday: 0 });
+    expect(payoffCountdown(withPromo('2026-09-30', -500), '2026-10-06')).toMatchObject({ paydaysLeft: 0, perPayday: 0 });
+  });
+
+  it('9.5 one cent owed is one cent per payday, not nothing', () => {
+    expect(payoffCountdown(withPromo('2027-01-10', 1), '2026-10-06')).toMatchObject({ paydaysLeft: 7, perPayday: 1 });
+  });
+
+  it('9.5 it uses what the app shows as owed: new charges and interest raise it, payments lower it (5.4, 5.5)', () => {
+    const b = withPromo('2027-01-10');
+    b.receive(purchase('o1', '2026-10-02', 7_000, 'MADE UP CAFE', { account: 'old-card' }));
+    b.receive(cardCharge('o2', '2026-10-03', 3_000, 'interest', 'old-card'));
+    // 3,100.00 / 7 = 442.857..., rounded up to 442.86.
+    expect(payoffCountdown(b, '2026-10-06')).toMatchObject({ owed: 310_000, perPayday: 44_286 });
+    b.receive(transfer('o3', '2026-10-06', 30_000, 'checking', 'old-card'));
+    expect(payoffCountdown(b, '2026-10-06')).toMatchObject({ owed: 280_000, perPayday: 40_000 });
+  });
+
+  it('9.5 very large amounts stay exact', () => {
+    const book = { settings: () => changeSettings(DEFAULT_SETTINGS, { oldCardPromoEndDate: '2027-01-10' }), oldCardDebt: () => Number.MAX_SAFE_INTEGER, lastPaycheckDate: () => '2026-09-25' };
+    // 9,007,199,254,740,991 / 7 = 1,286,742,750,677,284 rest 3, so rounded up.
+    expect(payoffCountdown(book, '2026-10-06')).toMatchObject({ paydaysLeft: 7, perPayday: 1_286_742_750_677_285 });
   });
 });
 

@@ -8,6 +8,7 @@ import {
   addDays,
   changeSettings,
   daysBetween,
+  payoffCountdown,
   splitPaycheck,
   startTracking,
   startingMoney,
@@ -577,6 +578,37 @@ describe('random scenarios: setup day (section 14)', () => {
         },
       ),
       { numRuns: 300 },
+    );
+  });
+});
+
+describe('random scenarios: the old card payoff countdown (9.5)', () => {
+  it('9.5 the shares cover what is owed, one cent less each would not, and the paydays are the ones before the promo ends', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: -100_000, max: 1_000_000_000_000 }), fc.integer({ min: 0, max: 800 }), fc.integer({ min: 1, max: 31 }), (owed, daysToEnd, every) => {
+        const today: IsoDate = '2026-10-06';
+        // The last paycheck was today, so paydays fall every `every` days after it.
+        const book = {
+          settings: () => changeSettings(DEFAULT_SETTINGS, { oldCardPromoEndDate: addDays(today, daysToEnd), payScheduleDays: every }),
+          oldCardDebt: () => owed,
+          lastPaycheckDate: () => today,
+        };
+        const countdown = payoffCountdown(book, today);
+        expect(countdown.on).toBe(true);
+        if (!countdown.on) return;
+        // Paydays strictly before the end date: every, 2 x every, ... < daysToEnd.
+        const left = daysToEnd === 0 ? 0 : Math.floor((daysToEnd - 1) / every);
+        expect(countdown.paydaysLeft).toBe(left);
+        if (owed <= 0) {
+          expect(countdown.perPayday).toBe(0);
+        } else if (left === 0) {
+          expect(countdown.perPayday).toBe(owed);
+        } else {
+          expect(BigInt(countdown.perPayday) * BigInt(left) >= BigInt(owed)).toBe(true);
+          expect(BigInt(countdown.perPayday - 1) * BigInt(left) < BigInt(owed)).toBe(true);
+        }
+      }),
+      { numRuns: 2_000 },
     );
   });
 });

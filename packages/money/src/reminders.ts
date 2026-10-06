@@ -1,5 +1,5 @@
 import { addCents, assertCents, assertCentsAtLeastZero, type Cents } from './cents.js';
-import { assertIsoDate, daysBetween, type IsoDate } from './dates.js';
+import { addDays, assertIsoDate, daysBetween, type IsoDate } from './dates.js';
 import { MoneyError } from './errors.js';
 import type { Settings } from './settings.js';
 
@@ -95,13 +95,32 @@ function checkStatement(statement: CardStatement): void {
   assertCentsAtLeastZero(statement.minimumPayment, 'minimum payment');
 }
 
-// Rule 9.5. The promo end date is not known yet (rulebook section 16), and
-// how to count the paychecks left and round the amount is an open question
-// (QUESTIONS.md A7), so the countdown stays off either way for now.
-export type PayoffCountdown = { readonly on: false; readonly reason: 'no-promo-end-date' | 'waiting-on-rule' };
+// Rule 9.5 (QUESTIONS.md A7): what the old card owes, divided by the paydays
+// left before the promo ends. Paydays follow the pay schedule from the last
+// paycheck, and only those after today and before the end date count. Each
+// share is rounded up to the cent, so the last payment comes out a little
+// smaller. With no paydays left, all of it is due now; with nothing owed,
+// nothing is. Off until the promo end date is entered (section 16).
+export type PayoffCountdown =
+  | { readonly on: false; readonly reason: 'no-promo-end-date' }
+  | { readonly on: true; readonly owed: Cents; readonly promoEndDate: IsoDate; readonly paydaysLeft: number; readonly perPayday: Cents };
 
-export function payoffCountdown(book: { settings(): Settings }, today: IsoDate): PayoffCountdown {
+export function payoffCountdown(book: { settings(): Settings; oldCardDebt(): Cents; lastPaycheckDate(): IsoDate }, today: IsoDate): PayoffCountdown {
   assertIsoDate(today, 'today');
-  if (book.settings().oldCardPromoEndDate === null) return { on: false, reason: 'no-promo-end-date' };
-  return { on: false, reason: 'waiting-on-rule' };
+  const { oldCardPromoEndDate: end, payScheduleDays: every } = book.settings();
+  if (end === null) return { on: false, reason: 'no-promo-end-date' };
+  const owed = book.oldCardDebt();
+  assertCents(owed, 'old card debt');
+  let paydaysLeft = 0;
+  for (let payday = addDays(book.lastPaycheckDate(), every); daysBetween(payday, end) > 0; payday = addDays(payday, every)) {
+    if (daysBetween(today, payday) > 0) paydaysLeft += 1;
+  }
+  let perPayday: Cents;
+  if (owed <= 0) perPayday = 0;
+  else if (paydaysLeft === 0) perPayday = owed;
+  else {
+    const rest = owed % paydaysLeft;
+    perPayday = (owed - rest) / paydaysLeft + (rest === 0 ? 0 : 1);
+  }
+  return { on: true, owed, promoEndDate: end, paydaysLeft, perPayday };
 }
