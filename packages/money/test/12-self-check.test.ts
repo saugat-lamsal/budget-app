@@ -95,6 +95,14 @@ describe('12.3 the two must be equal; if not, a warning with the difference', ()
     expect(book().selfCheck({ ...MATCHING, checking: 300_001 })).toEqual({ bankSide: 436_001, inTransit: 0, appSide: 436_000, difference: 1, ok: false });
   });
 
+  it('12.3 the difference is the bank side plus money in transit, minus the app side', () => {
+    const b = book();
+    b.receive(sent('t1', '2026-10-02', 10_000, 'checking', 'savings'));
+    expect(b.selfCheck({ ...MATCHING, checking: 290_000 })).toEqual({ bankSide: 426_000, inTransit: 10_000, appSide: 436_000, difference: 0, ok: true });
+    expect(b.selfCheck({ ...MATCHING, checking: 290_001 })).toMatchObject({ difference: 1, ok: false });
+    expect(b.selfCheck({ ...MATCHING, checking: 289_999 })).toMatchObject({ difference: -1, ok: false });
+  });
+
   it('12.3 the bank one cent lower: warning, difference -1', () => {
     expect(book().selfCheck({ ...MATCHING, everydayCard: 214_001 })).toMatchObject({ difference: -1, ok: false });
   });

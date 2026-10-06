@@ -45,14 +45,16 @@ number so a test can point at it. Nothing gets coded until you approve this.
      pay period.
 3.2  The mom reserve comes off first. If the reserve is already at its cap,
      the part that does not fit goes to savings instead.
-3.3  The rest is split by the percentages. Any leftover cents from rounding
-     go to savings, so the parts always add up to the paycheck exactly.
+3.3  The rest is split by the percentages. Needs and wants are each rounded
+     down to the cent, and savings gets the rest, so the parts always add up
+     to the paycheck exactly.
 3.4  At each payday, unspent needs and unspent wants either roll over into
      the next pay period or move to savings. You choose for each bucket
      separately. Until you answer, the money stays where it is, and you can
      still move it by hand later (13.3).
 3.5  An overspent bucket carries over as a negative, so the next period
-     starts smaller.
+     starts smaller. At payday nothing is asked about it and nothing moves;
+     the new share is added on top.
 3.6  A third paycheck in a month is handled exactly like any other.
 3.7  A paycheck-looking deposit that arrives less than 10 days after the last
      one goes to review instead of splitting automatically.
@@ -187,7 +189,8 @@ number so a test can point at it. Nothing gets coded until you approve this.
       Unsorted money in: deposits and refunds waiting in review
       (3.7, 4.5, 6.1).
 12.3  The two must be equal. If not, the app shows a warning with the
-      difference.
+      difference: the bank side plus money in transit (12.5), minus the app
+      side.
 12.4  The old card balance is tracked separately as debt and is not part of
       this check.
 12.5  Money in transit: a transfer that has left one of your accounts but not
@@ -286,3 +289,9 @@ f.  A savings account holding more than it should: the amount to move is
 g.  A refund of a split purchase: a full refund goes back to each bucket
     as it was split; a partial one sends the purchase back to review to be
     split again (4.5, QUESTIONS.md A1).
+h.  Rounding at payday: needs and wants are each rounded down to the cent,
+    and savings gets the rest (3.3).
+i.  A bucket at zero or below at payday: nothing is asked and nothing
+    moves. It carries over, and the new share is added on top (3.5).
+j.  The self-check difference is the bank side (plus money in transit)
+    minus the app side (12.3).

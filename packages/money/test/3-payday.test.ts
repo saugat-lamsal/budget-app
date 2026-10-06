@@ -140,6 +140,12 @@ describe('3.2 the mom reserve comes off first, up to its cap', () => {
 });
 
 describe('3.3 the rest is split by the percentages, leftover cents go to savings', () => {
+  it('3.3 needs and wants are each rounded down to the cent, and savings gets the rest', () => {
+    // Rest 100.03: needs 30% = 30.009, rounded down to 30.00 (not up to
+    // 30.01); wants 20% = 20.006, down to 20.00; savings the rest, 50.03.
+    expect(splitPaycheck(10_003, 0, { ...RULES, momReservePerPaycheck: 0 })).toMatchObject({ momReserve: 0, needs: 3_000, wants: 2_000, savings: 5_003 });
+  });
+
   it('3.3 an even split', () => {
     expect(splitPaycheck(400_000, 0, RULES)).toEqual({
       momReserve: 150_000,
@@ -301,6 +307,13 @@ describe('3.5 an overspent bucket carries over as a negative', () => {
     const book = openTestBook({ pots: { wants: -60_000 } });
     book.receive(paycheck('p1', '2026-10-09', 400_000));
     expect(book.pots().wants).toBe(-10_000);
+  });
+
+  it('3.5 a bucket at exactly zero at payday: nothing asked, nothing moved, and it starts with just the new share', () => {
+    const book = openTestBook({ pots: { needs: 0, wants: 0 }, settings: { leftoverAtPayday: { needs: 'ask', wants: 'move-to-savings' } } });
+    book.receive(paycheck('p1', '2026-10-09', 400_000));
+    expect(book.pots()).toMatchObject({ needs: 75_000, wants: 50_000, savings: 125_000 });
+    expect(book.reviewItems()).toEqual([]);
   });
 
   it('3.5 "always move to savings" never moves a negative', () => {
