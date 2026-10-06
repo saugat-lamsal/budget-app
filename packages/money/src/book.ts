@@ -1098,44 +1098,23 @@ export class Book {
     else this.#review.delete(entry.id);
   }
 
-  // Rules 3.1 to 3.5.
+  // Rules 3.1 to 3.5. A paycheck too large to stay exact (0.1) is refused
+  // whole: no leftover moves, no question, no new pay period.
   #payday(txn: Deposit): void {
-    this.#checkPaydayFits(txn);
-    this.#closePeriod('needs', txn);
-    this.#closePeriod('wants', txn);
-    // 13.1: a change to the split or the reserve applies from this paycheck.
-    this.#periodSplit = splitSettingsOf(this.#settings);
-    const split = splitPaycheck(txn.amount, this.#totals.momReserve, this.#periodSplit);
-    const entry: PaycheckEntry = { kind: 'paycheck', id: txn.id, txn, split, effect: {} };
-    this.#add(entry, { momReserve: split.momReserve, savings: split.savings, needs: split.needs, wants: split.wants });
-    this.#paychecks.push({ id: txn.id, date: txn.date, amount: txn.amount, split });
-    this.#period = { number: this.#period.number + 1, startDate: txn.date };
-    this.#periodStart.needs = this.#totals.needs;
-    this.#periodStart.wants = this.#totals.wants;
-    this.#lastPaycheckDate = txn.date;
-  }
-
-  // Works out the new totals of a payday first, so a paycheck too large to
-  // stay exact (0.1) is refused before any leftover moves or question.
-  // "without" is what a deposit in review already did, taken back when you
-  // call it your paycheck (6.1).
-  #checkPaydayFits(txn: Deposit, without: Effect = {}): void {
-    const t = this.#totals;
-    const less = (name: 'savings' | 'needs' | 'wants' | 'momReserve'): Cents => subtractCents(t[name], without[name] ?? 0);
-    let savings = less('savings');
-    const after = { needs: less('needs'), wants: less('wants') };
-    const momReserve = less('momReserve');
-    for (const bucket of ['needs', 'wants'] as const) {
-      if (after[bucket] > 0 && this.#settings.leftoverAtPayday[bucket] === 'move-to-savings') {
-        savings = addCents(savings, after[bucket]);
-        after[bucket] = 0;
-      }
-    }
-    const split = splitPaycheck(txn.amount, momReserve, splitSettingsOf(this.#settings));
-    addCents(savings, split.savings);
-    addCents(after.needs, split.needs);
-    addCents(after.wants, split.wants);
-    addCents(momReserve, split.momReserve);
+    this.#atomically(() => {
+      this.#closePeriod('needs', txn);
+      this.#closePeriod('wants', txn);
+      // 13.1: a change to the split or the reserve applies from this paycheck.
+      this.#periodSplit = splitSettingsOf(this.#settings);
+      const split = splitPaycheck(txn.amount, this.#totals.momReserve, this.#periodSplit);
+      const entry: PaycheckEntry = { kind: 'paycheck', id: txn.id, txn, split, effect: {} };
+      this.#add(entry, { momReserve: split.momReserve, savings: split.savings, needs: split.needs, wants: split.wants });
+      this.#paychecks.push({ id: txn.id, date: txn.date, amount: txn.amount, split });
+      this.#period = { number: this.#period.number + 1, startDate: txn.date };
+      this.#periodStart.needs = this.#totals.needs;
+      this.#periodStart.wants = this.#totals.wants;
+      this.#lastPaycheckDate = txn.date;
+    });
   }
 
   // Rule 3.4: unspent money in a bucket at payday either rolls over or moves
@@ -1161,24 +1140,23 @@ export class Book {
 
   // ----- Your answers -----
 
+  // An open question is always about the payday that started this pay
+  // period (an older one is replaced at the next payday). Moving the
+  // leftover to savings also takes it out of what the bucket started this
+  // pay period with (10.1).
   answerLeftover(id: string, answer: LeftoverAnswer, date: IsoDate): void {
     assertIsoDate(date);
     if (answer !== 'roll-over' && answer !== 'move-to-savings') throw new MoneyError('bad-choice', `not a leftover choice: ${String(answer)}`);
     const entry = this.#entries.get(id);
     if (entry?.kind !== 'leftover' || !this.#review.has(id)) throw new MoneyError('unknown-item', `no open leftover question ${id}`);
+    const start = answer === 'move-to-savings' ? subtractCents(this.#periodStart[entry.bucket], entry.amount) : this.#periodStart[entry.bucket];
     this.#answerLeftover(entry, answer);
+    this.#periodStart[entry.bucket] = start;
     this.#review.delete(id);
   }
 
-  // Moving a leftover to savings also takes it out of what the bucket
-  // started this pay period with (10.1). Set automatically, it moves before
-  // the new pay period's start is counted.
   #answerLeftover(entry: LeftoverEntry, answer: LeftoverAnswer): void {
-    if (answer === 'move-to-savings') {
-      const start = subtractCents(this.#periodStart[entry.bucket], entry.amount);
-      this.#setEffect(entry, { [entry.bucket]: -entry.amount, savings: entry.amount });
-      this.#periodStart[entry.bucket] = start;
-    }
+    if (answer === 'move-to-savings') this.#setEffect(entry, { [entry.bucket]: -entry.amount, savings: entry.amount });
     entry.answer = answer;
   }
 
@@ -1280,10 +1258,10 @@ export class Book {
     if (daysBetween(this.#lastPaycheckDate, txn.date) < 0) {
       throw new MoneyError('bad-choice', `${txn.id} is older than the last paycheck, so it cannot start a new pay period; it can be other income`);
     }
-    // Checked first, so a paycheck too large to stay exact (0.1) changes nothing.
-    this.#checkPaydayFits(txn, entry.effect);
-    this.#remove(entry);
-    this.#payday(txn);
+    this.#atomically(() => {
+      this.#remove(entry);
+      this.#payday(txn);
+    });
   }
 
   #moneyInEntry(id: string): MoneyInEntry {
@@ -1309,9 +1287,11 @@ export class Book {
   // waiting in review. Anything already sorted stays put.
   addRule(rule: SortingRule, date: IsoDate): void {
     assertIsoDate(date);
-    this.#rules = checkRules([...this.#rules, rule]);
-    this.#log.push(Object.freeze({ date, kind: 'rule-added', rule: this.#ruleById(rule.id) }));
-    this.#sortWaitingByRules(rule.id);
+    this.#atomically(() => {
+      this.#rules = checkRules([...this.#rules, rule]);
+      this.#log.push(Object.freeze({ date, kind: 'rule-added', rule: this.#ruleById(rule.id) }));
+      this.#sortWaitingByRules(rule.id);
+    });
   }
 
   // 13.6: re-sort an item and "always do this". The new rule goes just ahead
@@ -1350,22 +1330,24 @@ export class Book {
     const found = this.#rules.findIndex(covers);
     const at = found === -1 ? this.#rules.length : found;
     const corrected = this.#rules[at];
-    // Check the new list first, so a bad rule changes nothing.
-    const rules = checkRules([...this.#rules.slice(0, at), newRule, ...this.#rules.slice(at)]);
-    this.sort(entry.id, choice, date);
-    this.#rules = rules;
-    const added = this.#ruleById(newRule.id);
-    this.#log.push(Object.freeze({ date, kind: 'rule-added-from-correction', rule: added, correcting: entry.id, aheadOf: corrected?.id ?? null }));
-    this.#sortWaitingByRules(added.id);
-    return { sticks: findRule(this.#rules, newRule.for, descriptions[0] ?? '')?.id === added.id };
+    return this.#atomically(() => {
+      this.#rules = checkRules([...this.#rules.slice(0, at), newRule, ...this.#rules.slice(at)]);
+      this.sort(entry.id, choice, date);
+      const added = this.#ruleById(newRule.id);
+      this.#log.push(Object.freeze({ date, kind: 'rule-added-from-correction', rule: added, correcting: entry.id, aheadOf: corrected?.id ?? null }));
+      this.#sortWaitingByRules(added.id);
+      return { sticks: findRule(this.#rules, newRule.for, descriptions[0] ?? '')?.id === added.id };
+    });
   }
 
   changeRule(rule: SortingRule, date: IsoDate): void {
     assertIsoDate(date);
     const before = this.#ruleById(rule.id);
-    this.#rules = checkRules(this.#rules.map((r) => (r.id === rule.id ? rule : r)));
-    this.#log.push(Object.freeze({ date, kind: 'rule-changed', before, after: this.#ruleById(rule.id) }));
-    this.#sortWaitingByRules(rule.id);
+    this.#atomically(() => {
+      this.#rules = checkRules(this.#rules.map((r) => (r.id === rule.id ? rule : r)));
+      this.#log.push(Object.freeze({ date, kind: 'rule-changed', before, after: this.#ruleById(rule.id) }));
+      this.#sortWaitingByRules(rule.id);
+    });
   }
 
   removeRule(id: string, date: IsoDate): void {
@@ -1436,6 +1418,54 @@ export class Book {
   }
 
   // ----- Bookkeeping -----
+
+  // Runs a change made of several steps (a payday, a rule sorting what is
+  // waiting) all or nothing: if any step is refused, the whole book goes
+  // back exactly as it was (0.1). Each step can then assume the ones before
+  // it stand, with no check of its own done in advance.
+  #atomically<T>(change: () => T): T {
+    const saved = {
+      totals: { ...this.#totals },
+      entries: [...this.#entries.values()].map((entry): Entry => ({ ...entry })),
+      aliases: [...this.#aliases],
+      pairs: [...this.#pairs],
+      review: [...this.#review],
+      paychecks: this.#paychecks.length,
+      log: this.#log.length,
+      moveCount: this.#moveCount,
+      lowAlerted: { ...this.#lowAlerted },
+      emptyAlerted: { ...this.#emptyAlerted },
+      periodStart: { ...this.#periodStart },
+      periodSplit: this.#periodSplit,
+      rules: this.#rules,
+      lastPaycheckDate: this.#lastPaycheckDate,
+      period: this.#period,
+    };
+    try {
+      return change();
+    } catch (error) {
+      Object.assign(this.#totals, saved.totals);
+      this.#entries.clear();
+      for (const entry of saved.entries) this.#entries.set(entry.id, entry);
+      this.#aliases.clear();
+      for (const [k, v] of saved.aliases) this.#aliases.set(k, v);
+      this.#pairs.clear();
+      for (const [k, v] of saved.pairs) this.#pairs.set(k, v);
+      this.#review.clear();
+      for (const id of saved.review) this.#review.add(id);
+      this.#paychecks.length = saved.paychecks;
+      this.#log.length = saved.log;
+      this.#moveCount = saved.moveCount;
+      Object.assign(this.#lowAlerted, saved.lowAlerted);
+      Object.assign(this.#emptyAlerted, saved.emptyAlerted);
+      Object.assign(this.#periodStart, saved.periodStart);
+      this.#periodSplit = saved.periodSplit;
+      this.#rules = saved.rules;
+      this.#lastPaycheckDate = saved.lastPaycheckDate;
+      this.#period = saved.period;
+      throw error;
+    }
+  }
 
   #entry(id: string): Entry {
     const entry = this.#entries.get(id);

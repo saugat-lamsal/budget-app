@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MOM_NAME, codeOf, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, sent } from './helpers.js';
+import type { Book } from '../src/index.js';
+import { MOM_NAME, appSide, codeOf, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, sent } from './helpers.js';
 
 // A total too large to stay exact is refused (0.1). Whatever was refused
 // must change nothing at all, so the same transaction can be tried again
@@ -105,5 +106,119 @@ describe('0.1 a refused transaction leaves no trace', () => {
     expect(b.pots()).toMatchObject({ savings: HUGE - 20_000, needs: 10_000 });
     expect(codeOf(() => b.receive(paycheck('p1', '2026-10-09', 400_000)))).toBe('not-cents');
     expect(b.recountPots()).toEqual(b.pots());
+  });
+
+});
+
+// Everything a refused call could have touched, to compare before and after.
+function state(b: Book) {
+  return {
+    pots: b.pots(),
+    review: b.reviewItems(),
+    purchases: b.purchases(),
+    period: b.period(),
+    lastPaycheckDate: b.lastPaycheckDate(),
+    paychecks: b.paychecks(),
+    started: b.startedPeriodWith(),
+    rules: b.rules(),
+    log: b.changeLog(),
+    inTransit: b.inTransit(),
+    debt: b.oldCardDebt(),
+  };
+}
+
+const MOVE_NEEDS = { leftoverAtPayday: { needs: 'move-to-savings', wants: 'roll-over' } } as const;
+
+describe('0.1 a refused change of several steps leaves no trace (found in the review of A5 and A8)', () => {
+  it('0.1 a payday refused after moving a leftover to savings puts it all back', () => {
+    // Moving needs' 30.00 to savings fits; the new savings share does not.
+    const b = openTestBook({ pots: { savings: MAX - 100_000, needs: 3_000 }, settings: MOVE_NEEDS });
+    const before = state(b);
+    expect(codeOf(() => b.receive(paycheck('p1', '2026-10-09', 400_000)))).toBe('not-cents');
+    expect(state(b)).toEqual(before);
+    expect(codeOf(() => b.receive(paycheck('p1', '2026-10-09', 400_000)))).toBe('not-cents');
+    expect(b.recountPots()).toEqual(b.pots());
+  });
+
+  it('0.1 a refused payday keeps this pay period\'s split for other income (13.1)', () => {
+    const b = openTestBook({ pots: { wants: MAX - 100_000 } });
+    b.changeSettings({ split: { savings: 0, needs: 0, wants: 100 } }, '2026-10-05');
+    expect(codeOf(() => b.receive(paycheck('p1', '2026-10-09', 400_000)))).toBe('not-cents');
+    b.receive(deposit('d1', '2026-10-10', 1_000, 'MADE UP SIDE JOB'));
+    b.sort('d1', { to: 'other-income' }, '2026-10-10');
+    expect(b.pots()).toMatchObject({ savings: 500, needs: 300, wants: MAX - 100_000 + 200 });
+  });
+
+  it('0.1 a refused payday keeps the unanswered leftover question from the last payday', () => {
+    const b = openTestBook({ pots: { needs: 3_000 } });
+    b.receive(paycheck('p1', '2026-10-09', 400_000));
+    b.moveMoney({ from: 'needs', to: 'savings', amount: 70_000 }, '2026-10-10');
+    b.receive(deposit('big', '2026-10-11', MAX - 200_000, 'MADE UP WINDFALL'));
+    b.sort('big', { to: 'savings' }, '2026-10-11');
+    const before = state(b);
+    expect(before.review.map((i) => i.id)).toEqual(['leftover:p1:needs']);
+    expect(codeOf(() => b.receive(paycheck('p2', '2026-10-23', 400_000)))).toBe('not-cents');
+    expect(state(b)).toEqual(before);
+    b.answerLeftover('leftover:p1:needs', 'roll-over', '2026-10-24');
+  });
+
+  it('0.1 a refused "this is my paycheck" leaves the deposit waiting, and the self-check holds', () => {
+    // Someone owes you 5,000.00, which keeps the app side small enough to add up.
+    const b = openTestBook({ pots: { savings: MAX - 100_000, needs: 3_000, heldForOthers: -500_000 }, settings: MOVE_NEEDS });
+    b.receive(deposit('d1', '2026-10-09', 400_000, 'MADE UP NEW JOB'));
+    const bank = { checking: appSide(b.pots()), savings: 0, everydayCard: 0 };
+    const before = state(b);
+    expect(codeOf(() => b.sort('d1', { to: 'paycheck' }, '2026-10-09'))).toBe('not-cents');
+    expect(state(b)).toEqual(before);
+    expect(b.selfCheck(bank).ok).toBe(true);
+    expect(b.receive(deposit('d1', '2026-10-09', 400_000, 'MADE UP NEW JOB')).outcome).toBe('duplicate');
+    expect(codeOf(() => b.sort('d1', { to: 'paycheck' }, '2026-10-09'))).toBe('not-cents');
+    b.sort('d1', { to: 'not-mine' }, '2026-10-09');
+    expect(b.selfCheck(bank).ok).toBe(true);
+  });
+
+  it('0.1 a payday never fails on keeping track of what the last pay period started with (10.1)', () => {
+    // The first pay period started far below zero, and payday moves a
+    // leftover to savings. The old start is replaced, never worked out.
+    const b = openTestBook({ pots: { savings: MAX - 1_000, needs: -(MAX - 1_000) }, settings: MOVE_NEEDS });
+    b.moveMoney({ from: 'savings', to: 'needs', amount: MAX - 1_000, confirmed: true }, '2026-10-02');
+    b.receive(deposit('x1', '2026-10-03', 3_000, 'MADE UP FRIEND'));
+    b.sort('x1', { to: 'needs' }, '2026-10-03');
+    b.receive(deposit('d1', '2026-10-04', 1_000, 'MADE UP NEW JOB'));
+    const bank = { checking: appSide(b.pots()), savings: 0, everydayCard: 0 };
+    b.sort('d1', { to: 'paycheck' }, '2026-10-04');
+    expect(b.selfCheck(bank).ok).toBe(true);
+    expect(b.period().number).toBe(1);
+    expect(b.startedPeriodWith().needs).toBe(b.pots().needs);
+    b.receive(paycheck('p1', '2026-10-18', 1_000));
+    expect(b.period().number).toBe(2);
+  });
+
+  it('0.1 a new rule refused part way through sorting what is waiting changes nothing (13.2)', () => {
+    const b = openTestBook({ pots: { wants: MAX - 11_000 } });
+    b.receive(deposit('d1', '2026-10-05', 1_000, 'MADE UP GIFT'));
+    b.receive(deposit('d2', '2026-10-05', 1_000_000, 'MADE UP GIFT'));
+    const before = state(b);
+    expect(codeOf(() => b.addRule({ id: 'gift', for: 'deposit', contains: 'GIFT', choice: { to: 'other-income' } }, '2026-10-06'))).toBe('not-cents');
+    expect(state(b)).toEqual(before);
+    expect(b.recountPots()).toEqual(b.pots());
+  });
+
+  it('0.1 a changed rule refused part way through sorting what is waiting changes nothing (13.2)', () => {
+    const b = openTestBook({ pots: { wants: MAX - 11_000 }, rules: [{ id: 'gift', for: 'deposit', contains: 'NOTHING LIKE IT', choice: { to: 'wants' } }] });
+    b.receive(deposit('d1', '2026-10-05', 1_000, 'MADE UP GIFT'));
+    b.receive(deposit('d2', '2026-10-05', 1_000_000, 'MADE UP GIFT'));
+    const before = state(b);
+    expect(codeOf(() => b.changeRule({ id: 'gift', for: 'deposit', contains: 'GIFT', choice: { to: 'wants' } }, '2026-10-06'))).toBe('not-cents');
+    expect(state(b)).toEqual(before);
+  });
+
+  it('0.1 "always do this" refused part way through changes nothing, not even the item you corrected (13.6)', () => {
+    const b = openTestBook({ pots: { wants: MAX - 11_000 } });
+    b.receive(deposit('d1', '2026-10-05', 1_000, 'MADE UP GIFT'));
+    b.receive(deposit('d2', '2026-10-05', 1_000_000, 'MADE UP GIFT'));
+    const before = state(b);
+    expect(codeOf(() => b.sortAlways('d1', { to: 'other-income' }, { id: 'gift', contains: 'GIFT' }, '2026-10-06'))).toBe('not-cents');
+    expect(state(b)).toEqual(before);
   });
 });

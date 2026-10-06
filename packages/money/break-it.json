@@ -555,8 +555,8 @@
   {
     "section": "6",
     "file": "packages/money/src/book.ts",
-    "find": "    this.#remove(entry);\n    this.#payday(txn);",
-    "replace": "    this.#sortMoneyIn(entry, { to: 'other-income' });",
+    "find": "      this.#remove(entry);\n      this.#payday(txn);",
+    "replace": "      this.#sortMoneyIn(entry, { to: 'other-income' });",
     "why": "6.1 treat \"this is my paycheck\" as other income (no reserve, no new pay period)"
   },
   {
@@ -576,30 +576,9 @@
   {
     "section": "6",
     "file": "packages/money/src/book.ts",
-    "find": "    this.#checkPaydayFits(txn, entry.effect);\n    this.#remove(entry);",
-    "replace": "    this.#remove(entry);",
-    "why": "6.1 skip the size check before taking a deposit out of review"
-  },
-  {
-    "section": "6",
-    "file": "packages/money/src/book.ts",
-    "find": "    this.#checkPaydayFits(txn, entry.effect);\n    this.#remove(entry);",
-    "replace": "    this.#checkPaydayFits(txn);\n    this.#remove(entry);",
-    "why": "6.1 check the size with the deposit's earlier choice still counted"
-  },
-  {
-    "section": "6",
-    "file": "packages/money/src/book.ts",
-    "find": "    this.#checkPaydayFits(txn, entry.effect);\n    this.#remove(entry);",
-    "replace": "    this.#checkPaydayFits(txn, entry.effect);\n    this.#forget(entry.id);",
+    "find": "      this.#remove(entry);\n      this.#payday(txn);",
+    "replace": "      this.#forget(entry.id);\n      this.#payday(txn);",
     "why": "6.1 leave the deposit's earlier choice in the buckets"
-  },
-  {
-    "section": "6",
-    "file": "packages/money/src/book.ts",
-    "find": "subtractCents(t[name], without[name] ?? 0)",
-    "replace": "addCents(t[name], without[name] ?? 0)",
-    "why": "6.1 flip the sign when taking back the earlier choice in the size check"
   },
   {
     "section": "6",
@@ -933,7 +912,7 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "    // 13.1: a change to the split or the reserve applies from this paycheck.\n    this.#periodSplit = splitSettingsOf(this.#settings);\n",
+    "find": "      // 13.1: a change to the split or the reserve applies from this paycheck.\n      this.#periodSplit = splitSettingsOf(this.#settings);\n",
     "replace": "",
     "why": "13.1 never pick up a split change at the next paycheck"
   },
@@ -954,8 +933,8 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "    this.#log.push(Object.freeze({ date, kind: 'rule-added', rule: this.#ruleById(rule.id) }));\n    this.#sortWaitingByRules(rule.id);",
-    "replace": "    this.#log.push(Object.freeze({ date, kind: 'rule-added', rule: this.#ruleById(rule.id) }));",
+    "find": "      this.#log.push(Object.freeze({ date, kind: 'rule-added', rule: this.#ruleById(rule.id) }));\n      this.#sortWaitingByRules(rule.id);",
+    "replace": "      this.#log.push(Object.freeze({ date, kind: 'rule-added', rule: this.#ruleById(rule.id) }));",
     "why": "13.2 a new rule ignores what is waiting in review"
   },
   {
@@ -1234,14 +1213,14 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "    this.sort(entry.id, choice, date);\n    this.#rules = rules;",
-    "replace": "    this.#rules = rules;",
+    "find": "      this.sort(entry.id, choice, date);\n      const added",
+    "replace": "      const added",
     "why": "13.6 add the rule but leave the item itself as it was"
   },
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "aheadOf: corrected?.id ?? null }));\n    this.#sortWaitingByRules(added.id);",
+    "find": "aheadOf: corrected?.id ?? null }));\n      this.#sortWaitingByRules(added.id);",
     "replace": "aheadOf: corrected?.id ?? null }));",
     "why": "13.6 leave matching waiting items unsorted"
   },
@@ -1409,15 +1388,15 @@
   {
     "section": "10",
     "file": "packages/money/src/book.ts",
-    "find": "      this.#periodStart[entry.bucket] = start;\n",
-    "replace": "",
+    "find": "    this.#periodStart[entry.bucket] = start;\n    this.#review.delete(id);",
+    "replace": "    this.#review.delete(id);",
     "why": "10.1 count a leftover moved to savings in the start"
   },
   {
     "section": "10",
     "file": "packages/money/src/book.ts",
-    "find": "const start = subtractCents(this.#periodStart[entry.bucket], entry.amount);",
-    "replace": "const start = addCents(this.#periodStart[entry.bucket], entry.amount);",
+    "find": "? subtractCents(this.#periodStart[entry.bucket], entry.amount) :",
+    "replace": "? addCents(this.#periodStart[entry.bucket], entry.amount) :",
     "why": "10.1 flip the sign when a leftover moves to savings"
   },
   {
@@ -1682,13 +1661,6 @@
   {
     "section": "0",
     "file": "packages/money/src/book.ts",
-    "find": "    this.#checkPaydayFits(txn);\n",
-    "replace": "",
-    "why": "0.1 start a payday before checking it fits"
-  },
-  {
-    "section": "0",
-    "file": "packages/money/src/book.ts",
     "find": "      // Too large to stay exact (0.1): it stays sorted the way it was.\n      Object.assign(entry, before);\n",
     "replace": "",
     "why": "0.1 leave a refused re-sort half applied"
@@ -1699,5 +1671,75 @@
     "find": "    this.#setEffect(entry, effect);\n    entry.sortedTo = choice.to;\n    entry.incomeSplit = incomeSplit;",
     "replace": "    entry.sortedTo = choice.to;\n    entry.incomeSplit = incomeSplit;\n    this.#setEffect(entry, effect);",
     "why": "0.1 mark money in as sorted before its totals are checked"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      Object.assign(this.#totals, saved.totals);\n",
+    "replace": "",
+    "why": "0.1 leave the totals as they were halfway when a change is refused"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      for (const entry of saved.entries) this.#entries.set(entry.id, entry);\n",
+    "replace": "",
+    "why": "0.1 lose every entry when a change is refused"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#entries.clear();\n      for (const entry of saved.entries)",
+    "replace": "      for (const entry of saved.entries)",
+    "why": "0.1 keep entries a refused change added"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      for (const id of saved.review) this.#review.add(id);\n",
+    "replace": "",
+    "why": "0.1 empty the review list when a change is refused"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#review.clear();\n      for (const id of saved.review)",
+    "replace": "      for (const id of saved.review)",
+    "why": "0.1 keep review items a refused change added"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#log.length = saved.log;\n",
+    "replace": "",
+    "why": "0.1 keep the change log line of a refused change"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#rules = saved.rules;\n",
+    "replace": "",
+    "why": "0.1 keep the rule of a refused change"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#periodSplit = saved.periodSplit;\n",
+    "replace": "",
+    "why": "0.1 keep the new split after a refused payday (13.1)"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      entries: [...this.#entries.values()].map((entry): Entry => ({ ...entry })),",
+    "replace": "      entries: [...this.#entries.values()],",
+    "why": "0.1 save the entries themselves instead of copies, so a refused change keeps its edits"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#atomically(() => {\n      this.#remove(entry);\n      this.#payday(txn);\n    });",
+    "replace": "    this.#remove(entry);\n    this.#payday(txn);",
+    "why": "0.1 make \"this is my paycheck\" outside the all-or-nothing guard"
   }
 ]
