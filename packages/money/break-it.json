@@ -742,48 +742,6 @@
     "why": "9.3 mix up which card a payment went to"
   },
   {
-    "section": "10",
-    "file": "packages/money/src/alerts.ts",
-    "find": "if (pots[bucket] <= 0) alerts.push",
-    "replace": "if (pots[bucket] < 0) alerts.push",
-    "why": "10.2 do not call exactly zero empty"
-  },
-  {
-    "section": "10",
-    "file": "packages/money/src/alerts.ts",
-    "find": "if (pots[bucket] <= 0) alerts.push",
-    "replace": "if (pots[bucket] <= 1) alerts.push",
-    "why": "10.2 call one cent empty"
-  },
-  {
-    "section": "10",
-    "file": "packages/money/src/alerts.ts",
-    "find": "for (const bucket of ['needs', 'wants'] as const) {",
-    "replace": "for (const bucket of ['needs'] as const) {",
-    "why": "10.2 forget wants"
-  },
-  {
-    "section": "10",
-    "file": "packages/money/src/alerts.ts",
-    "find": "if (waiting > 0) alerts.push",
-    "replace": "if (waiting >= 0) alerts.push",
-    "why": "10.3 send the daily review with nothing waiting"
-  },
-  {
-    "section": "10",
-    "file": "packages/money/src/alerts.ts",
-    "find": "at: book.settings().dailyReviewTime,",
-    "replace": "at: '20:00',",
-    "why": "10.3 ignore the review time setting"
-  },
-  {
-    "section": "10",
-    "file": "packages/money/src/alerts.ts",
-    "find": "if (input.bankConnection === 'needs-login')",
-    "replace": "if (input.bankConnection !== 'needs-login')",
-    "why": "10.5 alert when the connection is fine"
-  },
-  {
     "section": "11",
     "file": "packages/money/src/book.ts",
     "find": "amount: subtractCents(this.#totals.wants, this.#totals.unsortedOut),",
@@ -894,13 +852,6 @@
     "find": "    if (check.ok) return { ok: true, safeToSpend };",
     "replace": "    if (check.ok || true) return { ok: true, safeToSpend };",
     "why": "0.5 show safe to spend even when the totals do not match"
-  },
-  {
-    "section": "12",
-    "file": "packages/money/src/alerts.ts",
-    "find": "if (!check.ok) alerts.push",
-    "replace": "if (check.ok) alerts.push",
-    "why": "10.4 alert when the totals match instead of when they do not"
   },
   {
     "section": "13",
@@ -1230,5 +1181,82 @@
     "find": "aheadOf: corrected?.id ?? null }));",
     "replace": "aheadOf: null }));",
     "why": "13.6 log the wrong rule as beaten"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "if (amount <= 0 && this.#emptyAlerted[bucket] !== this.#period.number) {",
+    "replace": "if (amount < 0 && this.#emptyAlerted[bucket] !== this.#period.number) {",
+    "why": "10.2 do not call exactly zero empty"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "if (amount <= 0 && this.#emptyAlerted[bucket] !== this.#period.number) {",
+    "replace": "if (amount <= 1 && this.#emptyAlerted[bucket] !== this.#period.number) {",
+    "why": "10.2 call one cent empty"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "if (amount <= 0 && this.#emptyAlerted[bucket] !== this.#period.number) {",
+    "replace": "if (amount <= 0) {",
+    "why": "10.2 repeat the empty alert every time"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    for (const bucket of newlyEmpty) this.#emptyAlerted[bucket] = this.#period.number;\n",
+    "replace": "    for (const bucket of newlyEmpty) this.#emptyAlerted[bucket] = this.#period.number + 1;\n",
+    "why": "10.2 skip the empty alert in the next pay period too"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    for (const bucket of ['needs', 'wants'] as const) {\n      const amount = this.#totals[bucket];",
+    "replace": "    for (const bucket of ['needs'] as const) {\n      const amount = this.#totals[bucket];",
+    "why": "10.2 forget wants"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "        newlyEmpty.push(bucket);\n",
+    "replace": "        newlyEmpty.push('needs');\n",
+    "why": "10.2 mark the wrong bucket as alerted"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    // 10.2: needs or wants at zero or below.\n    for (const bucket",
+    "replace": "    for (const bucket of ['needs', 'wants'] as const) this.#emptyAlerted[bucket] = this.#period.number;\n    for (const bucket",
+    "why": "10.2 mark buckets as alerted before they are empty"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "if (waiting > 0) alerts.push",
+    "replace": "if (waiting >= 0) alerts.push",
+    "why": "10.3 send the daily review with nothing waiting"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "at: this.#settings.dailyReviewTime, waiting });",
+    "replace": "at: '20:00', waiting });",
+    "why": "10.3 ignore the review time setting"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "if (input.bankConnection === 'needs-login') alerts.push",
+    "replace": "if (input.bankConnection !== 'needs-login') alerts.push",
+    "why": "10.5 alert when the connection is fine"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "if (!check.ok) alerts.push({ kind: 'totals-mismatch'",
+    "replace": "if (check.ok) alerts.push({ kind: 'totals-mismatch'",
+    "why": "10.4 alert when the totals match instead of when they do not"
   }
 ]

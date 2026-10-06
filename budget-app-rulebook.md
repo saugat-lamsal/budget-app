@@ -141,7 +141,8 @@ number so a test can point at it. Nothing gets coded until you approve this.
 
 10.1  Low bucket: needs or wants falls below the alert level. Once per bucket
       per pay period.
-10.2  Empty bucket: needs or wants reaches zero or below.
+10.2  Empty bucket: needs or wants reaches zero or below. Once per bucket
+      per pay period.
 10.3  Daily review: sent at the review time, only if something is unsorted.
 10.4  Totals do not match the bank (section 12).
 10.5  Bank connection needs you to log in again.
@@ -230,3 +231,5 @@ j.  Paydays are every 14 days, counted from the last paycheck (section 2,
 a.  Money in transit between your accounts is part of the self-check, so
     a card payment on its way does not show as a mismatch (12.5).
 b.  A rule made from a correction beats the rule it corrects (13.6).
+c.  The empty-bucket alert comes once per bucket per pay period, like the
+    low-bucket alert (10.2).

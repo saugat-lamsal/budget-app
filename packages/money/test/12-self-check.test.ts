@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { alertsNow, withPendingCharges } from '../src/index.js';
+import { withPendingCharges } from '../src/index.js';
 import { TestBank, arrived, codeOf, deposit, openTestBook, posted, purchase, sent, type TestBookOptions } from './helpers.js';
 
 // Buckets add up to 2,000.00 + 500.00 + 300.00 + 1,500.00 + 60.00 = 4,360.00.
@@ -143,19 +143,19 @@ describe('0.5 when the totals do not match the bank, the app says so instead of 
 
 describe('10.4 alert when the totals do not match the bank', () => {
   it('10.4 the alert carries the difference', () => {
-    expect(alertsNow(book(), { bankConnection: 'ok', bankBalances: { ...MATCHING, savings: 350_250 } })).toEqual([
+    expect(book().takeAlerts({ bankConnection: 'ok', bankBalances: { ...MATCHING, savings: 350_250 } })).toEqual([
       { kind: 'totals-mismatch', difference: 250 },
     ]);
   });
 
   it('10.4 no alert when they match', () => {
-    expect(alertsNow(book(), { bankConnection: 'ok', bankBalances: MATCHING })).toEqual([]);
+    expect(book().takeAlerts({ bankConnection: 'ok', bankBalances: MATCHING })).toEqual([]);
   });
 
   it('10.4 it comes after the review alert and before the bank login alert', () => {
     const b = book();
     b.receive(purchase('e1', '2026-10-12', 100, 'MADE UP HARDWARE'));
-    expect(alertsNow(b, { bankConnection: 'needs-login', bankBalances: MATCHING }).map((a) => a.kind)).toEqual([
+    expect(b.takeAlerts({ bankConnection: 'needs-login', bankBalances: MATCHING }).map((a) => a.kind)).toEqual([
       'daily-review',
       'totals-mismatch',
       'bank-login',

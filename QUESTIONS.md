@@ -273,10 +273,11 @@ B29. A statement with a $0 minimum gets no reminder and no overdue alert.
 B30. The overdue alert (9.4) is due on every day after the due date until
      a payment is seen. Making sure it reaches the phone once is Phase 5.
 
-B31. Alerts (section 10) are worked out as "due right now". Sending each
-     one at the right time, and only once, is Phase 5. Note for Phase 5:
-     10.1 says "once per bucket per pay period", but 10.2 (empty bucket)
-     does not say how often.
+B31. Changed after your review: see 10.2 in the rulebook. The empty-bucket
+     alert now comes once per bucket per pay period. The book remembers
+     which buckets it has already alerted about this pay period
+     (takeAlerts). The other alerts come every time they are due; sending
+     them at the right time is Phase 5.
 
 B32. "Only if something is unsorted" (10.3) counts everything waiting in
      review: money in, spending, leftover questions, and old card flags.
@@ -365,3 +366,7 @@ B49. "The rule it corrects" (13.6) is whichever rule matches the item
      refused. A rule from a correction cannot split (rules never split),
      and fees, early paychecks, store refunds, and mom payments cannot get
      a rule, as before.
+
+B50. "Once per bucket per pay period" (10.2): if a bucket is refilled and
+     empties again in the same pay period, there is no second alert. A
+     bucket that starts a new pay period still empty alerts again then.

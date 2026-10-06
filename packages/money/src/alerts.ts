@@ -1,9 +1,8 @@
-import type { Book } from './book.js';
 import type { Cents } from './cents.js';
 import type { BankBalances } from './self-check.js';
 
-// Rulebook section 10: which alerts are due right now. Sending each one to
-// the phone, at the right time and only once, is Phase 5.
+// Rulebook section 10: the alerts due right now (Book.takeAlerts). Sending
+// each one to the phone at the right time is Phase 5.
 //
 // 10.1 (low bucket) is not built: what "20% left" is measured against is an
 // open question (QUESTIONS.md A8).
@@ -20,22 +19,4 @@ export interface AlertInput {
   // Today's bank balances, including pending charges, for the self-check
   // (10.4).
   readonly bankBalances: BankBalances;
-}
-
-export function alertsNow(book: Book, input: AlertInput): Alert[] {
-  const alerts: Alert[] = [];
-  const pots = book.pots();
-  // 10.2: needs or wants at zero or below.
-  for (const bucket of ['needs', 'wants'] as const) {
-    if (pots[bucket] <= 0) alerts.push({ kind: 'empty-bucket', bucket, amount: pots[bucket] });
-  }
-  // 10.3: at the review time, only if something is waiting.
-  const waiting = book.reviewItems().length;
-  if (waiting > 0) alerts.push({ kind: 'daily-review', at: book.settings().dailyReviewTime, waiting });
-  // 10.4: the totals do not match the bank (section 12).
-  const check = book.selfCheck(input.bankBalances);
-  if (!check.ok) alerts.push({ kind: 'totals-mismatch', difference: check.difference });
-  // 10.5
-  if (input.bankConnection === 'needs-login') alerts.push({ kind: 'bank-login' });
-  return alerts;
 }

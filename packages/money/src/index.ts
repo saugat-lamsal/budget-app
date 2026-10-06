@@ -74,6 +74,6 @@ export {
   type CardStatement,
   type PayoffCountdown,
 } from './reminders.js';
-export { alertsNow, type Alert, type AlertInput } from './alerts.js';
+export type { Alert, AlertInput } from './alerts.js';
 export { bankSide, withPendingCharges, type BankBalances, type PendingCharge } from './self-check.js';
 export { startTracking, startingMoney, type SetupInput, type SetupResult } from './setup.js';

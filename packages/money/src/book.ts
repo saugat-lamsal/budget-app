@@ -1,3 +1,4 @@
+import type { Alert, AlertInput } from './alerts.js';
 import { isSpendingBucket, type SplitBucket } from './buckets.js';
 import { addCents, assertCents, assertPositiveCents, subtractCents, type Cents } from './cents.js';
 import { addDays, assertIsoDate, daysBetween, monthOf, type IsoDate } from './dates.js';
@@ -431,6 +432,8 @@ export class Book {
   readonly #log: ChangeLogEntry[] = [];
   // Numbers hand moves, so each one has its own id.
   #moveCount = 0;
+  // The pay period in which each bucket's empty alert was last given (10.2).
+  readonly #emptyAlerted: Record<SplitBucket, number | null> = { needs: null, wants: null };
   #settings: Settings;
   // The split and mom reserve settings in force for this pay period. A
   // change to them waits for the next paycheck (13.1).
@@ -627,6 +630,33 @@ export class Book {
       .map((item) => item.amount);
     const stillToMove = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));
     return { shouldBeInSavings, savingsAccountBalance, stillToMove };
+  }
+
+  // Section 10: the alerts due now. The empty-bucket alert comes once per
+  // bucket per pay period (10.2), so taking it marks it as given until the
+  // next paycheck. The others come every time they are due.
+  takeAlerts(input: AlertInput): Alert[] {
+    const alerts: Alert[] = [];
+    const newlyEmpty: SplitBucket[] = [];
+    // 10.2: needs or wants at zero or below.
+    for (const bucket of ['needs', 'wants'] as const) {
+      const amount = this.#totals[bucket];
+      if (amount <= 0 && this.#emptyAlerted[bucket] !== this.#period.number) {
+        alerts.push({ kind: 'empty-bucket', bucket, amount });
+        newlyEmpty.push(bucket);
+      }
+    }
+    // 10.3: at the review time, only if something is waiting.
+    const waiting = this.#review.size;
+    if (waiting > 0) alerts.push({ kind: 'daily-review', at: this.#settings.dailyReviewTime, waiting });
+    // 10.4: the totals do not match the bank (section 12).
+    const check = this.selfCheck(input.bankBalances);
+    if (!check.ok) alerts.push({ kind: 'totals-mismatch', difference: check.difference });
+    // 10.5
+    if (input.bankConnection === 'needs-login') alerts.push({ kind: 'bank-login' });
+    // Marked only once everything above worked, so a refused call gives nothing.
+    for (const bucket of newlyEmpty) this.#emptyAlerted[bucket] = this.#period.number;
+    return alerts;
   }
 
   // Rule 8.2: everything sent to mom in a calendar month ("YYYY-MM").
