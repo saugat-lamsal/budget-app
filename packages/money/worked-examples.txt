@@ -1,0 +1,131 @@
+WORKED EXAMPLES
+
+Made-up numbers, worked out step by step, so you can check the money math
+by hand. Every amount is in dollars and cents.
+
+Each example is also a test (packages/money/test/worked-examples.test.ts).
+The test reads the "Check:" line of every example straight from this file
+and compares it with what the app works out. If a number here is wrong, or
+the app disagrees with it, the test fails.
+
+Unless an example says otherwise, the settings are the starting ones from
+the rulebook: split 50% savings / 30% needs / 20% wants, mom reserve
+$1,500.00 a paycheck, capped at $3,000.00.
+
+Rounding: each share is rounded DOWN to the cent. Any cents left over from
+rounding go to savings (rule 3.3).
+
+
+========================================================================
+EXAMPLE 1. A normal paycheck (rules 3.2, 3.3)
+========================================================================
+
+Before payday: every bucket is at $0.00.
+
+Paycheck                                         2,345.67
+
+Step 1. The mom reserve comes off first.
+        Reserve is $0.00, cap is $3,000.00, so there is room.
+        To mom reserve                          -1,500.00
+        Rest to split                              845.67
+
+Step 2. Split the rest.
+        Savings 50% of 845.67 = 422.835  ->  422.83
+        Needs   30% of 845.67 = 253.701  ->  253.70
+        Wants   20% of 845.67 = 169.134  ->  169.13
+        Rounded shares add to 845.66, so 0.01 is left over.
+        The leftover 0.01 goes to savings: 422.83 + 0.01 = 422.84
+
+Step 3. Add it back up: 1,500.00 + 422.84 + 253.70 + 169.13 = 2,345.67
+        That is the paycheck exactly.
+
+Check: mom reserve 1,500.00 | savings 422.84 | needs 253.70 | wants 169.13
+
+
+========================================================================
+EXAMPLE 2. The mom reserve is close to its cap (rule 3.2)
+========================================================================
+
+Before payday: mom reserve $2,600.00. Everything else $0.00.
+
+Paycheck                                         3,000.00
+
+Step 1. The reserve takes $1,500.00 off the top, but only $400.00 fits
+        under the $3,000.00 cap (3,000.00 - 2,600.00 = 400.00).
+        To mom reserve                             400.00
+        Does not fit, goes to savings            1,100.00
+        Rest to split (3,000.00 - 1,500.00)      1,500.00
+
+Step 2. Split the rest.
+        Savings 50% of 1,500.00 =   750.00
+        Needs   30% of 1,500.00 =   450.00
+        Wants   20% of 1,500.00 =   300.00
+        No rounding needed.
+
+Step 3. Buckets after payday.
+        Mom reserve  2,600.00 + 400.00            = 3,000.00 (at the cap)
+        Savings      1,100.00 + 750.00            = 1,850.00
+        Needs                                         450.00
+        Wants                                         300.00
+        Paycheck check: 400.00 + 1,850.00 + 450.00 + 300.00 = 3,000.00
+
+Check: mom reserve 3,000.00 | savings 1,850.00 | needs 450.00 | wants 300.00
+
+
+========================================================================
+EXAMPLE 3. A paycheck smaller than the mom reserve (rule 3.2)
+========================================================================
+
+Before payday: mom reserve $2,000.00. Everything else $0.00.
+
+Paycheck                                         1,200.00
+
+Step 1. The reserve would take $1,500.00, but the paycheck is only
+        $1,200.00, so it can take at most $1,200.00.
+        Room under the cap: 3,000.00 - 2,000.00 = 1,000.00.
+        To mom reserve                           1,000.00
+        Does not fit, goes to savings              200.00
+        Rest to split                                0.00
+
+Step 2. Nothing is left to split. Needs and wants get $0.00.
+
+Check: mom reserve 3,000.00 | savings 200.00 | needs 0.00 | wants 0.00
+
+
+========================================================================
+EXAMPLE 4. Payday with money left over and an overspent bucket
+           (rules 3.2, 3.3, 3.4, 3.5, 3.8)
+========================================================================
+
+Before payday:
+        Savings 0.00 | Needs 85.20 | Wants -12.50 (overspent) |
+        Mom reserve 3,000.00 (at the cap)
+        The savings account at the bank holds 3,000.00.
+        Leftover setting: ask each time.
+
+Paycheck                                         2,800.00
+
+Step 1. Leftovers from the period that just ended.
+        Needs has 85.20 unspent, so the app asks: roll over or move?
+        Wants is at -12.50. It carries over as a negative. Nothing to ask.
+
+Step 2. The reserve is at its cap, so the whole 1,500.00 goes to
+        savings instead.
+        Rest to split: 2,800.00 - 1,500.00 = 1,300.00
+        Savings 50% = 650.00 | Needs 30% = 390.00 | Wants 20% = 260.00
+
+Step 3. Buckets after payday, before you answer.
+        Savings  1,500.00 + 650.00 = 2,150.00
+        Needs       85.20 + 390.00 =   475.20
+        Wants      -12.50 + 260.00 =   247.50
+        Mom reserve                  3,000.00
+
+Step 4. You answer "move to savings" for needs. The 85.20 moves.
+        Needs    475.20 - 85.20 =   390.00
+        Savings  2,150.00 + 85.20 = 2,235.20
+
+Step 5. How much should be in the savings account (rule 3.8)?
+        Savings + mom reserve = 2,235.20 + 3,000.00 = 5,235.20
+        The account holds 3,000.00, so you still need to move 2,235.20.
+
+Check: mom reserve 3,000.00 | savings 2,235.20 | needs 390.00 | wants 247.50 | still to move 2,235.20

@@ -21,3 +21,20 @@ export {
   type TextRule,
 } from './settings.js';
 export { ACCOUNTS, type AccountId } from './accounts.js';
+export { splitPaycheck, type PaycheckSplit, type SplitSettings } from './payday.js';
+export type { BankTransaction, Deposit } from './transactions.js';
+export {
+  Book,
+  openBook,
+  type LeftoverAnswer,
+  type OpenBookInput,
+  type PaycheckRecord,
+  type Period,
+  type Pots,
+  type Received,
+  type ReceiveOutcome,
+  type ReviewItem,
+  type SavingsTransfer,
+  type SplitBucket,
+  type StartingPots,
+} from './book.js';
