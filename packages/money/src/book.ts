@@ -371,6 +371,18 @@ export class Book {
     return { month, sent, target: this.#settings.momMonthlyTarget };
   }
 
+  // Payments the app has seen to a card, oldest first, for the reminders
+  // (9.3, 9.4).
+  cardPayments(card: 'everyday-card' | 'old-card'): { readonly date: IsoDate; readonly amount: Cents }[] {
+    const payments: { date: IsoDate; amount: Cents }[] = [];
+    for (const entry of this.#entries.values()) {
+      if ((entry.kind === 'transfer' || entry.kind === 'spend') && entry.txn.kind === 'transfer' && entry.txn.to === card) {
+        payments.push({ date: entry.txn.date, amount: entry.txn.amount });
+      }
+    }
+    return payments.sort((a, b) => daysBetween(b.date, a.date));
+  }
+
   othersMoney(): OthersMoney {
     const heldForOthers = this.#totals.heldForOthers;
     const meaning = heldForOthers === 0 ? 'settled' : heldForOthers > 0 ? 'holding-for-others' : 'owed-to-you';

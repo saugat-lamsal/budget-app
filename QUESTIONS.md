@@ -74,6 +74,37 @@ A5. Does "income" from review start a new pay period? (6.1 with 3.1, 3.7)
     refund stays plain income.
     Recommendation: option 3.
 
+A6. Paying a card in more than one payment (9.3, 9.4).
+    9.3 says reminders stop at "a payment that covers at least the
+    minimum". 9.4 says the overdue alert comes when the due date passes
+    with "no payment seen". Neither says what happens with two smaller
+    payments, or one payment below the minimum.
+    Now (the literal reading): reminders stop only when one single payment
+    is at least the minimum. Any payment at all, even below the minimum,
+    stops the overdue alert.
+    Option 1 (now): as above.
+    Option 2: add up every payment since the statement. Reminders stop once
+    the total reaches the minimum. If the total is still short on the due
+    date, you get the overdue alert.
+    Recommendation: option 2. It matches what the bank checks before
+    charging a late fee.
+
+A7. Old card payoff countdown (9.5). Not built yet; it shows "off".
+    The promo end date is still missing (rulebook section 16), and these
+    details are not in the rule:
+    a. Which paychecks count as "left": paydays after today and before the
+       promo end date? What if a payday falls on the end date itself?
+    b. Rounding: the balance rarely divides evenly. Round each share up to
+       the cent (the last payment comes out slightly smaller), or show the
+       exact share and let the extra cents fall on the last payment?
+    c. If no paychecks are left before the promo ends, show the whole
+       balance as due now?
+    d. Which balance: the old card debt the app tracks (5.4, 5.5), or the
+       last statement balance?
+    Recommendation: a. paydays after today and before the end date, not on
+    it; b. round up to the cent; c. yes, the whole balance; d. the debt the
+    app tracks.
+
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
@@ -189,3 +220,13 @@ B26. Only payments to people (Zelle and the like) are checked against the
 B27. If you re-sort income after mom was already paid from the reserve it
      filled, the reserve can drop below zero. A mom payment then takes
      nothing from the reserve and all of it waits in review (8.3).
+
+B28. Card reminders go out exactly 7 and 2 days before the due date
+     (calendar days; both are settings). A payment counts toward a
+     statement when it is dated after the statement date and on or before
+     today (9.1 to 9.3).
+
+B29. A statement with a $0 minimum gets no reminder and no overdue alert.
+
+B30. The overdue alert (9.4) is due on every day after the due date until
+     a payment is seen. Making sure it reaches the phone once is Phase 5.
