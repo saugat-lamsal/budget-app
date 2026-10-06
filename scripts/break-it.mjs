@@ -4,9 +4,11 @@
 // Some test must fail each time. Each break is a find-and-replace listed in
 // packages/money/break-it.json. The file is always restored afterward.
 //
-//   node scripts/break-it.mjs            every break
-//   node scripts/break-it.mjs 3 4        only breaks for rulebook sections 3 and 4
-//   node scripts/break-it.mjs --restore  only put back files a stopped run left broken
+//   node scripts/break-it.mjs                    every break
+//   node scripts/break-it.mjs 3 4                only breaks for rulebook sections 3 and 4
+//   node scripts/break-it.mjs --restore          only put back files a stopped run left broken
+//   node scripts/break-it.mjs --only <test file> judge every break by that one test file,
+//                                                to see what it catches on its own
 //
 // Exits non-zero if any break survives (no test failed) or cannot be applied,
 // or if the tests fail before anything is broken.
@@ -17,7 +19,9 @@ import { fileURLToPath } from 'node:url';
 const root = new URL('../', import.meta.url);
 const breaks = JSON.parse(readFileSync(new URL('packages/money/break-it.json', root), 'utf8'));
 const args = process.argv.slice(2);
-const sections = args.filter((arg) => arg !== '--restore');
+const onlyAt = args.indexOf('--only');
+const only = onlyAt === -1 ? undefined : args[onlyAt + 1];
+const sections = args.filter((arg, i) => arg !== '--restore' && (onlyAt === -1 || (i !== onlyAt && i !== onlyAt + 1)));
 const chosen = sections.length === 0 ? breaks : breaks.filter((b) => sections.includes(String(b.section)));
 
 // While a break is applied, the untouched file is also kept next to it as
@@ -54,7 +58,7 @@ for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
 // which backup is expected (BREAK_IT_BACKUP); the guard still fails on any other.
 const vitest = fileURLToPath(new URL('node_modules/vitest/vitest.mjs', root));
 function runTests(file) {
-  return spawnSync(process.execPath, [vitest, 'run'], {
+  return spawnSync(process.execPath, [vitest, 'run', ...(only === undefined ? [] : [only])], {
     cwd: root,
     encoding: 'utf8',
     env: { ...process.env, BREAK_IT_BACKUP: backupName(file) },
