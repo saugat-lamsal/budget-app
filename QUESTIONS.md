@@ -77,8 +77,10 @@ A5. Does "income" from review start a new pay period? (6.1 with 3.1, 3.7)
 A6. Paying the old card in more than one payment (9.3), and payments
     below the minimum (9.4).
     Settled for the everyday card by your review: its payments since the
-    statement add up toward the full balance (9.3). Still open for the
-    old card, and for the overdue alert on both cards.
+    statement add up toward the full balance (9.3). You confirmed that two
+    partial payments that together cover the balance stop the reminders
+    (Oct 6). Still open for the old card, and for the overdue alert on
+    both cards.
     Now (the literal reading): old card reminders stop only when one
     single payment is at least the minimum. On either card, any payment
     at all, even below the minimum, stops the overdue alert (9.4).
@@ -350,6 +352,7 @@ B44. Money on its way to the old card (12.5): needs pays when it leaves
      checking, since that is when you spent it. The debt goes down when it
      lands, so it matches the old card's balance. It is listed as in
      transit but not counted in the check (12.4).
+     Confirmed by you (Oct 6): keep as built.
 
 B45. The two halves of a transfer pair up by the link the bank connection
      gives, when it has one. Otherwise each half pairs with the oldest
