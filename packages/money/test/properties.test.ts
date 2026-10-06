@@ -104,7 +104,8 @@ type Step =
   | { type: 'change-split'; split: { savings: number; needs: number; wants: number }; reserve: number }
   | { type: 'add-rule'; rule: number }
   | { type: 'send-half'; amount: number; from: 'checking' | 'savings'; to: 'checking' | 'savings' | 'everyday-card' | 'old-card'; arrivesFirst: boolean }
-  | { type: 'other-half'; pick: number; linked: boolean };
+  | { type: 'other-half'; pick: number; linked: boolean }
+  | { type: 'always'; pick: number; seed: number };
 
 const gapArb = fc.integer({ min: 0, max: 20 });
 const potNameArb = fc.constantFrom<Pot>('savings', 'needs', 'wants', 'momReserve', 'heldForOthers');
@@ -171,6 +172,7 @@ const stepArb: fc.Arbitrary<Step> = fc.oneof(
     arrivesFirst: fc.boolean(),
   }),
   fc.record({ type: fc.constant('other-half' as const), pick: fc.nat(), linked: fc.boolean() }),
+  fc.record({ type: fc.constant('always' as const), pick: fc.nat(), seed: fc.nat() }),
 );
 
 const potArb = fc.integer({ min: -1_000_000, max: 10_000_000 });
@@ -336,6 +338,20 @@ function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: read
         } else {
           send(sent(id, date, first.amount, first.from, first.to));
         }
+        break;
+      }
+      case 'always': {
+        // 13.6: correct a purchase or payment and "always do this". The fix
+        // must stick: the next one with the same description lands there too.
+        const target = pick(book.purchases().filter((p) => p.kind === 'purchase' || p.kind === 'person-payment'), step.seed);
+        const original = received.find((t) => t.id === target?.id);
+        if (!target || !original || (original.kind !== 'purchase' && original.kind !== 'payment-to-person')) break;
+        const toPerson = target.kind === 'person-payment';
+        const to = toPerson ? ((['needs', 'wants', 'not-mine'] as const)[step.pick % 3] ?? 'needs') : ((['needs', 'wants'] as const)[step.pick % 2] ?? 'needs');
+        book.sortAlways(target.id, { to }, { id: `fix${n++}`, contains: target.description }, date);
+        const probeId = `t${n++}`;
+        send(toPerson ? payPerson(probeId, date, 100, target.description.replace(/^ZELLE TO /, '')) : purchase(probeId, date, 100, target.description, { account: 'checking' }));
+        expect(book.purchases().find((p) => p.id === probeId)?.sortedTo).toEqual({ to });
         break;
       }
       case 'add-rule': {

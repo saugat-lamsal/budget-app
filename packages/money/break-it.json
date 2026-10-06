@@ -1174,5 +1174,61 @@
     "find": "const travelling = inTransit.filter((t) => t.to !== 'old-card').map((t) => t.amount);",
     "replace": "const travelling = inTransit.map((t) => t.amount);",
     "why": "12.5 count money on its way to the old card as starting money"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "const at = corrected === undefined ? this.#rules.length : this.#rules.indexOf(corrected);",
+    "replace": "const at = this.#rules.length;",
+    "why": "13.6 put a correction rule at the end, behind the rule it corrects"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "const at = corrected === undefined ? this.#rules.length : this.#rules.indexOf(corrected);",
+    "replace": "const at = 0;",
+    "why": "13.6 put a correction rule at the very top"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "const at = corrected === undefined ? this.#rules.length : this.#rules.indexOf(corrected);",
+    "replace": "const at = corrected === undefined ? this.#rules.length : this.#rules.indexOf(corrected) + 1;",
+    "why": "13.6 put a correction rule just behind the rule it corrects"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "if (!matchesTextRule(newRule, description)) throw new MoneyError('bad-rule'",
+    "replace": "if (false) throw new MoneyError('bad-rule'",
+    "why": "13.6 accept a correction rule that does not cover the item"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.sort(entry.id, choice, date);\n    this.#rules = rules;",
+    "replace": "    this.#rules = rules;",
+    "why": "13.6 add the rule but leave the item itself as it was"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "aheadOf: corrected?.id ?? null }));\n    this.#sortWaitingByRules();",
+    "replace": "aheadOf: corrected?.id ?? null }));",
+    "why": "13.6 leave matching waiting items unsorted"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.kind === 'spend' && entry.spendingKind === 'purchase') {\n      if ('split' in choice",
+    "replace": "if (entry.kind === 'spend' && entry.spendingKind !== 'person-payment') {\n      if ('split' in choice",
+    "why": "13.6 let fees get a rule"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "aheadOf: corrected?.id ?? null }));",
+    "replace": "aheadOf: null }));",
+    "why": "13.6 log the wrong rule as beaten"
   }
 ]

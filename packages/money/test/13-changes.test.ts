@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardCharge, codeOf, deposit, openTestBook, payPerson, paycheck, purchase, type TestBookOptions } from './helpers.js';
+import { cardCharge, codeOf, deposit, openTestBook, payPerson, paycheck, purchase, refund, type TestBookOptions } from './helpers.js';
 
 const ROLL = { leftoverAtPayday: { needs: 'roll-over', wants: 'roll-over' } } as const;
 
@@ -274,5 +274,117 @@ describe('13.5 every change and every manual move is logged with the date', () =
     const log = b.changeLog() as unknown[];
     log.pop();
     expect(b.changeLog()).toHaveLength(1);
+  });
+});
+
+describe('13.6 a rule made from a correction beats the rule it corrects', () => {
+  const GROCER = { id: 'grocer', for: 'purchase', contains: 'GROCER', bucket: 'needs' } as const;
+
+  it('13.6 correct a purchase a rule sorted, with "always do this": the fix sticks for the next one', () => {
+    const b = book({ rules: [GROCER] });
+    b.receive(purchase('e1', '2026-10-05', 4_000, 'MADE UP GROCER CAFE'));
+    expect(b.purchases()[0]?.sortedTo).toEqual({ to: 'needs' });
+    b.sortAlways('e1', { to: 'wants' }, { id: 'grocer-cafe', contains: 'GROCER CAFE' }, '2026-10-06');
+    expect(b.purchases()[0]?.sortedTo).toEqual({ to: 'wants' });
+    expect(b.rules().map((r) => r.id)).toEqual(['grocer-cafe', 'grocer']);
+    b.receive(purchase('e2', '2026-10-07', 1_000, 'MADE UP GROCER CAFE'));
+    b.receive(purchase('e3', '2026-10-07', 1_000, 'MADE UP GROCER'));
+    expect(b.purchases().map((p) => p.sortedTo)).toEqual([{ to: 'wants' }, { to: 'wants' }, { to: 'needs' }]);
+    expect(b.pots()).toMatchObject({ needs: 49_000, wants: 25_000 });
+  });
+
+  it('13.6 it goes just ahead of the rule it corrects, not to the top', () => {
+    const b = book({
+      rules: [{ id: 'hardware', for: 'purchase', contains: 'HARDWARE', bucket: 'needs' }, GROCER, { id: 'store', for: 'purchase', contains: 'STORE', bucket: 'wants' }],
+    });
+    b.receive(purchase('e1', '2026-10-05', 4_000, 'MADE UP GROCER STORE'));
+    b.sortAlways('e1', { to: 'wants' }, { id: 'fix', contains: 'GROCER STORE' }, '2026-10-06');
+    expect(b.rules().map((r) => r.id)).toEqual(['hardware', 'fix', 'grocer', 'store']);
+  });
+
+  it('13.6 it still beats the rule after you had already re-sorted the purchase by hand', () => {
+    const b = book({ rules: [GROCER] });
+    b.receive(purchase('e1', '2026-10-05', 4_000, 'MADE UP GROCER CAFE'));
+    b.sort('e1', { to: 'wants' }, '2026-10-05');
+    b.sortAlways('e1', { to: 'wants' }, { id: 'fix', contains: 'GROCER CAFE' }, '2026-10-06');
+    expect(b.rules().map((r) => r.id)).toEqual(['fix', 'grocer']);
+  });
+
+  it('13.6 when no rule had sorted it, the new rule goes to the end of the list', () => {
+    const b = book({ rules: [GROCER] });
+    b.receive(purchase('e1', '2026-10-05', 4_000, 'MADE UP HARDWARE'));
+    b.sortAlways('e1', { to: 'needs' }, { id: 'hardware', contains: 'HARDWARE' }, '2026-10-06');
+    expect(b.rules().map((r) => r.id)).toEqual(['grocer', 'hardware']);
+    expect(b.pots()).toMatchObject({ needs: 46_000, unsortedOut: 0 });
+  });
+
+  it('13.6 it works for payments to people and for deposits', () => {
+    const b = book({
+      rules: [
+        { id: 'friend', for: 'person', contains: 'FRIEND', choice: { to: 'wants' } },
+        { id: 'made-up', for: 'deposit', contains: 'MADE UP', choice: { to: 'savings' } },
+      ],
+    });
+    b.receive(payPerson('z1', '2026-10-05', 2_000, 'MADE UP FRIEND'));
+    b.sortAlways('z1', { to: 'not-mine' }, { id: 'friend-fix', contains: 'MADE UP FRIEND' }, '2026-10-06');
+    b.receive(payPerson('z2', '2026-10-07', 1_000, 'MADE UP FRIEND'));
+    b.receive(deposit('d1', '2026-10-05', 3_000, 'MADE UP REIMBURSEMENT'));
+    b.sortAlways('d1', { to: 'wants' }, { id: 'reimburse', contains: 'REIMBURSEMENT' }, '2026-10-06');
+    b.receive(deposit('d2', '2026-10-07', 500, 'MADE UP REIMBURSEMENT'));
+    expect(b.rules().map((r) => r.id)).toEqual(['friend-fix', 'friend', 'reimburse', 'made-up']);
+    expect(b.pots()).toMatchObject({ heldForOthers: -3_000, wants: 33_500, savings: 100_000 });
+  });
+
+  it('13.6 the new rule must cover the item it corrects; otherwise nothing changes', () => {
+    const b = book({ rules: [GROCER] });
+    b.receive(purchase('e1', '2026-10-05', 4_000, 'MADE UP GROCER CAFE'));
+    expect(codeOf(() => b.sortAlways('e1', { to: 'wants' }, { id: 'fix', contains: 'PHARMACY' }, '2026-10-06'))).toBe('bad-rule');
+    expect(b.purchases()[0]?.sortedTo).toEqual({ to: 'needs' });
+    expect(b.rules().map((r) => r.id)).toEqual(['grocer']);
+    expect(b.changeLog()).toEqual([]);
+  });
+
+  it('13.6 a rule id already in use is refused and nothing changes', () => {
+    const b = book({ rules: [GROCER] });
+    b.receive(purchase('e1', '2026-10-05', 4_000, 'MADE UP GROCER CAFE'));
+    expect(codeOf(() => b.sortAlways('e1', { to: 'wants' }, { id: 'grocer', contains: 'GROCER CAFE' }, '2026-10-06'))).toBe('bad-rule');
+    expect(b.purchases()[0]?.sortedTo).toEqual({ to: 'needs' });
+  });
+
+  it('13.6 a rule cannot split, and some things cannot get a rule at all', () => {
+    const b = book({ rules: [GROCER], lastPaycheckDate: '2026-10-01' });
+    b.receive(purchase('e1', '2026-10-05', 4_000, 'MADE UP GROCER CAFE'));
+    const split = { split: [{ bucket: 'needs' as const, amount: 2_000 }, { bucket: 'wants' as const, amount: 2_000 }] };
+    expect(codeOf(() => b.sortAlways('e1', split, { id: 'fix', contains: 'GROCER' }, '2026-10-06'))).toBe('bad-choice');
+    b.receive(cardCharge('f1', '2026-10-05', 2_900, 'fee'));
+    expect(codeOf(() => b.sortAlways('f1', { to: 'needs' }, { id: 'fee', contains: 'FEE' }, '2026-10-06'))).toBe('no-rule-for-this');
+    b.receive(paycheck('p1', '2026-10-05', 400_000));
+    expect(codeOf(() => b.sortAlways('p1', { to: 'income' }, { id: 'pay', contains: 'PAYROLL' }, '2026-10-06'))).toBe('no-rule-for-this');
+    b.receive(refund('r1', '2026-10-05', 500));
+    expect(codeOf(() => b.sortAlways('r1', { to: 'wants' }, { id: 'refund', contains: 'REFUND' }, '2026-10-06'))).toBe('no-rule-for-this');
+    expect(codeOf(() => b.sortAlways('nope', { to: 'wants' }, { id: 'x', contains: 'X' }, '2026-10-06'))).toBe('unknown-item');
+    expect(b.rules().map((r) => r.id)).toEqual(['grocer']);
+  });
+
+  it('13.6 it also sorts matching items waiting in review, and leaves sorted ones put (13.2)', () => {
+    const b = book({ rules: [GROCER] });
+    b.receive(purchase('e0', '2026-10-04', 1_000, 'MADE UP HARDWARE OLD'));
+    b.sort('e0', { to: 'needs' }, '2026-10-04');
+    b.receive(purchase('e1', '2026-10-05', 4_000, 'MADE UP HARDWARE'));
+    b.receive(purchase('e2', '2026-10-05', 2_000, 'MADE UP HARDWARE #2'));
+    b.sortAlways('e1', { to: 'wants' }, { id: 'hardware', contains: 'HARDWARE' }, '2026-10-06');
+    expect(b.purchases().map((p) => p.sortedTo)).toEqual([{ to: 'needs' }, { to: 'wants' }, { to: 'wants' }]);
+  });
+
+  it('13.6 it is logged with the item it corrects and the rule it beats', () => {
+    const b = book({ rules: [GROCER] });
+    b.receive(purchase('e1', '2026-10-05', 4_000, 'MADE UP GROCER CAFE'));
+    b.receive(purchase('e2', '2026-10-05', 4_000, 'MADE UP HARDWARE'));
+    b.sortAlways('e1', { to: 'wants' }, { id: 'fix', contains: 'GROCER CAFE' }, '2026-10-06');
+    b.sortAlways('e2', { to: 'needs' }, { id: 'hardware', contains: 'HARDWARE' }, '2026-10-07');
+    expect(b.changeLog()).toEqual([
+      { date: '2026-10-06', kind: 'rule-added-from-correction', rule: { id: 'fix', for: 'purchase', contains: 'GROCER CAFE', bucket: 'wants' }, correcting: 'e1', aheadOf: 'grocer' },
+      { date: '2026-10-07', kind: 'rule-added-from-correction', rule: { id: 'hardware', for: 'purchase', contains: 'HARDWARE', bucket: 'needs' }, correcting: 'e2', aheadOf: null },
+    ]);
   });
 });

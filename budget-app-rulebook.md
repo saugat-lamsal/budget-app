@@ -186,6 +186,10 @@ number so a test can point at it. Nothing gets coded until you approve this.
 13.4  Moving money out of savings or the mom reserve asks you to confirm
       first.
 13.5  Every change and every manual move is logged with the date.
+13.6  When you correct something a rule sorted and choose "always do this",
+      the new rule goes just ahead of the rule it corrects, so the
+      correction sticks. If no rule had sorted it, the new rule goes at the
+      end of your list.
 
 
 ## 14. Setup day
@@ -225,3 +229,4 @@ j.  Paydays are every 14 days, counted from the last paycheck (section 2,
 
 a.  Money in transit between your accounts is part of the self-check, so
     a card payment on its way does not show as a mismatch (12.5).
+b.  A rule made from a correction beats the rule it corrects (13.6).

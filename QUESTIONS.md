@@ -310,8 +310,10 @@ B38. "The split or the mom reserve" (13.1) covers the split and both mom
      before the next paycheck still uses this pay period's split. Every
      other setting applies right away.
 
-B39. A new rule goes to the end of your list, so an earlier matching rule
-     still wins (B9). A purchase waiting because its split stopped adding
+B39. Changed after your review: see 13.6 in the rulebook. A rule made by
+     correcting something ("always do this") goes just ahead of the rule
+     it corrects, so the fix sticks. Any other new rule still goes to the
+     end of your list. A purchase waiting because its split stopped adding
      up (A1) counts as unsorted, so a new rule can sort it.
 
 B40. Hand moves (13.3) can take a bucket below zero, and held for others
@@ -356,3 +358,10 @@ B47. For card reminders (9.3, 9.4), a payment counts on the day it left
 B48. Setup day also takes the transfers in transit that day. They are part
      of the starting money, except ones going to the old card, which have
      already left the accounts the starting money counts.
+
+B49. "The rule it corrects" (13.6) is whichever rule matches the item
+     right now, even if you had already re-sorted the item by hand. The new
+     rule's text has to match the item it corrects, otherwise it is
+     refused. A rule from a correction cannot split (rules never split),
+     and fees, early paychecks, store refunds, and mom payments cannot get
+     a rule, as before.

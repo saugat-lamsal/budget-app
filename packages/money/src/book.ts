@@ -245,6 +245,15 @@ export type MoveResult = { readonly moved: true } | { readonly moved: false; rea
 export type ChangeLogEntry =
   | { readonly date: IsoDate; readonly kind: 'settings-changed'; readonly changes: Partial<Settings> }
   | { readonly date: IsoDate; readonly kind: 'rule-added'; readonly rule: SortingRule }
+  // 13.6: added by correcting an item, ahead of the rule it corrects (null
+  // when no rule had sorted that item).
+  | {
+      readonly date: IsoDate;
+      readonly kind: 'rule-added-from-correction';
+      readonly rule: SortingRule;
+      readonly correcting: string;
+      readonly aheadOf: string | null;
+    }
   | { readonly date: IsoDate; readonly kind: 'rule-changed'; readonly before: SortingRule; readonly after: SortingRule }
   | { readonly date: IsoDate; readonly kind: 'rule-removed'; readonly rule: SortingRule }
   | { readonly date: IsoDate; readonly kind: 'money-moved'; readonly from: Pot; readonly to: Pot; readonly amount: Cents };
@@ -1108,6 +1117,43 @@ export class Book {
     assertIsoDate(date);
     this.#rules = checkRules([...this.#rules, rule]);
     this.#log.push(Object.freeze({ date, kind: 'rule-added', rule: this.#ruleById(rule.id) }));
+    this.#sortWaitingByRules();
+  }
+
+  // 13.6: re-sort an item and "always do this". The new rule goes just ahead
+  // of the rule that matches the item now, so the correction sticks; if no
+  // rule matches it, the new rule goes at the end. The rule's text must
+  // match the item it corrects.
+  sortAlways(id: string, choice: SortChoice, rule: { readonly id: string; readonly contains: string }, date: IsoDate): void {
+    assertIsoDate(date);
+    const entry = this.#entries.get(this.#aliases.get(id) ?? id);
+    if (entry === undefined) throw new MoneyError('unknown-item', `no item ${id}`);
+    let newRule: SortingRule;
+    let description: string;
+    if (entry.kind === 'spend' && entry.spendingKind === 'purchase') {
+      if ('split' in choice || !isSpendingBucket(choice.to)) throw new MoneyError('bad-choice', 'a rule picks needs or wants; it cannot split');
+      newRule = { id: rule.id, for: 'purchase', contains: rule.contains, bucket: choice.to };
+      description = (entry.postedTxn ?? entry.txn).description;
+    } else if (entry.kind === 'spend' && entry.spendingKind === 'person-payment') {
+      if (!isPersonPaymentChoice(choice)) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');
+      newRule = { id: rule.id, for: 'person', contains: rule.contains, choice: { to: choice.to } };
+      description = entry.txn.description;
+    } else if (entry.kind === 'money-in' && entry.reason === 'deposit') {
+      if (!isMoneyInChoice(choice)) throw new MoneyError('bad-choice', 'money in is income, payback into one bucket, or not mine');
+      newRule = { id: rule.id, for: 'deposit', contains: rule.contains, choice: { to: choice.to } };
+      description = entry.txn.description;
+    } else {
+      throw new MoneyError('no-rule-for-this', `${id} is not something a sorting rule can cover`);
+    }
+    if (!matchesTextRule(newRule, description)) throw new MoneyError('bad-rule', `"${rule.contains}" does not match "${description}"`);
+    const corrected = findRule(this.#rules, newRule.for, description);
+    const at = corrected === undefined ? this.#rules.length : this.#rules.indexOf(corrected);
+    // Check the new list first, so a bad rule changes nothing.
+    const rules = checkRules([...this.#rules.slice(0, at), newRule, ...this.#rules.slice(at)]);
+    this.sort(entry.id, choice, date);
+    this.#rules = rules;
+    const added = this.#ruleById(newRule.id);
+    this.#log.push(Object.freeze({ date, kind: 'rule-added-from-correction', rule: added, correcting: entry.id, aheadOf: corrected?.id ?? null }));
     this.#sortWaitingByRules();
   }
 
