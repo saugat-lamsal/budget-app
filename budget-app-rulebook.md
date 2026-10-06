@@ -70,8 +70,10 @@ number so a test can point at it. Nothing gets coded until you approve this.
 4.3  Unsorted spending is held back from safe-to-spend until you sort it.
 4.4  A purchase can be split across buckets. The parts must add up to the
      total.
-4.5  A refund goes back into the bucket the purchase came from. If the app
-     cannot match it to a purchase, it goes to review.
+4.5  A refund goes back into the bucket the purchase came from. A full
+     refund of a split purchase goes back to each bucket as it was split;
+     a partial one sends the purchase back to review to be split again. If
+     the app cannot match a refund to a purchase, it goes to review.
 4.6  A pending charge counts once. When it posts, the final charge replaces
      the pending one, even if the amount changed (a tip, for example).
 4.7  Re-sorting a purchase updates the buckets right away.
@@ -281,3 +283,6 @@ e.  Old card payoff countdown: the debt the app tracks, divided by the
     now; with nothing owed, $0 (9.5, QUESTIONS.md A7).
 f.  A savings account holding more than it should: the amount to move is
     $0, and the extra is shown separately (3.8).
+g.  A refund of a split purchase: a full refund goes back to each bucket
+    as it was split; a partial one sends the purchase back to review to be
+    split again (4.5, QUESTIONS.md A1).

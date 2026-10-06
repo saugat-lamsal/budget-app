@@ -13,17 +13,13 @@ Nothing to do unless one of them is wrong.
 
 ## Part A. Waiting on your answer
 
-A1. A refund on a split purchase, or a split purchase that posts at a
-    different amount (4.4 with 4.5 and 4.6).
-    Example: 120.00 split 100.00 needs / 20.00 wants, then 20.00 comes back.
-    Which bucket gets it?
-    Now: the purchase goes back to review with its new total, and you
-    split it again.
-    Option 1 (now): back to review to split again.
-    Option 2: share it out in the same proportions as the split.
-    Option 3: it all goes to the bigger part.
-    Recommendation: option 1. It is rare, and you know which part the
-    refund was for.
+A1. ANSWERED Oct 6, built. A refund on a split purchase, or a split
+    purchase that posts at a different amount (4.4 with 4.5 and 4.6).
+    Your answer: a full refund goes back to each bucket as it was split,
+    and nothing waits in review. A partial refund sends the purchase back
+    to review with its new total, to be split again, as before. A split
+    purchase that posts at a different amount also goes back to review, as
+    before. Rulebook 4.5 and 18g updated.
 
 A2. A pending charge that disappears without posting (4.6).
     Gas stations and hotels often put a hold that drops off later. The

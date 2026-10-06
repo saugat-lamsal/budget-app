@@ -420,6 +420,20 @@
     "why": "4.4 allow zero and negative parts in a split"
   },
   {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if ('split' in sorted && net !== 0 && ",
+    "replace": "if ('split' in sorted && ",
+    "why": "4.5 send a fully refunded split purchase back to review"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if (net !== 0) for (const part of now.split)",
+    "replace": "for (const part of now.split)",
+    "why": "4.5 keep taking the split parts after a full refund"
+  },
+  {
     "section": "5",
     "file": "packages/money/src/book.ts",
     "find": "    if (txn.to !== 'old-card') {\n",

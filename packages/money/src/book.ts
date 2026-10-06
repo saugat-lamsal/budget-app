@@ -1069,12 +1069,13 @@ export class Book {
   }
 
   // Works out what a purchase does to the buckets now. A split that no
-  // longer adds up (after a refund, or posting at a new amount) goes back to
-  // review to be split again.
+  // longer adds up (after a partial refund, or posting at a new amount) goes
+  // back to review to be split again. A full refund of a split purchase
+  // gives each bucket its part back (4.5): the split stays, and nothing waits.
   #refreshSpending(entry: SpendEntry): void {
     const net = netOf(entry);
     const sorted = entry.sortedTo;
-    if ('split' in sorted && sorted.split.reduce((sum, part) => sum + part.amount, 0) !== net) {
+    if ('split' in sorted && net !== 0 && sorted.split.reduce((sum, part) => sum + part.amount, 0) !== net) {
       entry.sortedTo = { to: 'unsorted' };
       entry.splitChanged = true;
     }
@@ -1085,7 +1086,7 @@ export class Book {
     let effect: Effect;
     if ('split' in now) {
       effect = {};
-      for (const part of now.split) effect[part.bucket] = subtractCents(effect[part.bucket] ?? 0, part.amount);
+      if (net !== 0) for (const part of now.split) effect[part.bucket] = subtractCents(effect[part.bucket] ?? 0, part.amount);
     } else if (now.to === 'unsorted') {
       effect = { unsortedOut: net };
     } else if (now.to === 'not-mine') {

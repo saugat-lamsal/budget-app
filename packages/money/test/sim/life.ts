@@ -226,6 +226,8 @@ class Life {
   // By the id a purchase first had; a posting's id leads back to it.
   readonly #standing = new Map<string, Standing>();
   readonly #firstId = new Map<string, string>();
+  // How the person split each split purchase, by the id it first had.
+  readonly #splitParts = new Map<string, { readonly needs: Cents; readonly wants: Cents }>();
   readonly #momSent = new Map<string, Cents>();
 
   // Things already set to happen on a later day, such as a pending charge
@@ -661,10 +663,16 @@ class Life {
       }
       this.#stats.refundsLinked++;
       // Back into the bucket the purchase came from; for one not sorted yet,
-      // off the unsorted spending (B7); a split one goes back to review (A1).
+      // off the unsorted spending (B7). A full refund of a split purchase
+      // gives each bucket its part back; a partial one sends the purchase
+      // back to review to be split again (4.5, A1).
       if (standing === 'needs' || standing === 'wants') this.#expectChange(before, { [standing]: back }, '4.5 a refund goes back to its bucket', txn.id);
       else if (standing === 'unsorted') this.#expectChange(before, { unsortedOut: -back }, '4.5 a refund of a purchase not sorted yet', txn.id);
-      else if (standing === 'split') this.#standing.set(first, 'unsorted');
+      else if (standing === 'split') {
+        const parts = this.#splitParts.get(first);
+        if (back === amount && parts) this.#expectChange(before, { needs: parts.needs, wants: parts.wants }, '4.5 a full refund of a split purchase', txn.id);
+        else this.#standing.set(first, 'unsorted');
+      }
     });
   }
 
@@ -1145,6 +1153,7 @@ class Life {
       this.#book.sort(item.id, { split: [{ bucket: 'needs', amount: needs }, { bucket: 'wants', amount: item.amount - needs }] }, today);
       change = { needs: -needs, wants: -(item.amount - needs) };
       this.#standing.set(item.id, 'split');
+      this.#splitParts.set(item.id, { needs, wants: item.amount - needs });
       this.#stats.splitPurchases++;
     } else {
       const sorting = intent?.type === 'store' ? intent.sorting : 'either';
