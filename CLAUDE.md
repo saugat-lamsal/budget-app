@@ -114,8 +114,8 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 7. Section 15 confirmed (a to j), section 17 changes
-  after the Phase 1 review, section 18 his answers (A5 to A8, A1, and the
+- Rulebook: draft 8. Section 15 confirmed (a to j), section 17 changes
+  after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules.
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
@@ -151,16 +151,18 @@ This applies to every phase and every session, cloud or local.
   - npm test lives 6 lives of 2 years. `node scripts/simulate.mjs` lives
     1,000 lives of 5 years on every core; `--seed N --years Y` replays one.
     A failure prints its seed and day, and becomes a test before any fix.
-  - It leaves out what is not built or still waiting on his answers (A2, a
-    pending charge that vanishes; A3 and A9 follow today's behavior).
+  - Since the A2 and A4 answers, some gas holds drop off without posting,
+    and old card payments from savings come out of savings or needs.
 - Phase 2, part two, the second-opinion tests: packages/money/second-opinion
   (PR #4), written from the rulebook by a session that had not seen the
   money code. Never edit them; a disagreement is settled against the
   rulebook. Its report's unclear items are now decided (rulebook 18e to
   18j, section 19), and A7 and A1 are built.
-- Next: Phase 2's finish line once PR #4 is merged (thousands of simulated
-  years with no self-check failure, and both sets of tests passing), then
-  Phase 3 when he says go. Still open: QUESTIONS.md part A (A2 to A4, A9,
-  A10).
+- Phase 2: finish line crossed Oct 6, 2026 (PR #4 merged; 5,000 simulated
+  years with no self-check failure; both sets of tests pass). All of
+  QUESTIONS.md part A is answered (A1 to A10) and built.
+- Phase 3 (bank connection, test bank only): in progress on branch
+  phase-3-bank-connection. Database: SQLite through better-sqlite3 (his OK,
+  Oct 6). His Plaid sandbox keys are in .env.
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.
