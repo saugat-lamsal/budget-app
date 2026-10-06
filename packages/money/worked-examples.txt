@@ -290,3 +290,24 @@ Step 4. Sent to mom in October (8.2): 1,000.00 + 2,500.00 = 3,500.00,
         into November at 0.00 (8.4).
 
 Check: mom reserve 0.00 | savings 1,250.00 | needs 850.00 | wants 500.00 | sent this month 3,500.00
+
+
+========================================================================
+EXAMPLE 10. Safe to spend (rules 11.1 to 11.3)
+========================================================================
+
+Today is Oct 14. The last paycheck came Oct 9.
+Buckets: Savings 2,000.00 | Needs 500.00 | Wants 300.00 |
+         Mom reserve 1,500.00 | Held for others 60.00
+Waiting in review: a 45.00 purchase with no rule (unsorted spending), and
+a 200.00 deposit you have not sorted yet (unsorted money in).
+
+Step 1. Safe to spend = wants left - unsorted spending (11.1)
+                      = 300.00 - 45.00 = 255.00
+        Needs, savings, the mom reserve, held for others, and the 200.00
+        waiting in review are not part of it (11.3).
+
+Step 2. Days to the next payday (11.2): Oct 9 + 14 days = Oct 23.
+        Oct 14 to Oct 23 is 9 days.
+
+Check: safe to spend 255.00 | unsorted spending 45.00 | unsorted money in 200.00

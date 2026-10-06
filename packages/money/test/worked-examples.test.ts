@@ -135,6 +135,23 @@ const examples: Record<number, () => Record<string, Cents>> = {
     book.sort('mom2:difference', { to: 'needs' }, '2026-10-20');
     return { ...buckets(book), 'sent this month': book.momSentInMonth('2026-10').sent };
   },
+  10: () => {
+    const book = openTestBook({
+      lastPaycheckDate: '2026-10-09',
+      pots: {
+        savings: parseDollars('2,000.00'),
+        needs: parseDollars('500.00'),
+        wants: parseDollars('300.00'),
+        momReserve: parseDollars('1,500.00'),
+        heldForOthers: parseDollars('60.00'),
+      },
+    });
+    book.receive(purchase('hardware', '2026-10-12', parseDollars('45.00'), 'MADE UP HARDWARE'));
+    book.receive(deposit('gift', '2026-10-13', parseDollars('200.00'), 'MADE UP GIFT'));
+    const safe = book.safeToSpend('2026-10-14');
+    if (safe.daysToPayday !== 9 || safe.nextPayday !== '2026-10-23') throw new Error(`days to payday: ${JSON.stringify(safe)}`);
+    return { ...buckets(book), 'safe to spend': safe.amount };
+  },
 };
 
 describe('worked examples (worked-examples.txt)', () => {

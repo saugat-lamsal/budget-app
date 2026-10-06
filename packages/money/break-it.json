@@ -782,5 +782,54 @@
     "find": "if (input.bankConnection === 'needs-login')",
     "replace": "if (input.bankConnection !== 'needs-login')",
     "why": "10.5 alert when the connection is fine"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/book.ts",
+    "find": "amount: subtractCents(this.#totals.wants, this.#totals.unsortedOut),",
+    "replace": "amount: addCents(this.#totals.wants, this.#totals.unsortedOut),",
+    "why": "11.1 add unsorted spending instead of taking it off"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/book.ts",
+    "find": "amount: subtractCents(this.#totals.wants, this.#totals.unsortedOut),",
+    "replace": "amount: subtractCents(addCents(this.#totals.wants, this.#totals.needs), this.#totals.unsortedOut),",
+    "why": "11.1 count needs too"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/book.ts",
+    "find": "amount: subtractCents(this.#totals.wants, this.#totals.unsortedOut),",
+    "replace": "amount: subtractCents(addCents(this.#totals.wants, this.#totals.unsortedIn), this.#totals.unsortedOut),",
+    "why": "11.3 count unsorted money in"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/book.ts",
+    "find": "amount: subtractCents(this.#totals.wants, this.#totals.unsortedOut),",
+    "replace": "amount: subtractCents(addCents(this.#totals.wants, this.#totals.heldForOthers), this.#totals.unsortedOut),",
+    "why": "11.3 count held for others"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/book.ts",
+    "find": "const nextPayday = addDays(this.#lastPaycheckDate, this.#settings.payScheduleDays);",
+    "replace": "const nextPayday = addDays(this.#lastPaycheckDate, 14);",
+    "why": "11.2 hard-code 14 days instead of using the setting"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/book.ts",
+    "find": "daysToPayday: daysBetween(today, nextPayday),",
+    "replace": "daysToPayday: Math.max(0, daysBetween(today, nextPayday)),",
+    "why": "11.2 hide a late paycheck"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/book.ts",
+    "find": "daysToPayday: daysBetween(today, nextPayday),",
+    "replace": "daysToPayday: daysBetween(today, nextPayday) + 1,",
+    "why": "11.2 count one day too many"
   }
 ]

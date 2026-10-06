@@ -40,6 +40,7 @@ export {
   type Received,
   type ReceiveOutcome,
   type ReviewItem,
+  type SafeToSpend,
   type SavingsTransfer,
   type SortChoice,
   type SpendingKind,

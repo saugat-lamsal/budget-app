@@ -268,6 +268,8 @@ function runLife(book: Book, bank: TestBank, steps: Step[]): void {
     }
     // No cent is created or lost: the buckets always match the bank.
     expect(appSide(book.pots())).toBe(bank.side());
+    // Safe to spend is always wants left minus unsorted spending (11.1).
+    expect(book.safeToSpend(date).amount).toBe(book.pots().wants - book.pots().unsortedOut);
     // The old card debt always matches the bank, and is kept out of the buckets.
     expect(book.oldCardDebt()).toBe(bank.oldCard);
     // The running totals always equal a recount from scratch.

@@ -257,3 +257,11 @@ B32. "Only if something is unsorted" (10.3) counts everything waiting in
 
 B33. The bank login alert (10.5) follows the bank connection's status,
      which comes from Phase 3.
+
+B34. Safe to spend (11.1) can go below zero when wants are overspent or
+     unsorted spending is bigger than what is left in wants. It is shown
+     as the negative number.
+
+B35. Next payday (11.2) is the last paycheck plus 14 days. If that day
+     passes with no paycheck, the days to payday go negative (the paycheck
+     is late) instead of jumping ahead another 14 days.

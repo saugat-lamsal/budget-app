@@ -1,6 +1,6 @@
 import { isSpendingBucket, type SplitBucket } from './buckets.js';
 import { addCents, assertCents, assertPositiveCents, subtractCents, type Cents } from './cents.js';
-import { assertIsoDate, daysBetween, monthOf, type IsoDate } from './dates.js';
+import { addDays, assertIsoDate, daysBetween, monthOf, type IsoDate } from './dates.js';
 import { MoneyError } from './errors.js';
 import { splitPaycheck, type PaycheckSplit } from './payday.js';
 import { checkRules, findRule, isMoneyInChoice, isPersonPaymentChoice, type MoneyInChoice, type SortingRule } from './rules.js';
@@ -158,6 +158,13 @@ export interface MomMonth {
   readonly month: string;
   readonly sent: Cents;
   readonly target: { readonly low: Cents; readonly high: Cents };
+}
+
+export interface SafeToSpend {
+  readonly amount: Cents;
+  readonly nextPayday: IsoDate;
+  // Negative when the expected paycheck is late.
+  readonly daysToPayday: number;
 }
 
 export interface SavingsTransfer {
@@ -349,6 +356,19 @@ export class Book {
 
   reviewItems(): ReviewItem[] {
     return [...this.#review].map((id) => this.#reviewView(this.#entry(id)));
+  }
+
+  // Rules 11.1 to 11.3: wants left, minus unsorted spending. Savings, the
+  // mom reserve, held for others, and unsorted money in never count. Shown
+  // with the days to the next payday from the pay schedule.
+  safeToSpend(today: IsoDate): SafeToSpend {
+    assertIsoDate(today, 'today');
+    const nextPayday = addDays(this.#lastPaycheckDate, this.#settings.payScheduleDays);
+    return {
+      amount: subtractCents(this.#totals.wants, this.#totals.unsortedOut),
+      nextPayday,
+      daysToPayday: daysBetween(today, nextPayday),
+    };
   }
 
   // Rule 3.8: what should be sitting in the savings account (savings plus
