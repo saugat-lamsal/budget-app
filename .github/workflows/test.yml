@@ -1,0 +1,36 @@
+# Runs the type check and every test (npm test) on every pull request, on
+# Linux and on Windows, so nothing is merged on the strength of one
+# computer's result.
+name: Tests
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push to the same pull request replaces the run still going.
+concurrency:
+  group: tests-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: npm test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      # Pinned to exact commits; the comment says which release each one is.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
