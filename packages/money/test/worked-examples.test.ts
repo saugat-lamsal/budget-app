@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseDollars, type Book, type Cents } from '../src/index.js';
 import text from '../worked-examples.txt?raw';
-import { cardCharge, openTestBook, paycheck, posted, purchase, refund, transfer } from './helpers.js';
+import { cardCharge, deposit, openTestBook, paycheck, posted, purchase, refund, transfer } from './helpers.js';
 
 interface Example {
   number: number;
@@ -99,6 +99,16 @@ const examples: Record<number, () => Record<string, Cents>> = {
       'old card debt': book.oldCardDebt(),
       'still to move': book.savingsTransfer(parseDollars('900.00') + parseDollars('600.00')).stillToMove,
     };
+  },
+  7: () => {
+    const book = openTestBook({ pots: { momReserve: parseDollars('2,800.00') } });
+    book.receive(deposit('tax', '2026-10-05', parseDollars('2,000.00'), 'MADE UP TAX REFUND'));
+    book.sort('tax', { to: 'income' }, '2026-10-05');
+    book.receive(deposit('friend', '2026-10-06', parseDollars('25.00'), 'MADE UP FRIEND'));
+    book.sort('friend', { to: 'wants' }, '2026-10-06');
+    book.receive(deposit('roommate', '2026-10-07', parseDollars('60.00'), 'MADE UP ROOMMATE'));
+    book.sort('roommate', { to: 'not-mine' }, '2026-10-07');
+    return buckets(book);
   },
 };
 

@@ -12,6 +12,7 @@ import {
   type Book,
   type Purchase,
   type LeftoverChoice,
+  type MoneyInChoice,
   type SortChoice,
   type SortingRule,
 } from '../src/index.js';
@@ -64,7 +65,7 @@ describe('random scenarios: payday (section 3)', () => {
 // (like a question to answer) pick it by index, so every step can run.
 type Step =
   | { type: 'paycheck'; gap: number; amount: number }
-  | { type: 'deposit'; gap: number; amount: number }
+  | { type: 'deposit'; gap: number; amount: number; description: string; account: 'checking' | 'savings' }
   | { type: 'answer-leftover'; pick: number; choice: 'roll-over' | 'move-to-savings' }
   | { type: 'repeat'; pick: number }
   | { type: 'purchase'; gap: number; amount: number; account: 'checking' | 'everyday-card' | 'old-card'; pending: boolean; description: string }
@@ -75,14 +76,21 @@ type Step =
   | { type: 'resort'; pick: number; seed: number }
   | { type: 'transfer'; amount: number; from: 'checking' | 'savings'; to: 'checking' | 'savings' | 'everyday-card' | 'old-card' }
   | { type: 'old-card'; amount: number; what: 'purchase' | 'pending' | 'fee' | 'interest' | 'refund' }
-  | { type: 'acknowledge'; pick: number };
+  | { type: 'acknowledge'; pick: number }
+  | { type: 'resort-money-in'; pick: number; seed: number };
 
 const gapArb = fc.integer({ min: 0, max: 20 });
 const smallAmountArb = fc.oneof(fc.integer({ min: 1, max: 50_000 }), fc.constantFrom(1, 2, 100));
 
 const stepArb: fc.Arbitrary<Step> = fc.oneof(
   fc.record({ type: fc.constant('paycheck' as const), gap: gapArb, amount: paycheckAmountArb }),
-  fc.record({ type: fc.constant('deposit' as const), gap: gapArb, amount: fc.integer({ min: 1, max: 1_000_000 }) }),
+  fc.record({
+    type: fc.constant('deposit' as const),
+    gap: gapArb,
+    amount: fc.integer({ min: 1, max: 1_000_000 }),
+    description: fc.constantFrom('MADE UP DEPOSIT', 'MADE UP BONUS', 'MADE UP ROOMMATE', 'MADE UP FRIEND'),
+    account: fc.constantFrom('checking' as const, 'savings' as const),
+  }),
   fc.record({ type: fc.constant('answer-leftover' as const), pick: fc.nat(), choice: fc.constantFrom('roll-over' as const, 'move-to-savings' as const) }),
   fc.record({ type: fc.constant('repeat' as const), pick: fc.nat() }),
   fc.record({
@@ -112,6 +120,7 @@ const stepArb: fc.Arbitrary<Step> = fc.oneof(
   }),
   fc.record({ type: fc.constant('old-card' as const), amount: smallAmountArb, what: fc.constantFrom('purchase' as const, 'pending' as const, 'fee' as const, 'interest' as const, 'refund' as const) }),
   fc.record({ type: fc.constant('acknowledge' as const), pick: fc.nat() }),
+  fc.record({ type: fc.constant('resort-money-in' as const), pick: fc.nat(), seed: fc.nat() }),
 );
 
 const potArb = fc.integer({ min: -1_000_000, max: 10_000_000 });
@@ -120,6 +129,9 @@ const openingArb = fc.record({ savings: potArb, needs: potArb, wants: potArb, mo
 const RULES: SortingRule[] = [
   { id: 'grocer', for: 'purchase', contains: 'GROCER', bucket: 'needs' },
   { id: 'cafe', for: 'purchase', contains: 'CAFE', bucket: 'wants' },
+  { id: 'bonus', for: 'deposit', contains: 'BONUS', choice: { to: 'income' } },
+  { id: 'roommate', for: 'deposit', contains: 'ROOMMATE', choice: { to: 'not-mine' } },
+  { id: 'friend', for: 'deposit', contains: 'FRIEND', choice: { to: 'wants' } },
 ];
 
 function pick<T>(list: readonly T[], index: number): T | undefined {
@@ -135,8 +147,10 @@ function spendingChoice(amount: number, seed: number): SortChoice {
   return { to: seed % 3 === 0 ? 'needs' : 'wants' };
 }
 
-function moneyInChoice(seed: number): SortChoice {
-  return { to: BUCKETS[seed % BUCKETS.length] ?? 'savings' };
+// A valid choice for money in (6.1). A store refund cannot be income.
+function moneyInChoice(seed: number, isRefund: boolean): SortChoice {
+  const choices: MoneyInChoice['to'][] = [...BUCKETS, 'not-mine', ...(isRefund ? [] : ['income' as const])];
+  return { to: choices[seed % choices.length] ?? 'savings' };
 }
 
 function runLife(book: Book, bank: TestBank, steps: Step[]): void {
@@ -145,11 +159,16 @@ function runLife(book: Book, bank: TestBank, steps: Step[]): void {
   const received: BankTransaction[] = [];
   // Pending purchases the bank has not posted yet, on any account.
   const pending: Purchase[] = [];
+  // Money in that can be sorted and re-sorted (not paychecks or matched refunds).
+  const moneyIn: { id: string; isRefund: boolean }[] = [];
   const send = (txn: BankTransaction): void => {
-    book.receive(txn);
+    const { outcome } = book.receive(txn);
     bank.apply(txn);
     received.push(txn);
     if (txn.kind === 'purchase' && txn.pending) pending.push(txn);
+    if ((txn.kind === 'deposit' && outcome !== 'paycheck') || (txn.kind === 'refund' && outcome === 'review')) {
+      moneyIn.push({ id: txn.id, isRefund: txn.kind === 'refund' });
+    }
   };
   for (const step of steps) {
     switch (step.type) {
@@ -157,7 +176,7 @@ function runLife(book: Book, bank: TestBank, steps: Step[]): void {
       case 'deposit': {
         date = addDays(date, step.gap);
         const id = `t${n++}`;
-        send(step.type === 'paycheck' ? paycheck(id, date, step.amount) : deposit(id, date, step.amount));
+        send(step.type === 'paycheck' ? paycheck(id, date, step.amount) : deposit(id, date, step.amount, step.description, step.account));
         break;
       }
       case 'answer-leftover': {
@@ -192,7 +211,7 @@ function runLife(book: Book, bank: TestBank, steps: Step[]): void {
       case 'sort': {
         const item = pick(book.reviewItems().filter((i) => i.type !== 'leftover'), step.pick);
         if (item?.type === 'spending') book.sort(item.id, spendingChoice(item.amount, step.seed), date);
-        if (item?.type === 'money-in') book.sort(item.id, moneyInChoice(step.seed), date);
+        if (item?.type === 'money-in') book.sort(item.id, moneyInChoice(step.seed, item.reason === 'refund'), date);
         break;
       }
       case 'resort': {
@@ -218,6 +237,11 @@ function runLife(book: Book, bank: TestBank, steps: Step[]): void {
         } else {
           send(cardCharge(id, date, step.amount, step.what, 'old-card'));
         }
+        break;
+      }
+      case 'resort-money-in': {
+        const target = pick(moneyIn, step.pick);
+        if (target) book.sort(target.id, moneyInChoice(step.seed, target.isRefund), date);
         break;
       }
       case 'acknowledge': {

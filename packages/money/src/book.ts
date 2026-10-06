@@ -1,9 +1,9 @@
-import { isBucket, isSpendingBucket, type Bucket, type SplitBucket } from './buckets.js';
+import { isSpendingBucket, type SplitBucket } from './buckets.js';
 import { addCents, assertCents, assertPositiveCents, subtractCents, type Cents } from './cents.js';
 import { assertIsoDate, daysBetween, type IsoDate } from './dates.js';
 import { MoneyError } from './errors.js';
 import { splitPaycheck, type PaycheckSplit } from './payday.js';
-import { checkRules, findRule, type SortingRule } from './rules.js';
+import { checkRules, findRule, isMoneyInChoice, type MoneyInChoice, type SortingRule } from './rules.js';
 import { matchesTextRule, validateSettings, type Settings } from './settings.js';
 import {
   checkTransaction,
@@ -72,7 +72,7 @@ export interface SplitPart {
 }
 
 // How you sort something in review, or re-sort it later (4.7).
-export type SortChoice = { readonly to: Bucket } | { readonly split: readonly SplitPart[] };
+export type SortChoice = MoneyInChoice | { readonly split: readonly SplitPart[] };
 
 export type SpendingSort = { readonly to: 'unsorted' } | { readonly to: SplitBucket } | { readonly split: readonly SplitPart[] };
 
@@ -159,7 +159,9 @@ interface MoneyInEntry {
   readonly id: string;
   readonly txn: Deposit | Refund;
   readonly reason: MoneyInReason;
-  sortedTo: 'unsorted' | Bucket;
+  sortedTo: 'unsorted' | MoneyInChoice['to'];
+  // How it was split, when sorted as income.
+  incomeSplit: PaycheckSplit | null;
   effect: Effect;
 }
 
@@ -389,7 +391,14 @@ export class Book {
 
   #receiveDeposit(txn: Deposit): Received {
     const s = this.#settings;
-    if (!matchesTextRule(s.paycheckRule, txn.description)) return this.#holdMoneyIn(txn, 'deposit');
+    if (!matchesTextRule(s.paycheckRule, txn.description)) {
+      const rule = findRule(this.#rules, 'deposit', txn.description);
+      const result = this.#holdMoneyIn(txn, 'deposit');
+      if (rule === undefined) return result;
+      // 6.2: a rule for a known source makes the choice automatically.
+      this.#sortMoneyIn(this.#moneyInEntry(txn.id), rule.choice);
+      return { id: txn.id, outcome: 'sorted' };
+    }
     // Rule 3.7: too soon after the last paycheck to split automatically.
     if (daysBetween(this.#lastPaycheckDate, txn.date) < s.earlyPaycheckDays) return this.#holdMoneyIn(txn, 'early-paycheck');
     this.#payday(txn);
@@ -397,7 +406,7 @@ export class Book {
   }
 
   #holdMoneyIn(txn: Deposit | Refund, reason: MoneyInReason): Received {
-    const entry: MoneyInEntry = { kind: 'money-in', id: txn.id, txn, reason, sortedTo: 'unsorted', effect: {} };
+    const entry: MoneyInEntry = { kind: 'money-in', id: txn.id, txn, reason, sortedTo: 'unsorted', incomeSplit: null, effect: {} };
     this.#add(entry, { unsortedIn: txn.amount });
     this.#review.add(entry.id);
     return { id: txn.id, outcome: 'review' };
@@ -590,11 +599,35 @@ export class Book {
     this.#refreshSpending(entry);
   }
 
+  // Rule 6.1: income, payback, or not mine. A store refund the app could
+  // not match can be payback or not mine, but not income.
   #sortMoneyIn(entry: MoneyInEntry, choice: SortChoice): void {
-    if ('split' in choice || !isBucket(choice.to)) throw new MoneyError('bad-choice', 'money in goes to one bucket');
+    if (!isMoneyInChoice(choice)) throw new MoneyError('bad-choice', 'money in is income, payback into one bucket, or not mine');
+    const amount = entry.txn.amount;
+    let effect: Effect;
+    let incomeSplit: PaycheckSplit | null = null;
+    if (choice.to === 'income') {
+      if (entry.reason === 'refund') throw new MoneyError('bad-choice', 'a store refund is not income');
+      // Treated like a paycheck: the reserve first, then the split. The
+      // reserve is counted without this entry's own earlier effect.
+      const reserveNow = subtractCents(this.#totals.momReserve, entry.effect.momReserve ?? 0);
+      incomeSplit = splitPaycheck(amount, reserveNow, this.#settings);
+      effect = { momReserve: incomeSplit.momReserve, savings: incomeSplit.savings, needs: incomeSplit.needs, wants: incomeSplit.wants };
+    } else if (choice.to === 'not-mine') {
+      effect = { heldForOthers: amount };
+    } else {
+      effect = { [choice.to]: amount };
+    }
     entry.sortedTo = choice.to;
-    this.#setEffect(entry, { [choice.to]: entry.txn.amount });
+    entry.incomeSplit = incomeSplit;
+    this.#setEffect(entry, effect);
     this.#review.delete(entry.id);
+  }
+
+  #moneyInEntry(id: string): MoneyInEntry {
+    const entry = this.#entry(id);
+    if (entry.kind !== 'money-in') throw new MoneyError('broken-book', `${id} is not money in`);
+    return entry;
   }
 
   // ----- Bookkeeping -----

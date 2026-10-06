@@ -57,6 +57,23 @@ A4. A payment to the old card from savings instead of checking (5.2).
     Option 3 (now): review each time.
     Recommendation: option 2.
 
+A5. Does "income" from review start a new pay period? (6.1 with 3.1, 3.7)
+    6.1 says income is "treated like a paycheck (reserve, then split)".
+    It does not say whether it also starts a new pay period, which would
+    ask the leftover question (3.4), restart the 14-day schedule (11.2),
+    and restart the 10-day count (3.7).
+    Now: reserve, then split, and nothing else. No new pay period.
+    This matters most for a real paycheck that arrives early (3.7), for
+    example before a holiday. Today it goes to review, and "income" splits
+    it but does not restart the schedule, so the next payday shown would be
+    off.
+    Option 1 (now): income never starts a new pay period.
+    Option 2: income always starts one.
+    Option 3: add a fourth choice for 3.7 items only, "this is my
+    paycheck", which splits it and starts a new pay period. A bonus or tax
+    refund stays plain income.
+    Recommendation: option 3.
+
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
@@ -128,3 +145,16 @@ B14. Paying the old card more than it owes leaves a negative debt (a
 
 B15. A pending old card purchase that posts at a new amount changes only
      the debt (5.4). It stays flagged until you have seen it.
+
+B16. A store refund the app cannot match (4.5) can be payback or not mine,
+     but not income.
+
+B17. Deposit rules (6.2) never apply to a paycheck. The paycheck rule is
+     checked first, and an early paycheck (3.7) always goes to review.
+
+B18. Income uses the mom reserve and its cap exactly like a paycheck
+     (3.2), including when the income is smaller than the reserve
+     (worked example 7).
+
+B19. A 3.7 early paycheck in review gets the same three choices as any
+     other deposit (6.1). 3.7 itself does not list choices. See A5.

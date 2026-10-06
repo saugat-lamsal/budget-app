@@ -495,5 +495,61 @@
     "find": "this.#add({ kind: 'transfer', id: txn.id, txn, effect: {} }, {});",
     "replace": "this.#add({ kind: 'transfer', id: txn.id, txn, effect: {} }, txn.to === 'savings' ? { savings: txn.amount, needs: -txn.amount } : {});",
     "why": "5.3 move money between buckets when moving it to savings"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (rule === undefined) return result;\n",
+    "replace": "      if (rule === undefined || true) return result;\n",
+    "why": "6.2 ignore deposit rules"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.reason === 'refund') throw new MoneyError('bad-choice', 'a store refund is not income');",
+    "replace": "",
+    "why": "6.1 let a store refund be income"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "const reserveNow = subtractCents(this.#totals.momReserve, entry.effect.momReserve ?? 0);",
+    "replace": "const reserveNow = this.#totals.momReserve;",
+    "why": "6.1 count an income entry's own reserve when re-sorting it"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "effect = { momReserve: incomeSplit.momReserve, savings: incomeSplit.savings, needs: incomeSplit.needs, wants: incomeSplit.wants };",
+    "replace": "effect = { savings: incomeSplit.momReserve + incomeSplit.savings, needs: incomeSplit.needs, wants: incomeSplit.wants };",
+    "why": "6.1 skip the mom reserve for income"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "effect = { heldForOthers: amount };",
+    "replace": "effect = { wants: amount };",
+    "why": "6.1 put not-mine money in wants"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/rules.ts",
+    "find": "return choice.to === 'income' || choice.to === 'not-mine' || isBucket(choice.to);",
+    "replace": "return choice.to === 'income' || choice.to === 'not-mine' || isBucket(choice.to) || choice.to === 'unsorted';",
+    "why": "6.1 accept a fourth choice"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/rules.ts",
+    "find": "rule.for === kind && matchesTextRule(rule, description)",
+    "replace": "matchesTextRule(rule, description)",
+    "why": "6.2 let purchase rules apply to deposits"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (!matchesTextRule(s.paycheckRule, txn.description)) {\n      const rule",
+    "replace": "    if (!matchesTextRule(s.paycheckRule, txn.description) || findRule(this.#rules, 'deposit', txn.description)) {\n      const rule",
+    "why": "6.2 let a deposit rule take over a paycheck"
   }
 ]

@@ -200,3 +200,33 @@ Step 5. A forgotten subscription charges 12.99 on the old card (5.4).
         Debt   2,835.50 + 12.99    = 2,848.49
 
 Check: savings 1,000.00 | needs 700.00 | mom reserve 500.00 | old card debt 2,848.49 | still to move 0.00
+
+
+========================================================================
+EXAMPLE 7. Money in that is not a paycheck (rules 6.1, 3.2, 3.3)
+========================================================================
+
+Before: Mom reserve 2,800.00. Everything else 0.00.
+
+Step 1. A 2,000.00 tax refund arrives. It is not a paycheck, so it waits
+        in review as unsorted money in (6.1). You pick "income", so it is
+        treated like a paycheck: reserve first, then the split.
+        The reserve takes 1,500.00 off the top, but only 200.00 fits under
+        the 3,000.00 cap (3,000.00 - 2,800.00).
+        To mom reserve                            200.00
+        Does not fit, goes to savings           1,300.00
+        Rest to split (2,000.00 - 1,500.00)       500.00
+        Savings 50% = 250.00 | Needs 30% = 150.00 | Wants 20% = 100.00
+        Savings 1,300.00 + 250.00 = 1,550.00
+
+Step 2. A friend pays you back 25.00 for lunch. You pick "payback" into
+        wants.
+        Wants  100.00 + 25.00 = 125.00
+
+Step 3. Your roommate sends 60.00 for a utility bill you will pay for
+        them. You pick "not mine", so it goes to held for others (7.1).
+        Held for others 60.00
+
+Nothing is left waiting in review.
+
+Check: mom reserve 3,000.00 | savings 1,550.00 | needs 150.00 | wants 125.00 | held for others 60.00 | unsorted money in 0.00

@@ -24,7 +24,7 @@ export { ACCOUNTS, type AccountId } from './accounts.js';
 export { splitPaycheck, type PaycheckSplit, type SplitSettings } from './payday.js';
 export type { BankTransaction, CardCharge, Deposit, Purchase, Refund, Transfer } from './transactions.js';
 export { BUCKETS, SPENDING_BUCKETS, type Bucket, type SplitBucket } from './buckets.js';
-export type { SortingRule } from './rules.js';
+export type { MoneyInChoice, SortingRule } from './rules.js';
 export {
   Book,
   openBook,
