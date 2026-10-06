@@ -105,6 +105,22 @@ A7. Old card payoff countdown (9.5). Not built yet; it shows "off".
     it; b. round up to the cent; c. yes, the whole balance; d. the debt the
     app tracks.
 
+A8. Low bucket alert (10.1). Skipped.
+    "20% left" does not say 20% of what. Buckets carry money over (3.4),
+    carry overspending over (3.5), and get paybacks and hand moves during
+    the period, so "what the bucket had" is not one obvious number.
+    Option 1: 20% of what the bucket held right after the last payday
+    (the new share plus anything carried over).
+    Option 2: 20% of the new share from the last paycheck only.
+    Option 3: option 1, plus anything added during the period (paybacks,
+    hand moves in).
+    Also: if a bucket started the period at zero or below, should the low
+    alert be skipped and the empty alert (10.2) cover it?
+    And: "falls below" means strictly below, so exactly 20% left does not
+    alert. Right?
+    Recommendation: option 1; yes, skip it when the bucket started at zero
+    or below; yes, strictly below.
+
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
@@ -230,3 +246,14 @@ B29. A statement with a $0 minimum gets no reminder and no overdue alert.
 
 B30. The overdue alert (9.4) is due on every day after the due date until
      a payment is seen. Making sure it reaches the phone once is Phase 5.
+
+B31. Alerts (section 10) are worked out as "due right now". Sending each
+     one at the right time, and only once, is Phase 5. Note for Phase 5:
+     10.1 says "once per bucket per pay period", but 10.2 (empty bucket)
+     does not say how often.
+
+B32. "Only if something is unsorted" (10.3) counts everything waiting in
+     review: money in, spending, leftover questions, and old card flags.
+
+B33. The bank login alert (10.5) follows the bank connection's status,
+     which comes from Phase 3.

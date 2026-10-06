@@ -740,5 +740,47 @@
     "find": "entry.txn.kind === 'transfer' && entry.txn.to === card",
     "replace": "entry.txn.kind === 'transfer' && entry.txn.to !== 'savings'",
     "why": "9.3 mix up which card a payment went to"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/alerts.ts",
+    "find": "if (pots[bucket] <= 0) alerts.push",
+    "replace": "if (pots[bucket] < 0) alerts.push",
+    "why": "10.2 do not call exactly zero empty"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/alerts.ts",
+    "find": "if (pots[bucket] <= 0) alerts.push",
+    "replace": "if (pots[bucket] <= 1) alerts.push",
+    "why": "10.2 call one cent empty"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/alerts.ts",
+    "find": "for (const bucket of ['needs', 'wants'] as const) {",
+    "replace": "for (const bucket of ['needs'] as const) {",
+    "why": "10.2 forget wants"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/alerts.ts",
+    "find": "if (waiting > 0) alerts.push",
+    "replace": "if (waiting >= 0) alerts.push",
+    "why": "10.3 send the daily review with nothing waiting"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/alerts.ts",
+    "find": "at: book.settings().dailyReviewTime,",
+    "replace": "at: '20:00',",
+    "why": "10.3 ignore the review time setting"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/alerts.ts",
+    "find": "if (input.bankConnection === 'needs-login')",
+    "replace": "if (input.bankConnection !== 'needs-login')",
+    "why": "10.5 alert when the connection is fine"
   }
 ]
