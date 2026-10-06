@@ -1,5 +1,10 @@
 {
-  // Tests for the money math. Same strict settings as the source.
+  // Tests for the money math. Same strict settings as the source, plus Node,
+  // which the simulator's tests use to read how long to run and to report.
+  // The source itself is still checked without Node by ../tsconfig.json.
   "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
   "include": ["**/*.ts"]
 }
