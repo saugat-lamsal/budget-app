@@ -1290,9 +1290,16 @@
   {
     "section": "10",
     "file": "packages/money/src/book.ts",
-    "find": "    for (const bucket of ['needs', 'wants'] as const) {\n      const amount = this.#totals[bucket];",
-    "replace": "    for (const bucket of ['needs'] as const) {\n      const amount = this.#totals[bucket];",
+    "find": "    for (const bucket of ['needs', 'wants'] as const) {\n      const amount = this.#totals[bucket];\n      if (amount <= 0",
+    "replace": "    for (const bucket of ['needs'] as const) {\n      const amount = this.#totals[bucket];\n      if (amount <= 0",
     "why": "10.2 forget wants"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    for (const bucket of ['needs', 'wants'] as const) {\n      const amount = this.#totals[bucket];\n      const startedWith",
+    "replace": "    for (const bucket of ['needs'] as const) {\n      const amount = this.#totals[bucket];\n      const startedWith",
+    "why": "10.1 forget wants"
   },
   {
     "section": "10",
@@ -1328,6 +1335,104 @@
     "find": "if (input.bankConnection === 'needs-login') alerts.push",
     "replace": "if (input.bankConnection !== 'needs-login') alerts.push",
     "why": "10.5 alert when the connection is fine"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "BigInt(amount) * 100n < BigInt(startedWith) * percent",
+    "replace": "BigInt(amount) * 100n <= BigInt(startedWith) * percent",
+    "why": "10.1 alert at exactly the level, not only below it"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "BigInt(amount) * 100n < BigInt(startedWith) * percent",
+    "replace": "amount * 100 < startedWith * this.#settings.lowBucketAlertPercent",
+    "why": "10.1 compare with ordinary numbers, which lose cents on huge amounts"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "BigInt(amount) * 100n < BigInt(startedWith) * percent",
+    "replace": "BigInt(amount) < (BigInt(startedWith) * percent) / 100n",
+    "why": "10.1 round the alert level down to a cent before comparing"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "const low = amount > 0 && ",
+    "replace": "const low = amount >= 0 && ",
+    "why": "10.1 give the low alert at zero too, beside the empty one"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "BigInt(amount) * 100n < BigInt(startedWith) * percent",
+    "replace": "BigInt(amount) * 100n < BigInt(this.#opening[bucket]) * percent",
+    "why": "10.1 measure against setup day instead of this pay period's start"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "if (low && this.#lowAlerted[bucket] !== this.#period.number) {",
+    "replace": "if (low && this.#lowAlerted[bucket] === null) {",
+    "why": "10.1 give the low alert only once ever, not once per pay period"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "if (low && this.#lowAlerted[bucket] !== this.#period.number) {",
+    "replace": "if (low) {",
+    "why": "10.1 repeat the low alert every time"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    for (const bucket of newlyLow) this.#lowAlerted[bucket] = this.#period.number;\n",
+    "replace": "",
+    "why": "10.1 never mark the low alert as given"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#periodStart.needs = this.#totals.needs;\n",
+    "replace": "",
+    "why": "10.1 keep the old start for needs after payday"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#periodStart.wants = this.#totals.wants;\n",
+    "replace": "",
+    "why": "10.1 keep the old start for wants after payday"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#periodStart[entry.bucket] = start;\n",
+    "replace": "",
+    "why": "10.1 count a leftover moved to savings in the start"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "const start = subtractCents(this.#periodStart[entry.bucket], entry.amount);",
+    "replace": "const start = addCents(this.#periodStart[entry.bucket], entry.amount);",
+    "why": "10.1 flip the sign when a leftover moves to savings"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#periodStart = { needs, wants };",
+    "replace": "    this.#periodStart = { needs: 0, wants: 0 };",
+    "why": "10.1 start the first pay period from zero instead of setup day"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "        alerts.push({ kind: 'low-bucket', bucket, amount, startedWith });",
+    "replace": "        alerts.unshift({ kind: 'low-bucket', bucket, amount, startedWith });",
+    "why": "10.1 put the low alerts in the wrong order"
   },
   {
     "section": "12",

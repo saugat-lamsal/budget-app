@@ -440,8 +440,14 @@ export class Book {
   readonly #log: ChangeLogEntry[] = [];
   // Numbers hand moves, so each one has its own id.
   #moveCount = 0;
-  // The pay period in which each bucket's empty alert was last given (10.2).
+  // The pay period in which each bucket's low and empty alerts were last
+  // given (10.1, 10.2).
+  readonly #lowAlerted: Record<SplitBucket, number | null> = { needs: null, wants: null };
   readonly #emptyAlerted: Record<SplitBucket, number | null> = { needs: null, wants: null };
+  // What needs and wants started this pay period with (10.1): what payday
+  // left in them, rollover and overspending included, less a leftover you
+  // then moved to savings. Before the first paycheck, what setup day gave.
+  readonly #periodStart: Record<SplitBucket, Cents>;
   #settings: Settings;
   // The split and mom reserve settings in force for this pay period. A
   // change to them waits for the next paycheck (13.1).
@@ -464,6 +470,7 @@ export class Book {
     this.#rules = checkRules(input.rules ?? []);
     this.#lastPaycheckDate = input.lastPaycheckDate;
     this.#period = { number: 0, startDate: input.date };
+    this.#periodStart = { needs, wants };
     for (const txn of input.countedAtSetup ?? []) this.#countAtSetup(txn);
     for (const txn of input.inTransitAtSetup ?? []) this.#inTransitAtSetup(txn);
   }
@@ -552,6 +559,11 @@ export class Book {
 
   period(): Period {
     return this.#period;
+  }
+
+  // Rule 10.1: what needs and wants started this pay period with.
+  startedPeriodWith(): { readonly needs: Cents; readonly wants: Cents } {
+    return Object.freeze({ ...this.#periodStart });
   }
 
   lastPaycheckDate(): IsoDate {
@@ -646,12 +658,27 @@ export class Book {
     return { shouldBeInSavings, savingsAccountBalance, stillToMove };
   }
 
-  // Section 10: the alerts due now. The empty-bucket alert comes once per
-  // bucket per pay period (10.2), so taking it marks it as given until the
-  // next paycheck. The others come every time they are due.
+  // Section 10: the alerts due now. The low and empty bucket alerts come
+  // once per bucket per pay period (10.1, 10.2), so taking one marks it as
+  // given until the next paycheck. The others come every time they are due.
   takeAlerts(input: AlertInput): Alert[] {
     const alerts: Alert[] = [];
+    const newlyLow: SplitBucket[] = [];
     const newlyEmpty: SplitBucket[] = [];
+    // 10.1: needs or wants below the alert level, a percent of what the
+    // bucket started the pay period with, compared to the exact cent. At
+    // zero or below the empty alert covers it, and a bucket that started at
+    // zero or below has no level above zero to fall under.
+    const percent = BigInt(this.#settings.lowBucketAlertPercent);
+    for (const bucket of ['needs', 'wants'] as const) {
+      const amount = this.#totals[bucket];
+      const startedWith = this.#periodStart[bucket];
+      const low = amount > 0 && BigInt(amount) * 100n < BigInt(startedWith) * percent;
+      if (low && this.#lowAlerted[bucket] !== this.#period.number) {
+        alerts.push({ kind: 'low-bucket', bucket, amount, startedWith });
+        newlyLow.push(bucket);
+      }
+    }
     // 10.2: needs or wants at zero or below.
     for (const bucket of ['needs', 'wants'] as const) {
       const amount = this.#totals[bucket];
@@ -669,6 +696,7 @@ export class Book {
     // 10.5
     if (input.bankConnection === 'needs-login') alerts.push({ kind: 'bank-login' });
     // Marked only once everything above worked, so a refused call gives nothing.
+    for (const bucket of newlyLow) this.#lowAlerted[bucket] = this.#period.number;
     for (const bucket of newlyEmpty) this.#emptyAlerted[bucket] = this.#period.number;
     return alerts;
   }
@@ -1082,6 +1110,8 @@ export class Book {
     this.#add(entry, { momReserve: split.momReserve, savings: split.savings, needs: split.needs, wants: split.wants });
     this.#paychecks.push({ id: txn.id, date: txn.date, amount: txn.amount, split });
     this.#period = { number: this.#period.number + 1, startDate: txn.date };
+    this.#periodStart.needs = this.#totals.needs;
+    this.#periodStart.wants = this.#totals.wants;
     this.#lastPaycheckDate = txn.date;
   }
 
@@ -1140,8 +1170,15 @@ export class Book {
     this.#review.delete(id);
   }
 
+  // Moving a leftover to savings also takes it out of what the bucket
+  // started this pay period with (10.1). Set automatically, it moves before
+  // the new pay period's start is counted.
   #answerLeftover(entry: LeftoverEntry, answer: LeftoverAnswer): void {
-    if (answer === 'move-to-savings') this.#setEffect(entry, { [entry.bucket]: -entry.amount, savings: entry.amount });
+    if (answer === 'move-to-savings') {
+      const start = subtractCents(this.#periodStart[entry.bucket], entry.amount);
+      this.#setEffect(entry, { [entry.bucket]: -entry.amount, savings: entry.amount });
+      this.#periodStart[entry.bucket] = start;
+    }
     entry.answer = answer;
   }
 

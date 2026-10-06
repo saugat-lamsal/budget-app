@@ -28,7 +28,7 @@ number so a test can point at it. Nothing gets coded until you approve this.
 - Split: savings 50%, needs 30%, wants 20% (must add up to 100)
 - Mom reserve: $1,500 per paycheck, capped at $3,000
 - Mom monthly target: $2,000 to $3,000
-- Low-bucket alert: 20% left
+- Low-bucket alert: 20% of what the bucket started the pay period with
 - Card reminders: 7 days and 2 days before the due date
 - Daily review time: 8:00 PM
 - Leftover at payday: ask each time (other options: always roll over,
@@ -151,7 +151,10 @@ number so a test can point at it. Nothing gets coded until you approve this.
 ## 10. Alerts
 
 10.1  Low bucket: needs or wants falls below the alert level. Once per bucket
-      per pay period.
+      per pay period. The level is 20% of what the bucket started the pay
+      period with, including what rolled over. If a bucket starts the pay
+      period at zero or below, there is no low alert; the empty alert
+      (10.2) covers it.
 10.2  Empty bucket: needs or wants reaches zero or below. Once per bucket
       per pay period.
 10.3  Daily review: sent at the review time, only if something is unsorted.
@@ -261,3 +264,6 @@ a.  Money in from review: "this is my paycheck" starts a new pay period,
     (6.1).
 b.  Old card: payments since the statement add up. Reminders and the
     overdue alert stop once they total at least the minimum (9.3, 9.4).
+c.  Low bucket alert: 20% of what the bucket started the pay period with,
+    including rollover. A bucket that starts at zero or below gets no low
+    alert; the empty alert covers it (10.1).

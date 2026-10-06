@@ -97,21 +97,12 @@ A7. Old card payoff countdown (9.5). Not built yet; it shows "off".
     it; b. round up to the cent; c. yes, the whole balance; d. the debt the
     app tracks.
 
-A8. Low bucket alert (10.1). Skipped.
-    "20% left" does not say 20% of what. Buckets carry money over (3.4),
-    carry overspending over (3.5), and get paybacks and hand moves during
-    the period, so "what the bucket had" is not one obvious number.
-    Option 1: 20% of what the bucket held right after the last payday
-    (the new share plus anything carried over).
-    Option 2: 20% of the new share from the last paycheck only.
-    Option 3: option 1, plus anything added during the period (paybacks,
-    hand moves in).
-    Also: if a bucket started the period at zero or below, should the low
-    alert be skipped and the empty alert (10.2) cover it?
-    And: "falls below" means strictly below, so exactly 20% left does not
-    alert. Right?
-    Recommendation: option 1; yes, skip it when the bucket started at zero
-    or below; yes, strictly below.
+A8. ANSWERED Oct 6, built. Low bucket alert (10.1).
+    Your answer: 20% of what the bucket started the pay period with,
+    including rollover. If a bucket starts at zero or below, skip the low
+    alert; the empty alert covers it. Rulebook 10.1, section 2 and 18c
+    updated. Worked example 16. The readings I had to pick while building
+    it are B56 to B58.
 
 A9. Setting the paycheck rule or the mom rule after the first sync.
     Section 2 says the paycheck rule is "set after first sync", so the
@@ -419,3 +410,19 @@ B55. A deposit rule (6.2) and "always do this" (13.6) can pick other
      the app which deposits are paychecks is the job of the paycheck rule
      in settings (section 2), which keeps the 10-day check (3.7). A rule
      that skipped it would split a mistaken second deposit automatically.
+
+B56. "What the bucket started the pay period with" (10.1) is what was in
+     it right after the paycheck split, rollover and carried-over
+     overspending included. A leftover you then move to savings (3.4)
+     comes out of it, since it did not roll over. Paybacks and hand moves
+     during the pay period do not change it. Before the first paycheck,
+     it is what you gave the bucket on setup day.
+
+B57. "Falls below" is strictly below, to the exact cent: with a start of
+     899.99, the level is 179.998, so 180.00 left does not alert and
+     179.99 does.
+
+B58. At zero or below only the empty alert comes, never both at once. If
+     money then comes back in (a payback, a hand move) and the bucket is
+     above zero but still under the level, the low alert comes then, if
+     it has not come yet this pay period.

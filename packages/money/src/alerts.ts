@@ -3,11 +3,11 @@ import type { BankBalances } from './self-check.js';
 
 // Rulebook section 10: the alerts due right now (Book.takeAlerts). Sending
 // each one to the phone at the right time is Phase 5.
-//
-// 10.1 (low bucket) is not built: what "20% left" is measured against is an
-// open question (QUESTIONS.md A8).
 
 export type Alert =
+  // 10.1: amount is what is left; startedWith is what the bucket started
+  // the pay period with, which the alert level is a percent of.
+  | { readonly kind: 'low-bucket'; readonly bucket: 'needs' | 'wants'; readonly amount: Cents; readonly startedWith: Cents }
   | { readonly kind: 'empty-bucket'; readonly bucket: 'needs' | 'wants'; readonly amount: Cents }
   | { readonly kind: 'daily-review'; readonly at: string; readonly waiting: number }
   | { readonly kind: 'totals-mismatch'; readonly difference: Cents }

@@ -494,3 +494,33 @@ Step 3. Oct 6: 300.00 arrives from "ACME PAYROLL". It matches the
         Next payday is still Oct 16.
 
 Check: savings 1,000.00 | needs 440.00 | wants 160.00 | mom reserve 2,500.00 | unsorted money in 0.00
+
+
+========================================================================
+EXAMPLE 16. Low and empty bucket alerts (rules 10.1, 10.2, 3.4, 3.5)
+========================================================================
+
+Before: Needs 50.00 left from last pay period | Wants -20.00 (overspent)
+        Leftover at payday: always roll over. Low-bucket alert: 20%.
+
+Step 1. A 4,000.00 paycheck. Reserve 1,500.00, rest 2,500.00:
+        Savings 1,250.00 | Needs 750.00 | Wants 500.00
+        Needs   50.00 + 750.00 = 800.00 (the 50.00 rolled over)
+        Wants  -20.00 + 500.00 = 480.00 (the overspending carried over)
+        That is what each bucket started this pay period with (10.1).
+        Needs alert level: 20% of 800.00 = 160.00
+        Wants alert level: 20% of 480.00 =  96.00
+
+Step 2. Groceries 640.00 from needs. Needs 800.00 - 640.00 = 160.00.
+        Exactly at the level is not below it, so no alert.
+
+Step 3. A 0.01 charge from needs. Needs 159.99, below 160.00: the low
+        alert for needs. It comes once this pay period.
+
+Step 4. Concert tickets 385.00 from wants. Wants 480.00 - 385.00 = 95.00,
+        below 96.00: the low alert for wants.
+
+Step 5. Dinner 95.00 from wants. Wants 0.00: the empty alert for wants
+        (10.2). At zero the empty alert covers it; no second low alert.
+
+Check: needs 159.99 | wants 0.00 | needs started with 800.00 | wants started with 480.00 | needs low alert at 159.99 | wants low alert at 95.00 | wants empty alert at 0.00

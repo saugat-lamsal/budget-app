@@ -194,6 +194,22 @@ const moneyInStepArb: fc.Arbitrary<Step> = fc.oneof(
   { arbitrary: resortMoneyInStepArb, weight: 2 },
 );
 
+// Lots of sorted spending, so buckets run low and empty often (10.1, 10.2).
+const spendingStepArb: fc.Arbitrary<Step> = fc.oneof(
+  { arbitrary: stepArb, weight: 3 },
+  {
+    arbitrary: fc.record({
+      type: fc.constant('purchase' as const),
+      gap: fc.integer({ min: 0, max: 2 }),
+      amount: fc.integer({ min: 1, max: 60_000 }),
+      account: fc.constantFrom('checking' as const, 'everyday-card' as const),
+      pending: fc.boolean(),
+      description: fc.constantFrom('MADE UP GROCER', 'MADE UP CAFE'),
+    }),
+    weight: 6,
+  },
+);
+
 const potArb = fc.integer({ min: -1_000_000, max: 10_000_000 });
 const openingArb = fc.record({ savings: potArb, needs: potArb, wants: potArb, momReserve: fc.integer({ min: 0, max: 400_000 }), heldForOthers: potArb });
 
@@ -242,6 +258,8 @@ function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: read
   const pending: Purchase[] = [...pendingAtSetup];
   // Transfers with one half sent so far, waiting for the other (12.5).
   const halfDone: HalfDone[] = [...inTransitAtSetup];
+  // The low and empty alerts given, as "period bucket kind" (10.1, 10.2).
+  const given = new Set<string>();
   // Money in that can be sorted and re-sorted (not paychecks or matched refunds).
   const moneyIn: { id: string; date: IsoDate; isRefund: boolean }[] = [];
   // Sorts money in. Once it is your paycheck it is final (6.1).
@@ -422,6 +440,22 @@ function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: read
     // however it was found, started one pay period (3.1, 6.1).
     for (const p of book.paychecks()) expect(p.split.momReserve + p.split.savings + p.split.needs + p.split.wants).toBe(p.amount);
     expect(book.period().number).toBe(book.paychecks().length);
+    // Taking the alerts every step, like a day each: the low and empty
+    // alerts come at most once per bucket per pay period, and only when due.
+    for (const alert of book.takeAlerts({ bankConnection: 'ok', bankBalances: bank })) {
+      if (alert.kind !== 'low-bucket' && alert.kind !== 'empty-bucket') continue;
+      const key = `${book.period().number} ${alert.bucket} ${alert.kind}`;
+      expect(given.has(key), key).toBe(false);
+      given.add(key);
+      expect(alert.amount).toBe(book.pots()[alert.bucket]);
+      if (alert.kind === 'empty-bucket') {
+        expect(alert.amount).toBeLessThanOrEqual(0);
+      } else {
+        expect(alert.amount).toBeGreaterThan(0);
+        expect(alert.startedWith).toBe(book.startedPeriodWith()[alert.bucket]);
+        expect(BigInt(alert.amount) * 100n < BigInt(alert.startedWith) * BigInt(book.settings().lowBucketAlertPercent)).toBe(true);
+      }
+    }
     // The running totals always equal a recount from scratch.
     expect(book.recountPots()).toEqual(book.pots());
     expect(book.recountOldCardDebt()).toBe(book.oldCardDebt());
@@ -438,6 +472,27 @@ describe('random scenarios: the whole book', () => {
         runLife(book, bank, steps);
       }),
       { numRuns: 500 },
+    );
+  });
+});
+
+describe('random scenarios: low and empty buckets (10.1, 10.2)', () => {
+  it('10.1 the low and empty alerts come once per bucket per pay period, only when due, through heavy spending', () => {
+    const smallPotArb = fc.integer({ min: -50_000, max: 200_000 });
+    fc.assert(
+      fc.property(
+        fc.record({ savings: potArb, needs: smallPotArb, wants: smallPotArb, momReserve: fc.integer({ min: 0, max: 400_000 }), heldForOthers: potArb }),
+        leftoverChoiceArb,
+        leftoverChoiceArb,
+        fc.integer({ min: 0, max: 100 }),
+        fc.array(spendingStepArb, { maxLength: 60 }),
+        (pots, needs, wants, lowBucketAlertPercent, steps) => {
+          const book = openTestBook({ pots, rules: RULES, oldCardDebt: 300_000, settings: { lowBucketAlertPercent, leftoverAtPayday: { needs, wants } } });
+          const bank = new TestBank({ checking: appSide(book.pots()), oldCard: 300_000 });
+          runLife(book, bank, steps);
+        },
+      ),
+      { numRuns: 300 },
     );
   });
 });

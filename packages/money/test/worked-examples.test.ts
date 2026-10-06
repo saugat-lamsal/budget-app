@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseDollars, startTracking, withPendingCharges, type Book, type Cents } from '../src/index.js';
 import text from '../worked-examples.txt?raw';
-import { MOM_NAME, TEST_SETTINGS, arrived, cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, sent, transfer } from './helpers.js';
+import { MOM_NAME, TEST_SETTINGS, appSide, arrived, cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, sent, transfer } from './helpers.js';
 
 interface Example {
   number: number;
@@ -251,6 +251,40 @@ const examples: Record<number, () => Record<string, Cents>> = {
     book.sort('bonus', { to: 'other-income' }, '2026-10-06');
     if (book.safeToSpend('2026-10-06').nextPayday !== '2026-10-16') throw new Error('other income does not move the pay schedule');
     return buckets(book);
+  },
+  16: () => {
+    const book = openTestBook({
+      pots: { needs: parseDollars('50.00'), wants: parseDollars('-20.00') },
+      settings: { leftoverAtPayday: { needs: 'roll-over', wants: 'roll-over' } },
+      rules: [
+        { id: 'needs', for: 'purchase', contains: 'GROCER', bucket: 'needs' },
+        { id: 'wants', for: 'purchase', contains: 'FUN', bucket: 'wants' },
+      ],
+    });
+    const found: Record<string, Cents> = {};
+    const take = (): void => {
+      const bankBalances = { checking: appSide(book.pots()), savings: 0, everydayCard: 0 };
+      for (const alert of book.takeAlerts({ bankConnection: 'ok', bankBalances })) {
+        if (alert.kind === 'low-bucket' || alert.kind === 'empty-bucket') {
+          const name = `${alert.bucket} ${alert.kind === 'low-bucket' ? 'low' : 'empty'} alert at`;
+          if (name in found) throw new Error(`${name} came twice`);
+          found[name] = alert.amount;
+        }
+      }
+    };
+    book.receive(paycheck('pay', '2026-10-09', parseDollars('4,000.00')));
+    const started = book.startedPeriodWith();
+    take();
+    for (const [id, amount, what] of [
+      ['groceries', '640.00', 'MADE UP GROCER'],
+      ['charge', '0.01', 'MADE UP GROCER'],
+      ['concert', '385.00', 'MADE UP FUN'],
+      ['dinner', '95.00', 'MADE UP FUN'],
+    ] as const) {
+      book.receive(purchase(id, '2026-10-10', parseDollars(amount), what));
+      take();
+    }
+    return { ...buckets(book), 'needs started with': started.needs, 'wants started with': started.wants, ...found };
   },
 };
 
