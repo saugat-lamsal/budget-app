@@ -103,7 +103,7 @@ describe('7.4 payments to people go to the daily review unless there is a rule f
   it('7.4 a payment to a person can be sorted to needs, wants, or not mine, and nothing else', () => {
     const b = book();
     b.receive(payPerson('z1', '2026-10-06', 2_500, 'MADE UP FRIEND'));
-    for (const choice of [{ to: 'savings' }, { to: 'income' }, { to: 'momReserve' }, { split: [{ bucket: 'needs', amount: 2_500 }] }]) {
+    for (const choice of [{ to: 'savings' }, { to: 'other-income' }, { to: 'paycheck' }, { to: 'momReserve' }, { split: [{ bucket: 'needs', amount: 2_500 }] }]) {
       expect(codeOf(() => b.sort('z1', choice as never, '2026-10-07')), JSON.stringify(choice)).toBe('bad-choice');
     }
     b.sort('z1', { to: 'needs' }, '2026-10-07');
@@ -111,7 +111,7 @@ describe('7.4 payments to people go to the daily review unless there is a rule f
   });
 
   it('7.4 a person rule must pick needs, wants, or not mine', () => {
-    for (const choice of [{ to: 'savings' }, { to: 'income' }, { to: 'unsorted' }]) {
+    for (const choice of [{ to: 'savings' }, { to: 'other-income' }, { to: 'paycheck' }, { to: 'unsorted' }]) {
       expect(codeOf(() => book({ rules: [{ id: 'x', for: 'person', contains: 'A', choice } as never] })), JSON.stringify(choice)).toBe('bad-rule');
     }
   });

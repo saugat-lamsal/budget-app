@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 4)
+# Budget App Rulebook (draft 5)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -94,10 +94,16 @@ number so a test can point at it. Nothing gets coded until you approve this.
 
 ## 6. Deposits that are not a paycheck
 
-6.1  They always go to review, with three choices:
-     - Income: treated like a paycheck (reserve, then split)
+6.1  They always go to review, with four choices:
+     - This is my paycheck: starts a new pay period like any paycheck
+       (3.1 to 3.5): the mom reserve first, then the split
+     - Other income: split by the percentages only. No mom reserve is
+       taken and no new pay period starts. The reserve comes only from
+       paychecks.
      - Payback: goes into the bucket you pick
      - Not mine: goes to "held for others"
+     A paycheck-looking deposit held back under 3.7 gets the same
+     choices.
 6.2  A rule can make the choice automatic for a known source.
 
 
@@ -243,3 +249,11 @@ d.  A hand move that would take any bucket below zero asks you to confirm
     first (13.4).
 e.  Everyday card reminders continue until the full statement balance is
     paid. The old card stays at the minimum (9.3).
+
+
+## 18. Answers to the Phase 1 questions (Oct 6, 2026)
+
+a.  Money in from review: "this is my paycheck" starts a new pay period,
+    with the mom reserve first and then the split. "Other income" is
+    split by the percentages only: no mom reserve, no new pay period
+    (6.1).

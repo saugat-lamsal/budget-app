@@ -102,8 +102,8 @@ const examples: Record<number, () => Record<string, Cents>> = {
   },
   7: () => {
     const book = openTestBook({ pots: { momReserve: parseDollars('2,800.00') } });
-    book.receive(deposit('tax', '2026-10-05', parseDollars('2,000.00'), 'MADE UP TAX REFUND'));
-    book.sort('tax', { to: 'income' }, '2026-10-05');
+    book.receive(deposit('tax', '2026-10-05', parseDollars('2,000.01'), 'MADE UP TAX REFUND'));
+    book.sort('tax', { to: 'other-income' }, '2026-10-05');
     book.receive(deposit('friend', '2026-10-06', parseDollars('25.00'), 'MADE UP FRIEND'));
     book.sort('friend', { to: 'wants' }, '2026-10-06');
     book.receive(deposit('roommate', '2026-10-07', parseDollars('60.00'), 'MADE UP ROOMMATE'));
@@ -236,6 +236,21 @@ const examples: Record<number, () => Record<string, Cents>> = {
       'old card debt': book.oldCardDebt(),
       'safe to spend': shown.safeToSpend.amount,
     };
+  },
+  15: () => {
+    const book = openTestBook({
+      lastPaycheckDate: '2026-09-25',
+      pots: { savings: parseDollars('500.00'), needs: parseDollars('200.00'), wants: parseDollars('100.00'), momReserve: parseDollars('1,000.00') },
+    });
+    book.receive(deposit('new-job', '2026-10-02', parseDollars('2,000.00'), 'MADE UP NEW EMPLOYER'));
+    book.sort('new-job', { to: 'paycheck' }, '2026-10-02');
+    if (book.safeToSpend('2026-10-02').nextPayday !== '2026-10-16') throw new Error('the pay schedule should count from Oct 2');
+    book.answerLeftover('leftover:new-job:needs', 'roll-over', '2026-10-02');
+    book.answerLeftover('leftover:new-job:wants', 'move-to-savings', '2026-10-02');
+    if (book.receive(paycheck('bonus', '2026-10-06', parseDollars('300.00'))).outcome !== 'review') throw new Error('4 days after a paycheck goes to review');
+    book.sort('bonus', { to: 'other-income' }, '2026-10-06');
+    if (book.safeToSpend('2026-10-06').nextPayday !== '2026-10-16') throw new Error('other income does not move the pay schedule');
+    return buckets(book);
   },
 };
 

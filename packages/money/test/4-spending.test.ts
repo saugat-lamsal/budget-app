@@ -114,7 +114,7 @@ describe('4.3 unsorted spending is held back until you sort it', () => {
   it('4.3 spending can be sorted only to needs or wants', () => {
     const b = book();
     b.receive(purchase('e1', '2026-10-03', 100, 'MADE UP HARDWARE'));
-    for (const to of ['savings', 'momReserve', 'income', 'unsorted', 'nope']) {
+    for (const to of ['savings', 'momReserve', 'other-income', 'paycheck', 'unsorted', 'nope']) {
       expect(codeOf(() => b.sort('e1', { to } as never, '2026-10-04')), to).toBe('bad-choice');
     }
     expect(b.pots().unsortedOut).toBe(100);

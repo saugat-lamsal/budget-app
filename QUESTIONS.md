@@ -57,22 +57,13 @@ A4. A payment to the old card from savings instead of checking (5.2).
     Option 3 (now): review each time.
     Recommendation: option 2.
 
-A5. Does "income" from review start a new pay period? (6.1 with 3.1, 3.7)
-    6.1 says income is "treated like a paycheck (reserve, then split)".
-    It does not say whether it also starts a new pay period, which would
-    ask the leftover question (3.4), restart the 14-day schedule (11.2),
-    and restart the 10-day count (3.7).
-    Now: reserve, then split, and nothing else. No new pay period.
-    This matters most for a real paycheck that arrives early (3.7), for
-    example before a holiday. Today it goes to review, and "income" splits
-    it but does not restart the schedule, so the next payday shown would be
-    off.
-    Option 1 (now): income never starts a new pay period.
-    Option 2: income always starts one.
-    Option 3: add a fourth choice for 3.7 items only, "this is my
-    paycheck", which splits it and starts a new pay period. A bonus or tax
-    refund stays plain income.
-    Recommendation: option 3.
+A5. ANSWERED Oct 6, built. Does "income" from review start a new pay
+    period? (6.1 with 3.1, 3.7)
+    Your answer: two choices instead of "income". "This is my paycheck"
+    starts a new pay period: mom reserve first, then the split. "Other
+    income" is split by the percentages only: no mom reserve taken, no
+    new pay period. Rulebook 6.1 and 18a updated. Worked examples 7 and
+    15. The readings I had to pick while building it are B52 to B55.
 
 A6. Paying the old card in more than one payment (9.3), and payments
     below the minimum (9.4).
@@ -402,3 +393,30 @@ B51. The below-zero check (13.4) looks at the bucket the money comes out
      it is already below zero and more would come out. Leaving it at
      exactly zero does not ask. Moving money into a bucket that is below
      zero never asks.
+
+
+## Part B, added with your part A answers (Oct 6). Tell me if any is wrong.
+
+B52. "This is my paycheck" (6.1) works for any deposit in review: a 3.7
+     early paycheck, or a deposit the paycheck rule did not recognize
+     (a new employer, say). It also works on a deposit you had already
+     sorted another way; that earlier choice is undone first. Once it is
+     your paycheck it is final, like any paycheck: it cannot be re-sorted,
+     because the pay period it started may already have leftover answers
+     and spending in it.
+
+B53. The new pay period starts on the day the deposit arrived, not the
+     day you answer. So the 14-day schedule (11.2) and the 10-day check
+     (3.7) count from that day, and the leftover question covers what was
+     in each bucket when you answered.
+
+B54. A deposit older than the last paycheck cannot be "this is my
+     paycheck", since pay periods would then run backwards. The app says
+     so and the deposit keeps waiting; it can still be other income. A
+     deposit on the same day as the last paycheck can be your paycheck.
+
+B55. A deposit rule (6.2) and "always do this" (13.6) can pick other
+     income, payback, or not mine, but not "this is my paycheck". Telling
+     the app which deposits are paychecks is the job of the paycheck rule
+     in settings (section 2), which keeps the 10-day check (3.7). A rule
+     that skipped it would split a mistaken second deposit automatically.

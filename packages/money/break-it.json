@@ -254,8 +254,8 @@
   {
     "section": "3",
     "file": "packages/money/src/book.ts",
-    "find": "stillToMove: subtractCents(shouldBeInSavings, savingsAccountBalance)",
-    "replace": "stillToMove: subtractCents(savingsAccountBalance, shouldBeInSavings)",
+    "find": "const stillToMove = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));",
+    "replace": "const stillToMove = subtractCents(addCents(savingsAccountBalance, ...onItsWay), shouldBeInSavings);",
     "why": "3.8 flip the sign of still-to-move"
   },
   {
@@ -408,15 +408,22 @@
   {
     "section": "5",
     "file": "packages/money/src/book.ts",
-    "find": "txn.from === 'checking' ? { to: 'needs' } : { to: 'unsorted' }",
-    "replace": "txn.from === 'checking' ? { to: 'wants' } : { to: 'unsorted' }",
+    "find": "return this.#addSpending(txn, 'debt-payoff', txn.from === 'checking' ? { to: 'needs' } : { to: 'unsorted' });",
+    "replace": "return this.#addSpending(txn, 'debt-payoff', txn.from === 'checking' ? { to: 'wants' } : { to: 'unsorted' });",
     "why": "5.2 take old card payments from wants"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "received = this.#addSpending(txn, 'debt-payoff', txn.from === 'checking' ? { to: 'needs' } : { to: 'unsorted' });",
+    "replace": "received = this.#addSpending(txn, 'debt-payoff', txn.from === 'checking' ? { to: 'wants' } : { to: 'unsorted' });",
+    "why": "12.5 take an old card payment on its way from wants instead of needs (5.2)"
   },
   {
     "section": "5",
     "file": "packages/money/src/book.ts",
-    "find": "if (entry.spendingKind === 'debt-payoff') effect.oldCardDebt = -entry.amount;",
-    "replace": "if (entry.spendingKind === 'debt-payoff') effect.oldCardDebt = entry.amount;",
+    "find": "if (entry.spendingKind === 'debt-payoff' && entry.txn.kind === 'transfer') effect.oldCardDebt = -entry.amount;",
+    "replace": "if (entry.spendingKind === 'debt-payoff' && entry.txn.kind === 'transfer') effect.oldCardDebt = entry.amount;",
     "why": "5.2 raise the debt when paying it"
   },
   {
@@ -464,8 +471,8 @@
   {
     "section": "5",
     "file": "packages/money/src/book.ts",
-    "find": "if (entry.txn.kind === 'transfer' && entry.txn.from === 'checking') {",
-    "replace": "if (entry.txn.kind === 'transfer' && entry.txn.from === 'savings') {",
+    "find": "if ((entry.txn.kind === 'transfer' || entry.txn.kind === 'transfer-sent') && entry.txn.from === 'checking') {",
+    "replace": "if ((entry.txn.kind === 'transfer' || entry.txn.kind === 'transfer-sent') && entry.txn.from === 'savings') {",
     "why": "5.2 let the debt payoff line be re-sorted"
   },
   {
@@ -506,23 +513,23 @@
   {
     "section": "6",
     "file": "packages/money/src/book.ts",
-    "find": "if (entry.reason === 'refund') throw new MoneyError('bad-choice', 'a store refund is not income');",
+    "find": "if (txn.kind === 'refund') throw new MoneyError('bad-choice', 'a store refund is not income');",
     "replace": "",
     "why": "6.1 let a store refund be income"
   },
   {
     "section": "6",
     "file": "packages/money/src/book.ts",
-    "find": "const reserveNow = subtractCents(this.#totals.momReserve, entry.effect.momReserve ?? 0);",
-    "replace": "const reserveNow = this.#totals.momReserve;",
-    "why": "6.1 count an income entry's own reserve when re-sorting it"
+    "find": "incomeSplit = splitPaycheck(amount, this.#totals.momReserve, { ...this.#periodSplit, momReservePerPaycheck: 0 });",
+    "replace": "incomeSplit = splitPaycheck(amount, this.#totals.momReserve, this.#periodSplit);",
+    "why": "6.1 take the mom reserve from other income"
   },
   {
     "section": "6",
     "file": "packages/money/src/book.ts",
     "find": "effect = { momReserve: incomeSplit.momReserve, savings: incomeSplit.savings, needs: incomeSplit.needs, wants: incomeSplit.wants };",
-    "replace": "effect = { savings: incomeSplit.momReserve + incomeSplit.savings, needs: incomeSplit.needs, wants: incomeSplit.wants };",
-    "why": "6.1 skip the mom reserve for income"
+    "replace": "effect = { momReserve: incomeSplit.momReserve, savings: incomeSplit.savings, needs: incomeSplit.wants, wants: incomeSplit.needs };",
+    "why": "6.1 swap needs and wants for other income"
   },
   {
     "section": "6",
@@ -534,9 +541,79 @@
   {
     "section": "6",
     "file": "packages/money/src/rules.ts",
-    "find": "return choice.to === 'income' || choice.to === 'not-mine' || isBucket(choice.to);",
-    "replace": "return choice.to === 'income' || choice.to === 'not-mine' || isBucket(choice.to) || choice.to === 'unsorted';",
-    "why": "6.1 accept a fourth choice"
+    "find": "return choice.to === 'other-income' || choice.to === 'not-mine' || isBucket(choice.to);",
+    "replace": "return choice.to === 'other-income' || choice.to === 'not-mine' || isBucket(choice.to) || choice.to === 'unsorted';",
+    "why": "6.1 accept an extra choice"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/rules.ts",
+    "find": " || (typeof choice === 'object' && choice !== null && 'to' in choice && choice.to === 'paycheck')",
+    "replace": "",
+    "why": "6.1 refuse \"this is my paycheck\""
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#remove(entry);\n    this.#payday(txn);",
+    "replace": "    this.#sortMoneyIn(entry, { to: 'other-income' });",
+    "why": "6.1 treat \"this is my paycheck\" as other income (no reserve, no new pay period)"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "if (daysBetween(this.#lastPaycheckDate, txn.date) < 0) {\n      throw new MoneyError('bad-choice', `${txn.id} is older",
+    "replace": "if (daysBetween(this.#lastPaycheckDate, txn.date) < -30) {\n      throw new MoneyError('bad-choice', `${txn.id} is older",
+    "why": "6.1 let a deposit older than the last paycheck start a pay period"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "if (daysBetween(this.#lastPaycheckDate, txn.date) < 0) {\n      throw new MoneyError('bad-choice', `${txn.id} is older",
+    "replace": "if (daysBetween(this.#lastPaycheckDate, txn.date) <= 0) {\n      throw new MoneyError('bad-choice', `${txn.id} is older",
+    "why": "6.1 shift the older-than-last-paycheck boundary by one day"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#checkPaydayFits(txn, entry.effect);\n    this.#remove(entry);",
+    "replace": "    this.#remove(entry);",
+    "why": "6.1 skip the size check before taking a deposit out of review"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#checkPaydayFits(txn, entry.effect);\n    this.#remove(entry);",
+    "replace": "    this.#checkPaydayFits(txn);\n    this.#remove(entry);",
+    "why": "6.1 check the size with the deposit's earlier choice still counted"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#checkPaydayFits(txn, entry.effect);\n    this.#remove(entry);",
+    "replace": "    this.#checkPaydayFits(txn, entry.effect);\n    this.#forget(entry.id);",
+    "why": "6.1 leave the deposit's earlier choice in the buckets"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "subtractCents(t[name], without[name] ?? 0)",
+    "replace": "addCents(t[name], without[name] ?? 0)",
+    "why": "6.1 flip the sign when taking back the earlier choice in the size check"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/rules.ts",
+    "find": "if (!isDepositRuleChoice(rule.choice)) bad(",
+    "replace": "if (!isMoneyInChoice(rule.choice)) bad(",
+    "why": "6.2 let a deposit rule say \"this is my paycheck\""
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (!isDepositRuleChoice(choice)) {\n        throw new MoneyError('bad-choice', 'a deposit rule picks",
+    "replace": "      if (!isMoneyInChoice(choice)) {\n        throw new MoneyError('bad-choice', 'a deposit rule picks",
+    "why": "13.6 let \"always do this\" make a paycheck rule"
   },
   {
     "section": "6",
@@ -590,9 +667,16 @@
   {
     "section": "7",
     "file": "packages/money/src/book.ts",
-    "find": "if (!isPersonPaymentChoice(choice)) throw",
-    "replace": "if (false) throw",
+    "find": "      if (!isPersonPaymentChoice(choice)) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');\n      entry.sortedTo",
+    "replace": "      if (false) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');\n      entry.sortedTo",
     "why": "7.4 let a payment to a person be split or sent to savings"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (!isPersonPaymentChoice(choice)) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');\n      newRule",
+    "replace": "      if (false) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');\n      newRule",
+    "why": "13.6 let \"always do this\" make a person rule that splits or picks savings"
   },
   {
     "section": "7",
@@ -863,9 +947,9 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "incomeSplit = splitPaycheck(amount, reserveNow, this.#periodSplit);",
-    "replace": "incomeSplit = splitPaycheck(amount, reserveNow, this.#settings);",
-    "why": "13.1 apply a split change to income before the next paycheck"
+    "find": "incomeSplit = splitPaycheck(amount, this.#totals.momReserve, { ...this.#periodSplit, momReservePerPaycheck: 0 });",
+    "replace": "incomeSplit = splitPaycheck(amount, this.#totals.momReserve, { ...splitSettingsOf(this.#settings), momReservePerPaycheck: 0 });",
+    "why": "13.1 apply a split change to other income before the next paycheck"
   },
   {
     "section": "13",

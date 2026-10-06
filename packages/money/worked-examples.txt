@@ -203,25 +203,25 @@ Check: savings 1,000.00 | needs 700.00 | mom reserve 500.00 | old card debt 2,84
 
 
 ========================================================================
-EXAMPLE 7. Money in that is not a paycheck (rules 6.1, 3.2, 3.3)
+EXAMPLE 7. Money in that is not a paycheck (rules 6.1, 3.3)
 ========================================================================
 
 Before: Mom reserve 2,800.00. Everything else 0.00.
 
-Step 1. A 2,000.00 tax refund arrives. It is not a paycheck, so it waits
-        in review as unsorted money in (6.1). You pick "income", so it is
-        treated like a paycheck: reserve first, then the split.
-        The reserve takes 1,500.00 off the top, but only 200.00 fits under
-        the 3,000.00 cap (3,000.00 - 2,800.00).
-        To mom reserve                            200.00
-        Does not fit, goes to savings           1,300.00
-        Rest to split (2,000.00 - 1,500.00)       500.00
-        Savings 50% = 250.00 | Needs 30% = 150.00 | Wants 20% = 100.00
-        Savings 1,300.00 + 250.00 = 1,550.00
+Step 1. A 2,000.01 tax refund arrives. It is not a paycheck, so it waits
+        in review as unsorted money in (6.1). You pick "other income", so
+        it is split by the percentages only. No mom reserve is taken: the
+        reserve comes only from paychecks.
+        Savings 50% = 1,000.00 (1,000.005 rounded down)
+        Needs   30% =   600.00 (600.003 rounded down)
+        Wants   20% =   400.00 (400.002 rounded down)
+        Left over from rounding: 2,000.01 - 2,000.00 = 0.01, to savings
+        Savings 1,000.00 + 0.01 = 1,000.01
+        Mom reserve stays 2,800.00
 
 Step 2. A friend pays you back 25.00 for lunch. You pick "payback" into
         wants.
-        Wants  100.00 + 25.00 = 125.00
+        Wants  400.00 + 25.00 = 425.00
 
 Step 3. Your roommate sends 60.00 for a utility bill you will pay for
         them. You pick "not mine", so it goes to held for others (7.1).
@@ -229,7 +229,7 @@ Step 3. Your roommate sends 60.00 for a utility bill you will pay for
 
 Nothing is left waiting in review.
 
-Check: mom reserve 3,000.00 | savings 1,550.00 | needs 150.00 | wants 125.00 | held for others 60.00 | unsorted money in 0.00
+Check: mom reserve 2,800.00 | savings 1,000.01 | needs 600.00 | wants 425.00 | held for others 60.00 | unsorted money in 0.00
 
 
 ========================================================================
@@ -450,3 +450,47 @@ Step 3. Oct 14: both payments land.
         Nothing in transit. Difference 0.00.
 
 Check: in transit while on its way 600.00 | difference while on its way 0.00 | difference after it lands 0.00 | needs 350.00 | old card debt 1,850.00 | safe to spend 300.00
+
+
+========================================================================
+EXAMPLE 15. A paycheck the app did not recognize (rules 6.1, 3.1 to 3.4, 3.7, 11.2)
+========================================================================
+
+Before: Savings 500.00 | Needs 200.00 | Wants 100.00 |
+        Mom reserve 1,000.00
+        Last paycheck Sep 25. Leftover at payday: ask each time.
+
+Step 1. Oct 2: 2,000.00 arrives from "MADE UP NEW EMPLOYER", your first
+        paycheck from a new job. It does not match the paycheck rule, so
+        it waits in review (6.1). You pick "this is my paycheck".
+        A new pay period starts on Oct 2 (3.1). Needs has 200.00 left
+        and wants has 100.00 left, so the app asks about each (3.4).
+        Until you answer, the money stays where it is.
+        The reserve comes off first: 1,500.00. There is room for it
+        under the cap (3,000.00 - 1,000.00 = 2,000.00).
+        Mom reserve 1,000.00 + 1,500.00 = 2,500.00
+        Rest to split (2,000.00 - 1,500.00)       500.00
+        Savings 50% = 250.00 | Needs 30% = 150.00 | Wants 20% = 100.00
+        Savings 500.00 + 250.00 = 750.00
+        Needs   200.00 + 150.00 = 350.00
+        Wants   100.00 + 100.00 = 200.00
+        The pay schedule now counts from Oct 2: next payday Oct 16
+        (11.2).
+
+Step 2. You answer the leftover questions: needs rolls over, and the
+        100.00 left in wants moves to savings.
+        Wants   200.00 - 100.00 = 100.00
+        Savings 750.00 + 100.00 = 850.00
+
+Step 3. Oct 6: 300.00 arrives from "ACME PAYROLL". It matches the
+        paycheck rule, but it is only 4 days after the Oct 2 paycheck,
+        so it goes to review instead of splitting (3.7). It is a signing
+        bonus, so you pick "other income": split only, no reserve, and
+        the pay schedule stays as it is.
+        Savings 50% = 150.00 | Needs 30% = 90.00 | Wants 20% = 60.00
+        Savings 850.00 + 150.00 = 1,000.00
+        Needs   350.00 +  90.00 =   440.00
+        Wants   100.00 +  60.00 =   160.00
+        Next payday is still Oct 16.
+
+Check: savings 1,000.00 | needs 440.00 | wants 160.00 | mom reserve 2,500.00 | unsorted money in 0.00

@@ -27,21 +27,33 @@ describe('13.1 a change to the split or the mom reserve applies from the next pa
     expect(b.paychecks()[1]?.split).toMatchObject({ momReserve: 20_000, detail: { overflowToSavings: 80_000 } });
   });
 
-  it('13.1 income sorted before the next paycheck still uses this pay period\'s split', () => {
+  it('13.1 other income sorted before the next paycheck still uses this pay period\'s split', () => {
     const b = book();
     b.changeSettings({ split: { savings: 0, needs: 0, wants: 100 }, momReservePerPaycheck: 0 }, '2026-10-05');
     b.receive(deposit('d1', '2026-10-06', 400_000, 'MADE UP BONUS'));
-    b.sort('d1', { to: 'income' }, '2026-10-06');
-    expect(b.pots()).toMatchObject({ momReserve: 150_000, savings: 225_000, needs: 125_000, wants: 80_000 });
+    b.sort('d1', { to: 'other-income' }, '2026-10-06');
+    expect(b.pots()).toMatchObject({ momReserve: 0, savings: 300_000, needs: 170_000, wants: 110_000 });
   });
 
-  it('13.1 income sorted after the next paycheck uses the new split', () => {
+  it('13.1 other income sorted after the next paycheck uses the new split', () => {
     const b = book();
     b.changeSettings({ split: { savings: 0, needs: 0, wants: 100 }, momReservePerPaycheck: 0 }, '2026-10-05');
     b.receive(paycheck('p1', '2026-10-09', 400_000));
     b.receive(deposit('d1', '2026-10-10', 1_000, 'MADE UP BONUS'));
-    b.sort('d1', { to: 'income' }, '2026-10-10');
+    b.sort('d1', { to: 'other-income' }, '2026-10-10');
     expect(b.pots()).toMatchObject({ wants: 30_000 + 400_000 + 1_000 });
+  });
+
+  it('13.1 a deposit you call your paycheck is the next paycheck, so it uses the new split and reserve', () => {
+    const b = book();
+    b.changeSettings({ split: { savings: 0, needs: 0, wants: 100 }, momReservePerPaycheck: 100_000 }, '2026-10-05');
+    b.receive(deposit('d1', '2026-10-06', 400_000, 'MADE UP NEW JOB'));
+    b.sort('d1', { to: 'paycheck' }, '2026-10-06');
+    expect(b.pots()).toMatchObject({ momReserve: 100_000, savings: 100_000, needs: 50_000, wants: 30_000 + 300_000 });
+    // And other income after it uses the new split too.
+    b.receive(deposit('d2', '2026-10-07', 1_000, 'MADE UP BONUS'));
+    b.sort('d2', { to: 'other-income' }, '2026-10-07');
+    expect(b.pots()).toMatchObject({ momReserve: 100_000, wants: 30_000 + 300_000 + 1_000 });
   });
 
   it('13.1 a change made on payday, after the paycheck arrived, waits for the following one', () => {
@@ -381,6 +393,27 @@ describe('13.6 a rule made from a correction beats the rule it corrects', () => 
     expect(b.pots()).toMatchObject({ needs: 46_000, unsortedOut: 0 });
   });
 
+  it('13.6 "always do this" can make a deposit other income, but cannot say it is your paycheck', () => {
+    const b = book();
+    b.receive(deposit('d1', '2026-10-05', 3_000, 'MADE UP NEW JOB'));
+    const before = { pots: b.pots(), review: b.reviewItems() };
+    expect(codeOf(() => b.sortAlways('d1', { to: 'paycheck' }, { id: 'job', contains: 'NEW JOB' }, '2026-10-06'))).toBe('bad-choice');
+    expect({ pots: b.pots(), review: b.reviewItems(), rules: b.rules(), log: b.changeLog() }).toEqual({ ...before, rules: [], log: [] });
+    b.sortAlways('d1', { to: 'other-income' }, { id: 'job', contains: 'NEW JOB' }, '2026-10-06');
+    b.receive(deposit('d2', '2026-10-07', 1_000, 'MADE UP NEW JOB'));
+    expect(b.pots()).toMatchObject({ savings: 100_000 + 1_500 + 500, needs: 50_000 + 900 + 300, wants: 30_000 + 600 + 200, unsortedIn: 0 });
+  });
+
+  it('13.6 for a payment to a person, "always do this" picks needs, wants, or not mine, and nothing else', () => {
+    const b = book();
+    b.receive(payPerson('z1', '2026-10-05', 2_000, 'MADE UP FRIEND'));
+    const before = { pots: b.pots(), review: b.reviewItems() };
+    for (const choice of [{ to: 'savings' }, { to: 'other-income' }, { split: [{ bucket: 'needs', amount: 2_000 }] }]) {
+      expect(codeOf(() => b.sortAlways('z1', choice as never, { id: 'friend', contains: 'FRIEND' }, '2026-10-06')), JSON.stringify(choice)).toBe('bad-choice');
+    }
+    expect({ pots: b.pots(), review: b.reviewItems(), rules: b.rules() }).toEqual({ ...before, rules: [] });
+  });
+
   it('13.6 it works for payments to people and for deposits', () => {
     const b = book({
       rules: [
@@ -454,7 +487,7 @@ describe('13.6 a rule made from a correction beats the rule it corrects', () => 
     b.receive(cardCharge('f1', '2026-10-05', 2_900, 'fee'));
     expect(codeOf(() => b.sortAlways('f1', { to: 'needs' }, { id: 'fee', contains: 'FEE' }, '2026-10-06'))).toBe('no-rule-for-this');
     b.receive(paycheck('p1', '2026-10-05', 400_000));
-    expect(codeOf(() => b.sortAlways('p1', { to: 'income' }, { id: 'pay', contains: 'PAYROLL' }, '2026-10-06'))).toBe('no-rule-for-this');
+    expect(codeOf(() => b.sortAlways('p1', { to: 'other-income' }, { id: 'pay', contains: 'PAYROLL' }, '2026-10-06'))).toBe('no-rule-for-this');
     b.receive(refund('r1', '2026-10-05', 500));
     expect(codeOf(() => b.sortAlways('r1', { to: 'wants' }, { id: 'refund', contains: 'REFUND' }, '2026-10-06'))).toBe('no-rule-for-this');
     expect(codeOf(() => b.sortAlways('nope', { to: 'wants' }, { id: 'x', contains: 'X' }, '2026-10-06'))).toBe('unknown-item');

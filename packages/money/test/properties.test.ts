@@ -7,11 +7,13 @@ import {
   DEFAULT_SETTINGS,
   addDays,
   changeSettings,
+  daysBetween,
   splitPaycheck,
   startTracking,
   startingMoney,
   type BankTransaction,
   type Book,
+  type IsoDate,
   type Purchase,
   type LeftoverChoice,
   type MoneyInChoice,
@@ -105,7 +107,8 @@ type Step =
   | { type: 'add-rule'; rule: number }
   | { type: 'send-half'; amount: number; from: 'checking' | 'savings'; to: 'checking' | 'savings' | 'everyday-card' | 'old-card'; arrivesFirst: boolean }
   | { type: 'other-half'; pick: number; linked: boolean }
-  | { type: 'always'; pick: number; seed: number };
+  | { type: 'always'; pick: number; seed: number }
+  | { type: 'my-paycheck'; pick: number };
 
 const gapArb = fc.integer({ min: 0, max: 20 });
 const potNameArb = fc.constantFrom<Pot>('savings', 'needs', 'wants', 'momReserve', 'heldForOthers');
@@ -115,20 +118,25 @@ const potNameArb = fc.constantFrom<Pot>('savings', 'needs', 'wants', 'momReserve
 const LATER_RULES: SortingRule[] = [
   { id: 'later', for: 'purchase', contains: 'HARDWARE', bucket: 'needs' },
   { id: 'later', for: 'purchase', contains: 'STORE', bucket: 'wants' },
-  { id: 'later', for: 'deposit', contains: 'DEPOSIT', choice: { to: 'income' } },
+  { id: 'later', for: 'deposit', contains: 'DEPOSIT', choice: { to: 'other-income' } },
   { id: 'later', for: 'person', contains: 'FRIEND', choice: { to: 'not-mine' } },
 ];
 const smallAmountArb = fc.oneof(fc.integer({ min: 1, max: 50_000 }), fc.constantFrom(1, 2, 100));
 
+const paycheckStepArb = fc.record({ type: fc.constant('paycheck' as const), gap: gapArb, amount: paycheckAmountArb });
+const depositStepArb = fc.record({
+  type: fc.constant('deposit' as const),
+  gap: gapArb,
+  amount: fc.integer({ min: 1, max: 1_000_000 }),
+  description: fc.constantFrom('MADE UP DEPOSIT', 'MADE UP BONUS', 'MADE UP ROOMMATE', 'MADE UP FRIEND'),
+  account: fc.constantFrom('checking' as const, 'savings' as const),
+});
+const myPaycheckStepArb = fc.record({ type: fc.constant('my-paycheck' as const), pick: fc.nat() });
+const resortMoneyInStepArb = fc.record({ type: fc.constant('resort-money-in' as const), pick: fc.nat(), seed: fc.nat() });
+
 const stepArb: fc.Arbitrary<Step> = fc.oneof(
-  fc.record({ type: fc.constant('paycheck' as const), gap: gapArb, amount: paycheckAmountArb }),
-  fc.record({
-    type: fc.constant('deposit' as const),
-    gap: gapArb,
-    amount: fc.integer({ min: 1, max: 1_000_000 }),
-    description: fc.constantFrom('MADE UP DEPOSIT', 'MADE UP BONUS', 'MADE UP ROOMMATE', 'MADE UP FRIEND'),
-    account: fc.constantFrom('checking' as const, 'savings' as const),
-  }),
+  paycheckStepArb,
+  depositStepArb,
   fc.record({ type: fc.constant('answer-leftover' as const), pick: fc.nat(), choice: fc.constantFrom('roll-over' as const, 'move-to-savings' as const) }),
   fc.record({ type: fc.constant('repeat' as const), pick: fc.nat() }),
   fc.record({
@@ -158,7 +166,7 @@ const stepArb: fc.Arbitrary<Step> = fc.oneof(
   }),
   fc.record({ type: fc.constant('old-card' as const), amount: smallAmountArb, what: fc.constantFrom('purchase' as const, 'pending' as const, 'fee' as const, 'interest' as const, 'refund' as const) }),
   fc.record({ type: fc.constant('acknowledge' as const), pick: fc.nat() }),
-  fc.record({ type: fc.constant('resort-money-in' as const), pick: fc.nat(), seed: fc.nat() }),
+  resortMoneyInStepArb,
   fc.record({ type: fc.constant('pay-person' as const), amount: smallAmountArb, payee: fc.constantFrom('MADE UP FRIEND', 'MADE UP LANDLORD', 'MADE UP ROOMMATE') }),
   fc.record({ type: fc.constant('pay-mom' as const), amount: fc.oneof(smallAmountArb, fc.integer({ min: 100_000, max: 400_000 })) }),
   fc.record({ type: fc.constant('move' as const), from: potNameArb, to: potNameArb, amount: smallAmountArb }),
@@ -173,6 +181,17 @@ const stepArb: fc.Arbitrary<Step> = fc.oneof(
   }),
   fc.record({ type: fc.constant('other-half' as const), pick: fc.nat(), linked: fc.boolean() }),
   fc.record({ type: fc.constant('always' as const), pick: fc.nat(), seed: fc.nat() }),
+  myPaycheckStepArb,
+);
+
+// The same, with money in coming much more often (6.1): paychecks, early
+// paychecks, deposits, and each of the choices for them.
+const moneyInStepArb: fc.Arbitrary<Step> = fc.oneof(
+  { arbitrary: stepArb, weight: 4 },
+  { arbitrary: fc.record({ type: fc.constant('paycheck' as const), gap: fc.integer({ min: 0, max: 15 }), amount: paycheckAmountArb }), weight: 2 },
+  { arbitrary: depositStepArb, weight: 3 },
+  { arbitrary: myPaycheckStepArb, weight: 2 },
+  { arbitrary: resortMoneyInStepArb, weight: 2 },
 );
 
 const potArb = fc.integer({ min: -1_000_000, max: 10_000_000 });
@@ -181,7 +200,7 @@ const openingArb = fc.record({ savings: potArb, needs: potArb, wants: potArb, mo
 const RULES: SortingRule[] = [
   { id: 'grocer', for: 'purchase', contains: 'GROCER', bucket: 'needs' },
   { id: 'cafe', for: 'purchase', contains: 'CAFE', bucket: 'wants' },
-  { id: 'bonus', for: 'deposit', contains: 'BONUS', choice: { to: 'income' } },
+  { id: 'bonus', for: 'deposit', contains: 'BONUS', choice: { to: 'other-income' } },
   { id: 'roommate', for: 'deposit', contains: 'ROOMMATE', choice: { to: 'not-mine' } },
   { id: 'friend', for: 'deposit', contains: 'FRIEND', choice: { to: 'wants' } },
   { id: 'landlord', for: 'person', contains: 'LANDLORD', choice: { to: 'needs' } },
@@ -204,9 +223,12 @@ function spendingChoice(amount: number, seed: number, kind: string): SortChoice 
   return { to: seed % 3 === 0 ? 'needs' : 'wants' };
 }
 
-// A valid choice for money in (6.1). A store refund cannot be income.
-function moneyInChoice(seed: number, isRefund: boolean): SortChoice {
-  const choices: MoneyInChoice['to'][] = [...BUCKETS, 'not-mine', ...(isRefund ? [] : ['income' as const])];
+// A valid choice for money in (6.1). A store refund cannot be income of
+// either kind, and a deposit older than the last paycheck cannot be your
+// paycheck.
+function moneyInChoice(seed: number, isRefund: boolean, canBePaycheck: boolean): { readonly to: MoneyInChoice['to'] } {
+  const income: MoneyInChoice['to'][] = isRefund ? [] : ['other-income', ...(canBePaycheck ? ['paycheck' as const] : [])];
+  const choices: MoneyInChoice['to'][] = [...BUCKETS, 'not-mine', ...income];
   return { to: choices[seed % choices.length] ?? 'savings' };
 }
 
@@ -221,14 +243,25 @@ function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: read
   // Transfers with one half sent so far, waiting for the other (12.5).
   const halfDone: HalfDone[] = [...inTransitAtSetup];
   // Money in that can be sorted and re-sorted (not paychecks or matched refunds).
-  const moneyIn: { id: string; isRefund: boolean }[] = [];
+  const moneyIn: { id: string; date: IsoDate; isRefund: boolean }[] = [];
+  // Sorts money in. Once it is your paycheck it is final (6.1).
+  const sortMoneyIn = (id: string, txnDate: IsoDate, isRefund: boolean, seed: number | 'paycheck'): void => {
+    const choice = seed === 'paycheck' ? { to: 'paycheck' as const } : moneyInChoice(seed, isRefund, daysBetween(book.lastPaycheckDate(), txnDate) >= 0);
+    const paychecksBefore = book.paychecks().length;
+    book.sort(id, choice, date);
+    if (choice.to === 'paycheck') {
+      expect(book.paychecks().length).toBe(paychecksBefore + 1);
+      expect(book.lastPaycheckDate()).toBe(txnDate);
+      moneyIn.splice(moneyIn.findIndex((m) => m.id === id), 1);
+    }
+  };
   const send = (txn: BankTransaction): void => {
     const { outcome } = book.receive(txn);
     bank.apply(txn);
     received.push(txn);
     if (txn.kind === 'purchase' && txn.pending) pending.push(txn);
     if ((txn.kind === 'deposit' && outcome !== 'paycheck') || (txn.kind === 'refund' && outcome === 'review')) {
-      moneyIn.push({ id: txn.id, isRefund: txn.kind === 'refund' });
+      moneyIn.push({ id: txn.id, date: txn.date, isRefund: txn.kind === 'refund' });
     }
   };
   for (const step of steps) {
@@ -273,7 +306,7 @@ function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: read
       case 'sort': {
         const item = pick(book.reviewItems().filter((i) => i.type !== 'leftover'), step.pick);
         if (item?.type === 'spending') book.sort(item.id, spendingChoice(item.amount, step.seed, item.reason), date);
-        if (item?.type === 'money-in') book.sort(item.id, moneyInChoice(step.seed, item.reason === 'refund'), date);
+        if (item?.type === 'money-in') sortMoneyIn(item.id, item.date, item.reason === 'refund', step.seed);
         break;
       }
       case 'resort': {
@@ -301,9 +334,15 @@ function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: read
         }
         break;
       }
+      case 'my-paycheck': {
+        // 6.1: a deposit in review, or already sorted, that you call your paycheck.
+        const target = pick(moneyIn.filter((m) => !m.isRefund && daysBetween(book.lastPaycheckDate(), m.date) >= 0), step.pick);
+        if (target) sortMoneyIn(target.id, target.date, false, 'paycheck');
+        break;
+      }
       case 'resort-money-in': {
         const target = pick(moneyIn, step.pick);
-        if (target) book.sort(target.id, moneyInChoice(step.seed, target.isRefund), date);
+        if (target) sortMoneyIn(target.id, target.date, target.isRefund, step.seed);
         break;
       }
       case 'pay-person':
@@ -379,6 +418,10 @@ function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: read
     expect(book.safeToSpend(date).amount).toBe(book.pots().wants - book.pots().unsortedOut);
     // The old card debt always matches the bank, and is kept out of the buckets.
     expect(book.oldCardDebt()).toBe(bank.oldCard);
+    // Every paycheck's parts add up to it exactly (3.3), and each one,
+    // however it was found, started one pay period (3.1, 6.1).
+    for (const p of book.paychecks()) expect(p.split.momReserve + p.split.savings + p.split.needs + p.split.wants).toBe(p.amount);
+    expect(book.period().number).toBe(book.paychecks().length);
     // The running totals always equal a recount from scratch.
     expect(book.recountPots()).toEqual(book.pots());
     expect(book.recountOldCardDebt()).toBe(book.oldCardDebt());
@@ -395,6 +438,19 @@ describe('random scenarios: the whole book', () => {
         runLife(book, bank, steps);
       }),
       { numRuns: 500 },
+    );
+  });
+});
+
+describe('random scenarios: money in (6.1)', () => {
+  it('6.1 your paycheck, other income, payback, and not mine, in any order, never create or lose a cent', () => {
+    fc.assert(
+      fc.property(openingArb, leftoverChoiceArb, leftoverChoiceArb, splitArb, fc.array(moneyInStepArb, { maxLength: 60 }), (pots, needs, wants, split, steps) => {
+        const book = openTestBook({ pots, rules: RULES, oldCardDebt: 300_000, settings: { split, leftoverAtPayday: { needs, wants } } });
+        const bank = new TestBank({ checking: appSide(book.pots()), oldCard: 300_000 });
+        runLife(book, bank, steps);
+      }),
+      { numRuns: 300 },
     );
   });
 });

@@ -6,7 +6,7 @@ import { addDays, assertIsoDate, daysBetween, monthOf, type IsoDate } from './da
 import { MoneyError } from './errors.js';
 import { splitPaycheck, type PaycheckSplit, type SplitSettings } from './payday.js';
 import { bankSide, type BankBalances } from './self-check.js';
-import { checkRules, findRule, isMoneyInChoice, isPersonPaymentChoice, type MoneyInChoice, type SortingRule } from './rules.js';
+import { checkRules, findRule, isDepositRuleChoice, isMoneyInChoice, isPersonPaymentChoice, type DepositRuleChoice, type MoneyInChoice, type SortingRule } from './rules.js';
 import { changeSettings as applySettingsChange, matchesTextRule, validateSettings, type Settings } from './settings.js';
 import {
   checkTransaction,
@@ -285,8 +285,9 @@ interface MoneyInEntry {
   readonly id: string;
   readonly txn: Deposit | Refund;
   readonly reason: MoneyInReason;
-  sortedTo: 'unsorted' | MoneyInChoice['to'];
-  // How it was split, when sorted as income.
+  // A deposit you call your paycheck becomes a paycheck entry instead.
+  sortedTo: 'unsorted' | DepositRuleChoice['to'];
+  // How it was split, when sorted as other income.
   incomeSplit: PaycheckSplit | null;
   effect: Effect;
 }
@@ -1086,21 +1087,25 @@ export class Book {
 
   // Works out the new totals of a payday first, so a paycheck too large to
   // stay exact (0.1) is refused before any leftover moves or question.
-  #checkPaydayFits(txn: Deposit): void {
+  // "without" is what a deposit in review already did, taken back when you
+  // call it your paycheck (6.1).
+  #checkPaydayFits(txn: Deposit, without: Effect = {}): void {
     const t = this.#totals;
-    let savings = t.savings;
-    const after = { needs: t.needs, wants: t.wants };
+    const less = (name: 'savings' | 'needs' | 'wants' | 'momReserve'): Cents => subtractCents(t[name], without[name] ?? 0);
+    let savings = less('savings');
+    const after = { needs: less('needs'), wants: less('wants') };
+    const momReserve = less('momReserve');
     for (const bucket of ['needs', 'wants'] as const) {
       if (after[bucket] > 0 && this.#settings.leftoverAtPayday[bucket] === 'move-to-savings') {
         savings = addCents(savings, after[bucket]);
         after[bucket] = 0;
       }
     }
-    const split = splitPaycheck(txn.amount, t.momReserve, splitSettingsOf(this.#settings));
+    const split = splitPaycheck(txn.amount, momReserve, splitSettingsOf(this.#settings));
     addCents(savings, split.savings);
     addCents(after.needs, split.needs);
     addCents(after.wants, split.wants);
-    addCents(t.momReserve, split.momReserve);
+    addCents(momReserve, split.momReserve);
   }
 
   // Rule 3.4: unspent money in a bucket at payday either rolls over or moves
@@ -1200,19 +1205,23 @@ export class Book {
     }
   }
 
-  // Rule 6.1: income, payback, or not mine. A store refund the app could
-  // not match can be payback or not mine, but not income.
+  // Rule 6.1: this is my paycheck, other income, payback, or not mine. A
+  // store refund the app could not match can be payback or not mine, but
+  // neither kind of income.
   #sortMoneyIn(entry: MoneyInEntry, choice: SortChoice): void {
-    if (!isMoneyInChoice(choice)) throw new MoneyError('bad-choice', 'money in is income, payback into one bucket, or not mine');
-    const amount = entry.txn.amount;
+    if (!isMoneyInChoice(choice)) throw new MoneyError('bad-choice', 'money in is your paycheck, other income, payback into one bucket, or not mine');
+    const txn = entry.txn;
+    if (choice.to === 'paycheck' || choice.to === 'other-income') {
+      if (txn.kind === 'refund') throw new MoneyError('bad-choice', 'a store refund is not income');
+      if (choice.to === 'paycheck') return this.#makePaycheck(entry, txn);
+    }
+    const amount = txn.amount;
     let effect: Effect;
     let incomeSplit: PaycheckSplit | null = null;
-    if (choice.to === 'income') {
-      if (entry.reason === 'refund') throw new MoneyError('bad-choice', 'a store refund is not income');
-      // Treated like a paycheck: the reserve first, then the split. The
-      // reserve is counted without this entry's own earlier effect.
-      const reserveNow = subtractCents(this.#totals.momReserve, entry.effect.momReserve ?? 0);
-      incomeSplit = splitPaycheck(amount, reserveNow, this.#periodSplit);
+    if (choice.to === 'other-income') {
+      // Split by this pay period's percentages (13.1), with no mom reserve:
+      // the reserve comes only from paychecks.
+      incomeSplit = splitPaycheck(amount, this.#totals.momReserve, { ...this.#periodSplit, momReservePerPaycheck: 0 });
       effect = { momReserve: incomeSplit.momReserve, savings: incomeSplit.savings, needs: incomeSplit.needs, wants: incomeSplit.wants };
     } else if (choice.to === 'not-mine') {
       effect = { heldForOthers: amount };
@@ -1223,6 +1232,21 @@ export class Book {
     entry.sortedTo = choice.to;
     entry.incomeSplit = incomeSplit;
     this.#review.delete(entry.id);
+  }
+
+  // 6.1 "this is my paycheck": it starts a new pay period exactly as if the
+  // paycheck rule had matched it (3.1 to 3.5), and like any paycheck it is
+  // final. Whatever it was sorted to before is taken back first. A deposit
+  // older than the last paycheck cannot start a pay period; it can still be
+  // other income.
+  #makePaycheck(entry: MoneyInEntry, txn: Deposit): void {
+    if (daysBetween(this.#lastPaycheckDate, txn.date) < 0) {
+      throw new MoneyError('bad-choice', `${txn.id} is older than the last paycheck, so it cannot start a new pay period; it can be other income`);
+    }
+    // Checked first, so a paycheck too large to stay exact (0.1) changes nothing.
+    this.#checkPaydayFits(txn, entry.effect);
+    this.#remove(entry);
+    this.#payday(txn);
   }
 
   #moneyInEntry(id: string): MoneyInEntry {
@@ -1276,7 +1300,9 @@ export class Book {
       newRule = { id: rule.id, for: 'person', contains: rule.contains, choice: { to: choice.to } };
       descriptions = [entry.txn.description];
     } else if (entry.kind === 'money-in' && entry.reason === 'deposit') {
-      if (!isMoneyInChoice(choice)) throw new MoneyError('bad-choice', 'money in is income, payback into one bucket, or not mine');
+      if (!isDepositRuleChoice(choice)) {
+        throw new MoneyError('bad-choice', 'a deposit rule picks other income, a bucket, or not mine; paychecks are found by the paycheck rule in settings');
+      }
       newRule = { id: rule.id, for: 'deposit', contains: rule.contains, choice: { to: choice.to } };
       descriptions = [entry.txn.description];
     } else {

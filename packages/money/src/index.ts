@@ -34,7 +34,7 @@ export type {
   TransferSent,
 } from './transactions.js';
 export { BUCKETS, SPENDING_BUCKETS, type Bucket, type SplitBucket } from './buckets.js';
-export type { MoneyInChoice, PersonPaymentChoice, SortingRule } from './rules.js';
+export type { DepositRuleChoice, MoneyInChoice, PersonPaymentChoice, SortingRule } from './rules.js';
 export {
   Book,
   openBook,

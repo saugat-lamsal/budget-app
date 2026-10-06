@@ -2,13 +2,24 @@ import { isBucket, isSpendingBucket, type Bucket, type SplitBucket } from './buc
 import { MoneyError } from './errors.js';
 import { matchesTextRule } from './settings.js';
 
-// The three choices for money coming in (6.1): income (reserve, then
-// split), payback into a bucket you pick, or not mine (held for others).
-export type MoneyInChoice = { readonly to: 'income' | 'not-mine' | Bucket };
+// The choices for money coming in (6.1): this is my paycheck (a new pay
+// period: the mom reserve first, then the split), other income (split by
+// the percentages only), payback into a bucket you pick, or not mine (held
+// for others).
+export type MoneyInChoice = { readonly to: 'paycheck' | DepositRuleChoice['to'] };
+
+// What a deposit rule can pick (6.2): anything but "this is my paycheck".
+// Paychecks are found by the paycheck rule in settings (section 2), which
+// keeps the 10-day check (3.7).
+export type DepositRuleChoice = { readonly to: 'other-income' | 'not-mine' | Bucket };
 
 export function isMoneyInChoice(choice: unknown): choice is MoneyInChoice {
+  return isDepositRuleChoice(choice) || (typeof choice === 'object' && choice !== null && 'to' in choice && choice.to === 'paycheck');
+}
+
+export function isDepositRuleChoice(choice: unknown): choice is DepositRuleChoice {
   if (typeof choice !== 'object' || choice === null || !('to' in choice)) return false;
-  return choice.to === 'income' || choice.to === 'not-mine' || isBucket(choice.to);
+  return choice.to === 'other-income' || choice.to === 'not-mine' || isBucket(choice.to);
 }
 
 // What a payment to a person can be (7.2, 7.4): spending from needs or
@@ -34,7 +45,7 @@ export type SortingRule =
       readonly id: string;
       readonly for: 'deposit';
       readonly contains: string;
-      readonly choice: MoneyInChoice;
+      readonly choice: DepositRuleChoice;
     }
   | {
       readonly id: string;
@@ -58,7 +69,7 @@ export function checkRules(rules: readonly SortingRule[]): readonly SortingRule[
         if (!isSpendingBucket(rule.bucket)) bad('a purchase rule must pick needs or wants');
         return Object.freeze({ ...rule });
       case 'deposit':
-        if (!isMoneyInChoice(rule.choice)) bad('a deposit rule must pick income, a bucket, or not mine');
+        if (!isDepositRuleChoice(rule.choice)) bad('a deposit rule must pick other income, a bucket, or not mine');
         return Object.freeze({ ...rule, choice: Object.freeze({ to: rule.choice.to }) });
       case 'person':
         if (!isPersonPaymentChoice(rule.choice)) bad('a person rule must pick needs, wants, or not mine');

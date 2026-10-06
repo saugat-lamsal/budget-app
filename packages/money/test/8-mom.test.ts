@@ -121,11 +121,11 @@ describe('8.3 a payment bigger than the reserve: you pick the bucket for the dif
   });
 
   it('8.3 a reserve below zero covers nothing: the whole payment asks, and the reserve stays where it is', () => {
-    // The reserve can drop below zero if income that filled it is later
+    // The reserve can drop below zero if a payback that filled it is later
     // re-sorted after mom was paid from it.
     const b = book({ pots: { momReserve: 0 } });
     b.receive(deposit('d1', '2026-10-01', 150_000, 'MADE UP BONUS'));
-    b.sort('d1', { to: 'income' }, '2026-10-01');
+    b.sort('d1', { to: 'momReserve' }, '2026-10-01');
     b.receive(payMom('m1', '2026-10-02', 150_000));
     b.sort('d1', { to: 'savings' }, '2026-10-03');
     expect(b.pots().momReserve).toBe(-150_000);
@@ -136,7 +136,7 @@ describe('8.3 a payment bigger than the reserve: you pick the bucket for the dif
   it('8.3 the difference is covered by one bucket, needs or wants', () => {
     const b = book();
     b.receive(payMom('m1', '2026-10-03', 160_000));
-    for (const to of ['savings', 'momReserve', 'not-mine', 'income']) {
+    for (const to of ['savings', 'momReserve', 'not-mine', 'other-income', 'paycheck']) {
       expect(codeOf(() => b.sort('m1:difference', { to } as never, '2026-10-04')), to).toBe('bad-choice');
     }
     const split = { split: [{ bucket: 'needs' as const, amount: 5_000 }, { bucket: 'wants' as const, amount: 5_000 }] };
