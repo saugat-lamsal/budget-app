@@ -1,0 +1,20 @@
+[
+  { "section": "0", "file": "packages/money/src/cents.ts", "find": "!Number.isSafeInteger(value)", "replace": "!Number.isFinite(value)", "why": "0.1 let fractions of a cent through" },
+  { "section": "0", "file": "packages/money/src/cents.ts", "find": "    total += amount;\n    assertCents(total, 'total');", "replace": "    total += amount;", "why": "0.1 stop checking that a total stays exact" },
+  { "section": "0", "file": "packages/money/src/cents.ts", "find": "const result = from - amount;", "replace": "const result = from + amount;", "why": "0.1 flip the sign in subtraction" },
+  { "section": "0", "file": "packages/money/src/cents.ts", "find": "return Number((BigInt(amount) * BigInt(percent)) / 100n);", "replace": "return Math.round((amount * percent) / 100);", "why": "0.1 round a percentage to nearest instead of down" },
+  { "section": "0", "file": "packages/money/src/cents.ts", "find": "percent < 0 || percent > 100", "replace": "percent < 0 || percent > 101", "why": "0.1 shift the percent boundary by one" },
+  { "section": "0", "file": "packages/money/src/cents.ts", "find": "(?:\\.(\\d{2}))?$", "replace": "(?:\\.(\\d{1,2}))?$", "why": "0.1 read \"1.5\" as dollars" },
+  { "section": "0", "file": "packages/money/src/cents.ts", "find": "padStart(3, '0')", "replace": "padStart(2, '0')", "why": "0.1 write one cent wrong" },
+  { "section": "0", "file": "packages/money/src/cents.ts", "find": "export function addCents(", "replace": "export const peek = globalThis;\nexport function addCents(", "why": "0.4 sneak a way out to the outside world into the money math" },
+  { "section": "0", "file": "packages/money/src/dates.ts", "find": "return dayNumber(to, 'date') - dayNumber(from, 'date');", "replace": "return dayNumber(from, 'date') - dayNumber(to, 'date');", "why": "dates: count days backwards" },
+  { "section": "0", "file": "packages/money/src/dates.ts", "find": "toISOString().slice(0, 10) === date", "replace": "toISOString().slice(0, 4) === date.slice(0, 4)", "why": "dates: accept Feb 30" },
+  { "section": "0", "file": "packages/money/src/settings.ts", "find": "s.split.savings + s.split.needs + s.split.wants === 100", "replace": "s.split.savings + s.split.needs + s.split.wants <= 100", "why": "0.2 allow a split under 100" },
+  { "section": "0", "file": "packages/money/src/settings.ts", "find": "momReserveCap: 300_000,", "replace": "momReserveCap: 300_001,", "why": "0.2 change the starting mom cap by one cent" },
+  { "section": "0", "file": "packages/money/src/settings.ts", "find": "earlyPaycheckDays: 10,", "replace": "earlyPaycheckDays: 9,", "why": "0.2 change the starting early-paycheck days" },
+  { "section": "0", "file": "packages/money/src/settings.ts", "find": "s.momMonthlyTarget.low <= s.momMonthlyTarget.high", "replace": "s.momMonthlyTarget.low < s.momMonthlyTarget.high", "why": "0.2 refuse a mom target of one exact amount" },
+  { "section": "0", "file": "packages/money/src/settings.ts", "find": "isWholeInRange(s.lowBucketAlertPercent, 0, 100)", "replace": "isWholeInRange(s.lowBucketAlertPercent, 0, 99)", "why": "0.2 shift the alert-percent boundary by one" },
+  { "section": "0", "file": "packages/money/src/settings.ts", "find": "/^([01]\\d|2[0-3]):[0-5]\\d$/", "replace": "/^([01]\\d|2[0-4]):[0-5]\\d$/", "why": "0.2 accept 24:00 as a review time" },
+  { "section": "0", "file": "packages/money/src/settings.ts", "find": "isWholeInRange(s.payScheduleDays, 1, Infinity)", "replace": "isWholeInRange(s.payScheduleDays, 0, Infinity)", "why": "0.2 accept a zero-day pay schedule" },
+  { "section": "0", "file": "packages/money/src/settings.ts", "find": "  return deepFreeze(copySettings(s));", "replace": "  return copySettings(s);", "why": "0.2 let settings be changed without the checks" }
+]
