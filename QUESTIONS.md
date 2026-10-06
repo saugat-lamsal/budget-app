@@ -239,6 +239,7 @@ B28. Card reminders go out exactly 7 and 2 days before the due date
      (calendar days; both are settings). A payment counts toward a
      statement when it reached the card after the statement date and left
      on or before today (9.1 to 9.3; see B47 for payments in two halves).
+     Now in the rulebook (9.3).
 
 B29. Updated with your review of 9.3. Everyday card: a statement with
      nothing owed (or a credit) gets no reminder; one with a balance but a
@@ -250,6 +251,7 @@ B30. Updated after your A6 answers. The overdue alert (9.4) is due on
      every day after the due date until the payments seen since the
      statement add up to at least the minimum, on either card. Making
      sure it reaches the phone once is Phase 5.
+     Now in the rulebook (9.4).
 
 B31. Changed after your review: see 10.2 in the rulebook. The empty-bucket
      alert now comes once per bucket per pay period. The book remembers
@@ -270,6 +272,7 @@ B34. Safe to spend (11.1) can go below zero when wants are overspent or
 B35. Next payday (11.2) is the last paycheck plus 14 days. If that day
      passes with no paycheck, the days to payday go negative (the paycheck
      is late) instead of jumping ahead another 14 days.
+     Now in the rulebook (11.2).
 
 B36. Changed after your review: see 12.5 in the rulebook.
      The bank balances for the self-check still come from the bank
@@ -336,6 +339,7 @@ B45. The two halves of a transfer pair up by the link the bank connection
      unpaired half between the same two accounts for the same amount. If
      the landing is seen first, it shows in transit as a negative until
      the leaving half shows up.
+     Now in the rulebook (12.5).
 
 B46. Money already on its way to savings counts as moved for "still to
      move" (3.8).
@@ -347,6 +351,7 @@ B47. For card reminders (9.3, 9.4), a payment is seen from the day it left
      after it counts toward the new statement. One still on its way counts
      toward the new statement too. A transfer seen in two halves is one
      payment, and the answer is the same whichever half shows up first.
+     Now in the rulebook (9.3).
 
 B48. Setup day also takes the transfers with only one half showing that
      day. Money that has left and not landed is added to the starting
@@ -370,6 +375,7 @@ B49. "The rule it corrects" (13.6) is the first rule that matches the
 B50. "Once per bucket per pay period" (10.2): if a bucket is refilled and
      empties again in the same pay period, there is no second alert. A
      bucket that starts a new pay period still empty alerts again then.
+     Now in the rulebook (10.2).
 
 B51. The below-zero check (13.4) looks at the bucket the money comes out
      of. It asks whenever that bucket would end below zero, including when
@@ -392,6 +398,7 @@ B53. The new pay period starts on the day the deposit arrived, not the
      day you answer. So the 14-day schedule (11.2) and the 10-day check
      (3.7) count from that day, and the leftover question covers what was
      in each bucket when you answered.
+     Now in the rulebook (6.1).
 
 B54. A deposit older than the last paycheck cannot be "this is my
      paycheck", since pay periods would then run backwards. The app says
@@ -414,11 +421,13 @@ B56. "What the bucket started the pay period with" (10.1) is what was in
 B57. "Falls below" is strictly below, to the exact cent: with a start of
      899.99, the level is 179.998, so 180.00 left does not alert and
      179.99 does.
+     Now in the rulebook (10.1).
 
 B58. At zero or below only the empty alert comes, never both at once. If
      money then comes back in (a payback, a hand move) and the bucket is
      above zero but still under the level, the low alert comes then, if
      it has not come yet this pay period.
+     Now in the rulebook (10.1).
 
 
 ## Part B, added with the A7 answer (Oct 6). Tell me if any is wrong.

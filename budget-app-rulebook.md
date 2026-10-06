@@ -102,7 +102,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
 
 6.1  They always go to review, with four choices:
      - This is my paycheck: starts a new pay period like any paycheck
-       (3.1 to 3.5): the mom reserve first, then the split
+       (3.1 to 3.5): the mom reserve first, then the split. The new pay
+       period starts on the day the deposit arrived, not the day you
+       answer (B53).
      - Other income: split by the percentages only. No mom reserve is
        taken and no new pay period starts. The reserve comes only from
        paychecks.
@@ -147,8 +149,13 @@ number so a test can point at it. Nothing gets coded until you approve this.
      usually means interest on the rest.
      Old card: reminders stop once the payments the app sees since the
      statement add up to at least the minimum.
+     A payment counts toward the statement it reached the card after; one
+     landing on the statement date counts toward the one before (B28). It
+     counts from the day it leaves checking or savings, even while still on
+     its way (B47).
 9.4  If the due date passes and the payments the app sees since the
      statement add up to less than the minimum, you get an overdue alert.
+     It stays due every day after the due date until enough is paid (B30).
      This works the same on both cards.
 9.5  Old card payoff countdown: what the old card owes (5.4, 5.5), divided
      by the paydays left before the promo ends, from the pay schedule:
@@ -163,9 +170,13 @@ number so a test can point at it. Nothing gets coded until you approve this.
       per pay period. The level is 20% of what the bucket started the pay
       period with, including what rolled over. If a bucket starts the pay
       period at zero or below, there is no low alert; the empty alert
-      (10.2) covers it.
+      (10.2) covers it. Below means strictly below, to the cent (B57). At
+      zero or below only the empty alert comes; back above zero but under
+      the level, the low alert comes then, once per pay period (B58).
 10.2  Empty bucket: needs or wants reaches zero or below. Once per bucket
-      per pay period.
+      per pay period: refilled and empty again in the same pay period, no
+      second alert. Still empty when a new pay period starts, the alert
+      comes again (B50).
 10.3  Daily review: sent at the review time, only if something is unsorted.
 10.4  Totals do not match the bank (section 12).
 10.5  Bank connection needs you to log in again.
@@ -175,7 +186,8 @@ number so a test can point at it. Nothing gets coded until you approve this.
 
 11.1  Safe to spend = wants left, minus unsorted spending.
 11.2  It is shown with the number of days until the next payday, from the
-      pay schedule.
+      pay schedule. If that day passes with no paycheck, the days go
+      negative instead of jumping ahead (B35).
 11.3  Savings, mom reserve, held for others, and unsorted money in are never
       part of it.
 
@@ -198,7 +210,10 @@ number so a test can point at it. Nothing gets coded until you approve this.
       transit". The check is: bank side + in transit = app side. Money on its
       way to the old card is shown but not counted, because the old card is
       not part of this check (12.4). It comes out of needs when it leaves
-      checking (5.2), and the debt goes down when it lands.
+      checking (5.2), and the debt goes down when it lands. The two halves
+      pair by the bank's link, otherwise with the oldest unpaired half
+      between the same accounts for the same amount. One seen arriving
+      first is a negative in transit until it shows leaving (B45).
 
 
 ## 13. Changing things on the fly
@@ -295,3 +310,11 @@ i.  A bucket at zero or below at payday: nothing is asked and nothing
     moves. It carries over, and the new share is added on top (3.5).
 j.  The self-check difference is the bank side (plus money in transit)
     minus the app side (12.3).
+
+
+## 19. Readings from QUESTIONS.md part B, now in the rules (Oct 6, 2026)
+
+The second-opinion tests (PR #4) found these places unclear in the
+rulebook. QUESTIONS.md part B already had the answers, and the app already
+works that way: 6.1 (B53), 9.3 (B28, B47), 9.4 (B30), 10.1 (B57, B58),
+10.2 (B50), 11.2 (B35), 12.5 (B45).
