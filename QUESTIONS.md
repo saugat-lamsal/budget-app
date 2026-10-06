@@ -169,3 +169,23 @@ B22. Held for others (7.3) is shown with what it means: settled (zero),
      holding money for others (positive), or someone owes you (negative).
      Nothing nags you when it stays above or below zero; section 10 lists
      no alert for it.
+
+B23. The difference on a mom payment (8.3) goes to one bucket, needs or
+     wants. It cannot be split. Savings: see A3.
+
+B24. "Carries over between months, up to its cap" (8.4): nothing happens
+     at the start of a month. The cap limits what a paycheck adds (3.2).
+     A reserve already above the cap, for example after you lower the
+     cap, is not cut back; it just gets nothing more until it is under
+     the cap.
+
+B25. Same-day order. Things are applied in the order the bank sends them.
+     If a paycheck and a mom payment land on the same day, the order
+     changes how much of the reserve overflows to savings.
+
+B26. Only payments to people (Zelle and the like) are checked against the
+     mom rule (8.1).
+
+B27. If you re-sort income after mom was already paid from the reserve it
+     filled, the reserve can drop below zero. A mom payment then takes
+     nothing from the reserve and all of it waits in review (8.3).

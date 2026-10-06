@@ -600,5 +600,61 @@
     "find": "return choice.to === 'not-mine' || isSpendingBucket(choice.to);",
     "replace": "return choice.to === 'not-mine' || isSpendingBucket(choice.to) || choice.to === 'savings';",
     "why": "7.4 let a person rule pick savings"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (matchesTextRule(this.#settings.momRule, txn.description)) return this.#payMom(txn);\n",
+    "replace": "",
+    "why": "8.1 treat mom like any other person"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "const fromReserve = Math.min(txn.amount, Math.max(0, this.#totals.momReserve));",
+    "replace": "const fromReserve = txn.amount;",
+    "why": "8.3 let the reserve go negative instead of asking"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "const fromReserve = Math.min(txn.amount, Math.max(0, this.#totals.momReserve));",
+    "replace": "const fromReserve = Math.min(txn.amount, Math.max(1, this.#totals.momReserve));",
+    "why": "8.3 shift the empty-reserve boundary by one cent"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "const fromReserve = Math.min(txn.amount, Math.max(0, this.#totals.momReserve));",
+    "replace": "const fromReserve = Math.min(txn.amount, this.#totals.momReserve);",
+    "why": "8.3 let a negative reserve make the difference bigger than the payment"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (difference === 0) return { id: txn.id, outcome: 'sorted' };",
+    "replace": "    if (difference <= 1) return { id: txn.id, outcome: 'sorted' };",
+    "why": "8.3 drop a one-cent difference"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.kind === 'mom' && monthOf(entry.txn.date) === month) sent = addCents(sent, entry.txn.amount);",
+    "replace": "if (entry.kind === 'mom' && monthOf(entry.txn.date) === month) sent = addCents(sent, entry.fromReserve);",
+    "why": "8.2 count only the part the reserve covered"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.kind === 'mom' && monthOf(entry.txn.date) === month) sent",
+    "replace": "if (entry.kind === 'mom' && entry.txn.date.slice(0, 4) === month.slice(0, 4)) sent",
+    "why": "8.2 add up the year instead of the month"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "    } else if (entry.spendingKind === 'mom-difference' && 'split' in choice) {",
+    "replace": "    } else if (false) {",
+    "why": "8.3 let the difference be split"
   }
 ]

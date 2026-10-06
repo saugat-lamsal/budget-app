@@ -16,7 +16,7 @@ import {
   type SortChoice,
   type SortingRule,
 } from '../src/index.js';
-import { TestBank, appSide, cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, transfer, START_DATE } from './helpers.js';
+import { MOM_NAME, TestBank, appSide, cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, transfer, START_DATE } from './helpers.js';
 
 const splitArb = fc
   .integer({ min: 0, max: 100 })
@@ -78,7 +78,8 @@ type Step =
   | { type: 'old-card'; amount: number; what: 'purchase' | 'pending' | 'fee' | 'interest' | 'refund' }
   | { type: 'acknowledge'; pick: number }
   | { type: 'resort-money-in'; pick: number; seed: number }
-  | { type: 'pay-person'; amount: number; payee: string };
+  | { type: 'pay-person'; amount: number; payee: string }
+  | { type: 'pay-mom'; amount: number };
 
 const gapArb = fc.integer({ min: 0, max: 20 });
 const smallAmountArb = fc.oneof(fc.integer({ min: 1, max: 50_000 }), fc.constantFrom(1, 2, 100));
@@ -123,6 +124,7 @@ const stepArb: fc.Arbitrary<Step> = fc.oneof(
   fc.record({ type: fc.constant('acknowledge' as const), pick: fc.nat() }),
   fc.record({ type: fc.constant('resort-money-in' as const), pick: fc.nat(), seed: fc.nat() }),
   fc.record({ type: fc.constant('pay-person' as const), amount: smallAmountArb, payee: fc.constantFrom('MADE UP FRIEND', 'MADE UP LANDLORD', 'MADE UP ROOMMATE') }),
+  fc.record({ type: fc.constant('pay-mom' as const), amount: fc.oneof(smallAmountArb, fc.integer({ min: 100_000, max: 400_000 })) }),
 );
 
 const potArb = fc.integer({ min: -1_000_000, max: 10_000_000 });
@@ -143,10 +145,11 @@ function pick<T>(list: readonly T[], index: number): T | undefined {
 }
 
 // A valid way to sort spending of this amount, chosen by the seed. A
-// payment to a person can also be not mine, but cannot be split.
-function spendingChoice(amount: number, seed: number, toPerson = false): SortChoice {
-  if (toPerson) return { to: (['needs', 'wants', 'not-mine'] as const)[seed % 3] ?? 'needs' };
-  if (seed % 3 === 2 && amount >= 2) {
+// payment to a person can also be not mine; it and the difference on a mom
+// payment cannot be split.
+function spendingChoice(amount: number, seed: number, kind: string): SortChoice {
+  if (kind === 'person-payment') return { to: (['needs', 'wants', 'not-mine'] as const)[seed % 3] ?? 'needs' };
+  if (seed % 3 === 2 && amount >= 2 && kind !== 'mom-difference') {
     const needs = 1 + (seed % (amount - 1));
     return { split: [{ bucket: 'needs', amount: needs }, { bucket: 'wants', amount: amount - needs }] };
   }
@@ -207,7 +210,8 @@ function runLife(book: Book, bank: TestBank, steps: Step[]): void {
         break;
       }
       case 'refund': {
-        const target = pick(book.purchases(), step.pick);
+        // A refund can only name a bank transaction, not one of the book's own entries.
+        const target = pick(book.purchases().filter((p) => !p.id.includes(':')), step.pick);
         send(refund(`t${n++}`, date, step.amount, step.linked ? target?.id : undefined, step.account));
         break;
       }
@@ -216,13 +220,13 @@ function runLife(book: Book, bank: TestBank, steps: Step[]): void {
         break;
       case 'sort': {
         const item = pick(book.reviewItems().filter((i) => i.type !== 'leftover'), step.pick);
-        if (item?.type === 'spending') book.sort(item.id, spendingChoice(item.amount, step.seed, item.reason === 'person-payment'), date);
+        if (item?.type === 'spending') book.sort(item.id, spendingChoice(item.amount, step.seed, item.reason), date);
         if (item?.type === 'money-in') book.sort(item.id, moneyInChoice(step.seed, item.reason === 'refund'), date);
         break;
       }
       case 'resort': {
         const target = pick(book.purchases().filter((p) => p.kind !== 'debt-payoff'), step.pick);
-        if (target) book.sort(target.id, spendingChoice(target.amount - target.refunded, step.seed, target.kind === 'person-payment'), date);
+        if (target) book.sort(target.id, spendingChoice(target.amount - target.refunded, step.seed, target.kind), date);
         break;
       }
       case 'transfer': {
@@ -252,6 +256,9 @@ function runLife(book: Book, bank: TestBank, steps: Step[]): void {
       }
       case 'pay-person':
         send(payPerson(`t${n++}`, date, step.amount, step.payee));
+        break;
+      case 'pay-mom':
+        send(payPerson(`t${n++}`, date, step.amount, MOM_NAME));
         break;
       case 'acknowledge': {
         const item = pick(book.reviewItems().filter((i) => i.type === 'old-card-purchase'), step.pick);

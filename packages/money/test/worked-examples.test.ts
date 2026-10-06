@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseDollars, type Book, type Cents } from '../src/index.js';
 import text from '../worked-examples.txt?raw';
-import { cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, transfer } from './helpers.js';
+import { MOM_NAME, cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, transfer } from './helpers.js';
 
 interface Example {
   number: number;
@@ -123,6 +123,17 @@ const examples: Record<number, () => Record<string, Cents>> = {
     book.receive(payPerson('package', '2026-10-09', parseDollars('30.00'), 'MADE UP COURIER'));
     book.sort('package', { to: 'not-mine' }, '2026-10-09');
     return buckets(book);
+  },
+  9: () => {
+    const book = openTestBook({
+      pots: { momReserve: parseDollars('1,500.00'), needs: parseDollars('600.00') },
+      settings: { leftoverAtPayday: { needs: 'roll-over', wants: 'roll-over' } },
+    });
+    book.receive(payPerson('mom1', '2026-10-03', parseDollars('1,000.00'), MOM_NAME));
+    book.receive(paycheck('pay', '2026-10-09', parseDollars('4,000.00')));
+    book.receive(payPerson('mom2', '2026-10-20', parseDollars('2,500.00'), MOM_NAME));
+    book.sort('mom2:difference', { to: 'needs' }, '2026-10-20');
+    return { ...buckets(book), 'sent this month': book.momSentInMonth('2026-10').sent };
   },
 };
 

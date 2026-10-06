@@ -29,6 +29,7 @@ export {
   Book,
   openBook,
   type LeftoverAnswer,
+  type MomMonth,
   type MoneyInReason,
   type OpenBookInput,
   type OthersMoney,

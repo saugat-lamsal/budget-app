@@ -1,6 +1,6 @@
 import { isSpendingBucket, type SplitBucket } from './buckets.js';
 import { addCents, assertCents, assertPositiveCents, subtractCents, type Cents } from './cents.js';
-import { assertIsoDate, daysBetween, type IsoDate } from './dates.js';
+import { assertIsoDate, daysBetween, monthOf, type IsoDate } from './dates.js';
 import { MoneyError } from './errors.js';
 import { splitPaycheck, type PaycheckSplit } from './payday.js';
 import { checkRules, findRule, isMoneyInChoice, isPersonPaymentChoice, type MoneyInChoice, type SortingRule } from './rules.js';
@@ -82,8 +82,9 @@ export type SpendingSort =
   // A payment to a person that was not your spending (7.2).
   | { readonly to: 'not-mine' };
 
-// debt-payoff is a payment to the old card (5.2).
-export type SpendingKind = 'purchase' | 'card-fee' | 'card-interest' | 'debt-payoff' | 'person-payment';
+// debt-payoff is a payment to the old card (5.2). mom-difference is the part
+// of a mom payment the reserve could not cover (8.3).
+export type SpendingKind = 'purchase' | 'card-fee' | 'card-interest' | 'debt-payoff' | 'person-payment' | 'mom-difference';
 
 export type ReviewItem =
   | {
@@ -100,7 +101,7 @@ export type ReviewItem =
       readonly date: IsoDate;
       readonly amount: Cents;
       readonly description: string;
-      readonly reason: 'no-rule' | 'card-fee' | 'card-interest' | 'split-changed' | 'old-card-from-savings' | 'person-payment';
+      readonly reason: 'no-rule' | 'card-fee' | 'card-interest' | 'split-changed' | 'old-card-from-savings' | 'person-payment' | 'mom-difference';
       readonly suggestion: SplitBucket | null;
     }
   | {
@@ -153,6 +154,12 @@ export interface OthersMoney {
   readonly meaning: 'settled' | 'holding-for-others' | 'owed-to-you';
 }
 
+export interface MomMonth {
+  readonly month: string;
+  readonly sent: Cents;
+  readonly target: { readonly low: Cents; readonly high: Cents };
+}
+
 export interface SavingsTransfer {
   readonly shouldBeInSavings: Cents;
   readonly savingsAccountBalance: Cents;
@@ -202,6 +209,16 @@ interface RefundEntry {
   effect: Effect;
 }
 
+// A payment to mom (8.1). It takes what it can from the mom reserve; any
+// difference is a separate spending entry waiting in review (8.3).
+interface MomEntry {
+  readonly kind: 'mom';
+  readonly id: string;
+  readonly txn: PersonPayment;
+  readonly fromReserve: Cents;
+  effect: Effect;
+}
+
 // A transfer that changes no bucket (5.1, 5.3), kept so it counts once.
 interface TransferEntry {
   readonly kind: 'transfer';
@@ -231,7 +248,7 @@ interface LeftoverEntry {
   effect: Effect;
 }
 
-type Entry = PaycheckEntry | MoneyInEntry | SpendEntry | RefundEntry | TransferEntry | OldCardEntry | LeftoverEntry;
+type Entry = PaycheckEntry | MoneyInEntry | SpendEntry | RefundEntry | MomEntry | TransferEntry | OldCardEntry | LeftoverEntry;
 
 function potsOf(totals: Record<TotalName, Cents>): Pots {
   const { savings, needs, wants, momReserve, heldForOthers, unsortedIn, unsortedOut } = totals;
@@ -324,9 +341,8 @@ export class Book {
     const views: PurchaseView[] = [];
     for (const e of this.#entries.values()) {
       if (e.kind !== 'spend') continue;
-      const { id, date } = e.txn;
       const description = (e.postedTxn ?? e.txn).description;
-      views.push({ id, date, description, amount: e.amount, refunded: e.refunded, pending: e.pending, kind: e.spendingKind, sortedTo: e.sortedTo });
+      views.push({ id: e.id, date: e.txn.date, description, amount: e.amount, refunded: e.refunded, pending: e.pending, kind: e.spendingKind, sortedTo: e.sortedTo });
     }
     return views;
   }
@@ -342,6 +358,17 @@ export class Book {
     assertCents(savingsAccountBalance, 'savings account balance');
     const shouldBeInSavings = addCents(this.#totals.savings, this.#totals.momReserve);
     return { shouldBeInSavings, savingsAccountBalance, stillToMove: subtractCents(shouldBeInSavings, savingsAccountBalance) };
+  }
+
+  // Rule 8.2: everything sent to mom in a calendar month ("YYYY-MM").
+  momSentInMonth(month: string): MomMonth {
+    assertIsoDate(`${month}-01`, 'month');
+    if (month.length !== 7) throw new MoneyError('not-a-date', `month must be YYYY-MM, got ${month}`);
+    let sent = 0;
+    for (const entry of this.#entries.values()) {
+      if (entry.kind === 'mom' && monthOf(entry.txn.date) === month) sent = addCents(sent, entry.txn.amount);
+    }
+    return { month, sent, target: this.#settings.momMonthlyTarget };
   }
 
   othersMoney(): OthersMoney {
@@ -380,6 +407,7 @@ export class Book {
   // Rule 7.4: a payment to a person waits in review unless a rule covers
   // that person.
   #receivePersonPayment(txn: PersonPayment): Received {
+    if (matchesTextRule(this.#settings.momRule, txn.description)) return this.#payMom(txn);
     const rule = findRule(this.#rules, 'person', txn.description);
     return this.#addSpending(txn, 'person-payment', rule === undefined ? { to: 'unsorted' } : { to: rule.choice.to });
   }
@@ -392,6 +420,32 @@ export class Book {
     }
     const entry = this.#entries.get(id);
     return entry !== undefined && 'txn' in entry ? entry.txn : undefined;
+  }
+
+  // Rules 8.1 and 8.3: a mom payment comes out of the reserve, whatever the
+  // day or amount. If the reserve cannot cover it all, the difference waits
+  // in review for you to pick a bucket.
+  #payMom(txn: PersonPayment): Received {
+    const fromReserve = Math.min(txn.amount, Math.max(0, this.#totals.momReserve));
+    this.#add({ kind: 'mom', id: txn.id, txn, fromReserve, effect: {} }, { momReserve: -fromReserve });
+    const difference = txn.amount - fromReserve;
+    if (difference === 0) return { id: txn.id, outcome: 'sorted' };
+    const entry: SpendEntry = {
+      kind: 'spend',
+      id: `${txn.id}:difference`,
+      txn,
+      spendingKind: 'mom-difference',
+      postedTxn: null,
+      pending: false,
+      amount: difference,
+      refunded: 0,
+      sortedTo: { to: 'unsorted' },
+      splitChanged: false,
+      effect: {},
+    };
+    this.#entries.set(entry.id, entry);
+    this.#refreshSpending(entry);
+    return { id: txn.id, outcome: 'review' };
   }
 
   // Section 5.
@@ -612,6 +666,8 @@ export class Book {
     if (entry.spendingKind === 'person-payment') {
       if (!isPersonPaymentChoice(choice)) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');
       entry.sortedTo = Object.freeze({ to: choice.to });
+    } else if (entry.spendingKind === 'mom-difference' && 'split' in choice) {
+      throw new MoneyError('bad-choice', 'the difference on a mom payment goes to needs or wants');
     } else if ('split' in choice) {
       if (!Array.isArray(choice.split)) throw new MoneyError('bad-choice', 'a split needs a list of parts');
       const parts = choice.split.map((part) => {
@@ -704,7 +760,7 @@ export class Book {
               : entry.spendingKind;
         const description = (entry.postedTxn ?? entry.txn).description;
         // Fees, interest, and old card payments suggest needs (4.8, 5.2).
-        const suggestion = entry.spendingKind === 'purchase' || entry.spendingKind === 'person-payment' ? null : 'needs';
+        const suggestion = ['purchase', 'person-payment', 'mom-difference'].includes(entry.spendingKind) ? null : 'needs';
         return { type: 'spending', id: entry.id, date: entry.txn.date, amount: entry.amount - entry.refunded, description, reason, suggestion };
       }
       case 'leftover':
@@ -713,6 +769,7 @@ export class Book {
         return { type: 'old-card-purchase', id: entry.id, date: entry.txn.date, amount: entry.amount, description: (entry.postedTxn ?? entry.txn).description };
       case 'paycheck':
       case 'refund':
+      case 'mom':
       case 'transfer':
         throw new MoneyError('broken-book', `${entry.kind} ${entry.id} should never be in review`);
     }

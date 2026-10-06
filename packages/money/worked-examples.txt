@@ -258,3 +258,35 @@ Step 5. You pay 30.00 for a neighbor's package and mark it "not mine".
         Negative means someone owes you (7.3): the neighbor owes 30.00.
 
 Check: wants 200.00 | held for others -30.00 | unsorted spending 0.00
+
+
+========================================================================
+EXAMPLE 9. A month of mom payments (rules 8.1 to 8.4, 3.2)
+========================================================================
+
+Before: Mom reserve 1,500.00 | Needs 600.00. Everything else 0.00.
+        Leftover setting: always roll over. Mom target: 2,000.00 to
+        3,000.00 a month.
+
+Step 1. Oct 3: you send mom 1,000.00. It matches the mom rule, so it
+        comes out of the reserve (8.1).
+        Mom reserve  1,500.00 - 1,000.00 = 500.00
+
+Step 2. Oct 9: a 4,000.00 paycheck.
+        Room under the cap: 3,000.00 - 500.00 = 2,500.00, so the full
+        1,500.00 fits.
+        Mom reserve  500.00 + 1,500.00 = 2,000.00
+        Rest to split: 4,000.00 - 1,500.00 = 2,500.00
+        Savings 50% = 1,250.00 | Needs 30% = 750.00 | Wants 20% = 500.00
+        Needs  600.00 + 750.00 = 1,350.00
+
+Step 3. Oct 20: you send mom 2,500.00. The reserve only has 2,000.00
+        (8.3). It covers 2,000.00 and goes to 0.00. The other 500.00
+        waits in review, and you pick needs.
+        Needs  1,350.00 - 500.00 = 850.00
+
+Step 4. Sent to mom in October (8.2): 1,000.00 + 2,500.00 = 3,500.00,
+        against a target of 2,000.00 to 3,000.00. The reserve carries
+        into November at 0.00 (8.4).
+
+Check: mom reserve 0.00 | savings 1,250.00 | needs 850.00 | wants 500.00 | sent this month 3,500.00
