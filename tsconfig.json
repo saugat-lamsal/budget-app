@@ -1,0 +1,8 @@
+{
+  // Project-level files: the test runner config and the repo safety tests.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["vitest.config.ts", "test"]
+}

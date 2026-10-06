@@ -1,0 +1,5 @@
+{
+  // Tests for the money math. Same strict settings as the source.
+  "extends": "../tsconfig.json",
+  "include": ["**/*.ts"]
+}

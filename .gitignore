@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+*.log
+
+# Secrets stay out of git. Only the blank example is committed.
+.env
+.env.*
+!.env.example
+
+.DS_Store
+Thumbs.db

@@ -1,0 +1,11 @@
+{
+  // Money math source only. It compiles against plain JavaScript and nothing
+  // else: no browser, no Node, no network, no test tools. Keep lib and types
+  // pinned here so loosening the shared base can't loosen this package.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": []
+  },
+  "include": ["src"]
+}
