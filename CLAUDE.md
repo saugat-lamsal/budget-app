@@ -114,7 +114,7 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 5. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 6. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his part A answers (A5, A6, A8).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
@@ -134,7 +134,7 @@ This applies to every phase and every session, cloud or local.
     broken and stops if they fail. If a run is stopped partway, the test
     suite fails until `node scripts/break-it.mjs --restore` puts the file
     back.
-- Next: the rest of QUESTIONS.md part A (A1 to A4, A6's everyday card part,
-  A7, A9, A10), then Phase 2 once he says go.
+- Next: the rest of QUESTIONS.md part A (A1 to A4, A7, A9, A10), then
+  Phase 2 once he says go.
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.

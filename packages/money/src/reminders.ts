@@ -70,11 +70,9 @@ export function cardNotices(today: IsoDate, statement: CardStatement, payments: 
   const paid = addCents(0, ...seen.map((p) => p.amount));
   const daysLeft = daysBetween(today, dueDate);
   if (daysLeft < 0) {
-    // 9.4: the due date passed and not enough was paid. On the old card,
-    // that is payments since the statement adding up to less than the
-    // minimum. On the everyday card, no payment seen at all, while
-    // something was due (QUESTIONS.md A6).
-    const overdue = card === 'old-card' ? paid < minimumPayment : seen.length === 0 && minimumPayment > 0;
+    // 9.4: the due date passed and the payments since the statement add up
+    // to less than the minimum. The same on both cards (A6).
+    const overdue = paid < minimumPayment;
     return overdue ? [{ kind: 'overdue', card, dueDate, minimumPayment }] : [];
   }
   // 9.3: payments since the statement add up toward what has to be paid.

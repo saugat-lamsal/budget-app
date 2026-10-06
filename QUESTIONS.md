@@ -65,21 +65,14 @@ A5. ANSWERED Oct 6, built. Does "income" from review start a new pay
     new pay period. Rulebook 6.1 and 18a updated. Worked examples 7 and
     15. The readings I had to pick while building it are B52 to B55.
 
-A6. PARTLY ANSWERED Oct 6. Paying the old card in more than one payment
-    (9.3), and payments below the minimum (9.4).
-    Your answer, built: on the old card, payments since the statement add
-    up. Reminders and the overdue alert stop once they total at least the
-    minimum. Rulebook 9.3, 9.4 and 18b updated. (The everyday card already
-    adds its payments up toward the full balance, as you confirmed.)
-    Still open: the overdue alert on the everyday card.
-    Now (the literal reading of 9.4): any payment at all, even below the
-    minimum, means the everyday card is not overdue.
-    Option 1 (now): as above.
-    Option 2: same as the old card. If the payments since the statement
-    add up to less than the minimum on the due date, you get the overdue
-    alert.
-    Recommendation: option 2, for the same reason you gave for the old
-    card: the bank charges a late fee when less than the minimum is paid.
+A6. ANSWERED Oct 6, built. Paying a card in more than one payment (9.3),
+    and payments below the minimum (9.4).
+    Your answers: on the old card, payments since the statement add up,
+    and reminders and the overdue alert stop once they total at least the
+    minimum (18b). The everyday card's overdue alert now works the same
+    way (option 2, 18d). Its reminders still continue until the full
+    statement balance is paid (9.3). Rulebook 9.3, 9.4, 18b and 18d
+    updated.
 
 A7. Old card payoff countdown (9.5). Not built yet; it shows "off".
     The promo end date is still missing (rulebook section 16), and these
