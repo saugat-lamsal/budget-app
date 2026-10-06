@@ -133,8 +133,25 @@ This applies to every phase and every session, cloud or local.
     breaks the source on purpose. It first runs the tests with nothing
     broken and stops if they fail. If a run is stopped partway, the test
     suite fails until `node scripts/break-it.mjs --restore` puts the file
-    back.
-- Next: the rest of QUESTIONS.md part A (A1 to A4, A7, A9, A10), then
-  Phase 2 once he says go.
+    back. `--only <test file>` shows what one test file catches by itself.
+- CI: GitHub Actions runs `npm test` on Linux and Windows for every pull
+  request (.github/workflows/test.yml).
+- Phase 2 (stress testing), part one, the simulated you: built Oct 6, 2026
+  on branch phase-2-simulator (PR #3).
+  - packages/money/test/sim: a made-up person lived one day at a time
+    against the simulator's own bank (posted balances, pending charges,
+    transfers in two halves). Every day: the self-check, a recount, the old
+    card debt, money in transit, safe to spend, alerts, card notices, and
+    what each transaction and answer should have done to the buckets,
+    worked out from the rulebook. The person also tries things the
+    rulebook does not allow; the app must refuse them and change nothing.
+  - npm test lives 6 lives of 2 years. `node scripts/simulate.mjs` lives
+    1,000 lives of 5 years on every core; `--seed N --years Y` replays one.
+    A failure prints its seed and day, and becomes a test before any fix.
+  - It leaves out what is not built or still waiting on his answers (A2, a
+    pending charge that vanishes; A3 and A9 follow today's behavior).
+- Next: Phase 2 part two, the second-opinion tests, in a separate session
+  that has not seen the money code. Still open: QUESTIONS.md part A (A1 to
+  A4, A7, A9, A10).
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.
