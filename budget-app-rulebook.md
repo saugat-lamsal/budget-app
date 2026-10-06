@@ -130,8 +130,11 @@ number so a test can point at it. Nothing gets coded until you approve this.
 9.1  Everyday card: reminders show the statement balance, the minimum, and
      the due date.
 9.2  Old card: reminders show the minimum and the due date.
-9.3  Reminders stop once the app sees a payment that covers at least the
-     minimum for that statement.
+9.3  Everyday card: reminders continue until the payments the app sees
+     since the statement add up to the full statement balance. Paying less
+     usually means interest on the rest.
+     Old card: reminders stop once the app sees a payment that covers at
+     least the minimum for that statement.
 9.4  If the due date passes with no payment seen, you get an overdue alert.
 9.5  Old card payoff countdown: balance divided by the paychecks left before
      the promo ends, counted from the pay schedule.
@@ -236,3 +239,5 @@ c.  The empty-bucket alert comes once per bucket per pay period, like the
     low-bucket alert (10.2).
 d.  A hand move that would take any bucket below zero asks you to confirm
     first (13.4).
+e.  Everyday card reminders continue until the full statement balance is
+    paid. The old card stays at the minimum (9.3).

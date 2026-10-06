@@ -1,4 +1,4 @@
-import { assertCents, assertCentsAtLeastZero, type Cents } from './cents.js';
+import { addCents, assertCents, assertCentsAtLeastZero, type Cents } from './cents.js';
 import { assertIsoDate, daysBetween, type IsoDate } from './dates.js';
 import { MoneyError } from './errors.js';
 import type { Settings } from './settings.js';
@@ -47,8 +47,11 @@ export function cardNotices(today: IsoDate, statement: CardStatement, payments: 
   assertIsoDate(today, 'today');
   checkStatement(statement);
   const { card, closingDate, dueDate, statementBalance, minimumPayment } = statement;
-  // A statement with nothing due needs no payment.
-  if (minimumPayment === 0) return [];
+  // 9.3: what has to be paid for the reminders to stop. On the everyday card
+  // that is the full statement balance (paying less means interest on the
+  // rest); on the old card it is the minimum.
+  const toPay = card === 'everyday-card' ? statementBalance : minimumPayment;
+  if (toPay <= 0) return [];
   // Payments the app has seen for this statement: after its date, up to today.
   const seen = payments.filter((p) => {
     assertIsoDate(p.date, 'payment date');
@@ -57,11 +60,14 @@ export function cardNotices(today: IsoDate, statement: CardStatement, payments: 
   });
   const daysLeft = daysBetween(today, dueDate);
   if (daysLeft < 0) {
-    // 9.4: the due date passed with no payment seen.
-    return seen.length === 0 ? [{ kind: 'overdue', card, dueDate, minimumPayment }] : [];
+    // 9.4: the due date passed with no payment seen, and something was due.
+    return seen.length === 0 && minimumPayment > 0 ? [{ kind: 'overdue', card, dueDate, minimumPayment }] : [];
   }
-  // 9.3: a single payment of at least the minimum stops the reminders.
-  if (seen.some((p) => p.amount >= minimumPayment)) return [];
+  const paidInFull =
+    card === 'everyday-card'
+      ? addCents(0, ...seen.map((p) => p.amount)) >= statementBalance
+      : seen.some((p) => p.amount >= minimumPayment);
+  if (paidInFull) return [];
   if (!settings.cardReminderDaysBefore.includes(daysLeft)) return [];
   // 9.1 and 9.2: the everyday card shows its statement balance; the old card does not.
   return card === 'everyday-card'

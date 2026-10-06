@@ -74,18 +74,18 @@ A5. Does "income" from review start a new pay period? (6.1 with 3.1, 3.7)
     refund stays plain income.
     Recommendation: option 3.
 
-A6. Paying a card in more than one payment (9.3, 9.4).
-    9.3 says reminders stop at "a payment that covers at least the
-    minimum". 9.4 says the overdue alert comes when the due date passes
-    with "no payment seen". Neither says what happens with two smaller
-    payments, or one payment below the minimum.
-    Now (the literal reading): reminders stop only when one single payment
-    is at least the minimum. Any payment at all, even below the minimum,
-    stops the overdue alert.
+A6. Paying the old card in more than one payment (9.3), and payments
+    below the minimum (9.4).
+    Settled for the everyday card by your review: its payments since the
+    statement add up toward the full balance (9.3). Still open for the
+    old card, and for the overdue alert on both cards.
+    Now (the literal reading): old card reminders stop only when one
+    single payment is at least the minimum. On either card, any payment
+    at all, even below the minimum, stops the overdue alert (9.4).
     Option 1 (now): as above.
-    Option 2: add up every payment since the statement. Reminders stop once
-    the total reaches the minimum. If the total is still short on the due
-    date, you get the overdue alert.
+    Option 2: add up the old card's payments too. Reminders stop once the
+    total reaches the minimum, and if the total is still under the
+    minimum on the due date, you get the overdue alert.
     Recommendation: option 2. It matches what the bank checks before
     charging a late fee.
 
@@ -268,7 +268,11 @@ B28. Card reminders go out exactly 7 and 2 days before the due date
      statement when it is dated after the statement date and on or before
      today (9.1 to 9.3).
 
-B29. A statement with a $0 minimum gets no reminder and no overdue alert.
+B29. Updated with your review of 9.3. Everyday card: a statement with
+     nothing owed (or a credit) gets no reminder; one with a balance but a
+     $0 minimum still reminds until it is paid. Old card: a $0 minimum gets
+     no reminder. Neither card gets an overdue alert when the minimum is
+     $0, since nothing was due.
 
 B30. The overdue alert (9.4) is due on every day after the due date until
      a payment is seen. Making sure it reaches the phone once is Phase 5.

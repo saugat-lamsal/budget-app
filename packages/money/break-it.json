@@ -674,14 +674,14 @@
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "if (seen.some((p) => p.amount >= minimumPayment)) return [];",
-    "replace": "if (seen.some((p) => p.amount > minimumPayment)) return [];",
+    "find": "      : seen.some((p) => p.amount >= minimumPayment);",
+    "replace": "      : seen.some((p) => p.amount > minimumPayment);",
     "why": "9.3 shift the minimum boundary by one cent"
   },
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "if (seen.some((p) => p.amount >= minimumPayment)) return [];",
+    "find": "  if (paidInFull) return [];\n",
     "replace": "",
     "why": "9.3 keep reminding after the minimum is paid"
   },
@@ -695,7 +695,7 @@
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "return seen.length === 0 ? [{ kind: 'overdue', card, dueDate, minimumPayment }] : [];",
+    "find": "return seen.length === 0 && minimumPayment > 0 ? [{ kind: 'overdue', card, dueDate, minimumPayment }] : [];",
     "replace": "return [];",
     "why": "9.4 never send the overdue alert"
   },
@@ -723,7 +723,7 @@
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "  if (minimumPayment === 0) return [];",
+    "find": "  if (toPay <= 0) return [];\n",
     "replace": "",
     "why": "9.3 remind about a statement with nothing due"
   },
@@ -737,8 +737,8 @@
   {
     "section": "9",
     "file": "packages/money/src/book.ts",
-    "find": "entry.txn.kind === 'transfer' && entry.txn.to === card",
-    "replace": "entry.txn.kind === 'transfer' && entry.txn.to !== 'savings'",
+    "find": "if (txn === null || !('to' in txn) || txn.to !== card) continue;",
+    "replace": "if (txn === null || !('to' in txn) || txn.to === 'savings') continue;",
     "why": "9.3 mix up which card a payment went to"
   },
   {
@@ -1300,5 +1300,47 @@
     "find": "if (from === 'savings') reasons.push('out-of-savings');",
     "replace": "",
     "why": "13.4 move out of savings without asking"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "const toPay = card === 'everyday-card' ? statementBalance : minimumPayment;",
+    "replace": "const toPay = minimumPayment;",
+    "why": "9.3 stop everyday card reminders at the minimum again"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "      ? addCents(0, ...seen.map((p) => p.amount)) >= statementBalance",
+    "replace": "      ? seen.some((p) => p.amount >= minimumPayment)",
+    "why": "9.3 stop everyday card reminders once the minimum is paid"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "      ? addCents(0, ...seen.map((p) => p.amount)) >= statementBalance",
+    "replace": "      ? addCents(0, ...seen.map((p) => p.amount)) > statementBalance",
+    "why": "9.3 shift the full-balance boundary by one cent"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "      ? addCents(0, ...seen.map((p) => p.amount)) >= statementBalance",
+    "replace": "      ? seen.some((p) => p.amount >= statementBalance)",
+    "why": "9.3 stop adding up everyday card payments"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "      : seen.some((p) => p.amount >= minimumPayment);",
+    "replace": "      : addCents(0, ...seen.map((p) => p.amount)) >= minimumPayment;",
+    "why": "9.3 add up old card payments before A6 is answered"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "return seen.length === 0 && minimumPayment > 0 ? [{ kind: 'overdue'",
+    "replace": "return seen.length === 0 ? [{ kind: 'overdue'",
+    "why": "9.4 call a statement with no minimum overdue"
   }
 ]

@@ -59,28 +59,78 @@ describe('9.2 old card reminders show the minimum and the due date', () => {
   });
 });
 
-describe('9.3 reminders stop once a payment covering the minimum is seen', () => {
-  it('9.3 a payment of at least the minimum after the statement stops the reminders', () => {
-    const paid = [{ date: '2026-10-10', amount: 3_500 }];
+describe('9.3 everyday card: reminders continue until the full statement balance is paid', () => {
+  it('9.3 paying only the minimum does not stop them', () => {
+    expect(cardNotices('2026-10-19', EVERYDAY, [{ date: '2026-10-10', amount: 3_500 }], DEFAULT_SETTINGS)).toHaveLength(1);
+  });
+
+  it('9.3 paying the full statement balance stops them', () => {
+    const paid = [{ date: '2026-10-10', amount: 123_456 }];
     expect(cardNotices('2026-10-19', EVERYDAY, paid, DEFAULT_SETTINGS)).toEqual([]);
     expect(cardNotices('2026-10-24', EVERYDAY, paid, DEFAULT_SETTINGS)).toEqual([]);
   });
 
-  it('9.3 one cent short of the minimum does not stop them', () => {
-    expect(cardNotices('2026-10-19', EVERYDAY, [{ date: '2026-10-10', amount: 3_499 }], DEFAULT_SETTINGS)).toHaveLength(1);
+  it('9.3 one cent short of the full balance does not stop them', () => {
+    expect(cardNotices('2026-10-19', EVERYDAY, [{ date: '2026-10-10', amount: 123_455 }], DEFAULT_SETTINGS)).toHaveLength(1);
   });
 
+  it('9.3 payments since the statement add up toward the full balance', () => {
+    const inTwo = [
+      { date: '2026-10-05', amount: 100_000 },
+      { date: '2026-10-15', amount: 23_456 },
+    ];
+    expect(cardNotices('2026-10-19', EVERYDAY, inTwo, DEFAULT_SETTINGS)).toEqual([]);
+    const short = [
+      { date: '2026-10-05', amount: 100_000 },
+      { date: '2026-10-15', amount: 23_455 },
+    ];
+    expect(cardNotices('2026-10-19', EVERYDAY, short, DEFAULT_SETTINGS)).toHaveLength(1);
+  });
+
+  it('9.3 a balance with no minimum still reminds until it is paid', () => {
+    expect(cardNotices('2026-10-19', { ...EVERYDAY, statementBalance: 5_000, minimumPayment: 0 }, [], DEFAULT_SETTINGS)).toHaveLength(1);
+  });
+
+  it('9.3 a statement with nothing to pay, or a credit, sends no reminder', () => {
+    expect(cardNotices('2026-10-19', { ...EVERYDAY, statementBalance: 0, minimumPayment: 0 }, [], DEFAULT_SETTINGS)).toEqual([]);
+    expect(cardNotices('2026-10-19', { ...EVERYDAY, statementBalance: -500, minimumPayment: 0 }, [], DEFAULT_SETTINGS)).toEqual([]);
+  });
+});
+
+describe('9.3 old card: reminders stop once a payment covering the minimum is seen', () => {
+  it('9.3 a payment of at least the minimum after the statement stops them', () => {
+    const paid = [{ date: '2026-10-10', amount: 9_000 }];
+    expect(cardNotices('2026-10-19', OLD, paid, DEFAULT_SETTINGS)).toEqual([]);
+    expect(cardNotices('2026-10-24', OLD, paid, DEFAULT_SETTINGS)).toEqual([]);
+  });
+
+  it('9.3 one cent short of the minimum does not stop them', () => {
+    expect(cardNotices('2026-10-19', OLD, [{ date: '2026-10-10', amount: 8_999 }], DEFAULT_SETTINGS)).toHaveLength(1);
+  });
+
+  it('9.3 two smaller payments do not stop them yet: one payment has to cover the minimum (QUESTIONS.md A6)', () => {
+    const inTwo = [
+      { date: '2026-10-05', amount: 4_500 },
+      { date: '2026-10-15', amount: 4_500 },
+    ];
+    expect(cardNotices('2026-10-19', OLD, inTwo, DEFAULT_SETTINGS)).toHaveLength(1);
+  });
+
+  it('9.3 a statement with no minimum sends no reminder', () => {
+    expect(cardNotices('2026-10-19', { ...OLD, minimumPayment: 0 }, [], DEFAULT_SETTINGS)).toEqual([]);
+  });
+});
+
+describe('9.3 which payments count, for either card', () => {
   it('9.3 a payment on or before the statement date belongs to the last statement', () => {
     expect(cardNotices('2026-10-19', EVERYDAY, [{ date: '2026-10-01', amount: 999_999 }], DEFAULT_SETTINGS)).toHaveLength(1);
-    expect(cardNotices('2026-10-19', EVERYDAY, [{ date: '2026-10-02', amount: 3_500 }], DEFAULT_SETTINGS)).toEqual([]);
+    expect(cardNotices('2026-10-19', EVERYDAY, [{ date: '2026-10-02', amount: 123_456 }], DEFAULT_SETTINGS)).toEqual([]);
+    expect(cardNotices('2026-10-19', OLD, [{ date: '2026-10-01', amount: 999_999 }], DEFAULT_SETTINGS)).toHaveLength(1);
   });
 
   it('9.3 a payment dated after today is not seen yet', () => {
-    expect(cardNotices('2026-10-19', EVERYDAY, [{ date: '2026-10-20', amount: 3_500 }], DEFAULT_SETTINGS)).toHaveLength(1);
-  });
-
-  it('9.3 a statement with nothing due needs no payment, so it sends no reminder', () => {
-    expect(cardNotices('2026-10-19', { ...EVERYDAY, statementBalance: 0, minimumPayment: 0 }, [], DEFAULT_SETTINGS)).toEqual([]);
+    expect(cardNotices('2026-10-19', EVERYDAY, [{ date: '2026-10-20', amount: 123_456 }], DEFAULT_SETTINGS)).toHaveLength(1);
+    expect(cardNotices('2026-10-19', OLD, [{ date: '2026-10-20', amount: 9_000 }], DEFAULT_SETTINGS)).toHaveLength(1);
   });
 
   it('9.3 the book lists the payments it has seen to each card', () => {
@@ -119,6 +169,11 @@ describe('9.4 the due date passes with no payment seen: overdue alert', () => {
 
   it('9.4 a statement with nothing due is never overdue', () => {
     expect(cardNotices('2026-10-27', { ...EVERYDAY, statementBalance: 0, minimumPayment: 0 }, [], DEFAULT_SETTINGS)).toEqual([]);
+    expect(cardNotices('2026-10-27', { ...EVERYDAY, statementBalance: 5_000, minimumPayment: 0 }, [], DEFAULT_SETTINGS)).toEqual([]);
+  });
+
+  it('9.4 on the everyday card, a payment of just the minimum means it is not overdue', () => {
+    expect(cardNotices('2026-10-27', EVERYDAY, [{ date: '2026-10-20', amount: 3_500 }], DEFAULT_SETTINGS)).toEqual([]);
   });
 });
 
