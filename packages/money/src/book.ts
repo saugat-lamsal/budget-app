@@ -1200,33 +1200,39 @@ export class Book {
   }
 
   // 13.6: re-sort an item and "always do this". The new rule goes just ahead
-  // of the rule that matches the item now, so the correction sticks; if no
-  // rule matches it, the new rule goes at the end. The rule's text must
-  // match the item it corrects.
-  sortAlways(id: string, choice: SortChoice, rule: { readonly id: string; readonly contains: string }, date: IsoDate): void {
+  // of the rule it corrects, so the correction sticks: the earliest rule that
+  // matches the item, either as it first arrived (new purchases are sorted
+  // on that, often a pending description) or as it posted. If no rule
+  // matches it, the new rule goes at the end. The rule's text must match the
+  // item one way or the other. sticks says whether the next item arriving
+  // the way this one did will now go where you sorted this one.
+  sortAlways(id: string, choice: SortChoice, rule: { readonly id: string; readonly contains: string }, date: IsoDate): { readonly sticks: boolean } {
     assertIsoDate(date);
     const entry = this.#entries.get(this.#aliases.get(id) ?? id);
     if (entry === undefined) throw new MoneyError('unknown-item', `no item ${id}`);
     let newRule: SortingRule;
-    let description: string;
+    // How the item has appeared: as it arrived first, then as it posted.
+    let descriptions: string[];
     if (entry.kind === 'spend' && entry.spendingKind === 'purchase') {
       if ('split' in choice || !isSpendingBucket(choice.to)) throw new MoneyError('bad-choice', 'a rule picks needs or wants; it cannot split');
       newRule = { id: rule.id, for: 'purchase', contains: rule.contains, bucket: choice.to };
-      description = (entry.postedTxn ?? entry.txn).description;
+      descriptions = [entry.txn.description, ...(entry.postedTxn === null ? [] : [entry.postedTxn.description])];
     } else if (entry.kind === 'spend' && entry.spendingKind === 'person-payment') {
       if (!isPersonPaymentChoice(choice)) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');
       newRule = { id: rule.id, for: 'person', contains: rule.contains, choice: { to: choice.to } };
-      description = entry.txn.description;
+      descriptions = [entry.txn.description];
     } else if (entry.kind === 'money-in' && entry.reason === 'deposit') {
       if (!isMoneyInChoice(choice)) throw new MoneyError('bad-choice', 'money in is income, payback into one bucket, or not mine');
       newRule = { id: rule.id, for: 'deposit', contains: rule.contains, choice: { to: choice.to } };
-      description = entry.txn.description;
+      descriptions = [entry.txn.description];
     } else {
       throw new MoneyError('no-rule-for-this', `${id} is not something a sorting rule can cover`);
     }
-    if (!matchesTextRule(newRule, description)) throw new MoneyError('bad-rule', `"${rule.contains}" does not match "${description}"`);
-    const corrected = findRule(this.#rules, newRule.for, description);
-    const at = corrected === undefined ? this.#rules.length : this.#rules.indexOf(corrected);
+    const covers = (r: SortingRule): boolean => r.for === newRule.for && descriptions.some((d) => matchesTextRule(r, d));
+    if (!covers(newRule)) throw new MoneyError('bad-rule', `"${rule.contains}" does not match ${descriptions.map((d) => `"${d}"`).join(' or ')}`);
+    const found = this.#rules.findIndex(covers);
+    const at = found === -1 ? this.#rules.length : found;
+    const corrected = this.#rules[at];
     // Check the new list first, so a bad rule changes nothing.
     const rules = checkRules([...this.#rules.slice(0, at), newRule, ...this.#rules.slice(at)]);
     this.sort(entry.id, choice, date);
@@ -1234,6 +1240,7 @@ export class Book {
     const added = this.#ruleById(newRule.id);
     this.#log.push(Object.freeze({ date, kind: 'rule-added-from-correction', rule: added, correcting: entry.id, aheadOf: corrected?.id ?? null }));
     this.#sortWaitingByRules();
+    return { sticks: findRule(this.#rules, newRule.for, descriptions[0] ?? '')?.id === added.id };
   }
 
   changeRule(rule: SortingRule, date: IsoDate): void {

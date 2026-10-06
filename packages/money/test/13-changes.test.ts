@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardCharge, codeOf, deposit, openTestBook, payPerson, paycheck, purchase, refund, type TestBookOptions } from './helpers.js';
+import { cardCharge, codeOf, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, type TestBookOptions } from './helpers.js';
 
 const ROLL = { leftoverAtPayday: { needs: 'roll-over', wants: 'roll-over' } } as const;
 
@@ -316,7 +316,7 @@ describe('13.6 a rule made from a correction beats the rule it corrects', () => 
     const b = book({ rules: [GROCER] });
     b.receive(purchase('e1', '2026-10-05', 4_000, 'MADE UP GROCER CAFE'));
     expect(b.purchases()[0]?.sortedTo).toEqual({ to: 'needs' });
-    b.sortAlways('e1', { to: 'wants' }, { id: 'grocer-cafe', contains: 'GROCER CAFE' }, '2026-10-06');
+    expect(b.sortAlways('e1', { to: 'wants' }, { id: 'grocer-cafe', contains: 'GROCER CAFE' }, '2026-10-06')).toEqual({ sticks: true });
     expect(b.purchases()[0]?.sortedTo).toEqual({ to: 'wants' });
     expect(b.rules().map((r) => r.id)).toEqual(['grocer-cafe', 'grocer']);
     b.receive(purchase('e2', '2026-10-07', 1_000, 'MADE UP GROCER CAFE'));
@@ -365,6 +365,38 @@ describe('13.6 a rule made from a correction beats the rule it corrects', () => 
     b.receive(deposit('d2', '2026-10-07', 500, 'MADE UP REIMBURSEMENT'));
     expect(b.rules().map((r) => r.id)).toEqual(['friend-fix', 'friend', 'reimburse', 'made-up']);
     expect(b.pots()).toMatchObject({ heldForOthers: -3_000, wants: 33_500, savings: 100_000 });
+  });
+
+  // Banks often change a purchase's description when it posts (found in review).
+  const CAFE = { id: 'cafe', for: 'purchase', contains: 'CAFE', bucket: 'wants' } as const;
+  function cafeVisit() {
+    const b = book({ rules: [CAFE] });
+    b.receive(purchase('e1', '2026-10-05', 1_250, 'SQ *JOES CAFE', { pending: true }));
+    b.receive(posted('e1p', 'e1', '2026-10-07', 1_250, 'JOES COFFEE LLC'));
+    return b;
+  }
+
+  it('13.6 the bank changed the description when it posted: the new rule still goes ahead of the rule that sorted it', () => {
+    const b = cafeVisit();
+    expect(b.sortAlways('e1', { to: 'needs' }, { id: 'joes', contains: 'JOES' }, '2026-10-08')).toEqual({ sticks: true });
+    expect(b.rules().map((r) => r.id)).toEqual(['joes', 'cafe']);
+    b.receive(purchase('e2', '2026-10-12', 1_400, 'SQ *JOES CAFE', { pending: true }));
+    expect(b.purchases().find((p) => p.id === 'e2')?.sortedTo).toEqual({ to: 'needs' });
+    expect(b.changeLog().at(-1)).toMatchObject({ aheadOf: 'cafe' });
+  });
+
+  it('13.6 text that matches only how it showed up while pending is accepted', () => {
+    const b = cafeVisit();
+    expect(b.sortAlways('e1', { to: 'needs' }, { id: 'joes', contains: 'SQ *JOES' }, '2026-10-08')).toEqual({ sticks: true });
+    expect(b.purchases()[0]?.sortedTo).toEqual({ to: 'needs' });
+  });
+
+  it('13.6 text that matches only the posted description is accepted, but it says it will not catch the next pending one', () => {
+    const b = cafeVisit();
+    expect(b.sortAlways('e1', { to: 'needs' }, { id: 'joes', contains: 'COFFEE LLC' }, '2026-10-08')).toEqual({ sticks: false });
+    expect(b.rules().map((r) => r.id)).toEqual(['joes', 'cafe']);
+    b.receive(purchase('e3', '2026-10-12', 1_400, 'JOES COFFEE LLC'));
+    expect(b.purchases().find((p) => p.id === 'e3')?.sortedTo).toEqual({ to: 'needs' });
   });
 
   it('13.6 the new rule must cover the item it corrects; otherwise nothing changes', () => {

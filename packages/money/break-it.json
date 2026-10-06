@@ -1129,28 +1129,28 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "const at = corrected === undefined ? this.#rules.length : this.#rules.indexOf(corrected);",
+    "find": "const at = found === -1 ? this.#rules.length : found;",
     "replace": "const at = this.#rules.length;",
     "why": "13.6 put a correction rule at the end, behind the rule it corrects"
   },
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "const at = corrected === undefined ? this.#rules.length : this.#rules.indexOf(corrected);",
+    "find": "const at = found === -1 ? this.#rules.length : found;",
     "replace": "const at = 0;",
     "why": "13.6 put a correction rule at the very top"
   },
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "const at = corrected === undefined ? this.#rules.length : this.#rules.indexOf(corrected);",
-    "replace": "const at = corrected === undefined ? this.#rules.length : this.#rules.indexOf(corrected) + 1;",
+    "find": "const at = found === -1 ? this.#rules.length : found;",
+    "replace": "const at = found === -1 ? this.#rules.length : found + 1;",
     "why": "13.6 put a correction rule just behind the rule it corrects"
   },
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "if (!matchesTextRule(newRule, description)) throw new MoneyError('bad-rule'",
+    "find": "if (!covers(newRule)) throw new MoneyError('bad-rule'",
     "replace": "if (false) throw new MoneyError('bad-rule'",
     "why": "13.6 accept a correction rule that does not cover the item"
   },
@@ -1405,5 +1405,26 @@
     "find": "landedOn: partner === undefined ? null : this.#legTxn(partner).date",
     "replace": "landedOn: null",
     "why": "9.3 forget the day a payment reached the card"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "descriptions = [entry.txn.description, ...(entry.postedTxn === null ? [] : [entry.postedTxn.description])];",
+    "replace": "descriptions = [(entry.postedTxn ?? entry.txn).description];",
+    "why": "13.6 look only at the posted description"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "descriptions = [entry.txn.description, ...(entry.postedTxn === null ? [] : [entry.postedTxn.description])];",
+    "replace": "descriptions = [entry.txn.description];",
+    "why": "13.6 look only at the description it arrived with"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "return { sticks: findRule(this.#rules, newRule.for, descriptions[0] ?? '')?.id === added.id };",
+    "replace": "return { sticks: findRule(this.#rules, newRule.for, descriptions.at(-1) ?? '')?.id === added.id };",
+    "why": "13.6 judge whether the fix sticks by the posted description"
   }
 ]

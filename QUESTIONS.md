@@ -379,12 +379,16 @@ B48. Setup day also takes the transfers with only one half showing that
      old card is outside the starting money, and its balance already
      shows whatever has landed.
 
-B49. "The rule it corrects" (13.6) is whichever rule matches the item
-     right now, even if you had already re-sorted the item by hand. The new
-     rule's text has to match the item it corrects, otherwise it is
-     refused. A rule from a correction cannot split (rules never split),
-     and fees, early paychecks, store refunds, and mom payments cannot get
-     a rule, as before.
+B49. "The rule it corrects" (13.6) is the first rule that matches the
+     item, as it first showed up or as it posted, even if you had already
+     re-sorted the item by hand. Banks often change a purchase's
+     description when it posts (found in the review). The new rule's text
+     has to match the item one way or the other, otherwise it is refused.
+     The app also says whether the fix will catch the next one: text that
+     only matches the posted description will not catch the next charge
+     while it is still pending. A rule from a correction cannot split
+     (rules never split), and fees, early paychecks, store refunds, and mom
+     payments cannot get a rule, as before.
 
 B50. "Once per bucket per pay period" (10.2): if a bucket is refilled and
      empties again in the same pay period, there is no second alert. A

@@ -191,10 +191,12 @@ number so a test can point at it. Nothing gets coded until you approve this.
       first. So does any move that would leave the bucket it comes out of
       below zero, since that is usually a typo.
 13.5  Every change and every manual move is logged with the date.
-13.6  When you correct something a rule sorted and choose "always do this",
-      the new rule goes just ahead of the rule it corrects, so the
-      correction sticks. If no rule had sorted it, the new rule goes at the
-      end of your list.
+13.6  When you correct something and choose "always do this", the new rule
+      goes just ahead of the rule it corrects, so the correction sticks.
+      The rule it corrects is the first rule in your list that matches the
+      item, as it first showed up (often the pending description) or as it
+      posted. If no rule matches it, the new rule goes at the end of your
+      list.
 
 
 ## 14. Setup day
