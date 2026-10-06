@@ -13,17 +13,13 @@ Nothing to do unless one of them is wrong.
 
 ## Part A. Waiting on your answer
 
-A1. A refund on a split purchase, or a split purchase that posts at a
-    different amount (4.4 with 4.5 and 4.6).
-    Example: 120.00 split 100.00 needs / 20.00 wants, then 20.00 comes back.
-    Which bucket gets it?
-    Now: the purchase goes back to review with its new total, and you
-    split it again.
-    Option 1 (now): back to review to split again.
-    Option 2: share it out in the same proportions as the split.
-    Option 3: it all goes to the bigger part.
-    Recommendation: option 1. It is rare, and you know which part the
-    refund was for.
+A1. ANSWERED Oct 6, built. A refund on a split purchase, or a split
+    purchase that posts at a different amount (4.4 with 4.5 and 4.6).
+    Your answer: a full refund goes back to each bucket as it was split,
+    and nothing waits in review. A partial refund sends the purchase back
+    to review with its new total, to be split again, as before. A split
+    purchase that posts at a different amount also goes back to review, as
+    before. Rulebook 4.5 and 18g updated.
 
 A2. A pending charge that disappears without posting (4.6).
     Gas stations and hotels often put a hold that drops off later. The
@@ -74,21 +70,15 @@ A6. ANSWERED Oct 6, built. Paying a card in more than one payment (9.3),
     statement balance is paid (9.3). Rulebook 9.3, 9.4, 18b and 18d
     updated.
 
-A7. Old card payoff countdown (9.5). Not built yet; it shows "off".
-    The promo end date is still missing (rulebook section 16), and these
-    details are not in the rule:
-    a. Which paychecks count as "left": paydays after today and before the
-       promo end date? What if a payday falls on the end date itself?
-    b. Rounding: the balance rarely divides evenly. Round each share up to
-       the cent (the last payment comes out slightly smaller), or show the
-       exact share and let the extra cents fall on the last payment?
-    c. If no paychecks are left before the promo ends, show the whole
-       balance as due now?
-    d. Which balance: the old card debt the app tracks (5.4, 5.5), or the
-       last statement balance?
-    Recommendation: a. paydays after today and before the end date, not on
-    it; b. round up to the cent; c. yes, the whole balance; d. the debt the
-    app tracks.
+A7. ANSWERED Oct 6, built. Old card payoff countdown (9.5).
+    Your answer, the recommendation: a. the paydays left are the ones
+    after today and before the promo end date, not on it; b. each share is
+    rounded up to the cent, so the last payment comes out a little
+    smaller; c. with no paydays left, the whole amount is due now; d. it
+    divides the old card debt the app tracks (5.4, 5.5). Also: with nothing
+    owed, $0 per payday. It stays off until you enter the promo end date
+    (section 16). Rulebook 9.5 and 18e updated. Worked example 17. The
+    reading I had to pick while building it is B59.
 
 A8. ANSWERED Oct 6, built. Low bucket alert (10.1).
     Your answer: 20% of what the bucket started the pay period with,
@@ -249,6 +239,7 @@ B28. Card reminders go out exactly 7 and 2 days before the due date
      (calendar days; both are settings). A payment counts toward a
      statement when it reached the card after the statement date and left
      on or before today (9.1 to 9.3; see B47 for payments in two halves).
+     Now in the rulebook (9.3).
 
 B29. Updated with your review of 9.3. Everyday card: a statement with
      nothing owed (or a credit) gets no reminder; one with a balance but a
@@ -260,6 +251,7 @@ B30. Updated after your A6 answers. The overdue alert (9.4) is due on
      every day after the due date until the payments seen since the
      statement add up to at least the minimum, on either card. Making
      sure it reaches the phone once is Phase 5.
+     Now in the rulebook (9.4).
 
 B31. Changed after your review: see 10.2 in the rulebook. The empty-bucket
      alert now comes once per bucket per pay period. The book remembers
@@ -280,6 +272,7 @@ B34. Safe to spend (11.1) can go below zero when wants are overspent or
 B35. Next payday (11.2) is the last paycheck plus 14 days. If that day
      passes with no paycheck, the days to payday go negative (the paycheck
      is late) instead of jumping ahead another 14 days.
+     Now in the rulebook (11.2).
 
 B36. Changed after your review: see 12.5 in the rulebook.
      The bank balances for the self-check still come from the bank
@@ -346,6 +339,7 @@ B45. The two halves of a transfer pair up by the link the bank connection
      unpaired half between the same two accounts for the same amount. If
      the landing is seen first, it shows in transit as a negative until
      the leaving half shows up.
+     Now in the rulebook (12.5).
 
 B46. Money already on its way to savings counts as moved for "still to
      move" (3.8).
@@ -357,6 +351,7 @@ B47. For card reminders (9.3, 9.4), a payment is seen from the day it left
      after it counts toward the new statement. One still on its way counts
      toward the new statement too. A transfer seen in two halves is one
      payment, and the answer is the same whichever half shows up first.
+     Now in the rulebook (9.3).
 
 B48. Setup day also takes the transfers with only one half showing that
      day. Money that has left and not landed is added to the starting
@@ -380,6 +375,7 @@ B49. "The rule it corrects" (13.6) is the first rule that matches the
 B50. "Once per bucket per pay period" (10.2): if a bucket is refilled and
      empties again in the same pay period, there is no second alert. A
      bucket that starts a new pay period still empty alerts again then.
+     Now in the rulebook (10.2).
 
 B51. The below-zero check (13.4) looks at the bucket the money comes out
      of. It asks whenever that bucket would end below zero, including when
@@ -402,6 +398,7 @@ B53. The new pay period starts on the day the deposit arrived, not the
      day you answer. So the 14-day schedule (11.2) and the 10-day check
      (3.7) count from that day, and the leftover question covers what was
      in each bucket when you answered.
+     Now in the rulebook (6.1).
 
 B54. A deposit older than the last paycheck cannot be "this is my
      paycheck", since pay periods would then run backwards. The app says
@@ -424,8 +421,19 @@ B56. "What the bucket started the pay period with" (10.1) is what was in
 B57. "Falls below" is strictly below, to the exact cent: with a start of
      899.99, the level is 179.998, so 180.00 left does not alert and
      179.99 does.
+     Now in the rulebook (10.1).
 
 B58. At zero or below only the empty alert comes, never both at once. If
      money then comes back in (a payback, a hand move) and the bucket is
      above zero but still under the level, the low alert comes then, if
      it has not come yet this pay period.
+     Now in the rulebook (10.1).
+
+
+## Part B, added with the A7 answer (Oct 6). Tell me if any is wrong.
+
+B59. The countdown (9.5) counts paydays from the pay schedule, starting at
+     the last paycheck. If a payday passes and that paycheck has not come
+     yet, the payday is behind today, so it is not one of the paydays left,
+     even though the money will still come. Until it does, the countdown
+     asks a little more per payday.

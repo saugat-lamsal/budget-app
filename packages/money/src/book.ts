@@ -269,7 +269,10 @@ export type ChangeLogEntry =
 export interface SavingsTransfer {
   readonly shouldBeInSavings: Cents;
   readonly savingsAccountBalance: Cents;
+  // What still needs to go into the savings account; $0 when it holds enough.
   readonly stillToMove: Cents;
+  // Only when the account holds more than it should: by how much (3.8).
+  readonly extraInSavings?: Cents;
 }
 
 interface PaycheckEntry {
@@ -654,8 +657,11 @@ export class Book {
     const onItsWay = this.inTransit()
       .items.filter((item) => item.to === 'savings' && item.seen === 'left')
       .map((item) => item.amount);
-    const stillToMove = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));
-    return { shouldBeInSavings, savingsAccountBalance, stillToMove };
+    const gap = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));
+    // 3.8: nothing to move when the account already holds enough; anything
+    // over is shown on its own.
+    if (gap >= 0) return { shouldBeInSavings, savingsAccountBalance, stillToMove: gap };
+    return { shouldBeInSavings, savingsAccountBalance, stillToMove: 0, extraInSavings: -gap };
   }
 
   // Section 10: the alerts due now. The low and empty bucket alerts come
@@ -1063,12 +1069,13 @@ export class Book {
   }
 
   // Works out what a purchase does to the buckets now. A split that no
-  // longer adds up (after a refund, or posting at a new amount) goes back to
-  // review to be split again.
+  // longer adds up (after a partial refund, or posting at a new amount) goes
+  // back to review to be split again. A full refund of a split purchase
+  // gives each bucket its part back (4.5): the split stays, and nothing waits.
   #refreshSpending(entry: SpendEntry): void {
     const net = netOf(entry);
     const sorted = entry.sortedTo;
-    if ('split' in sorted && sorted.split.reduce((sum, part) => sum + part.amount, 0) !== net) {
+    if ('split' in sorted && net !== 0 && sorted.split.reduce((sum, part) => sum + part.amount, 0) !== net) {
       entry.sortedTo = { to: 'unsorted' };
       entry.splitChanged = true;
     }
@@ -1079,7 +1086,7 @@ export class Book {
     let effect: Effect;
     if ('split' in now) {
       effect = {};
-      for (const part of now.split) effect[part.bucket] = subtractCents(effect[part.bucket] ?? 0, part.amount);
+      if (net !== 0) for (const part of now.split) effect[part.bucket] = subtractCents(effect[part.bucket] ?? 0, part.amount);
     } else if (now.to === 'unsorted') {
       effect = { unsortedOut: net };
     } else if (now.to === 'not-mine') {

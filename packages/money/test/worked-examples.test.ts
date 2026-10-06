@@ -2,7 +2,7 @@
 // come from the "Check:" line in the text file itself, so the file you
 // check by hand and the test can never drift apart.
 import { describe, expect, it } from 'vitest';
-import { parseDollars, startTracking, withPendingCharges, type Book, type Cents } from '../src/index.js';
+import { parseDollars, payoffCountdown, startTracking, withPendingCharges, type Book, type Cents } from '../src/index.js';
 import text from '../worked-examples.txt?raw';
 import { MOM_NAME, TEST_SETTINGS, appSide, arrived, cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, sent, transfer } from './helpers.js';
 
@@ -285,6 +285,21 @@ const examples: Record<number, () => Record<string, Cents>> = {
       take();
     }
     return { ...buckets(book), 'needs started with': started.needs, 'wants started with': started.wants, ...found };
+  },
+  17: () => {
+    // The test book's last paycheck is Sep 25.
+    const book = openTestBook({ oldCardDebt: parseDollars('3,000.00'), settings: { oldCardPromoEndDate: '2027-01-10' } });
+    const first = payoffCountdown(book, '2026-10-06');
+    book.changeSettings({ oldCardPromoEndDate: '2027-01-01' }, '2026-10-06');
+    const onPayday = payoffCountdown(book, '2026-10-06');
+    const ended = payoffCountdown(book, '2027-01-02');
+    if (!first.on || !onPayday.on || !ended.on) throw new Error('the countdown should be on');
+    return {
+      'per payday': first.perPayday,
+      'last payment': first.owed - (first.paydaysLeft - 1) * first.perPayday,
+      'with the end on a payday': onPayday.perPayday,
+      'with no paydays left': ended.perPayday,
+    };
   },
 };
 

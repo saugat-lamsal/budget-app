@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 6)
+# Budget App Rulebook (draft 7)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -45,19 +45,23 @@ number so a test can point at it. Nothing gets coded until you approve this.
      pay period.
 3.2  The mom reserve comes off first. If the reserve is already at its cap,
      the part that does not fit goes to savings instead.
-3.3  The rest is split by the percentages. Any leftover cents from rounding
-     go to savings, so the parts always add up to the paycheck exactly.
+3.3  The rest is split by the percentages. Needs and wants are each rounded
+     down to the cent, and savings gets the rest, so the parts always add up
+     to the paycheck exactly.
 3.4  At each payday, unspent needs and unspent wants either roll over into
      the next pay period or move to savings. You choose for each bucket
      separately. Until you answer, the money stays where it is, and you can
      still move it by hand later (13.3).
 3.5  An overspent bucket carries over as a negative, so the next period
-     starts smaller.
+     starts smaller. At payday nothing is asked about it and nothing moves;
+     the new share is added on top.
 3.6  A third paycheck in a month is handled exactly like any other.
 3.7  A paycheck-looking deposit that arrives less than 10 days after the last
      one goes to review instead of splitting automatically.
 3.8  On payday the app tells you how much should be sitting in the savings
      account (savings plus mom reserve) and how much you still need to move.
+     If the account already holds more than it should, the amount to move
+     is $0 and the extra is shown separately.
 
 
 ## 4. Spending
@@ -68,8 +72,10 @@ number so a test can point at it. Nothing gets coded until you approve this.
 4.3  Unsorted spending is held back from safe-to-spend until you sort it.
 4.4  A purchase can be split across buckets. The parts must add up to the
      total.
-4.5  A refund goes back into the bucket the purchase came from. If the app
-     cannot match it to a purchase, it goes to review.
+4.5  A refund goes back into the bucket the purchase came from. A full
+     refund of a split purchase goes back to each bucket as it was split;
+     a partial one sends the purchase back to review to be split again. If
+     the app cannot match a refund to a purchase, it goes to review.
 4.6  A pending charge counts once. When it posts, the final charge replaces
      the pending one, even if the amount changed (a tip, for example).
 4.7  Re-sorting a purchase updates the buckets right away.
@@ -96,7 +102,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
 
 6.1  They always go to review, with four choices:
      - This is my paycheck: starts a new pay period like any paycheck
-       (3.1 to 3.5): the mom reserve first, then the split
+       (3.1 to 3.5): the mom reserve first, then the split. The new pay
+       period starts on the day the deposit arrived, not the day you
+       answer (B53).
      - Other income: split by the percentages only. No mom reserve is
        taken and no new pay period starts. The reserve comes only from
        paychecks.
@@ -141,11 +149,19 @@ number so a test can point at it. Nothing gets coded until you approve this.
      usually means interest on the rest.
      Old card: reminders stop once the payments the app sees since the
      statement add up to at least the minimum.
+     A payment counts toward the statement it reached the card after; one
+     landing on the statement date counts toward the one before (B28). It
+     counts from the day it leaves checking or savings, even while still on
+     its way (B47).
 9.4  If the due date passes and the payments the app sees since the
      statement add up to less than the minimum, you get an overdue alert.
+     It stays due every day after the due date until enough is paid (B30).
      This works the same on both cards.
-9.5  Old card payoff countdown: balance divided by the paychecks left before
-     the promo ends, counted from the pay schedule.
+9.5  Old card payoff countdown: what the old card owes (5.4, 5.5), divided
+     by the paydays left before the promo ends, from the pay schedule:
+     paydays after today and before the end date, not on it. Each share is
+     rounded up to the cent. With no paydays left, all of it is due now.
+     With nothing owed, $0.
 
 
 ## 10. Alerts
@@ -154,9 +170,13 @@ number so a test can point at it. Nothing gets coded until you approve this.
       per pay period. The level is 20% of what the bucket started the pay
       period with, including what rolled over. If a bucket starts the pay
       period at zero or below, there is no low alert; the empty alert
-      (10.2) covers it.
+      (10.2) covers it. Below means strictly below, to the cent (B57). At
+      zero or below only the empty alert comes; back above zero but under
+      the level, the low alert comes then, once per pay period (B58).
 10.2  Empty bucket: needs or wants reaches zero or below. Once per bucket
-      per pay period.
+      per pay period: refilled and empty again in the same pay period, no
+      second alert. Still empty when a new pay period starts, the alert
+      comes again (B50).
 10.3  Daily review: sent at the review time, only if something is unsorted.
 10.4  Totals do not match the bank (section 12).
 10.5  Bank connection needs you to log in again.
@@ -166,7 +186,8 @@ number so a test can point at it. Nothing gets coded until you approve this.
 
 11.1  Safe to spend = wants left, minus unsorted spending.
 11.2  It is shown with the number of days until the next payday, from the
-      pay schedule.
+      pay schedule. If that day passes with no paycheck, the days go
+      negative instead of jumping ahead (B35).
 11.3  Savings, mom reserve, held for others, and unsorted money in are never
       part of it.
 
@@ -180,7 +201,8 @@ number so a test can point at it. Nothing gets coded until you approve this.
       Unsorted money in: deposits and refunds waiting in review
       (3.7, 4.5, 6.1).
 12.3  The two must be equal. If not, the app shows a warning with the
-      difference.
+      difference: the bank side plus money in transit (12.5), minus the app
+      side.
 12.4  The old card balance is tracked separately as debt and is not part of
       this check.
 12.5  Money in transit: a transfer that has left one of your accounts but not
@@ -188,7 +210,10 @@ number so a test can point at it. Nothing gets coded until you approve this.
       transit". The check is: bank side + in transit = app side. Money on its
       way to the old card is shown but not counted, because the old card is
       not part of this check (12.4). It comes out of needs when it leaves
-      checking (5.2), and the debt goes down when it lands.
+      checking (5.2), and the debt goes down when it lands. The two halves
+      pair by the bank's link, otherwise with the oldest unpaired half
+      between the same accounts for the same amount. One seen arriving
+      first is a negative in transit until it shows leaving (B45).
 
 
 ## 13. Changing things on the fly
@@ -270,3 +295,26 @@ c.  Low bucket alert: 20% of what the bucket started the pay period with,
 d.  Everyday card: the overdue alert works like the old card's. It stops
     once the payments since the statement total at least the minimum
     (9.4).
+e.  Old card payoff countdown: the debt the app tracks, divided by the
+    paydays after today and before the promo end date (not on it), each
+    share rounded up to the cent. With no paydays left, all of it is due
+    now; with nothing owed, $0 (9.5, QUESTIONS.md A7).
+f.  A savings account holding more than it should: the amount to move is
+    $0, and the extra is shown separately (3.8).
+g.  A refund of a split purchase: a full refund goes back to each bucket
+    as it was split; a partial one sends the purchase back to review to be
+    split again (4.5, QUESTIONS.md A1).
+h.  Rounding at payday: needs and wants are each rounded down to the cent,
+    and savings gets the rest (3.3).
+i.  A bucket at zero or below at payday: nothing is asked and nothing
+    moves. It carries over, and the new share is added on top (3.5).
+j.  The self-check difference is the bank side (plus money in transit)
+    minus the app side (12.3).
+
+
+## 19. Readings from QUESTIONS.md part B, now in the rules (Oct 6, 2026)
+
+The second-opinion tests (PR #4) found these places unclear in the
+rulebook. QUESTIONS.md part B already had the answers, and the app already
+works that way: 6.1 (B53), 9.3 (B28, B47), 9.4 (B30), 10.1 (B57, B58),
+10.2 (B50), 11.2 (B35), 12.5 (B45).

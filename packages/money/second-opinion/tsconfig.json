@@ -1,0 +1,9 @@
+{
+  // Second-opinion tests: written from the rulebook and the public types only.
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": []
+  },
+  "include": ["."]
+}

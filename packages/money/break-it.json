@@ -254,9 +254,30 @@
   {
     "section": "3",
     "file": "packages/money/src/book.ts",
-    "find": "const stillToMove = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));",
-    "replace": "const stillToMove = subtractCents(addCents(savingsAccountBalance, ...onItsWay), shouldBeInSavings);",
+    "find": "const gap = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));",
+    "replace": "const gap = subtractCents(addCents(savingsAccountBalance, ...onItsWay), shouldBeInSavings);",
     "why": "3.8 flip the sign of still-to-move"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "if (gap >= 0) return { shouldBeInSavings, savingsAccountBalance, stillToMove: gap };",
+    "replace": "return { shouldBeInSavings, savingsAccountBalance, stillToMove: gap };",
+    "why": "3.8 show a negative amount to move again"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "if (gap >= 0) return { shouldBeInSavings",
+    "replace": "if (gap > 0) return { shouldBeInSavings",
+    "why": "3.8 call an exact match extra"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "stillToMove: 0, extraInSavings: -gap };",
+    "replace": "stillToMove: 0 };",
+    "why": "3.8 leave out the extra"
   },
   {
     "section": "3",
@@ -397,6 +418,20 @@
     "find": "assertPositiveCents(part.amount, 'each part of a split');",
     "replace": "assertCents(part.amount, 'each part of a split');",
     "why": "4.4 allow zero and negative parts in a split"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if ('split' in sorted && net !== 0 && ",
+    "replace": "if ('split' in sorted && ",
+    "why": "4.5 send a fully refunded split purchase back to review"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if (net !== 0) for (const part of now.split)",
+    "replace": "for (const part of now.split)",
+    "why": "4.5 keep taking the split parts after a full refund"
   },
   {
     "section": "5",
@@ -786,9 +821,51 @@
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "if (book.settings().oldCardPromoEndDate === null) return { on: false, reason: 'no-promo-end-date' };",
+    "find": "if (end === null) return { on: false, reason: 'no-promo-end-date' };",
     "replace": "",
     "why": "9.5 forget why the countdown is off"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "daysBetween(payday, end) > 0;",
+    "replace": "daysBetween(payday, end) >= 0;",
+    "why": "9.5 count a payday on the promo end date"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "if (daysBetween(today, payday) > 0) paydaysLeft += 1;",
+    "replace": "if (daysBetween(today, payday) >= 0) paydaysLeft += 1;",
+    "why": "9.5 count a payday that falls today"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "perPayday = (owed - rest) / paydaysLeft + (rest === 0 ? 0 : 1);",
+    "replace": "perPayday = (owed - rest) / paydaysLeft;",
+    "why": "9.5 round the share down instead of up"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "const { oldCardPromoEndDate: end, payScheduleDays: every } = book.settings();",
+    "replace": "const { oldCardPromoEndDate: end } = book.settings();\n  const every = 14;",
+    "why": "9.5 hard-code 14 days instead of using the pay schedule"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "else if (paydaysLeft === 0) perPayday = owed;",
+    "replace": "else if (paydaysLeft === 0) perPayday = 0;",
+    "why": "9.5 show nothing due when no paydays are left"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "if (owed <= 0) perPayday = 0;",
+    "replace": "if (owed === 0) perPayday = 0;",
+    "why": "9.5 let a credit show as a negative share"
   },
   {
     "section": "9",
@@ -1150,8 +1227,8 @@
   {
     "section": "12",
     "file": "packages/money/src/book.ts",
-    "find": "const stillToMove = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));",
-    "replace": "const stillToMove = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance));",
+    "find": "const gap = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));",
+    "replace": "const gap = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance));",
     "why": "12.5 ask you to move money already on its way to savings"
   },
   {

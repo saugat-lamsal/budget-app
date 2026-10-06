@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, changeSettings, splitPaycheck } from '../src/index.js';
-import { codeOf, deposit, openTestBook, paycheck, LAST_PAYCHECK } from './helpers.js';
+import { codeOf, deposit, openTestBook, paycheck, sent, LAST_PAYCHECK } from './helpers.js';
 
 const RULES = DEFAULT_SETTINGS; // 50/30/20, $1,500 reserve, $3,000 cap
 
@@ -140,6 +140,12 @@ describe('3.2 the mom reserve comes off first, up to its cap', () => {
 });
 
 describe('3.3 the rest is split by the percentages, leftover cents go to savings', () => {
+  it('3.3 needs and wants are each rounded down to the cent, and savings gets the rest', () => {
+    // Rest 100.03: needs 30% = 30.009, rounded down to 30.00 (not up to
+    // 30.01); wants 20% = 20.006, down to 20.00; savings the rest, 50.03.
+    expect(splitPaycheck(10_003, 0, { ...RULES, momReservePerPaycheck: 0 })).toMatchObject({ momReserve: 0, needs: 3_000, wants: 2_000, savings: 5_003 });
+  });
+
   it('3.3 an even split', () => {
     expect(splitPaycheck(400_000, 0, RULES)).toEqual({
       momReserve: 150_000,
@@ -303,6 +309,13 @@ describe('3.5 an overspent bucket carries over as a negative', () => {
     expect(book.pots().wants).toBe(-10_000);
   });
 
+  it('3.5 a bucket at exactly zero at payday: nothing asked, nothing moved, and it starts with just the new share', () => {
+    const book = openTestBook({ pots: { needs: 0, wants: 0 }, settings: { leftoverAtPayday: { needs: 'ask', wants: 'move-to-savings' } } });
+    book.receive(paycheck('p1', '2026-10-09', 400_000));
+    expect(book.pots()).toMatchObject({ needs: 75_000, wants: 50_000, savings: 125_000 });
+    expect(book.reviewItems()).toEqual([]);
+  });
+
   it('3.5 "always move to savings" never moves a negative', () => {
     const book = openTestBook({ pots: { needs: -5_000 }, settings: { leftoverAtPayday: { needs: 'move-to-savings', wants: 'move-to-savings' } } });
     book.receive(paycheck('p1', '2026-10-09', 400_000));
@@ -385,9 +398,23 @@ describe('3.8 on payday: how much should be in the savings account, and how much
     expect(book.savingsTransfer(600_000).stillToMove).toBe(0);
   });
 
-  it('3.8 a negative "still to move" means the account holds more than the buckets say', () => {
+  it('3.8 when the account holds more than it should, nothing is left to move and the extra is shown separately', () => {
     const book = openTestBook({ pots: { savings: 500_000, momReserve: 100_000 } });
-    expect(book.savingsTransfer(600_001).stillToMove).toBe(-1);
+    expect(book.savingsTransfer(600_001)).toEqual({ shouldBeInSavings: 600_000, savingsAccountBalance: 600_001, stillToMove: 0, extraInSavings: 1 });
+    expect(book.savingsTransfer(1_000_000)).toMatchObject({ stillToMove: 0, extraInSavings: 400_000 });
+  });
+
+  it('3.8 no extra is shown when the account holds exactly enough, or less', () => {
+    const book = openTestBook({ pots: { savings: 500_000, momReserve: 100_000 } });
+    expect(book.savingsTransfer(600_000)).toEqual({ shouldBeInSavings: 600_000, savingsAccountBalance: 600_000, stillToMove: 0 });
+    expect(book.savingsTransfer(599_999)).toEqual({ shouldBeInSavings: 600_000, savingsAccountBalance: 599_999, stillToMove: 1 });
+  });
+
+  it('3.8 money on its way that would overfill the account shows as extra (B46)', () => {
+    const book = openTestBook({ pots: { savings: 500_000, momReserve: 100_000 } });
+    book.receive(sent('t1', '2026-10-02', 50_000, 'checking', 'savings'));
+    // 580,000 in the account + 50,000 on its way = 630,000, 30,000 more than 600,000.
+    expect(book.savingsTransfer(580_000)).toMatchObject({ stillToMove: 0, extraInSavings: 30_000 });
   });
 
   it('3.8 refuses a balance that is not whole cents', () => {

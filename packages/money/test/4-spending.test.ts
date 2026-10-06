@@ -226,6 +226,32 @@ describe('4.5 a refund goes back to the bucket the purchase came from', () => {
     expect(b.pots()).toMatchObject({ needs: 90_000, wants: 50_000, unsortedOut: 0 });
   });
 
+  it('4.5 a full refund of a split purchase goes back to each bucket as it was split (A1)', () => {
+    const b = book();
+    b.receive(purchase('e1', '2026-10-03', 12_000, 'MADE UP HARDWARE'));
+    const split = [{ bucket: 'needs' as const, amount: 10_000 }, { bucket: 'wants' as const, amount: 2_000 }];
+    b.sort('e1', { split }, '2026-10-04');
+    expect(b.pots()).toMatchObject({ needs: 90_000, wants: 48_000 });
+    b.receive(refund('r1', '2026-10-06', 12_000, 'e1'));
+    expect(b.pots()).toMatchObject({ needs: 100_000, wants: 50_000, unsortedOut: 0 });
+    expect(b.reviewItems()).toEqual([]);
+    expect(b.purchases().find((p) => p.id === 'e1')).toMatchObject({ refunded: 12_000, sortedTo: { split } });
+  });
+
+  it('4.5 after a partial refund and a new split, a refund of the rest goes back as split the second time', () => {
+    const b = book();
+    b.receive(purchase('e1', '2026-10-03', 12_000, 'MADE UP HARDWARE'));
+    b.sort('e1', { split: [{ bucket: 'needs', amount: 10_000 }, { bucket: 'wants', amount: 2_000 }] }, '2026-10-04');
+    // Part of it comes back: back to review, split again as 60.00 / 40.00.
+    b.receive(refund('r1', '2026-10-06', 2_000, 'e1'));
+    b.sort('e1', { split: [{ bucket: 'needs', amount: 6_000 }, { bucket: 'wants', amount: 4_000 }] }, '2026-10-07');
+    expect(b.pots()).toMatchObject({ needs: 94_000, wants: 46_000, unsortedOut: 0 });
+    // The rest comes back: each bucket gets its part of the new split.
+    b.receive(refund('r2', '2026-10-09', 10_000, 'e1'));
+    expect(b.pots()).toMatchObject({ needs: 100_000, wants: 50_000, unsortedOut: 0 });
+    expect(b.reviewItems()).toEqual([]);
+  });
+
   it('4.5 a refund on the debit card can match an everyday card purchase', () => {
     const b = book();
     b.receive(purchase('e1', '2026-10-03', 3_500, 'MADE UP CAFE'));

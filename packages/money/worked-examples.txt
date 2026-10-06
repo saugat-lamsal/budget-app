@@ -524,3 +524,28 @@ Step 5. Dinner 95.00 from wants. Wants 0.00: the empty alert for wants
         (10.2). At zero the empty alert covers it; no second low alert.
 
 Check: needs 159.99 | wants 0.00 | needs started with 800.00 | wants started with 480.00 | needs low alert at 159.99 | wants low alert at 95.00 | wants empty alert at 0.00
+
+
+========================================================================
+EXAMPLE 17. The old card payoff countdown (rule 9.5)
+========================================================================
+
+Before: The old card owes 3,000.00. The last paycheck came Sep 25, and pay
+        comes every 14 days: Oct 9, Oct 23, Nov 6, Nov 20, Dec 4, Dec 18,
+        Jan 1, Jan 15, and so on. Today is Oct 6. The promo end dates are
+        made up.
+
+Step 1. The promo ends Jan 10. Paydays after today and before Jan 10:
+        Oct 9 to Jan 1, 7 paydays.
+        3,000.00 / 7 = 428.5714..., rounded up to 428.58 per payday.
+        The last one comes out a little smaller:
+        3,000.00 - 6 x 428.58 = 3,000.00 - 2,571.48 = 428.52
+
+Step 2. If the promo ended Jan 1 instead, a payday on the end date itself
+        does not count: Oct 9 to Dec 18, 6 paydays.
+        3,000.00 / 6 = 500.00 per payday.
+
+Step 3. On Jan 2, with the promo ended Jan 1, no paydays are left, so all
+        3,000.00 is due now.
+
+Check: per payday 428.58 | last payment 428.52 | with the end on a payday 500.00 | with no paydays left 3,000.00

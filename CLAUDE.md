@@ -114,14 +114,17 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 6. Section 15 confirmed (a to j), section 17 changes
-  after the Phase 1 review, section 18 his part A answers (A5, A6, A8).
+- Rulebook: draft 7. Section 15 confirmed (a to j), section 17 changes
+  after the Phase 1 review, section 18 his answers (A5 to A8, A1, and the
+  items the second-opinion report found unclear), section 19 readings from
+  QUESTIONS.md part B now in the rules.
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
 - Phase 1 (the money math): finish line crossed Oct 6, 2026, merged as
-  PR #1, follow-ups as PR #2. Every numbered rule has a passing test; 9.5
-  only has its "off" part (QUESTIONS.md A7).
+  PR #1, follow-ups as PR #2. Every numbered rule has a passing test. The
+  payoff countdown (9.5) was built later, with A7 (PR #4); it stays off
+  until he enters the promo end date.
   - The money math is in packages/money. The book (src/book.ts) applies
     bank activity and his answers one at a time; every bucket can be
     recounted from scratch (recountPots).
@@ -150,8 +153,14 @@ This applies to every phase and every session, cloud or local.
     A failure prints its seed and day, and becomes a test before any fix.
   - It leaves out what is not built or still waiting on his answers (A2, a
     pending charge that vanishes; A3 and A9 follow today's behavior).
-- Next: Phase 2 part two, the second-opinion tests, in a separate session
-  that has not seen the money code. Still open: QUESTIONS.md part A (A1 to
-  A4, A7, A9, A10).
+- Phase 2, part two, the second-opinion tests: packages/money/second-opinion
+  (PR #4), written from the rulebook by a session that had not seen the
+  money code. Never edit them; a disagreement is settled against the
+  rulebook. Its report's unclear items are now decided (rulebook 18e to
+  18j, section 19), and A7 and A1 are built.
+- Next: Phase 2's finish line once PR #4 is merged (thousands of simulated
+  years with no self-check failure, and both sets of tests passing), then
+  Phase 3 when he says go. Still open: QUESTIONS.md part A (A2 to A4, A9,
+  A10).
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.

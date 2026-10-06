@@ -226,6 +226,8 @@ class Life {
   // By the id a purchase first had; a posting's id leads back to it.
   readonly #standing = new Map<string, Standing>();
   readonly #firstId = new Map<string, string>();
+  // How the person split each split purchase, by the id it first had.
+  readonly #splitParts = new Map<string, { readonly needs: Cents; readonly wants: Cents }>();
   readonly #momSent = new Map<string, Cents>();
 
   // Things already set to happen on a later day, such as a pending charge
@@ -533,17 +535,24 @@ class Life {
     const month = date.slice(0, 7);
     if (this.#book.paychecks().filter((p) => p.date.slice(0, 7) === month).length === 3) this.#stats.threePaycheckMonths++;
     // 3.8: the person moves what should be in savings, that evening or the
-    // next day, keeping some money in checking.
+    // next day, keeping some money in checking. Money on its way counts as
+    // moved (B46). When the account holds more than it should, there is
+    // nothing to move and the extra is shown on its own; if checking is
+    // low, the person brings some of it back.
     const move = (): void => {
       const pots = this.#book.pots();
       const onItsWay = this.#bank.halvesShowing().reduce((sum, h) => sum + (h.kind === 'transfer-sent' && h.to === 'savings' ? h.amount : 0), 0);
-      const expectedToMove = pots.savings + pots.momReserve - (this.#bank.posted.savings + onItsWay);
-      const { stillToMove } = this.#book.savingsTransfer(this.#bank.posted.savings);
-      if (stillToMove !== expectedToMove) throw new CheckFailed('3.8 what still needs to move', `the app says ${stillToMove}, expected ${expectedToMove} (B46)`);
+      const shouldBeInSavings = pots.savings + pots.momReserve;
+      const savingsAccountBalance = this.#bank.posted.savings;
+      const gap = shouldBeInSavings - (savingsAccountBalance + onItsWay);
+      const expected = gap >= 0 ? { shouldBeInSavings, savingsAccountBalance, stillToMove: gap } : { shouldBeInSavings, savingsAccountBalance, stillToMove: 0, extraInSavings: -gap };
+      const transfer = this.#book.savingsTransfer(savingsAccountBalance);
+      if (!same(transfer, expected)) throw new CheckFailed('3.8 what still needs to move', `the app says ${JSON.stringify(transfer)}, expected ${JSON.stringify(expected)}`);
       const spare = this.#bank.posted.checking - 50_000;
-      if (stillToMove > 0 && spare > 0) this.#moveBetweenOwn('checking', 'savings', Math.min(stillToMove, spare));
-      else if (stillToMove < 0 && this.#bank.posted.checking < 100_000 && this.#bank.posted.savings > 0) {
-        this.#moveBetweenOwn('savings', 'checking', Math.min(-stillToMove, this.#bank.posted.savings));
+      const extra = transfer.extraInSavings ?? 0;
+      if (transfer.stillToMove > 0 && spare > 0) this.#moveBetweenOwn('checking', 'savings', Math.min(transfer.stillToMove, spare));
+      else if (extra > 0 && this.#bank.posted.checking < 100_000 && savingsAccountBalance > 0) {
+        this.#moveBetweenOwn('savings', 'checking', Math.min(extra, savingsAccountBalance));
       }
     };
     if (this.#random.chance(1, 3)) this.#laterOn(addDays(this.#date, 1), move);
@@ -654,10 +663,16 @@ class Life {
       }
       this.#stats.refundsLinked++;
       // Back into the bucket the purchase came from; for one not sorted yet,
-      // off the unsorted spending (B7); a split one goes back to review (A1).
+      // off the unsorted spending (B7). A full refund of a split purchase
+      // gives each bucket its part back; a partial one sends the purchase
+      // back to review to be split again (4.5, A1).
       if (standing === 'needs' || standing === 'wants') this.#expectChange(before, { [standing]: back }, '4.5 a refund goes back to its bucket', txn.id);
       else if (standing === 'unsorted') this.#expectChange(before, { unsortedOut: -back }, '4.5 a refund of a purchase not sorted yet', txn.id);
-      else if (standing === 'split') this.#standing.set(first, 'unsorted');
+      else if (standing === 'split') {
+        const parts = this.#splitParts.get(first);
+        if (back === amount && parts) this.#expectChange(before, { needs: parts.needs, wants: parts.wants }, '4.5 a full refund of a split purchase', txn.id);
+        else this.#standing.set(first, 'unsorted');
+      }
     });
   }
 
@@ -1138,6 +1153,7 @@ class Life {
       this.#book.sort(item.id, { split: [{ bucket: 'needs', amount: needs }, { bucket: 'wants', amount: item.amount - needs }] }, today);
       change = { needs: -needs, wants: -(item.amount - needs) };
       this.#standing.set(item.id, 'split');
+      this.#splitParts.set(item.id, { needs, wants: item.amount - needs });
       this.#stats.splitPurchases++;
     } else {
       const sorting = intent?.type === 'store' ? intent.sorting : 'either';
