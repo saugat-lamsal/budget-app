@@ -267,8 +267,8 @@ B27. If you re-sort income after mom was already paid from the reserve it
 
 B28. Card reminders go out exactly 7 and 2 days before the due date
      (calendar days; both are settings). A payment counts toward a
-     statement when it is dated after the statement date and on or before
-     today (9.1 to 9.3).
+     statement when it reached the card after the statement date and left
+     on or before today (9.1 to 9.3; see B47 for payments in two halves).
 
 B29. Updated with your review of 9.3. Everyday card: a statement with
      nothing owed (or a credit) gets no reminder; one with a balance but a
@@ -363,8 +363,13 @@ B45. The two halves of a transfer pair up by the link the bank connection
 B46. Money already on its way to savings counts as moved for "still to
      move" (3.8).
 
-B47. For card reminders (9.3, 9.4), a payment counts on the day it left
-     checking or savings, not the day it reached the card.
+B47. For card reminders (9.3, 9.4), a payment is seen from the day it left
+     checking or savings. Which statement it counts toward goes by the day
+     it reached the card, the way the card applies it (found in the
+     review): a payment that left before the statement date and landed
+     after it counts toward the new statement. One still on its way counts
+     toward the new statement too. A transfer seen in two halves is one
+     payment, and the answer is the same whichever half shows up first.
 
 B48. Setup day also takes the transfers with only one half showing that
      day. Money that has left and not landed is added to the starting

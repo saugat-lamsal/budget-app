@@ -140,10 +140,10 @@ describe('9.3 which payments count, for either card', () => {
     b.receive(transfer('t3', '2026-10-07', 1_000, 'savings', 'everyday-card'));
     b.receive(transfer('t4', '2026-10-08', 2_000, 'checking', 'savings'));
     expect(b.cardPayments('everyday-card')).toEqual([
-      { date: '2026-10-05', amount: 45_000 },
-      { date: '2026-10-07', amount: 1_000 },
+      { date: '2026-10-05', amount: 45_000, landedOn: '2026-10-05' },
+      { date: '2026-10-07', amount: 1_000, landedOn: '2026-10-07' },
     ]);
-    expect(b.cardPayments('old-card')).toEqual([{ date: '2026-10-06', amount: 9_000 }]);
+    expect(b.cardPayments('old-card')).toEqual([{ date: '2026-10-06', amount: 9_000, landedOn: '2026-10-06' }]);
     expect(cardNotices('2026-10-19', OLD, b.cardPayments('old-card'), DEFAULT_SETTINGS)).toEqual([]);
   });
 });
@@ -193,16 +193,52 @@ describe('9.3 a card payment in two halves (12.5)', () => {
   it('9.3 a payment counts on the day it left checking, and only once after it lands', () => {
     const b = openTestBook({ oldCardDebt: 300_000 });
     b.receive(sent('s1', '2026-10-10', 9_000, 'checking', 'old-card'));
-    expect(b.cardPayments('old-card')).toEqual([{ date: '2026-10-10', amount: 9_000 }]);
+    expect(b.cardPayments('old-card')).toEqual([{ date: '2026-10-10', amount: 9_000, landedOn: null }]);
     b.receive(arrived('a1', '2026-10-12', 9_000, 'checking', 'old-card', 's1'));
-    expect(b.cardPayments('old-card')).toEqual([{ date: '2026-10-10', amount: 9_000 }]);
+    expect(b.cardPayments('old-card')).toEqual([{ date: '2026-10-10', amount: 9_000, landedOn: '2026-10-12' }]);
   });
 
   it('9.3 seen landing first, it counts from the day it landed until it is seen leaving', () => {
     const b = openTestBook();
     b.receive(arrived('a1', '2026-10-12', 9_000, 'checking', 'everyday-card'));
-    expect(b.cardPayments('everyday-card')).toEqual([{ date: '2026-10-12', amount: 9_000 }]);
+    expect(b.cardPayments('everyday-card')).toEqual([{ date: '2026-10-12', amount: 9_000, landedOn: '2026-10-12' }]);
     b.receive(sent('s1', '2026-10-10', 9_000, 'checking', 'everyday-card'));
-    expect(b.cardPayments('everyday-card')).toEqual([{ date: '2026-10-10', amount: 9_000 }]);
+    expect(b.cardPayments('everyday-card')).toEqual([{ date: '2026-10-10', amount: 9_000, landedOn: '2026-10-12' }]);
+  });
+});
+
+describe('9.3 a payment counts toward the statement by the day it reached the card (found in review)', () => {
+  // EVERYDAY's statement date is Oct 1, due Oct 26, 1,234.56 owed.
+  it('9.3 left before the statement date, reached the card after it: it counts toward this statement', () => {
+    const paid = [{ date: '2026-09-30', amount: 123_456, landedOn: '2026-10-02' }];
+    expect(cardNotices('2026-10-19', EVERYDAY, paid, DEFAULT_SETTINGS)).toEqual([]);
+    expect(cardNotices('2026-10-19', OLD, [{ date: '2026-09-30', amount: 9_000, landedOn: '2026-10-02' }], DEFAULT_SETTINGS)).toEqual([]);
+  });
+
+  it('9.3 still on its way on the statement date: it counts toward this statement', () => {
+    expect(cardNotices('2026-10-19', EVERYDAY, [{ date: '2026-09-30', amount: 123_456, landedOn: null }], DEFAULT_SETTINGS)).toEqual([]);
+  });
+
+  it('9.3 left and reached the card on or before the statement date: it belongs to the last statement', () => {
+    expect(cardNotices('2026-10-19', EVERYDAY, [{ date: '2026-09-29', amount: 123_456, landedOn: '2026-10-01' }], DEFAULT_SETTINGS)).toHaveLength(1);
+  });
+
+  it('9.4 a full payment in transit across the statement date means it is not overdue', () => {
+    expect(cardNotices('2026-10-27', EVERYDAY, [{ date: '2026-09-30', amount: 123_456, landedOn: '2026-10-02' }], DEFAULT_SETTINGS)).toEqual([]);
+  });
+
+  it('9.3 the answer does not change with the order the two halves arrive in', () => {
+    for (const order of ['left first', 'landed first']) {
+      const b = openTestBook();
+      const halves = [sent('s1', '2026-09-30', 123_456, 'checking', 'everyday-card'), arrived('a1', '2026-10-02', 123_456, 'checking', 'everyday-card')];
+      for (const half of order === 'left first' ? halves : [...halves].reverse()) b.receive(half);
+      expect(b.cardPayments('everyday-card'), order).toEqual([{ date: '2026-09-30', amount: 123_456, landedOn: '2026-10-02' }]);
+      expect(cardNotices('2026-10-19', EVERYDAY, b.cardPayments('everyday-card'), DEFAULT_SETTINGS), order).toEqual([]);
+      expect(cardNotices('2026-10-27', EVERYDAY, b.cardPayments('everyday-card'), DEFAULT_SETTINGS), order).toEqual([]);
+    }
+  });
+
+  it('9.3 a landing date that is not a real date is refused', () => {
+    expect(codeOf(() => cardNotices('2026-10-19', EVERYDAY, [{ date: '2026-09-30', amount: 1, landedOn: '2026-02-30' }], DEFAULT_SETTINGS))).toBe('not-a-date');
   });
 });

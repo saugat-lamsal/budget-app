@@ -660,15 +660,15 @@
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "return daysBetween(closingDate, p.date) > 0 && daysBetween(p.date, today) >= 0;",
-    "replace": "return daysBetween(closingDate, p.date) >= 0 && daysBetween(p.date, today) >= 0;",
+    "find": "const forThisStatement = landed === null || daysBetween(closingDate, landed) > 0;",
+    "replace": "const forThisStatement = landed === null || daysBetween(closingDate, landed) >= 0;",
     "why": "9.3 count a payment made on the statement date"
   },
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "return daysBetween(closingDate, p.date) > 0 && daysBetween(p.date, today) >= 0;",
-    "replace": "return daysBetween(closingDate, p.date) > 0;",
+    "find": "return forThisStatement && daysBetween(p.date, today) >= 0;",
+    "replace": "return forThisStatement;",
     "why": "9.3 count a payment dated after today"
   },
   {
@@ -1101,8 +1101,8 @@
   {
     "section": "12",
     "file": "packages/money/src/book.ts",
-    "find": "(txn.kind === 'transfer-arrived' && !this.#pairs.has(entry.id))",
-    "replace": "txn.kind === 'transfer-arrived'",
+    "find": "} else if (txn.kind === 'transfer-arrived' && partner === undefined) {",
+    "replace": "} else if (txn.kind === 'transfer-arrived') {",
     "why": "12.5 count a card payment twice for reminders"
   },
   {
@@ -1384,5 +1384,26 @@
     "find": "    if (partner !== undefined) this.#pair(copy.kind === 'transfer-sent' ? copy.id : partner, copy.kind === 'transfer-sent' ? partner : copy.id);\n",
     "replace": "",
     "why": "12.5 leave both halves on setup day unpaired"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "const landed = p.landedOn === undefined ? p.date : p.landedOn;",
+    "replace": "const landed = p.date;",
+    "why": "9.3 place a payment by the day it left instead of the day it reached the card"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "const forThisStatement = landed === null || daysBetween(closingDate, landed) > 0;",
+    "replace": "const forThisStatement = landed !== null && daysBetween(closingDate, landed) > 0;",
+    "why": "9.3 ignore a payment still on its way"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/book.ts",
+    "find": "landedOn: partner === undefined ? null : this.#legTxn(partner).date",
+    "replace": "landedOn: null",
+    "why": "9.3 forget the day a payment reached the card"
   }
 ]

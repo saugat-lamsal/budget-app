@@ -16,8 +16,12 @@ export interface CardStatement {
 }
 
 export interface CardPayment {
+  // The day the payment left checking or savings (or the only day seen).
   readonly date: IsoDate;
   readonly amount: Cents;
+  // The day it reached the card: null while it is still on its way, left
+  // out when it is the same day as date (12.5).
+  readonly landedOn?: IsoDate | null;
 }
 
 export type CardNotice =
@@ -52,11 +56,17 @@ export function cardNotices(today: IsoDate, statement: CardStatement, payments: 
   // rest); on the old card it is the minimum.
   const toPay = card === 'everyday-card' ? statementBalance : minimumPayment;
   if (toPay <= 0) return [];
-  // Payments the app has seen for this statement: after its date, up to today.
+  // Payments the app has seen for this statement. A payment belongs to the
+  // statement whose date it reached the card after, the way the card applies
+  // it; one still on its way will land after it. It counts as seen from the
+  // day it left (12.5).
   const seen = payments.filter((p) => {
     assertIsoDate(p.date, 'payment date');
     assertCents(p.amount, 'payment amount');
-    return daysBetween(closingDate, p.date) > 0 && daysBetween(p.date, today) >= 0;
+    const landed = p.landedOn === undefined ? p.date : p.landedOn;
+    if (landed !== null) assertIsoDate(landed, 'landing date');
+    const forThisStatement = landed === null || daysBetween(closingDate, landed) > 0;
+    return forThisStatement && daysBetween(p.date, today) >= 0;
   });
   const daysLeft = daysBetween(today, dueDate);
   if (daysLeft < 0) {

@@ -1,5 +1,6 @@
 import type { Alert, AlertInput } from './alerts.js';
 import { isSpendingBucket, type SplitBucket } from './buckets.js';
+import type { CardPayment } from './reminders.js';
 import { addCents, assertCents, assertPositiveCents, subtractCents, type Cents } from './cents.js';
 import { addDays, assertIsoDate, daysBetween, monthOf, type IsoDate } from './dates.js';
 import { MoneyError } from './errors.js';
@@ -684,16 +685,22 @@ export class Book {
   }
 
   // Payments the app has seen to a card, oldest first, for the reminders
-  // (9.3, 9.4).
-  cardPayments(card: 'everyday-card' | 'old-card'): { readonly date: IsoDate; readonly amount: Cents }[] {
-    const payments: { date: IsoDate; amount: Cents }[] = [];
+  // (9.3, 9.4): the day each left and the day it reached the card (12.5).
+  // A transfer seen in two halves is one payment.
+  cardPayments(card: 'everyday-card' | 'old-card'): CardPayment[] {
+    const payments: CardPayment[] = [];
     for (const entry of this.#entries.values()) {
       const txn = 'txn' in entry ? entry.txn : null;
       if (txn === null || !('to' in txn) || txn.to !== card) continue;
-      // A payment counts on the day it left checking or savings (12.5). The
-      // arriving half counts only while its leaving half has not been seen.
-      const counts = txn.kind === 'transfer' || txn.kind === 'transfer-sent' || (txn.kind === 'transfer-arrived' && !this.#pairs.has(entry.id));
-      if (counts) payments.push({ date: txn.date, amount: txn.amount });
+      const partner = this.#pairs.get(entry.id);
+      if (txn.kind === 'transfer') {
+        payments.push({ date: txn.date, amount: txn.amount, landedOn: txn.date });
+      } else if (txn.kind === 'transfer-sent') {
+        payments.push({ date: txn.date, amount: txn.amount, landedOn: partner === undefined ? null : this.#legTxn(partner).date });
+      } else if (txn.kind === 'transfer-arrived' && partner === undefined) {
+        // Seen landing, not yet seen leaving.
+        payments.push({ date: txn.date, amount: txn.amount, landedOn: txn.date });
+      }
     }
     return payments.sort((a, b) => daysBetween(b.date, a.date));
   }
