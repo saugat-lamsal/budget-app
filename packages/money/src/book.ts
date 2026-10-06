@@ -2,10 +2,10 @@ import { isSpendingBucket, type SplitBucket } from './buckets.js';
 import { addCents, assertCents, assertPositiveCents, subtractCents, type Cents } from './cents.js';
 import { addDays, assertIsoDate, daysBetween, monthOf, type IsoDate } from './dates.js';
 import { MoneyError } from './errors.js';
-import { splitPaycheck, type PaycheckSplit } from './payday.js';
+import { splitPaycheck, type PaycheckSplit, type SplitSettings } from './payday.js';
 import { bankSide, type BankBalances } from './self-check.js';
 import { checkRules, findRule, isMoneyInChoice, isPersonPaymentChoice, type MoneyInChoice, type SortingRule } from './rules.js';
-import { matchesTextRule, validateSettings, type Settings } from './settings.js';
+import { changeSettings as applySettingsChange, matchesTextRule, validateSettings, type Settings } from './settings.js';
 import {
   checkTransaction,
   sameTransaction,
@@ -182,6 +182,29 @@ export type CheckedSafeToSpend =
   | { readonly ok: true; readonly safeToSpend: SafeToSpend }
   | { readonly ok: false; readonly difference: Cents; readonly nextPayday: IsoDate; readonly daysToPayday: number };
 
+// The buckets you can move money between by hand (13.3).
+export type Pot = 'savings' | 'needs' | 'wants' | 'momReserve' | 'heldForOthers';
+
+const MOVABLE: readonly Pot[] = ['savings', 'needs', 'wants', 'momReserve', 'heldForOthers'];
+
+export interface MoneyMove {
+  readonly from: Pot;
+  readonly to: Pot;
+  readonly amount: Cents;
+  // Needed to move money out of savings or the mom reserve (13.4).
+  readonly confirmed?: boolean;
+}
+
+export type MoveResult = { readonly moved: true } | { readonly moved: false; readonly needsConfirmation: true };
+
+// Rule 13.5: every change and every manual move, with its date.
+export type ChangeLogEntry =
+  | { readonly date: IsoDate; readonly kind: 'settings-changed'; readonly changes: Partial<Settings> }
+  | { readonly date: IsoDate; readonly kind: 'rule-added'; readonly rule: SortingRule }
+  | { readonly date: IsoDate; readonly kind: 'rule-changed'; readonly before: SortingRule; readonly after: SortingRule }
+  | { readonly date: IsoDate; readonly kind: 'rule-removed'; readonly rule: SortingRule }
+  | { readonly date: IsoDate; readonly kind: 'money-moved'; readonly from: Pot; readonly to: Pot; readonly amount: Cents };
+
 export interface SavingsTransfer {
   readonly shouldBeInSavings: Cents;
   readonly savingsAccountBalance: Cents;
@@ -241,6 +264,14 @@ interface MomEntry {
   effect: Effect;
 }
 
+// Money you moved by hand (13.3).
+interface MoveEntry {
+  readonly kind: 'move';
+  readonly id: string;
+  readonly date: IsoDate;
+  effect: Effect;
+}
+
 // A transfer that changes no bucket (5.1, 5.3), kept so it counts once.
 interface TransferEntry {
   readonly kind: 'transfer';
@@ -270,7 +301,12 @@ interface LeftoverEntry {
   effect: Effect;
 }
 
-type Entry = PaycheckEntry | MoneyInEntry | SpendEntry | RefundEntry | MomEntry | TransferEntry | OldCardEntry | LeftoverEntry;
+type Entry = PaycheckEntry | MoneyInEntry | SpendEntry | RefundEntry | MomEntry | TransferEntry | OldCardEntry | LeftoverEntry | MoveEntry;
+
+function splitSettingsOf(settings: Settings): SplitSettings {
+  const { split, momReservePerPaycheck, momReserveCap } = settings;
+  return { split, momReservePerPaycheck, momReserveCap };
+}
 
 function potsOf(totals: Record<TotalName, Cents>): Pots {
   const { savings, needs, wants, momReserve, heldForOthers, unsortedIn, unsortedOut } = totals;
@@ -290,7 +326,13 @@ export class Book {
   // Ids of entries waiting for you, in the order they arrived.
   readonly #review = new Set<string>();
   readonly #paychecks: PaycheckRecord[] = [];
+  readonly #log: ChangeLogEntry[] = [];
+  // Numbers hand moves, so each one has its own id.
+  #moveCount = 0;
   #settings: Settings;
+  // The split and mom reserve settings in force for this pay period. A
+  // change to them waits for the next paycheck (13.1).
+  #periodSplit: SplitSettings;
   #rules: readonly SortingRule[];
   #lastPaycheckDate: IsoDate;
   #period: Period;
@@ -305,6 +347,7 @@ export class Book {
     this.#totals = { ...this.#opening, unsortedIn: 0, unsortedOut: 0 };
     addCents(savings, needs, wants, momReserve, heldForOthers);
     this.#settings = validateSettings(input.settings);
+    this.#periodSplit = splitSettingsOf(this.#settings);
     this.#rules = checkRules(input.rules ?? []);
     this.#lastPaycheckDate = input.lastPaycheckDate;
     this.#period = { number: 0, startDate: input.date };
@@ -511,7 +554,7 @@ export class Book {
       splitChanged: false,
       effect: {},
     };
-    this.#entries.set(entry.id, entry);
+    this.#register(entry);
     this.#refreshSpending(entry);
     return { id: txn.id, outcome: 'review' };
   }
@@ -597,7 +640,7 @@ export class Book {
       splitChanged: false,
       effect: {},
     };
-    this.#entries.set(entry.id, entry);
+    this.#register(entry);
     this.#refreshSpending(entry);
     return { id: txn.id, outcome: this.#review.has(entry.id) ? 'review' : 'sorted' };
   }
@@ -658,7 +701,9 @@ export class Book {
   #payday(txn: Deposit): void {
     this.#closePeriod('needs', txn);
     this.#closePeriod('wants', txn);
-    const split = splitPaycheck(txn.amount, this.#totals.momReserve, this.#settings);
+    // 13.1: a change to the split or the reserve applies from this paycheck.
+    this.#periodSplit = splitSettingsOf(this.#settings);
+    const split = splitPaycheck(txn.amount, this.#totals.momReserve, this.#periodSplit);
     const entry: PaycheckEntry = { kind: 'paycheck', id: txn.id, txn, split, effect: {} };
     this.#add(entry, { momReserve: split.momReserve, savings: split.savings, needs: split.needs, wants: split.wants });
     this.#paychecks.push({ id: txn.id, date: txn.date, amount: txn.amount, split });
@@ -768,7 +813,7 @@ export class Book {
       // Treated like a paycheck: the reserve first, then the split. The
       // reserve is counted without this entry's own earlier effect.
       const reserveNow = subtractCents(this.#totals.momReserve, entry.effect.momReserve ?? 0);
-      incomeSplit = splitPaycheck(amount, reserveNow, this.#settings);
+      incomeSplit = splitPaycheck(amount, reserveNow, this.#periodSplit);
       effect = { momReserve: incomeSplit.momReserve, savings: incomeSplit.savings, needs: incomeSplit.needs, wants: incomeSplit.wants };
     } else if (choice.to === 'not-mine') {
       effect = { heldForOthers: amount };
@@ -787,6 +832,89 @@ export class Book {
     return entry;
   }
 
+  // ----- Changes (section 13) -----
+
+  // 13.1: a change to the split or the mom reserve applies from the next
+  // paycheck; everything else applies right away. 0.3: nothing already
+  // worked out is redone.
+  changeSettings(patch: Partial<Settings>, date: IsoDate): void {
+    assertIsoDate(date);
+    const next = applySettingsChange(this.#settings, patch);
+    this.#settings = next;
+    const changes = Object.fromEntries(Object.keys(patch).map((key) => [key, next[key as keyof Settings]]));
+    this.#log.push(Object.freeze({ date, kind: 'settings-changed', changes }));
+  }
+
+  // 13.2: a new or changed rule applies to new transactions and to those
+  // waiting in review. Anything already sorted stays put.
+  addRule(rule: SortingRule, date: IsoDate): void {
+    assertIsoDate(date);
+    this.#rules = checkRules([...this.#rules, rule]);
+    this.#log.push(Object.freeze({ date, kind: 'rule-added', rule: this.#ruleById(rule.id) }));
+    this.#sortWaitingByRules();
+  }
+
+  changeRule(rule: SortingRule, date: IsoDate): void {
+    assertIsoDate(date);
+    const before = this.#ruleById(rule.id);
+    this.#rules = checkRules(this.#rules.map((r) => (r.id === rule.id ? rule : r)));
+    this.#log.push(Object.freeze({ date, kind: 'rule-changed', before, after: this.#ruleById(rule.id) }));
+    this.#sortWaitingByRules();
+  }
+
+  removeRule(id: string, date: IsoDate): void {
+    assertIsoDate(date);
+    const rule = this.#ruleById(id);
+    this.#rules = checkRules(this.#rules.filter((r) => r.id !== id));
+    this.#log.push(Object.freeze({ date, kind: 'rule-removed', rule }));
+  }
+
+  #ruleById(id: string): SortingRule {
+    const rule = this.#rules.find((r) => r.id === id);
+    if (rule === undefined) throw new MoneyError('unknown-rule', `no rule ${id}`);
+    return rule;
+  }
+
+  #sortWaitingByRules(): void {
+    for (const id of [...this.#review]) {
+      const entry = this.#entry(id);
+      if (entry.kind === 'spend' && 'to' in entry.sortedTo && entry.sortedTo.to === 'unsorted') {
+        const description = (entry.postedTxn ?? entry.txn).description;
+        if (entry.spendingKind === 'purchase') {
+          const rule = findRule(this.#rules, 'purchase', description);
+          if (rule !== undefined) this.#sortSpending(entry, { to: rule.bucket });
+        } else if (entry.spendingKind === 'person-payment') {
+          const rule = findRule(this.#rules, 'person', description);
+          if (rule !== undefined) this.#sortSpending(entry, rule.choice);
+        }
+      } else if (entry.kind === 'money-in' && entry.reason === 'deposit' && entry.sortedTo === 'unsorted') {
+        const rule = findRule(this.#rules, 'deposit', entry.txn.description);
+        if (rule !== undefined) this.#sortMoneyIn(entry, rule.choice);
+      }
+    }
+  }
+
+  // 13.3 and 13.4: move money between buckets by hand. Moving out of
+  // savings or the mom reserve needs your confirmation first.
+  moveMoney(move: MoneyMove, date: IsoDate): MoveResult {
+    assertIsoDate(date);
+    const { from, to, amount } = move;
+    if (!MOVABLE.includes(from) || !MOVABLE.includes(to) || from === to) {
+      throw new MoneyError('bad-move', `cannot move money from ${String(from)} to ${String(to)}`);
+    }
+    assertPositiveCents(amount, 'amount to move');
+    if ((from === 'savings' || from === 'momReserve') && move.confirmed !== true) return { moved: false, needsConfirmation: true };
+    this.#moveCount += 1;
+    const entry: MoveEntry = { kind: 'move', id: `move:${this.#moveCount}`, date, effect: {} };
+    this.#add(entry, { [from]: -amount, [to]: amount });
+    this.#log.push(Object.freeze({ date, kind: 'money-moved', from, to, amount }));
+    return { moved: true };
+  }
+
+  changeLog(): readonly ChangeLogEntry[] {
+    return [...this.#log];
+  }
+
   // ----- Bookkeeping -----
 
   #entry(id: string): Entry {
@@ -796,8 +924,15 @@ export class Book {
   }
 
   #add(entry: Entry, effect: Effect): void {
-    this.#entries.set(entry.id, entry);
+    this.#register(entry);
     this.#setEffect(entry, effect);
+  }
+
+  // Two entries can never share an id: the second would silently replace
+  // the first and its money would vanish from the recount.
+  #register(entry: Entry): void {
+    if (this.#entries.has(entry.id)) throw new MoneyError('broken-book', `two entries would share the id ${entry.id}`);
+    this.#entries.set(entry.id, entry);
   }
 
   // Replaces what an entry does to the buckets. Works out every new total
@@ -838,6 +973,7 @@ export class Book {
       case 'paycheck':
       case 'refund':
       case 'mom':
+      case 'move':
       case 'transfer':
         throw new MoneyError('broken-book', `${entry.kind} ${entry.id} should never be in review`);
     }

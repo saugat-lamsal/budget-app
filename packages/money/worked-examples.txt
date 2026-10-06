@@ -348,3 +348,36 @@ Step 4. Next day the bank shows a 10.00 fee in checking that the app has
         no safe-to-spend number until they do (0.5).
 
 Check: app side 4,515.00 | bank side 4,515.00 | difference 0.00 | difference after the fee -10.00
+
+
+========================================================================
+EXAMPLE 12. Changing things part way through a pay period
+            (rules 13.1, 13.3, 13.4, 13.5, 0.3)
+========================================================================
+
+Before: Savings 1,000.00 | Needs 400.00 | Wants 250.00 | Mom reserve 0.00
+        Split 50/30/20. Leftover setting: always roll over.
+
+Step 1. Oct 12: you change the split to 60% savings / 25% needs /
+        15% wants. Nothing moves now. It applies from the next paycheck
+        (13.1), and the current pay period is not redone (0.3).
+
+Step 2. Oct 13: you move 100.00 from wants to needs by hand (13.3).
+        Needs 400.00 + 100.00 = 500.00 | Wants 250.00 - 100.00 = 150.00
+
+Step 3. Oct 14: you move 200.00 from savings to wants. The app asks you
+        to confirm first (13.4). You confirm.
+        Savings 1,000.00 - 200.00 = 800.00 | Wants 150.00 + 200.00 = 350.00
+
+Step 4. Oct 23: a 3,000.00 paycheck, split the new way.
+        Mom reserve 1,500.00 (it was empty, so all of it fits)
+        Rest 1,500.00: Savings 60% = 900.00 | Needs 25% = 375.00 |
+                       Wants 15% = 225.00
+        Savings 800.00 + 900.00 = 1,700.00
+        Needs   500.00 + 375.00 =   875.00
+        Wants   350.00 + 225.00 =   575.00
+
+Step 5. The change log (13.5) has three lines: the split change (Oct 12)
+        and the two moves (Oct 13, Oct 14).
+
+Check: mom reserve 1,500.00 | savings 1,700.00 | needs 875.00 | wants 575.00

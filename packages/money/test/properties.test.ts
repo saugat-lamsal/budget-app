@@ -13,6 +13,7 @@ import {
   type Purchase,
   type LeftoverChoice,
   type MoneyInChoice,
+  type Pot,
   type SortChoice,
   type SortingRule,
 } from '../src/index.js';
@@ -79,9 +80,22 @@ type Step =
   | { type: 'acknowledge'; pick: number }
   | { type: 'resort-money-in'; pick: number; seed: number }
   | { type: 'pay-person'; amount: number; payee: string }
-  | { type: 'pay-mom'; amount: number };
+  | { type: 'pay-mom'; amount: number }
+  | { type: 'move'; from: Pot; to: Pot; amount: number }
+  | { type: 'change-split'; split: { savings: number; needs: number; wants: number }; reserve: number }
+  | { type: 'add-rule'; rule: number };
 
 const gapArb = fc.integer({ min: 0, max: 20 });
+const potNameArb = fc.constantFrom<Pot>('savings', 'needs', 'wants', 'momReserve', 'heldForOthers');
+
+// Rules that can be added part way through a made-up life (13.2).
+// Each gets a fresh id when it is added.
+const LATER_RULES: SortingRule[] = [
+  { id: 'later', for: 'purchase', contains: 'HARDWARE', bucket: 'needs' },
+  { id: 'later', for: 'purchase', contains: 'STORE', bucket: 'wants' },
+  { id: 'later', for: 'deposit', contains: 'DEPOSIT', choice: { to: 'income' } },
+  { id: 'later', for: 'person', contains: 'FRIEND', choice: { to: 'not-mine' } },
+];
 const smallAmountArb = fc.oneof(fc.integer({ min: 1, max: 50_000 }), fc.constantFrom(1, 2, 100));
 
 const stepArb: fc.Arbitrary<Step> = fc.oneof(
@@ -125,6 +139,9 @@ const stepArb: fc.Arbitrary<Step> = fc.oneof(
   fc.record({ type: fc.constant('resort-money-in' as const), pick: fc.nat(), seed: fc.nat() }),
   fc.record({ type: fc.constant('pay-person' as const), amount: smallAmountArb, payee: fc.constantFrom('MADE UP FRIEND', 'MADE UP LANDLORD', 'MADE UP ROOMMATE') }),
   fc.record({ type: fc.constant('pay-mom' as const), amount: fc.oneof(smallAmountArb, fc.integer({ min: 100_000, max: 400_000 })) }),
+  fc.record({ type: fc.constant('move' as const), from: potNameArb, to: potNameArb, amount: smallAmountArb }),
+  fc.record({ type: fc.constant('change-split' as const), split: splitArb, reserve: fc.integer({ min: 0, max: 300_000 }) }),
+  fc.record({ type: fc.constant('add-rule' as const), rule: fc.nat() }),
 );
 
 const potArb = fc.integer({ min: -1_000_000, max: 10_000_000 });
@@ -260,6 +277,17 @@ function runLife(book: Book, bank: TestBank, steps: Step[]): void {
       case 'pay-mom':
         send(payPerson(`t${n++}`, date, step.amount, MOM_NAME));
         break;
+      case 'move':
+        if (step.from !== step.to) book.moveMoney({ from: step.from, to: step.to, amount: step.amount, confirmed: true }, date);
+        break;
+      case 'change-split':
+        book.changeSettings({ split: step.split, momReservePerPaycheck: step.reserve }, date);
+        break;
+      case 'add-rule': {
+        const rule = LATER_RULES[step.rule % LATER_RULES.length];
+        if (rule) book.addRule({ ...rule, id: `rule${n++}` }, date);
+        break;
+      }
       case 'acknowledge': {
         const item = pick(book.reviewItems().filter((i) => i.type === 'old-card-purchase'), step.pick);
         if (item) book.acknowledge(item.id, date);

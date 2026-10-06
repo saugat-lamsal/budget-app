@@ -173,6 +173,20 @@ const examples: Record<number, () => Record<string, Cents>> = {
     if (afterFee.ok) throw new Error('safe to spend should not be shown when the totals do not match');
     return { 'app side': check.appSide, 'bank side': check.bankSide, difference: check.difference, 'difference after the fee': afterFee.difference };
   },
+  12: () => {
+    const book = openTestBook({
+      pots: { savings: parseDollars('1,000.00'), needs: parseDollars('400.00'), wants: parseDollars('250.00') },
+      settings: { leftoverAtPayday: { needs: 'roll-over', wants: 'roll-over' } },
+    });
+    book.changeSettings({ split: { savings: 60, needs: 25, wants: 15 } }, '2026-10-12');
+    book.moveMoney({ from: 'wants', to: 'needs', amount: parseDollars('100.00') }, '2026-10-13');
+    const asked = book.moveMoney({ from: 'savings', to: 'wants', amount: parseDollars('200.00') }, '2026-10-14');
+    if (asked.moved) throw new Error('moving out of savings should ask first');
+    book.moveMoney({ from: 'savings', to: 'wants', amount: parseDollars('200.00'), confirmed: true }, '2026-10-14');
+    book.receive(paycheck('pay', '2026-10-23', parseDollars('3,000.00')));
+    if (book.changeLog().length !== 3) throw new Error(`change log: ${JSON.stringify(book.changeLog())}`);
+    return buckets(book);
+  },
 };
 
 describe('worked examples (worked-examples.txt)', () => {

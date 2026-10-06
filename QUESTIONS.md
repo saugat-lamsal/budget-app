@@ -121,6 +121,20 @@ A8. Low bucket alert (10.1). Skipped.
     Recommendation: option 1; yes, skip it when the bucket started at zero
     or below; yes, strictly below.
 
+A9. Setting the paycheck rule or the mom rule after the first sync.
+    Section 2 says the paycheck rule is "set after first sync", so the
+    first paychecks will be waiting in review when you set it. 13.2 says a
+    new sorting rule also sorts what is waiting, but these two are
+    settings, not sorting rules.
+    Now: they apply to new transactions only. Deposits and payments
+    already waiting in review are not re-checked.
+    Option 1 (now): new transactions only.
+    Option 2: re-check what is waiting, like 13.2. A waiting deposit that
+    matches the new paycheck rule is then treated as a paycheck (with the
+    3.7 ten-day check), and a waiting payment that matches the mom rule
+    comes out of the mom reserve.
+    Recommendation: option 2.
+
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
@@ -274,3 +288,20 @@ B36. The bank balances for the self-check come from the bank connection
 B37. When the totals do not match (0.5), the app holds back the
      safe-to-spend number and shows the difference instead. It still shows
      the days to payday, which does not depend on the bank.
+
+B38. "The split or the mom reserve" (13.1) covers the split and both mom
+     reserve numbers: the amount per paycheck and the cap. Income sorted
+     before the next paycheck still uses this pay period's split. Every
+     other setting applies right away.
+
+B39. A new rule goes to the end of your list, so an earlier matching rule
+     still wins (B9). A purchase waiting because its split stopped adding
+     up (A1) counts as unsorted, so a new rule can sort it.
+
+B40. Hand moves (13.3) can take a bucket below zero, and held for others
+     can be moved too (for example when a friend says "keep it"). Only
+     moves out of savings or the mom reserve ask first (13.4).
+
+B41. The change log (13.5) records settings changes, rule changes, and
+     hand moves, each with its date. How each transaction was sorted is
+     kept on the transaction itself.
