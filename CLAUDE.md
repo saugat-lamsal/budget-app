@@ -130,8 +130,10 @@ This applies to every phase and every session, cloud or local.
   - Break-it check: `node scripts/break-it.mjs` (or with section numbers).
     The breaks are listed in packages/money/break-it.json; add new ones there
     for each section. Do not edit source or test files while it runs: it
-    breaks the source on purpose, and a failing new test makes every break
-    look caught.
+    breaks the source on purpose. It first runs the tests with nothing
+    broken and stops if they fail. If a run is stopped partway, the test
+    suite fails until `node scripts/break-it.mjs --restore` puts the file
+    back.
 - Next: the rest of QUESTIONS.md part A (A1 to A4, A6's everyday card part,
   A7, A9, A10), then Phase 2 once he says go.
 - Waiting on: the promo end date for the old card. Only the payoff countdown
