@@ -55,6 +55,7 @@ export {
   type ReceiveOutcome,
   type ReviewItem,
   type CheckedSafeToSpend,
+  type ConfirmReason,
   type InTransit,
   type InTransitItem,
   type SafeToSpend,

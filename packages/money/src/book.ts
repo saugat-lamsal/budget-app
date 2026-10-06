@@ -240,7 +240,12 @@ export interface MoneyMove {
   readonly confirmed?: boolean;
 }
 
-export type MoveResult = { readonly moved: true } | { readonly moved: false; readonly needsConfirmation: true };
+// Why a hand move asks you to confirm first (13.4).
+export type ConfirmReason = 'out-of-savings' | 'out-of-mom-reserve' | 'below-zero';
+
+export type MoveResult =
+  | { readonly moved: true }
+  | { readonly moved: false; readonly needsConfirmation: true; readonly reasons: readonly ConfirmReason[] };
 
 // Rule 13.5: every change and every manual move, with its date.
 export type ChangeLogEntry =
@@ -1228,7 +1233,8 @@ export class Book {
   }
 
   // 13.3 and 13.4: move money between buckets by hand. Moving out of
-  // savings or the mom reserve needs your confirmation first.
+  // savings or the mom reserve, or a move that would leave the bucket it
+  // comes out of below zero (usually a typo), needs your confirmation first.
   moveMoney(move: MoneyMove, date: IsoDate): MoveResult {
     assertIsoDate(date);
     const { from, to, amount } = move;
@@ -1236,7 +1242,11 @@ export class Book {
       throw new MoneyError('bad-move', `cannot move money from ${String(from)} to ${String(to)}`);
     }
     assertPositiveCents(amount, 'amount to move');
-    if ((from === 'savings' || from === 'momReserve') && move.confirmed !== true) return { moved: false, needsConfirmation: true };
+    const reasons: ConfirmReason[] = [];
+    if (from === 'savings') reasons.push('out-of-savings');
+    if (from === 'momReserve') reasons.push('out-of-mom-reserve');
+    if (subtractCents(this.#totals[from], amount) < 0) reasons.push('below-zero');
+    if (reasons.length > 0 && move.confirmed !== true) return { moved: false, needsConfirmation: true, reasons };
     this.#moveCount += 1;
     const entry: MoveEntry = { kind: 'move', id: `move:${this.#moveCount}`, date, effect: {} };
     this.#add(entry, { [from]: -amount, [to]: amount });

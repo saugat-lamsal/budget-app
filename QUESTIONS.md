@@ -317,9 +317,12 @@ B39. Changed after your review: see 13.6 in the rulebook. A rule made by
      end of your list. A purchase waiting because its split stopped adding
      up (A1) counts as unsorted, so a new rule can sort it.
 
-B40. Hand moves (13.3) can take a bucket below zero, and held for others
-     can be moved too (for example when a friend says "keep it"). Only
-     moves out of savings or the mom reserve ask first (13.4).
+B40. Changed after your review: see 13.4 in the rulebook. A hand move that
+     would leave the bucket it comes out of below zero now asks you to
+     confirm first, as moves out of savings and the mom reserve already
+     did. The app says why it is asking. Held for others can still be
+     moved (for example when a friend says "keep it"), and counts as a
+     bucket for this check.
 
 B41. The change log (13.5) records settings changes, rule changes, and
      hand moves, each with its date. How each transaction was sorted is
@@ -370,3 +373,9 @@ B49. "The rule it corrects" (13.6) is whichever rule matches the item
 B50. "Once per bucket per pay period" (10.2): if a bucket is refilled and
      empties again in the same pay period, there is no second alert. A
      bucket that starts a new pay period still empty alerts again then.
+
+B51. The below-zero check (13.4) looks at the bucket the money comes out
+     of. It asks whenever that bucket would end below zero, including when
+     it is already below zero and more would come out. Leaving it at
+     exactly zero does not ask. Moving money into a bucket that is below
+     zero never asks.

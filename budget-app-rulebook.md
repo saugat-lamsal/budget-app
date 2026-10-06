@@ -185,7 +185,8 @@ number so a test can point at it. Nothing gets coded until you approve this.
       Already-sorted ones stay put unless you re-sort them.
 13.3  You can move money between buckets by hand at any time.
 13.4  Moving money out of savings or the mom reserve asks you to confirm
-      first.
+      first. So does any move that would leave the bucket it comes out of
+      below zero, since that is usually a typo.
 13.5  Every change and every manual move is logged with the date.
 13.6  When you correct something a rule sorted and choose "always do this",
       the new rule goes just ahead of the rule it corrects, so the
@@ -233,3 +234,5 @@ a.  Money in transit between your accounts is part of the self-check, so
 b.  A rule made from a correction beats the rule it corrects (13.6).
 c.  The empty-bucket alert comes once per bucket per pay period, like the
     low-bucket alert (10.2).
+d.  A hand move that would take any bucket below zero asks you to confirm
+    first (13.4).

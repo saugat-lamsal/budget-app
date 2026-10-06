@@ -179,9 +179,10 @@ describe('13.3 you can move money between buckets by hand at any time', () => {
     expect(b.pots()).toMatchObject({ heldForOthers: 0, wants: 2_000 });
   });
 
-  it('13.3 a move can take a bucket below zero', () => {
+  it('13.3 a move can take a bucket below zero once you confirm it (13.4)', () => {
     const b = book();
-    b.moveMoney({ from: 'wants', to: 'needs', amount: 30_001 }, '2026-10-05');
+    expect(b.moveMoney({ from: 'wants', to: 'needs', amount: 30_001 }, '2026-10-05').moved).toBe(false);
+    expect(b.moveMoney({ from: 'wants', to: 'needs', amount: 30_001, confirmed: true }, '2026-10-05')).toEqual({ moved: true });
     expect(b.pots().wants).toBe(-1);
   });
 
@@ -218,7 +219,7 @@ describe('13.3 you can move money between buckets by hand at any time', () => {
 describe('13.4 moving money out of savings or the mom reserve asks you to confirm first', () => {
   it('13.4 out of savings without confirming: it asks, and nothing moves', () => {
     const b = book();
-    expect(b.moveMoney({ from: 'savings', to: 'needs', amount: 1 }, '2026-10-05')).toEqual({ moved: false, needsConfirmation: true });
+    expect(b.moveMoney({ from: 'savings', to: 'needs', amount: 1 }, '2026-10-05')).toEqual({ moved: false, needsConfirmation: true, reasons: ['out-of-savings'] });
     expect(b.pots()).toMatchObject({ savings: 100_000, needs: 50_000 });
     expect(b.changeLog()).toEqual([]);
   });
@@ -231,9 +232,40 @@ describe('13.4 moving money out of savings or the mom reserve asks you to confir
 
   it('13.4 out of the mom reserve asks too', () => {
     const b = book({ pots: { momReserve: 10_000 } });
-    expect(b.moveMoney({ from: 'momReserve', to: 'wants', amount: 10_000 }, '2026-10-05')).toEqual({ moved: false, needsConfirmation: true });
+    expect(b.moveMoney({ from: 'momReserve', to: 'wants', amount: 10_000 }, '2026-10-05')).toEqual({ moved: false, needsConfirmation: true, reasons: ['out-of-mom-reserve'] });
     expect(b.moveMoney({ from: 'momReserve', to: 'wants', amount: 10_000, confirmed: true }, '2026-10-05')).toEqual({ moved: true });
     expect(b.pots()).toMatchObject({ momReserve: 0, wants: 10_000 });
+  });
+
+  it('13.4 a move that would take a bucket below zero asks first, and nothing moves', () => {
+    const b = book();
+    expect(b.moveMoney({ from: 'wants', to: 'needs', amount: 30_001 }, '2026-10-05')).toEqual({ moved: false, needsConfirmation: true, reasons: ['below-zero'] });
+    expect(b.pots()).toMatchObject({ wants: 30_000, needs: 50_000 });
+    expect(b.changeLog()).toEqual([]);
+  });
+
+  it('13.4 a move that leaves exactly zero asks nothing', () => {
+    const b = book();
+    expect(b.moveMoney({ from: 'wants', to: 'needs', amount: 30_000 }, '2026-10-05')).toEqual({ moved: true });
+    expect(b.pots().wants).toBe(0);
+  });
+
+  it('13.4 a bucket already below zero asks again before more comes out', () => {
+    const b = book({ pots: { needs: 50_000, wants: -100 } });
+    expect(b.moveMoney({ from: 'wants', to: 'needs', amount: 1 }, '2026-10-05')).toMatchObject({ moved: false, reasons: ['below-zero'] });
+  });
+
+  it('13.4 moving into a bucket that is below zero asks nothing', () => {
+    const b = book({ pots: { needs: 50_000, wants: -100 } });
+    expect(b.moveMoney({ from: 'needs', to: 'wants', amount: 1 }, '2026-10-05')).toEqual({ moved: true });
+  });
+
+  it('13.4 taking savings below zero gives both reasons; held for others counts as a bucket too', () => {
+    const b = book();
+    expect(b.moveMoney({ from: 'savings', to: 'needs', amount: 100_001 }, '2026-10-05')).toMatchObject({ reasons: ['out-of-savings', 'below-zero'] });
+    expect(b.moveMoney({ from: 'heldForOthers', to: 'needs', amount: 1 }, '2026-10-05')).toMatchObject({ reasons: ['below-zero'] });
+    expect(b.moveMoney({ from: 'savings', to: 'needs', amount: 100_001, confirmed: true }, '2026-10-05')).toEqual({ moved: true });
+    expect(b.pots().savings).toBe(-1);
   });
 
   it('13.4 moving into savings, or between needs and wants, asks nothing', () => {

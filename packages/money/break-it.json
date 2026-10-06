@@ -905,15 +905,15 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "if ((from === 'savings' || from === 'momReserve') && move.confirmed !== true)",
-    "replace": "if (from === 'savings' && move.confirmed !== true)",
+    "find": "    if (from === 'momReserve') reasons.push('out-of-mom-reserve');\n",
+    "replace": "",
     "why": "13.4 move out of the mom reserve without asking"
   },
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "if ((from === 'savings' || from === 'momReserve') && move.confirmed !== true)",
-    "replace": "if ((from === 'savings' || from === 'momReserve') && move.confirmed === false)",
+    "find": "if (reasons.length > 0 && move.confirmed !== true) return",
+    "replace": "if (reasons.length > 0 && move.confirmed === false) return",
     "why": "13.4 treat a missing confirmation as yes"
   },
   {
@@ -1258,5 +1258,47 @@
     "find": "if (!check.ok) alerts.push({ kind: 'totals-mismatch'",
     "replace": "if (check.ok) alerts.push({ kind: 'totals-mismatch'",
     "why": "10.4 alert when the totals match instead of when they do not"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "if (subtractCents(this.#totals[from], amount) < 0) reasons.push('below-zero');",
+    "replace": "",
+    "why": "13.4 move a bucket below zero without asking"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "if (subtractCents(this.#totals[from], amount) < 0) reasons.push('below-zero');",
+    "replace": "if (subtractCents(this.#totals[from], amount) <= 0) reasons.push('below-zero');",
+    "why": "13.4 ask when a move leaves exactly zero"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "if (subtractCents(this.#totals[from], amount) < 0) reasons.push('below-zero');",
+    "replace": "if (subtractCents(this.#totals[from], amount) < -1) reasons.push('below-zero');",
+    "why": "13.4 let one cent below zero through"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "if (subtractCents(this.#totals[from], amount) < 0) reasons.push('below-zero');",
+    "replace": "if (this.#totals[from] >= 0 && subtractCents(this.#totals[from], amount) < 0) reasons.push('below-zero');",
+    "why": "13.4 stop asking once a bucket is already below zero"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "if (subtractCents(this.#totals[from], amount) < 0) reasons.push('below-zero');",
+    "replace": "if (subtractCents(this.#totals[to], -amount) < 0) reasons.push('below-zero');",
+    "why": "13.4 check the bucket money goes into instead of the one it leaves"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "if (from === 'savings') reasons.push('out-of-savings');",
+    "replace": "",
+    "why": "13.4 move out of savings without asking"
   }
 ]
