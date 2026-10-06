@@ -5,7 +5,7 @@ import { MoneyError } from './errors.js';
 import type { SortingRule } from './rules.js';
 import { bankSide, withPendingCharges, type BankBalances } from './self-check.js';
 import type { Settings } from './settings.js';
-import { checkTransaction, type Purchase, type TransferSent } from './transactions.js';
+import { checkTransaction, type Purchase, type TransferArrived, type TransferSent } from './transactions.js';
 
 // Rulebook section 14: setup day.
 
@@ -15,9 +15,10 @@ export interface SetupInput {
   // charges still pending.
   readonly bankBalances: BankBalances;
   readonly pendingCharges: readonly Purchase[];
-  // Transfers that have left one of your accounts and not arrived yet, such
-  // as a card payment made yesterday (12.5).
-  readonly transfersInTransit?: readonly TransferSent[];
+  // Transfers with only one half showing (12.5): money that has left one of
+  // your accounts and not arrived yet, such as a card payment made
+  // yesterday, or one that has arrived but does not show leaving yet.
+  readonly transfersInTransit?: readonly (TransferSent | TransferArrived)[];
   // What the old card owes (posted). It becomes the debt (12.4).
   readonly oldCardBalance: Cents;
   // 14.2: where the starting money goes.
@@ -35,15 +36,24 @@ export type SetupResult =
   | { readonly ok: false; readonly startingMoney: Cents; readonly assigned: Cents; readonly difference: Cents };
 
 // 14.2: checking + savings - everyday card balance, with pending charges
-// included (the same bank side as the self-check, 12.1), plus money in
-// transit between those accounts (12.5). Money on its way to the old card
-// has already left them and is not counted.
-export function startingMoney(posted: BankBalances, pendingCharges: readonly Purchase[], inTransit: readonly TransferSent[] = []): Cents {
-  for (const transfer of inTransit) {
+// included (the same bank side as the self-check, 12.1), allowing for
+// money in transit between those accounts (12.5): money that has left and
+// not arrived is added; money that arrived before it shows leaving is
+// still counted where it left, so it is taken off. Halves going to or
+// from the old card do not count: it is outside the starting money.
+export function startingMoney(
+  posted: BankBalances,
+  pendingCharges: readonly Purchase[],
+  inTransit: readonly (TransferSent | TransferArrived)[] = [],
+): Cents {
+  const travelling = inTransit.map((transfer) => {
     checkTransaction(transfer);
-    if (transfer.kind !== 'transfer-sent') throw new MoneyError('bad-transaction', `${String(transfer.id)} has not left an account`);
-  }
-  const travelling = inTransit.filter((t) => t.to !== 'old-card').map((t) => t.amount);
+    if (transfer.kind !== 'transfer-sent' && transfer.kind !== 'transfer-arrived') {
+      throw new MoneyError('bad-transaction', `${String((transfer as { id?: unknown }).id)} is not half of a transfer`);
+    }
+    if (transfer.to === 'old-card') return 0;
+    return transfer.kind === 'transfer-sent' ? transfer.amount : -transfer.amount;
+  });
   return addCents(bankSide(withPendingCharges(posted, pendingCharges)), ...travelling);
 }
 

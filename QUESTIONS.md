@@ -366,9 +366,13 @@ B46. Money already on its way to savings counts as moved for "still to
 B47. For card reminders (9.3, 9.4), a payment counts on the day it left
      checking or savings, not the day it reached the card.
 
-B48. Setup day also takes the transfers in transit that day. They are part
-     of the starting money, except ones going to the old card, which have
-     already left the accounts the starting money counts.
+B48. Setup day also takes the transfers with only one half showing that
+     day. Money that has left and not landed is added to the starting
+     money. A payment that has landed but does not show leaving yet is
+     taken off, since it is still counted where it left (found in the
+     review). Halves going to the old card do not count either way: the
+     old card is outside the starting money, and its balance already
+     shows whatever has landed.
 
 B49. "The rule it corrects" (13.6) is whichever rule matches the item
      right now, even if you had already re-sorted the item by hand. The new

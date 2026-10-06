@@ -954,8 +954,8 @@
   {
     "section": "14",
     "file": "packages/money/src/setup.ts",
-    "find": "return bankSide(withPendingCharges(posted, pendingCharges));",
-    "replace": "return bankSide(posted);",
+    "find": "return addCents(bankSide(withPendingCharges(posted, pendingCharges)), ...travelling);",
+    "replace": "return addCents(bankSide(posted), ...travelling);",
     "why": "14.1 leave pending charges out of the starting money"
   },
   {
@@ -1108,8 +1108,8 @@
   {
     "section": "12",
     "file": "packages/money/src/book.ts",
-    "find": "copy.to === 'old-card' ? {} : { inTransit: copy.amount }",
-    "replace": "{ inTransit: copy.amount }",
+    "find": "copy.to === 'old-card' ? {} : { inTransit: travelling }",
+    "replace": "{ inTransit: travelling }",
     "why": "12.5 count an old card payment in transit on setup day in the check"
   },
   {
@@ -1122,8 +1122,8 @@
   {
     "section": "12",
     "file": "packages/money/src/setup.ts",
-    "find": "const travelling = inTransit.filter((t) => t.to !== 'old-card').map((t) => t.amount);",
-    "replace": "const travelling = inTransit.map((t) => t.amount);",
+    "find": "    if (transfer.to === 'old-card') return 0;\n",
+    "replace": "",
     "why": "12.5 count money on its way to the old card as starting money"
   },
   {
@@ -1363,5 +1363,26 @@
     "find": "    if (displaced !== undefined && partner !== undefined) this.#unpair(partner, displaced);\n",
     "replace": "",
     "why": "12.5 keep a stale guessed pairing after a named landing takes over"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "return transfer.kind === 'transfer-sent' ? transfer.amount : -transfer.amount;",
+    "replace": "return transfer.amount;",
+    "why": "12.5 add a setup-day landing to the starting money instead of taking it off"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/book.ts",
+    "find": "const travelling = copy.kind === 'transfer-sent' ? copy.amount : -copy.amount;",
+    "replace": "const travelling = copy.amount;",
+    "why": "12.5 count a setup-day landing as money still on its way"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (partner !== undefined) this.#pair(copy.kind === 'transfer-sent' ? copy.id : partner, copy.kind === 'transfer-sent' ? partner : copy.id);\n",
+    "replace": "",
+    "why": "12.5 leave both halves on setup day unpaired"
   }
 ]

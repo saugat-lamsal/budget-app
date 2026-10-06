@@ -181,7 +181,45 @@ describe('setup day with a payment still in transit (12.5)', () => {
     expect(b.pots().needs).toBe(100_000);
   });
 
-  it('12.5 only payments that have left, not ones that arrived, can be in transit on setup day', () => {
-    expect(codeOf(() => startTracking(setup({ transfersInTransit: [arrived('x', '2026-10-05', 1, 'checking', 'savings') as never] })))).toBe('bad-transaction');
+  it('12.5 only halves of transfers can be in transit on setup day', () => {
+    expect(codeOf(() => startTracking(setup({ transfersInTransit: [purchase('x', '2026-10-05', 1, 'MADE UP STORE') as never] })))).toBe('bad-transaction');
+  });
+
+  // A 200.00 card payment has already landed on the card, but checking does
+  // not show it leaving yet, so checking still holds it (found in review).
+  const landedFirst = [arrived('land9', '2026-10-05', 20_000, 'checking', 'everyday-card')];
+
+  it('12.5 a payment that landed before it is seen leaving is taken out of the starting money', () => {
+    expect(startingMoney(POSTED, PENDING, landedFirst)).toBe(STARTING - 20_000);
+  });
+
+  it('12.5 it starts in transit the other way, and clears without a mismatch when the payment is seen leaving', () => {
+    const result = startTracking(setup({ transfersInTransit: landedFirst, assignment: { savings: 400_000, needs: 80_000, wants: 50_000, momReserve: 60_000, heldForOthers: 5_500 } }));
+    if (!result.ok) throw new Error(JSON.stringify(result));
+    const b = result.book;
+    const before = b.pots();
+    const bank = { ...POSTED, everydayCard: POSTED.everydayCard + 4_500 };
+    expect(b.selfCheck(bank)).toMatchObject({ inTransit: -20_000, ok: true });
+    b.receive(sent('pay9', '2026-10-07', 20_000, 'checking', 'everyday-card'));
+    expect(b.pots()).toEqual(before);
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
+    expect(b.selfCheck({ ...bank, checking: bank.checking - 20_000 })).toMatchObject({ inTransit: 0, ok: true });
+  });
+
+  it('12.5 an old card payment that landed first on setup day: the debt is already lower; needs pays when it leaves, and the debt does not drop again', () => {
+    const oldLanded = [arrived('land8', '2026-10-05', 10_000, 'checking', 'old-card')];
+    expect(startingMoney(POSTED, PENDING, oldLanded)).toBe(STARTING);
+    const b = started({ transfersInTransit: oldLanded, oldCardBalance: 280_000 });
+    b.receive(sent('pay8', '2026-10-07', 10_000, 'checking', 'old-card'));
+    expect(b.pots().needs).toBe(90_000);
+    expect(b.oldCardDebt()).toBe(280_000);
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
+  });
+
+  it('12.5 both halves of the same transfer on setup day pair up and cancel out', () => {
+    const both = [sent('pay7', '2026-10-04', 5_000, 'checking', 'savings'), arrived('land7', '2026-10-05', 5_000, 'checking', 'savings')];
+    expect(startingMoney(POSTED, PENDING, both)).toBe(STARTING);
+    const b = started({ transfersInTransit: both });
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
   });
 });

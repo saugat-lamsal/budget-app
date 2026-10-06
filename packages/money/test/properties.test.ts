@@ -419,14 +419,18 @@ describe('random scenarios: setup day (section 14)', () => {
             amount: fc.integer({ min: 1, max: 50_000 }),
             from: fc.constantFrom('checking' as const, 'savings' as const),
             to: fc.constantFrom('savings' as const, 'everyday-card' as const, 'old-card' as const),
+            landedFirst: fc.boolean(),
           }),
           { maxLength: 3 },
         ),
         fc.array(stepArb, { maxLength: 40 }),
         (posted, charges, parts, travelling, steps) => {
           const pendingCharges = charges.map((c, i) => purchase(`setup${i}`, '2026-09-30', c.amount, 'MADE UP CAFE', { account: c.account, pending: true }));
-          // Money that left before setup day and has not landed (12.5).
-          const transfersInTransit = travelling.filter((t) => t.from !== t.to).map((t, i) => sent(`travel${i}`, '2026-09-30', t.amount, t.from, t.to));
+          // Transfers with one half showing on setup day (12.5): left and not
+          // landed, or landed before it shows leaving.
+          const transfersInTransit = travelling
+            .filter((t) => t.from !== t.to)
+            .map((t, i) => (t.landedFirst ? arrived(`travel${i}`, '2026-09-30', t.amount, t.from, t.to) : sent(`travel${i}`, '2026-09-30', t.amount, t.from, t.to)));
           const money = startingMoney(posted, pendingCharges, transfersInTransit);
           // Any four amounts, with savings taking whatever makes it add up.
           const [needs = 0, wants = 0, momReserve = 0, heldForOthers = 0] = parts;
@@ -447,9 +451,17 @@ describe('random scenarios: setup day (section 14)', () => {
           for (const charge of pendingCharges) bank.apply(charge);
           // The bank balances already show the money gone; only the in-transit
           // count starts above zero.
-          bank.inTransit = transfersInTransit.filter((t) => t.to !== 'old-card').reduce((sum, t) => sum + t.amount, 0);
+          bank.inTransit = transfersInTransit
+            .filter((t) => t.to !== 'old-card')
+            .reduce((sum, t) => sum + (t.kind === 'transfer-sent' ? t.amount : -t.amount), 0);
           expect(result.book.selfCheck(bank)).toMatchObject({ ok: true });
-          const halves = transfersInTransit.map((t) => ({ id: t.id, first: 'left' as const, from: t.from, to: t.to, amount: t.amount }));
+          const halves = transfersInTransit.map((t) => ({
+            id: t.id,
+            first: t.kind === 'transfer-sent' ? ('left' as const) : ('arrived' as const),
+            from: t.from,
+            to: t.to,
+            amount: t.amount,
+          }));
           runLife(result.book, bank, steps, pendingCharges, halves);
         },
       ),

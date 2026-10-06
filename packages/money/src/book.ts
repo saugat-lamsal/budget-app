@@ -64,9 +64,10 @@ export interface OpenBookInput {
   // Charges pending on setup day. They are already in the starting money,
   // so they start out counted (see startTracking).
   readonly countedAtSetup?: readonly Purchase[];
-  // Transfers that had left an account on setup day and not arrived yet
-  // (12.5). The starting money includes them.
-  readonly inTransitAtSetup?: readonly TransferSent[];
+  // Transfers with only one half showing on setup day (12.5): money that had
+  // left and not arrived, or arrived before it was seen leaving. The
+  // starting money allows for them.
+  readonly inTransitAtSetup?: readonly (TransferSent | TransferArrived)[];
 }
 
 export type ReceiveOutcome = 'paycheck' | 'sorted' | 'posted' | 'review' | 'duplicate';
@@ -465,14 +466,21 @@ export class Book {
     for (const txn of input.inTransitAtSetup ?? []) this.#inTransitAtSetup(txn);
   }
 
-  // A transfer that left an account before setup day. It is not spending in
-  // the tracked time, so even one heading to the old card is a plain half
-  // here; it lowers the debt when it lands.
-  #inTransitAtSetup(txn: TransferSent): void {
+  // Half of a transfer showing on setup day. Its money is already in the
+  // starting money (or the old card balance), so it changes no bucket and no
+  // debt here; it only waits, in transit, for its other half. Even a payment
+  // to the old card that left before setup day is not spending in the
+  // tracked time; it lowers the debt when it lands.
+  #inTransitAtSetup(txn: TransferSent | TransferArrived): void {
     checkTransaction(txn);
-    if (txn.kind !== 'transfer-sent') throw new MoneyError('bad-transaction', `${String(txn.id)} has not left an account`);
+    if (txn.kind !== 'transfer-sent' && txn.kind !== 'transfer-arrived') {
+      throw new MoneyError('bad-transaction', `${String((txn as { id?: unknown }).id)} is not half of a transfer`);
+    }
     const copy = Object.freeze({ ...txn });
-    this.#add({ kind: 'leg', id: copy.id, txn: copy, effect: {} }, copy.to === 'old-card' ? {} : { inTransit: copy.amount });
+    const partner = copy.kind === 'transfer-sent' ? this.#arrivalFor(copy) : this.#oldestUnpairedSent(copy);
+    const travelling = copy.kind === 'transfer-sent' ? copy.amount : -copy.amount;
+    this.#add({ kind: 'leg', id: copy.id, txn: copy, effect: {} }, copy.to === 'old-card' ? {} : { inTransit: travelling });
+    if (partner !== undefined) this.#pair(copy.kind === 'transfer-sent' ? copy.id : partner, copy.kind === 'transfer-sent' ? partner : copy.id);
   }
 
   // A charge pending on setup day changes nothing now: it is already in the
