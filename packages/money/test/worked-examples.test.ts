@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseDollars, startTracking, withPendingCharges, type Book, type Cents } from '../src/index.js';
 import text from '../worked-examples.txt?raw';
-import { MOM_NAME, TEST_SETTINGS, cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, transfer } from './helpers.js';
+import { MOM_NAME, TEST_SETTINGS, arrived, cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, sent, transfer } from './helpers.js';
 
 interface Example {
   number: number;
@@ -213,6 +213,29 @@ const examples: Record<number, () => Record<string, Cents>> = {
     book.receive(posted('dinner-posted', 'dinner', '2026-10-07', parseDollars('52.00'), 'MADE UP CAFE'));
     book.sort('dinner', { to: 'wants' }, '2026-10-07');
     return { ...buckets(book), 'old card debt': book.oldCardDebt(), 'left to assign on the first try': first.difference };
+  },
+  14: () => {
+    const book = openTestBook({
+      oldCardDebt: parseDollars('2,000.00'),
+      pots: { savings: parseDollars('2,000.00'), needs: parseDollars('500.00'), wants: parseDollars('300.00'), momReserve: parseDollars('1,500.00') },
+    });
+    book.receive(sent('card', '2026-10-12', parseDollars('600.00'), 'checking', 'everyday-card'));
+    book.receive(sent('old', '2026-10-12', parseDollars('150.00'), 'checking', 'old-card'));
+    const onItsWay = { checking: parseDollars('1,050.00'), savings: parseDollars('3,500.00'), everydayCard: parseDollars('1,000.00') };
+    const whileOnItsWay = book.selfCheck(onItsWay);
+    const shown = book.checkedSafeToSpend('2026-10-12', onItsWay);
+    if (!shown.ok) throw new Error('safe to spend should be shown while the payment is on its way');
+    book.receive(arrived('card-landed', '2026-10-14', parseDollars('600.00'), 'checking', 'everyday-card', 'card'));
+    book.receive(arrived('old-landed', '2026-10-14', parseDollars('150.00'), 'checking', 'old-card', 'old'));
+    const afterItLands = book.selfCheck({ ...onItsWay, everydayCard: parseDollars('400.00') });
+    return {
+      ...buckets(book),
+      'in transit while on its way': whileOnItsWay.inTransit,
+      'difference while on its way': whileOnItsWay.difference,
+      'difference after it lands': afterItLands.difference,
+      'old card debt': book.oldCardDebt(),
+      'safe to spend': shown.safeToSpend.amount,
+    };
   },
 };
 

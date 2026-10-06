@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { alertsNow, withPendingCharges } from '../src/index.js';
-import { TestBank, codeOf, deposit, openTestBook, posted, purchase, type TestBookOptions } from './helpers.js';
+import { TestBank, arrived, codeOf, deposit, openTestBook, posted, purchase, sent, type TestBookOptions } from './helpers.js';
 
 // Buckets add up to 2,000.00 + 500.00 + 300.00 + 1,500.00 + 60.00 = 4,360.00.
 function book(options: TestBookOptions = {}) {
@@ -88,11 +88,11 @@ describe('12.2 app side: all buckets + held for others + unsorted money in - uns
 
 describe('12.3 the two must be equal; if not, a warning with the difference', () => {
   it('12.3 equal: no warning', () => {
-    expect(book().selfCheck(MATCHING)).toEqual({ bankSide: 436_000, appSide: 436_000, difference: 0, ok: true });
+    expect(book().selfCheck(MATCHING)).toEqual({ bankSide: 436_000, inTransit: 0, appSide: 436_000, difference: 0, ok: true });
   });
 
   it('12.3 the bank one cent higher: warning, difference +1', () => {
-    expect(book().selfCheck({ ...MATCHING, checking: 300_001 })).toEqual({ bankSide: 436_001, appSide: 436_000, difference: 1, ok: false });
+    expect(book().selfCheck({ ...MATCHING, checking: 300_001 })).toEqual({ bankSide: 436_001, inTransit: 0, appSide: 436_000, difference: 1, ok: false });
   });
 
   it('12.3 the bank one cent lower: warning, difference -1', () => {
@@ -119,7 +119,7 @@ describe('12.4 the old card is tracked separately as debt, not part of this chec
   });
 
   it('12.4 the bank balance object has no old card in it', () => {
-    expect(Object.keys(book().selfCheck(MATCHING))).toEqual(['bankSide', 'appSide', 'difference', 'ok']);
+    expect(Object.keys(book().selfCheck(MATCHING))).toEqual(['bankSide', 'inTransit', 'appSide', 'difference', 'ok']);
   });
 });
 
@@ -160,5 +160,179 @@ describe('10.4 alert when the totals do not match the bank', () => {
       'totals-mismatch',
       'bank-login',
     ]);
+  });
+});
+
+describe('12.5 money in transit: left one of your accounts, not yet arrived in another', () => {
+  // A card payment usually leaves checking a day or two before it reaches
+  // the card. The bank shows the two halves on different days.
+  const PAID = { ...MATCHING, checking: MATCHING.checking - 20_000 };
+  const LANDED = { ...PAID, everydayCard: MATCHING.everydayCard - 20_000 };
+
+  it('12.5 a card payment that has left checking but not reached the card: the check passes, with it in transit', () => {
+    const b = book();
+    const before = b.pots();
+    expect(b.receive(sent('s1', '2026-10-12', 20_000, 'checking', 'everyday-card')).outcome).toBe('sorted');
+    expect(b.pots()).toEqual(before);
+    expect(b.selfCheck(PAID)).toEqual({ bankSide: 416_000, inTransit: 20_000, appSide: 436_000, difference: 0, ok: true });
+    expect(b.inTransit()).toEqual({
+      total: 20_000,
+      items: [{ id: 's1', date: '2026-10-12', from: 'checking', to: 'everyday-card', amount: 20_000, seen: 'left' }],
+    });
+  });
+
+  it('12.5 safe to spend stays on while the payment is on its way (0.5)', () => {
+    const b = book();
+    b.receive(sent('s1', '2026-10-12', 20_000, 'checking', 'everyday-card'));
+    expect(b.checkedSafeToSpend('2026-10-13', PAID)).toMatchObject({ ok: true, safeToSpend: { amount: 30_000 } });
+  });
+
+  it('12.5 when it lands, nothing is in transit, no bucket changed, and the check still passes', () => {
+    const b = book();
+    const before = b.pots();
+    b.receive(sent('s1', '2026-10-12', 20_000, 'checking', 'everyday-card'));
+    b.receive(arrived('a1', '2026-10-14', 20_000, 'checking', 'everyday-card', 's1'));
+    expect(b.pots()).toEqual(before);
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
+    expect(b.selfCheck(LANDED)).toMatchObject({ inTransit: 0, ok: true });
+  });
+
+  it('12.5 without a link, an arrival pairs with the oldest payment of the same amount between the same accounts', () => {
+    const b = book();
+    b.receive(sent('s1', '2026-10-12', 20_000, 'checking', 'everyday-card'));
+    b.receive(sent('s2', '2026-10-13', 15_000, 'checking', 'everyday-card'));
+    b.receive(sent('s3', '2026-10-14', 20_000, 'checking', 'everyday-card'));
+    b.receive(sent('s4', '2026-10-14', 20_000, 'savings', 'everyday-card'));
+    b.receive(arrived('a1', '2026-10-15', 20_000, 'checking', 'everyday-card'));
+    expect(b.inTransit().items.map((i) => i.id)).toEqual(['s2', 's3', 's4']);
+    expect(b.inTransit().total).toBe(55_000);
+  });
+
+  it('12.5 seen landing before it is seen leaving: in transit the other way until it is', () => {
+    const b = book();
+    b.receive(arrived('a1', '2026-10-12', 20_000, 'checking', 'everyday-card'));
+    const cardOnly = { ...MATCHING, everydayCard: MATCHING.everydayCard - 20_000 };
+    expect(b.selfCheck(cardOnly)).toMatchObject({ bankSide: 456_000, inTransit: -20_000, ok: true });
+    expect(b.inTransit().items).toEqual([{ id: 'a1', date: '2026-10-12', from: 'checking', to: 'everyday-card', amount: 20_000, seen: 'arrived' }]);
+    b.receive(sent('s1', '2026-10-11', 20_000, 'checking', 'everyday-card'));
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
+    expect(b.selfCheck(LANDED)).toMatchObject({ ok: true });
+  });
+
+  it('12.5 a second arrival pairs with the next payment, never with one that already arrived', () => {
+    const b = book();
+    b.receive(sent('s1', '2026-10-12', 20_000, 'checking', 'everyday-card'));
+    b.receive(sent('s2', '2026-10-13', 20_000, 'checking', 'everyday-card'));
+    b.receive(arrived('a1', '2026-10-14', 20_000, 'checking', 'everyday-card'));
+    b.receive(arrived('a2', '2026-10-15', 20_000, 'checking', 'everyday-card'));
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
+  });
+
+  it('12.5 arrivals seen before their payments pair oldest first', () => {
+    const b = book();
+    b.receive(arrived('a1', '2026-10-12', 20_000, 'checking', 'everyday-card'));
+    b.receive(arrived('a2', '2026-10-13', 20_000, 'checking', 'everyday-card'));
+    b.receive(sent('s1', '2026-10-11', 20_000, 'checking', 'everyday-card'));
+    expect(b.inTransit().items.map((i) => i.id)).toEqual(['a2']);
+  });
+
+  it('12.5 an arrival that names its payment pairs with that one, even when another matches first', () => {
+    const b = book();
+    b.receive(sent('s1', '2026-10-12', 20_000, 'checking', 'everyday-card'));
+    b.receive(sent('s2', '2026-10-13', 20_000, 'checking', 'everyday-card'));
+    b.receive(arrived('a1', '2026-10-14', 20_000, 'checking', 'everyday-card', 's2'));
+    expect(b.inTransit().items.map((i) => i.id)).toEqual(['s1']);
+  });
+
+  it('12.5 checking to savings in transit counts as already moved for what is left to move (3.8)', () => {
+    const b = book();
+    expect(b.savingsTransfer(300_000).stillToMove).toBe(50_000);
+    b.receive(sent('s1', '2026-10-12', 30_000, 'checking', 'savings'));
+    expect(b.savingsTransfer(300_000).stillToMove).toBe(20_000);
+    b.receive(arrived('a1', '2026-10-13', 30_000, 'checking', 'savings', 's1'));
+    expect(b.savingsTransfer(330_000).stillToMove).toBe(20_000);
+  });
+
+  it('12.5 money on its way to the old card: out of needs when it leaves, the debt goes down when it lands, never in the check', () => {
+    const b = book();
+    b.receive(sent('s1', '2026-10-12', 20_000, 'checking', 'old-card'));
+    expect(b.pots().needs).toBe(30_000);
+    expect(b.oldCardDebt()).toBe(300_000);
+    expect(b.selfCheck(PAID)).toMatchObject({ inTransit: 0, ok: true });
+    expect(b.inTransit()).toEqual({ total: 0, items: [{ id: 's1', date: '2026-10-12', from: 'checking', to: 'old-card', amount: 20_000, seen: 'left' }] });
+    b.receive(arrived('a1', '2026-10-14', 20_000, 'checking', 'old-card', 's1'));
+    expect(b.oldCardDebt()).toBe(280_000);
+    expect(b.pots().needs).toBe(30_000);
+    expect(b.inTransit().items).toEqual([]);
+    expect(b.selfCheck(PAID)).toMatchObject({ ok: true });
+  });
+
+  it('12.5 an old card payment seen landing first lowers the debt now and comes out of needs once it is seen leaving', () => {
+    const b = book();
+    b.receive(arrived('a1', '2026-10-12', 20_000, 'checking', 'old-card'));
+    expect(b.oldCardDebt()).toBe(280_000);
+    expect(b.pots().needs).toBe(50_000);
+    b.receive(sent('s1', '2026-10-11', 20_000, 'checking', 'old-card'));
+    expect(b.pots().needs).toBe(30_000);
+    expect(b.oldCardDebt()).toBe(280_000);
+  });
+
+  it('12.5 from savings to the old card waits in review when it leaves (QUESTIONS.md A4)', () => {
+    const b = book();
+    b.receive(sent('s1', '2026-10-12', 20_000, 'savings', 'old-card'));
+    expect(b.pots().unsortedOut).toBe(20_000);
+    expect(b.oldCardDebt()).toBe(300_000);
+  });
+
+  it('12.5 money that left checking without any transfer is still a mismatch', () => {
+    expect(book().selfCheck(PAID)).toMatchObject({ inTransit: 0, difference: -20_000, ok: false });
+  });
+
+  it('12.5 each half sent twice counts once', () => {
+    const b = book();
+    b.receive(sent('s1', '2026-10-12', 20_000, 'checking', 'everyday-card'));
+    expect(b.receive(sent('s1', '2026-10-12', 20_000, 'checking', 'everyday-card')).outcome).toBe('duplicate');
+    b.receive(arrived('a1', '2026-10-14', 20_000, 'checking', 'everyday-card', 's1'));
+    expect(b.receive(arrived('a1', '2026-10-14', 20_000, 'checking', 'everyday-card', 's1')).outcome).toBe('duplicate');
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
+  });
+
+  it('12.5 halves that do not fit together are refused and change nothing', () => {
+    const b = book();
+    b.receive(sent('s1', '2026-10-12', 20_000, 'checking', 'everyday-card'));
+    expect(codeOf(() => b.receive(arrived('a1', '2026-10-14', 19_999, 'checking', 'everyday-card', 's1')))).toBe('bad-transaction');
+    expect(codeOf(() => b.receive(arrived('a1', '2026-10-14', 20_000, 'savings', 'everyday-card', 's1')))).toBe('bad-transaction');
+    b.receive(deposit('d1', '2026-10-12', 100, 'MADE UP GIFT'));
+    expect(codeOf(() => b.receive(arrived('a1', '2026-10-14', 20_000, 'checking', 'everyday-card', 'd1')))).toBe('bad-transaction');
+    expect(codeOf(() => b.receive(sent('s2', '2026-10-12', 20_000, 'checking', 'checking')))).toBe('bad-transaction');
+    expect(codeOf(() => b.receive(sent('s2', '2026-10-12', 0, 'checking', 'savings')))).toBe('not-positive');
+    expect(b.inTransit().total).toBe(20_000);
+  });
+
+  it('12.5 an arrival naming a payment the app has not seen waits for it', () => {
+    const b = book();
+    b.receive(arrived('a1', '2026-10-14', 20_000, 'checking', 'everyday-card', 's9'));
+    b.receive(sent('s8', '2026-10-13', 20_000, 'checking', 'everyday-card'));
+    expect(b.inTransit().items.map((i) => [i.id, i.seen])).toEqual([
+      ['a1', 'arrived'],
+      ['s8', 'left'],
+    ]);
+    b.receive(sent('s9', '2026-10-13', 20_000, 'checking', 'everyday-card'));
+    expect(b.inTransit().items.map((i) => i.id)).toEqual(['s8']);
+  });
+
+  it('12.5 a payment that already arrived cannot arrive again', () => {
+    const b = book();
+    b.receive(sent('s1', '2026-10-12', 20_000, 'checking', 'everyday-card'));
+    b.receive(arrived('a1', '2026-10-14', 20_000, 'checking', 'everyday-card', 's1'));
+    expect(codeOf(() => b.receive(arrived('a2', '2026-10-15', 20_000, 'checking', 'everyday-card', 's1')))).toBe('already-arrived');
+    expect(b.inTransit().total).toBe(0);
+  });
+
+  it('12.5 one cent and very large amounts in transit', () => {
+    const b = book();
+    b.receive(sent('s1', '2026-10-12', 1, 'checking', 'savings'));
+    b.receive(sent('s2', '2026-10-12', 4_000_000_000_000_000, 'savings', 'checking'));
+    expect(b.inTransit().total).toBe(4_000_000_000_000_001);
   });
 });

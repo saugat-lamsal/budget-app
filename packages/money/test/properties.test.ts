@@ -19,7 +19,24 @@ import {
   type SortChoice,
   type SortingRule,
 } from '../src/index.js';
-import { MOM_NAME, TEST_SETTINGS, TestBank, appSide, cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, transfer, START_DATE } from './helpers.js';
+import {
+  MOM_NAME,
+  TEST_SETTINGS,
+  TestBank,
+  appSide,
+  arrived,
+  cardCharge,
+  deposit,
+  openTestBook,
+  payPerson,
+  paycheck,
+  posted,
+  purchase,
+  refund,
+  sent,
+  transfer,
+  START_DATE,
+} from './helpers.js';
 
 const splitArb = fc
   .integer({ min: 0, max: 100 })
@@ -85,7 +102,9 @@ type Step =
   | { type: 'pay-mom'; amount: number }
   | { type: 'move'; from: Pot; to: Pot; amount: number }
   | { type: 'change-split'; split: { savings: number; needs: number; wants: number }; reserve: number }
-  | { type: 'add-rule'; rule: number };
+  | { type: 'add-rule'; rule: number }
+  | { type: 'send-half'; amount: number; from: 'checking' | 'savings'; to: 'checking' | 'savings' | 'everyday-card' | 'old-card'; arrivesFirst: boolean }
+  | { type: 'other-half'; pick: number; linked: boolean };
 
 const gapArb = fc.integer({ min: 0, max: 20 });
 const potNameArb = fc.constantFrom<Pot>('savings', 'needs', 'wants', 'momReserve', 'heldForOthers');
@@ -144,6 +163,14 @@ const stepArb: fc.Arbitrary<Step> = fc.oneof(
   fc.record({ type: fc.constant('move' as const), from: potNameArb, to: potNameArb, amount: smallAmountArb }),
   fc.record({ type: fc.constant('change-split' as const), split: splitArb, reserve: fc.integer({ min: 0, max: 300_000 }) }),
   fc.record({ type: fc.constant('add-rule' as const), rule: fc.nat() }),
+  fc.record({
+    type: fc.constant('send-half' as const),
+    amount: smallAmountArb,
+    from: fc.constantFrom('checking' as const, 'savings' as const),
+    to: fc.constantFrom('checking' as const, 'savings' as const, 'everyday-card' as const, 'old-card' as const),
+    arrivesFirst: fc.boolean(),
+  }),
+  fc.record({ type: fc.constant('other-half' as const), pick: fc.nat(), linked: fc.boolean() }),
 );
 
 const potArb = fc.integer({ min: -1_000_000, max: 10_000_000 });
@@ -181,12 +208,16 @@ function moneyInChoice(seed: number, isRefund: boolean): SortChoice {
   return { to: choices[seed % choices.length] ?? 'savings' };
 }
 
-function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: readonly Purchase[] = []): void {
+type HalfDone = { id: string; first: 'left' | 'arrived'; from: 'checking' | 'savings'; to: 'checking' | 'savings' | 'everyday-card' | 'old-card'; amount: number };
+
+function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: readonly Purchase[] = [], inTransitAtSetup: readonly HalfDone[] = []): void {
   let date = START_DATE;
   let n = 0;
   const received: BankTransaction[] = [];
   // Pending purchases the bank has not posted yet, on any account.
   const pending: Purchase[] = [...pendingAtSetup];
+  // Transfers with one half sent so far, waiting for the other (12.5).
+  const halfDone: HalfDone[] = [...inTransitAtSetup];
   // Money in that can be sorted and re-sorted (not paychecks or matched refunds).
   const moneyIn: { id: string; isRefund: boolean }[] = [];
   const send = (txn: BankTransaction): void => {
@@ -285,6 +316,28 @@ function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: read
       case 'change-split':
         book.changeSettings({ split: step.split, momReservePerPaycheck: step.reserve }, date);
         break;
+      case 'send-half': {
+        if (step.from === step.to) break;
+        const before = book.pots();
+        const id = `t${n++}`;
+        send(step.arrivesFirst ? arrived(id, date, step.amount, step.from, step.to) : sent(id, date, step.amount, step.from, step.to));
+        halfDone.push({ id, first: step.arrivesFirst ? 'arrived' : 'left', from: step.from, to: step.to, amount: step.amount });
+        // Either half of a transfer between your own accounts never changes
+        // a bucket, except money leaving for the old card (5.2).
+        if (step.to !== 'old-card' || step.arrivesFirst) expect(book.pots()).toEqual(before);
+        break;
+      }
+      case 'other-half': {
+        const [first] = halfDone.splice(step.pick % Math.max(1, halfDone.length), 1);
+        if (!first) break;
+        const id = `t${n++}`;
+        if (first.first === 'left') {
+          send(arrived(id, date, first.amount, first.from, first.to, step.linked ? first.id : undefined));
+        } else {
+          send(sent(id, date, first.amount, first.from, first.to));
+        }
+        break;
+      }
       case 'add-rule': {
         const rule = LATER_RULES[step.rule % LATER_RULES.length];
         if (rule) book.addRule({ ...rule, id: `rule${n++}` }, date);
@@ -296,10 +349,16 @@ function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: read
         break;
       }
     }
-    // No cent is created or lost: the buckets always match the bank, and
-    // the daily self-check (section 12) agrees.
-    expect(appSide(book.pots())).toBe(bank.side());
-    expect(book.selfCheck(bank)).toMatchObject({ ok: true, difference: 0 });
+    // No cent is created or lost: the buckets always match the bank, with
+    // money in transit counted (12.5), and the daily self-check agrees.
+    expect(appSide(book.pots())).toBe(bank.side() + bank.inTransit);
+    expect(book.selfCheck(bank)).toMatchObject({ ok: true, difference: 0, inTransit: bank.inTransit });
+    // The in-transit list adds up to the in-transit total.
+    const listed = book
+      .inTransit()
+      .items.filter((i) => i.to !== 'old-card')
+      .reduce((sum, i) => sum + (i.seen === 'left' ? i.amount : -i.amount), 0);
+    expect(listed).toBe(book.inTransit().total);
     // Safe to spend is always wants left minus unsorted spending (11.1).
     expect(book.safeToSpend(date).amount).toBe(book.pots().wants - book.pots().unsortedOut);
     // The old card debt always matches the bank, and is kept out of the buckets.
@@ -339,10 +398,20 @@ describe('random scenarios: setup day (section 14)', () => {
         fc.record({ checking: fc.integer({ min: 0, max: 5_000_000 }), savings: fc.integer({ min: 0, max: 5_000_000 }), everydayCard: fc.integer({ min: 0, max: 500_000 }) }),
         pendingArb,
         fc.array(fc.integer({ min: -1_000_000, max: 1_000_000 }), { minLength: 4, maxLength: 4 }),
+        fc.array(
+          fc.record({
+            amount: fc.integer({ min: 1, max: 50_000 }),
+            from: fc.constantFrom('checking' as const, 'savings' as const),
+            to: fc.constantFrom('savings' as const, 'everyday-card' as const, 'old-card' as const),
+          }),
+          { maxLength: 3 },
+        ),
         fc.array(stepArb, { maxLength: 40 }),
-        (posted, charges, parts, steps) => {
+        (posted, charges, parts, travelling, steps) => {
           const pendingCharges = charges.map((c, i) => purchase(`setup${i}`, '2026-09-30', c.amount, 'MADE UP CAFE', { account: c.account, pending: true }));
-          const money = startingMoney(posted, pendingCharges);
+          // Money that left before setup day and has not landed (12.5).
+          const transfersInTransit = travelling.filter((t) => t.from !== t.to).map((t, i) => sent(`travel${i}`, '2026-09-30', t.amount, t.from, t.to));
+          const money = startingMoney(posted, pendingCharges, transfersInTransit);
           // Any four amounts, with savings taking whatever makes it add up.
           const [needs = 0, wants = 0, momReserve = 0, heldForOthers = 0] = parts;
           const assignment = { savings: money - needs - wants - momReserve - heldForOthers, needs, wants, momReserve, heldForOthers };
@@ -350,6 +419,7 @@ describe('random scenarios: setup day (section 14)', () => {
             date: START_DATE,
             bankBalances: posted,
             pendingCharges,
+            transfersInTransit,
             oldCardBalance: 300_000,
             assignment,
             lastPaycheckDate: '2026-09-25',
@@ -359,8 +429,12 @@ describe('random scenarios: setup day (section 14)', () => {
           if (!result.ok) throw new Error('setup that adds up must start');
           const bank = new TestBank({ ...posted, oldCard: 300_000 });
           for (const charge of pendingCharges) bank.apply(charge);
+          // The bank balances already show the money gone; only the in-transit
+          // count starts above zero.
+          bank.inTransit = transfersInTransit.filter((t) => t.to !== 'old-card').reduce((sum, t) => sum + t.amount, 0);
           expect(result.book.selfCheck(bank)).toMatchObject({ ok: true });
-          runLife(result.book, bank, steps, pendingCharges);
+          const halves = transfersInTransit.map((t) => ({ id: t.id, first: 'left' as const, from: t.from, to: t.to, amount: t.amount }));
+          runLife(result.book, bank, steps, pendingCharges, halves);
         },
       ),
       { numRuns: 300 },

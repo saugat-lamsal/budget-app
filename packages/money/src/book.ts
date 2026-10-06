@@ -16,6 +16,8 @@ import {
   type Purchase,
   type Refund,
   type Transfer,
+  type TransferArrived,
+  type TransferSent,
 } from './transactions.js';
 
 // The book: every bucket and everything waiting in review. Bank activity and
@@ -41,12 +43,13 @@ export interface Pots extends StartingPots {
 
 type PotName = keyof Pots;
 // What an entry does to the totals: the pots, plus the old card debt, which
-// is tracked on its own and is not part of the self-check (12.4).
-type TotalName = PotName | 'oldCardDebt';
+// is tracked on its own and is not part of the self-check (12.4), plus the
+// money in transit between checking, savings, and the everyday card (12.5).
+type TotalName = PotName | 'oldCardDebt' | 'inTransit';
 type Effect = Partial<Record<TotalName, Cents>>;
 
 const POT_NAMES: readonly PotName[] = ['savings', 'needs', 'wants', 'momReserve', 'heldForOthers', 'unsortedIn', 'unsortedOut'];
-const TOTAL_NAMES: readonly TotalName[] = [...POT_NAMES, 'oldCardDebt'];
+const TOTAL_NAMES: readonly TotalName[] = [...POT_NAMES, 'oldCardDebt', 'inTransit'];
 
 export interface OpenBookInput {
   // The day tracking starts.
@@ -60,6 +63,9 @@ export interface OpenBookInput {
   // Charges pending on setup day. They are already in the starting money,
   // so they start out counted (see startTracking).
   readonly countedAtSetup?: readonly Purchase[];
+  // Transfers that had left an account on setup day and not arrived yet
+  // (12.5). The starting money includes them.
+  readonly inTransitAtSetup?: readonly TransferSent[];
 }
 
 export type ReceiveOutcome = 'paycheck' | 'sorted' | 'posted' | 'review' | 'duplicate';
@@ -183,13 +189,36 @@ export interface SafeToSpend {
   readonly daysToPayday: number;
 }
 
-// Rule 12.3: the bank side and the app side must be equal.
+// Rule 12.3: the bank side, plus money in transit (12.5), must equal the
+// app side.
 export interface SelfCheck {
   readonly bankSide: Cents;
+  // Money that left checking or savings for checking, savings, or the
+  // everyday card and has not arrived yet. Negative when the arriving half
+  // was seen before the leaving half.
+  readonly inTransit: Cents;
   readonly appSide: Cents;
-  // Bank side minus app side. Zero when they match.
+  // Bank side plus in transit, minus app side. Zero when they match.
   readonly difference: Cents;
   readonly ok: boolean;
+}
+
+// Rule 12.5: transfers with only one half seen so far.
+export interface InTransitItem {
+  readonly id: string;
+  readonly date: IsoDate;
+  readonly from: 'checking' | 'savings';
+  readonly to: 'checking' | 'savings' | 'everyday-card' | 'old-card';
+  readonly amount: Cents;
+  // Which half the app has seen.
+  readonly seen: 'left' | 'arrived';
+}
+
+export interface InTransit {
+  // The amount the self-check counts. Money on its way to the old card is
+  // listed but not counted (12.4).
+  readonly total: Cents;
+  readonly items: readonly InTransitItem[];
 }
 
 // Rule 0.5: safe to spend only when the totals match the bank.
@@ -248,7 +277,7 @@ interface MoneyInEntry {
 interface SpendEntry {
   readonly kind: 'spend';
   readonly id: string;
-  readonly txn: Purchase | CardCharge | Transfer | PersonPayment;
+  readonly txn: Purchase | CardCharge | Transfer | TransferSent | PersonPayment;
   readonly spendingKind: SpendingKind;
   postedTxn: Purchase | null;
   pending: boolean;
@@ -278,6 +307,15 @@ interface MomEntry {
   readonly id: string;
   readonly txn: PersonPayment;
   readonly fromReserve: Cents;
+  effect: Effect;
+}
+
+// One half of a transfer (12.5). The leaving half of a payment to the old
+// card is a spending entry instead (5.2), except on setup day.
+interface LegEntry {
+  readonly kind: 'leg';
+  readonly id: string;
+  readonly txn: TransferSent | TransferArrived;
   effect: Effect;
 }
 
@@ -320,7 +358,17 @@ interface LeftoverEntry {
   effect: Effect;
 }
 
-type Entry = PaycheckEntry | MoneyInEntry | SpendEntry | RefundEntry | MomEntry | TransferEntry | OldCardEntry | LeftoverEntry | MoveEntry;
+type Entry =
+  | PaycheckEntry
+  | MoneyInEntry
+  | SpendEntry
+  | RefundEntry
+  | MomEntry
+  | TransferEntry
+  | LegEntry
+  | OldCardEntry
+  | LeftoverEntry
+  | MoveEntry;
 
 // Why spending of each kind is waiting in review.
 function spendingReason(kind: SpendingKind): 'no-rule' | 'card-fee' | 'card-interest' | 'old-card-from-savings' | 'person-payment' | 'mom-difference' {
@@ -338,6 +386,12 @@ function spendingReason(kind: SpendingKind): 'no-rule' | 'card-fee' | 'card-inte
 // less any part already counted on setup day.
 function netOf(entry: SpendEntry): Cents {
   return entry.amount - entry.refunded - entry.countedAtSetup;
+}
+
+// Two halves of a transfer fit together when they go between the same
+// accounts for the same amount.
+function sameRoute(a: TransferSent | TransferArrived, b: TransferSent | TransferArrived): boolean {
+  return a.from === b.from && a.to === b.to && a.amount === b.amount;
 }
 
 function splitSettingsOf(settings: Settings): SplitSettings {
@@ -360,6 +414,8 @@ export class Book {
   readonly #entries = new Map<string, Entry>();
   // Posted transaction id -> the entry of the pending purchase it replaced.
   readonly #aliases = new Map<string, string>();
+  // The two halves of a transfer, paired both ways (12.5).
+  readonly #pairs = new Map<string, string>();
   // Ids of entries waiting for you, in the order they arrived.
   readonly #review = new Set<string>();
   readonly #paychecks: PaycheckRecord[] = [];
@@ -381,7 +437,7 @@ export class Book {
     const { savings, needs, wants, momReserve, heldForOthers } = input.pots;
     this.#opening = Object.freeze({ savings, needs, wants, momReserve, heldForOthers, oldCardDebt: input.oldCardDebt });
     for (const [name, value] of Object.entries(this.#opening)) assertCents(value, name);
-    this.#totals = { ...this.#opening, unsortedIn: 0, unsortedOut: 0 };
+    this.#totals = { ...this.#opening, unsortedIn: 0, unsortedOut: 0, inTransit: 0 };
     addCents(savings, needs, wants, momReserve, heldForOthers);
     this.#settings = validateSettings(input.settings);
     this.#periodSplit = splitSettingsOf(this.#settings);
@@ -389,6 +445,17 @@ export class Book {
     this.#lastPaycheckDate = input.lastPaycheckDate;
     this.#period = { number: 0, startDate: input.date };
     for (const txn of input.countedAtSetup ?? []) this.#countAtSetup(txn);
+    for (const txn of input.inTransitAtSetup ?? []) this.#inTransitAtSetup(txn);
+  }
+
+  // A transfer that left an account before setup day. It is not spending in
+  // the tracked time, so even one heading to the old card is a plain half
+  // here; it lowers the debt when it lands.
+  #inTransitAtSetup(txn: TransferSent): void {
+    checkTransaction(txn);
+    if (txn.kind !== 'transfer-sent') throw new MoneyError('bad-transaction', `${String(txn.id)} has not left an account`);
+    const copy = Object.freeze({ ...txn });
+    this.#add({ kind: 'leg', id: copy.id, txn: copy, effect: {} }, copy.to === 'old-card' ? {} : { inTransit: copy.amount });
   }
 
   // A charge pending on setup day changes nothing now: it is already in the
@@ -442,7 +509,7 @@ export class Book {
   }
 
   #recount(): Record<TotalName, Cents> {
-    const totals: Record<TotalName, Cents> = { ...this.#opening, unsortedIn: 0, unsortedOut: 0 };
+    const totals: Record<TotalName, Cents> = { ...this.#opening, unsortedIn: 0, unsortedOut: 0, inTransit: 0 };
     for (const entry of this.#entries.values()) {
       for (const name of TOTAL_NAMES) totals[name] = addCents(totals[name], entry.effect[name] ?? 0);
     }
@@ -506,7 +573,7 @@ export class Book {
     };
   }
 
-  // Rules 12.1 to 12.4. The bank balances must include pending charges
+  // Rules 12.1 to 12.5. The bank balances must include pending charges
   // (withPendingCharges). The old card is not part of the check.
   selfCheck(bank: BankBalances): SelfCheck {
     const bankTotal = bankSide(bank);
@@ -514,8 +581,20 @@ export class Book {
     // 12.2: savings + needs + wants + mom reserve + held for others
     //       + unsorted money in - unsorted spending
     const appTotal = subtractCents(addCents(t.savings, t.needs, t.wants, t.momReserve, t.heldForOthers, t.unsortedIn), t.unsortedOut);
-    const difference = subtractCents(bankTotal, appTotal);
-    return { bankSide: bankTotal, appSide: appTotal, difference, ok: difference === 0 };
+    const difference = subtractCents(addCents(bankTotal, t.inTransit), appTotal);
+    return { bankSide: bankTotal, inTransit: t.inTransit, appSide: appTotal, difference, ok: difference === 0 };
+  }
+
+  // Rule 12.5: transfers with only one half seen so far, oldest first.
+  inTransit(): InTransit {
+    const items: InTransitItem[] = [];
+    for (const entry of this.#entries.values()) {
+      const txn = 'txn' in entry ? entry.txn : null;
+      if (txn === null || (txn.kind !== 'transfer-sent' && txn.kind !== 'transfer-arrived') || this.#pairs.has(entry.id)) continue;
+      const { id, date, from, to, amount } = txn;
+      items.push({ id, date, from, to, amount, seen: txn.kind === 'transfer-sent' ? 'left' : 'arrived' });
+    }
+    return { total: this.#totals.inTransit, items };
   }
 
   // Rule 0.5: when the totals do not match the bank, say so instead of
@@ -533,7 +612,12 @@ export class Book {
   savingsTransfer(savingsAccountBalance: Cents): SavingsTransfer {
     assertCents(savingsAccountBalance, 'savings account balance');
     const shouldBeInSavings = addCents(this.#totals.savings, this.#totals.momReserve);
-    return { shouldBeInSavings, savingsAccountBalance, stillToMove: subtractCents(shouldBeInSavings, savingsAccountBalance) };
+    // Money already on its way to savings counts as moved (12.5).
+    const onItsWay = this.inTransit()
+      .items.filter((item) => item.to === 'savings' && item.seen === 'left')
+      .map((item) => item.amount);
+    const stillToMove = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));
+    return { shouldBeInSavings, savingsAccountBalance, stillToMove };
   }
 
   // Rule 8.2: everything sent to mom in a calendar month ("YYYY-MM").
@@ -552,9 +636,12 @@ export class Book {
   cardPayments(card: 'everyday-card' | 'old-card'): { readonly date: IsoDate; readonly amount: Cents }[] {
     const payments: { date: IsoDate; amount: Cents }[] = [];
     for (const entry of this.#entries.values()) {
-      if ((entry.kind === 'transfer' || entry.kind === 'spend') && entry.txn.kind === 'transfer' && entry.txn.to === card) {
-        payments.push({ date: entry.txn.date, amount: entry.txn.amount });
-      }
+      const txn = 'txn' in entry ? entry.txn : null;
+      if (txn === null || !('to' in txn) || txn.to !== card) continue;
+      // A payment counts on the day it left checking or savings (12.5). The
+      // arriving half counts only while its leaving half has not been seen.
+      const counts = txn.kind === 'transfer' || txn.kind === 'transfer-sent' || (txn.kind === 'transfer-arrived' && !this.#pairs.has(entry.id));
+      if (counts) payments.push({ date: txn.date, amount: txn.amount });
     }
     return payments.sort((a, b) => daysBetween(b.date, a.date));
   }
@@ -587,9 +674,92 @@ export class Book {
         return this.#addSpending(copy, copy.charge === 'fee' ? 'card-fee' : 'card-interest', { to: 'unsorted' });
       case 'transfer':
         return this.#receiveTransfer(copy);
+      case 'transfer-sent':
+        return this.#receiveSent(copy);
+      case 'transfer-arrived':
+        return this.#receiveArrived(copy);
       case 'payment-to-person':
         return this.#receivePersonPayment(copy);
     }
+  }
+
+  // Rule 12.5: the half of a transfer that left checking or savings. Buckets
+  // change the same way as for a whole transfer (section 5): none, or needs
+  // for a payment to the old card (5.2). The old card debt waits for the
+  // money to land.
+  #receiveSent(txn: TransferSent): Received {
+    // Check for the arriving half first, so a mismatch changes nothing.
+    const partner = this.#arrivalFor(txn);
+    let received: Received;
+    if (txn.to === 'old-card') {
+      received = this.#addSpending(txn, 'debt-payoff', txn.from === 'checking' ? { to: 'needs' } : { to: 'unsorted' });
+    } else {
+      this.#add({ kind: 'leg', id: txn.id, txn, effect: {} }, { inTransit: txn.amount });
+      received = { id: txn.id, outcome: 'sorted' };
+    }
+    if (partner !== undefined) this.#pair(txn.id, partner);
+    return received;
+  }
+
+  // The arriving half that belongs to this leaving half: one that names it,
+  // or else the oldest unpaired one between the same accounts for the same
+  // amount that names no other.
+  #arrivalFor(sent: TransferSent): string | undefined {
+    let fallback: string | undefined;
+    for (const entry of this.#entries.values()) {
+      if (entry.kind !== 'leg' || entry.txn.kind !== 'transfer-arrived' || this.#pairs.has(entry.id)) continue;
+      const a = entry.txn;
+      if (a.sentId === sent.id) {
+        if (!sameRoute(a, sent)) throw new MoneyError('bad-transaction', `${a.id} names ${sent.id} but does not match it`);
+        return entry.id;
+      }
+      if (a.sentId === undefined && fallback === undefined && sameRoute(a, sent)) fallback = entry.id;
+    }
+    return fallback;
+  }
+
+  // Rule 12.5: the half of a transfer that arrived. Money landing on the old
+  // card lowers the debt (5.2); anywhere else it ends its time in transit.
+  #receiveArrived(txn: TransferArrived): Received {
+    let partner: string | undefined;
+    if (txn.sentId !== undefined) {
+      const named = this.#entries.get(txn.sentId);
+      if (named !== undefined) {
+        const namedTxn = 'txn' in named ? named.txn : null;
+        if (namedTxn === null || namedTxn.kind !== 'transfer-sent' || !sameRoute(namedTxn, txn)) {
+          throw new MoneyError('bad-transaction', `${txn.id} names ${txn.sentId}, which is not the same transfer`);
+        }
+        if (this.#pairs.has(named.id)) throw new MoneyError('already-arrived', `${txn.sentId} has already arrived`);
+        partner = named.id;
+      } else if (this.#waitingFor(txn.sentId)) {
+        throw new MoneyError('already-arrived', `another arrival is already waiting for ${txn.sentId}`);
+      }
+    } else {
+      partner = this.#oldestUnpairedSent(txn);
+    }
+    this.#add({ kind: 'leg', id: txn.id, txn, effect: {} }, txn.to === 'old-card' ? { oldCardDebt: -txn.amount } : { inTransit: -txn.amount });
+    if (partner !== undefined) this.#pair(partner, txn.id);
+    return { id: txn.id, outcome: 'sorted' };
+  }
+
+  #oldestUnpairedSent(arrival: TransferArrived): string | undefined {
+    for (const entry of this.#entries.values()) {
+      const txn = 'txn' in entry ? entry.txn : null;
+      if (txn?.kind === 'transfer-sent' && !this.#pairs.has(entry.id) && sameRoute(txn, arrival)) return entry.id;
+    }
+    return undefined;
+  }
+
+  #waitingFor(sentId: string): boolean {
+    for (const entry of this.#entries.values()) {
+      if (entry.kind === 'leg' && entry.txn.kind === 'transfer-arrived' && entry.txn.sentId === sentId && !this.#pairs.has(entry.id)) return true;
+    }
+    return false;
+  }
+
+  #pair(sentId: string, arrivedId: string): void {
+    this.#pairs.set(sentId, arrivedId);
+    this.#pairs.set(arrivedId, sentId);
   }
 
   // Rule 7.4: a payment to a person waits in review unless a rule covers
@@ -704,7 +874,7 @@ export class Book {
     return this.#addSpending(txn, 'purchase', rule === undefined ? { to: 'unsorted' } : { to: rule.bucket });
   }
 
-  #addSpending(txn: Purchase | CardCharge | Transfer | PersonPayment, spendingKind: SpendingKind, sortedTo: SpendingSort): Received {
+  #addSpending(txn: Purchase | CardCharge | Transfer | TransferSent | PersonPayment, spendingKind: SpendingKind, sortedTo: SpendingSort): Received {
     const pending = txn.kind === 'purchase' && txn.pending;
     const entry: SpendEntry = {
       kind: 'spend',
@@ -776,7 +946,9 @@ export class Book {
       effect = { [now.to]: -net };
     }
     // A payment to the old card also lowers the debt, however it is sorted.
-    if (entry.spendingKind === 'debt-payoff') effect.oldCardDebt = -entry.amount;
+    // When only the leaving half has been seen, the debt waits for it to
+    // land (12.5).
+    if (entry.spendingKind === 'debt-payoff' && entry.txn.kind === 'transfer') effect.oldCardDebt = -entry.amount;
     this.#setEffect(entry, effect);
     if ('to' in now && now.to === 'unsorted') this.#review.add(entry.id);
     else this.#review.delete(entry.id);
@@ -840,7 +1012,7 @@ export class Book {
     if (entry === undefined) throw new MoneyError('unknown-item', `no item ${id}`);
     switch (entry.kind) {
       case 'spend':
-        if (entry.txn.kind === 'transfer' && entry.txn.from === 'checking') {
+        if ((entry.txn.kind === 'transfer' || entry.txn.kind === 'transfer-sent') && entry.txn.from === 'checking') {
           throw new MoneyError('not-sortable', `${id} is a payment to the old card, which always comes out of needs (5.2)`);
         }
         return this.#sortSpending(entry, choice);
@@ -1053,6 +1225,7 @@ export class Book {
       case 'refund':
       case 'mom':
       case 'move':
+      case 'leg':
       case 'transfer':
         throw new MoneyError('broken-book', `${entry.kind} ${entry.id} should never be in review`);
     }

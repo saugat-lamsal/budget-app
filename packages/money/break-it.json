@@ -877,15 +877,15 @@
   {
     "section": "12",
     "file": "packages/money/src/book.ts",
-    "find": "return { bankSide: bankTotal, appSide: appTotal, difference, ok: difference === 0 };",
-    "replace": "return { bankSide: bankTotal, appSide: appTotal, difference, ok: Math.abs(difference) <= 1 };",
+    "find": "return { bankSide: bankTotal, inTransit: t.inTransit, appSide: appTotal, difference, ok: difference === 0 };",
+    "replace": "return { bankSide: bankTotal, inTransit: t.inTransit, appSide: appTotal, difference, ok: Math.abs(difference) <= 1 };",
     "why": "12.3 let a one-cent difference pass"
   },
   {
     "section": "12",
     "file": "packages/money/src/book.ts",
-    "find": "const difference = subtractCents(bankTotal, appTotal);",
-    "replace": "const difference = subtractCents(appTotal, bankTotal);",
+    "find": "const difference = subtractCents(addCents(bankTotal, t.inTransit), appTotal);",
+    "replace": "const difference = subtractCents(appTotal, addCents(bankTotal, t.inTransit));",
     "why": "12.3 flip the sign of the difference"
   },
   {
@@ -1062,5 +1062,117 @@
     "find": "    if (ids.has(charge.id)) throw new MoneyError('conflicting-id', `two pending charges have the id ${charge.id}`);\n",
     "replace": "",
     "why": "14.1 accept the same pending charge twice"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "const difference = subtractCents(addCents(bankTotal, t.inTransit), appTotal);",
+    "replace": "const difference = subtractCents(bankTotal, appTotal);",
+    "why": "12.5 leave money in transit out of the check"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "this.#add({ kind: 'leg', id: txn.id, txn, effect: {} }, { inTransit: txn.amount });",
+    "replace": "this.#add({ kind: 'leg', id: txn.id, txn, effect: {} }, { inTransit: -txn.amount });",
+    "why": "12.5 flip the sign of money that left"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "txn.to === 'old-card' ? { oldCardDebt: -txn.amount } : { inTransit: -txn.amount });",
+    "replace": "txn.to === 'old-card' ? { oldCardDebt: -txn.amount } : {});",
+    "why": "12.5 keep money in transit after it lands"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "txn.to === 'old-card' ? { oldCardDebt: -txn.amount } : { inTransit: -txn.amount });",
+    "replace": "txn.to === 'old-card' ? {} : { inTransit: -txn.amount });",
+    "why": "12.5 do not lower the old card debt when a payment lands"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.spendingKind === 'debt-payoff' && entry.txn.kind === 'transfer') effect.oldCardDebt = -entry.amount;",
+    "replace": "if (entry.spendingKind === 'debt-payoff') effect.oldCardDebt = -entry.amount;",
+    "why": "12.5 lower the old card debt before the money lands"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "return a.from === b.from && a.to === b.to && a.amount === b.amount;",
+    "replace": "return a.from === b.from && a.to === b.to;",
+    "why": "12.5 pair halves of different amounts"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "if (txn?.kind === 'transfer-sent' && !this.#pairs.has(entry.id) && sameRoute(txn, arrival)) return entry.id;",
+    "replace": "if (txn?.kind === 'transfer-sent' && sameRoute(txn, arrival)) return entry.id;",
+    "why": "12.5 pair an arrival with a payment that already arrived"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "if (a.sentId === undefined && fallback === undefined && sameRoute(a, sent)) fallback = entry.id;",
+    "replace": "if (a.sentId === undefined && sameRoute(a, sent)) fallback = entry.id;",
+    "why": "12.5 pair with the newest early arrival instead of the oldest"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "if (namedTxn === null || namedTxn.kind !== 'transfer-sent' || !sameRoute(namedTxn, txn)) {",
+    "replace": "if (namedTxn === null || namedTxn.kind !== 'transfer-sent') {",
+    "why": "12.5 accept an arrival that names a different transfer"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "if (this.#pairs.has(named.id)) throw new MoneyError('already-arrived'",
+    "replace": "if (false) throw new MoneyError('already-arrived'",
+    "why": "12.5 let a payment arrive twice"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "|| this.#pairs.has(entry.id)) continue;\n      const { id, date, from, to, amount } = txn;",
+    "replace": ") continue;\n      const { id, date, from, to, amount } = txn;",
+    "why": "12.5 list transfers that have already landed"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "const stillToMove = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));",
+    "replace": "const stillToMove = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance));",
+    "why": "12.5 ask you to move money already on its way to savings"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "(txn.kind === 'transfer-arrived' && !this.#pairs.has(entry.id))",
+    "replace": "txn.kind === 'transfer-arrived'",
+    "why": "12.5 count a card payment twice for reminders"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "copy.to === 'old-card' ? {} : { inTransit: copy.amount }",
+    "replace": "{ inTransit: copy.amount }",
+    "why": "12.5 count an old card payment in transit on setup day in the check"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/setup.ts",
+    "find": "return addCents(bankSide(withPendingCharges(posted, pendingCharges)), ...travelling);",
+    "replace": "return bankSide(withPendingCharges(posted, pendingCharges));",
+    "why": "12.5 leave money in transit out of the starting money"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/setup.ts",
+    "find": "const travelling = inTransit.filter((t) => t.to !== 'old-card').map((t) => t.amount);",
+    "replace": "const travelling = inTransit.map((t) => t.amount);",
+    "why": "12.5 count money on its way to the old card as starting money"
   }
 ]

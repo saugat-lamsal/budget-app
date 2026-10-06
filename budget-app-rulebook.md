@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 3)
+# Budget App Rulebook (draft 4)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -168,6 +168,12 @@ number so a test can point at it. Nothing gets coded until you approve this.
       difference.
 12.4  The old card balance is tracked separately as debt and is not part of
       this check.
+12.5  Money in transit: a transfer that has left one of your accounts but not
+      yet arrived in another (a card payment, usually) is shown as "in
+      transit". The check is: bank side + in transit = app side. Money on its
+      way to the old card is shown but not counted, because the old card is
+      not part of this check (12.4). It comes out of needs when it leaves
+      checking (5.2), and the debt goes down when it lands.
 
 
 ## 13. Changing things on the fly
@@ -213,3 +219,9 @@ j.  Paydays are every 14 days, counted from the last paycheck (section 2,
 
 - The promo end date on the old card (you are checking). Until it is
   entered, the payoff countdown (9.5) stays off. Everything else works.
+
+
+## 17. Changes after the Phase 1 review (Oct 6, 2026)
+
+a.  Money in transit between your accounts is part of the self-check, so
+    a card payment on its way does not show as a mismatch (12.5).

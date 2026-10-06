@@ -292,10 +292,14 @@ B35. Next payday (11.2) is the last paycheck plus 14 days. If that day
      passes with no paycheck, the days to payday go negative (the paycheck
      is late) instead of jumping ahead another 14 days.
 
-B36. The bank balances for the self-check come from the bank connection
-     with pending charges included (12.1). Only pending charges count,
-     not pending deposits or refunds: those are counted when they post.
-     The bank connection (Phase 3) has to supply balances the same way.
+B36. Changed after your review: see 12.5 in the rulebook.
+     The bank balances for the self-check still come from the bank
+     connection with pending charges included (12.1); pending deposits and
+     refunds count when they post. New: a transfer can come in as two
+     halves on different days, the money leaving and then landing. Between
+     the two the money is "in transit", and the check is bank side + in
+     transit = app side. A card payment on its way is no longer a mismatch,
+     and safe to spend stays on (0.5).
 
 B37. When the totals do not match (0.5), the app holds back the
      safe-to-spend number and shows the difference instead. It still shows
@@ -328,3 +332,27 @@ B43. Setup day takes the bank's posted balances and its list of pending
      included, the same way as the self-check (12.1). The assignment has
      to match it to the cent (14.3). Starting money can be below zero, if
      the everyday card owes more than checking and savings hold.
+
+
+## Part B, added with the review changes (Oct 6). Tell me if any is wrong.
+
+B44. Money on its way to the old card (12.5): needs pays when it leaves
+     checking, since that is when you spent it. The debt goes down when it
+     lands, so it matches the old card's balance. It is listed as in
+     transit but not counted in the check (12.4).
+
+B45. The two halves of a transfer pair up by the link the bank connection
+     gives, when it has one. Otherwise each half pairs with the oldest
+     unpaired half between the same two accounts for the same amount. If
+     the landing is seen first, it shows in transit as a negative until
+     the leaving half shows up.
+
+B46. Money already on its way to savings counts as moved for "still to
+     move" (3.8).
+
+B47. For card reminders (9.3, 9.4), a payment counts on the day it left
+     checking or savings, not the day it reached the card.
+
+B48. Setup day also takes the transfers in transit that day. They are part
+     of the starting money, except ones going to the old card, which have
+     already left the accounts the starting money counts.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, changeSettings, cardNotices, payoffCountdown, type CardStatement } from '../src/index.js';
-import { codeOf, openTestBook, transfer } from './helpers.js';
+import { arrived, codeOf, openTestBook, sent, transfer } from './helpers.js';
 
 const EVERYDAY: CardStatement = {
   card: 'everyday-card',
@@ -131,5 +131,23 @@ describe('9.5 old card payoff countdown', () => {
   it('9.5 with a promo end date it waits on the open questions (QUESTIONS.md A7)', () => {
     const b = openTestBook({ oldCardDebt: 300_000, settings: { oldCardPromoEndDate: '2027-06-30' } });
     expect(payoffCountdown(b, '2026-10-06')).toEqual({ on: false, reason: 'waiting-on-rule' });
+  });
+});
+
+describe('9.3 a card payment in two halves (12.5)', () => {
+  it('9.3 a payment counts on the day it left checking, and only once after it lands', () => {
+    const b = openTestBook({ oldCardDebt: 300_000 });
+    b.receive(sent('s1', '2026-10-10', 9_000, 'checking', 'old-card'));
+    expect(b.cardPayments('old-card')).toEqual([{ date: '2026-10-10', amount: 9_000 }]);
+    b.receive(arrived('a1', '2026-10-12', 9_000, 'checking', 'old-card', 's1'));
+    expect(b.cardPayments('old-card')).toEqual([{ date: '2026-10-10', amount: 9_000 }]);
+  });
+
+  it('9.3 seen landing first, it counts from the day it landed until it is seen leaving', () => {
+    const b = openTestBook();
+    b.receive(arrived('a1', '2026-10-12', 9_000, 'checking', 'everyday-card'));
+    expect(b.cardPayments('everyday-card')).toEqual([{ date: '2026-10-12', amount: 9_000 }]);
+    b.receive(sent('s1', '2026-10-10', 9_000, 'checking', 'everyday-card'));
+    expect(b.cardPayments('everyday-card')).toEqual([{ date: '2026-10-10', amount: 9_000 }]);
   });
 });

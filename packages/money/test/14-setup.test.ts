@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { startTracking, startingMoney, type Book, type Purchase, type SetupInput } from '../src/index.js';
-import { TEST_SETTINGS, codeOf, posted, purchase, refund } from './helpers.js';
+import { TEST_SETTINGS, arrived, codeOf, posted, purchase, refund, sent } from './helpers.js';
 
 // The bank on setup day (made up): checking 2,500.00, savings 4,000.00,
 // everyday card owes 300.00 posted plus a 45.00 pending charge.
@@ -148,5 +148,40 @@ describe('setup day: charges that were pending on setup day (QUESTIONS.md A10)',
 
   it('two pending charges with the same id are refused', () => {
     expect(codeOf(() => startTracking(setup({ pendingCharges: [...PENDING, ...PENDING] })))).toBe('conflicting-id');
+  });
+});
+
+describe('setup day with a payment still in transit (12.5)', () => {
+  // A 200.00 card payment left checking the day before setup day and has not
+  // reached the card yet, so checking is already 200.00 lower.
+  const inTransit = [sent('pay1', '2026-10-05', 20_000, 'checking', 'everyday-card')];
+
+  it('12.5 money in transit on setup day is part of the starting money', () => {
+    expect(startingMoney(POSTED, PENDING, inTransit)).toBe(STARTING + 20_000);
+  });
+
+  it('12.5 it starts tracking with the payment in transit, and the check holds when it lands', () => {
+    const result = startTracking(setup({ transfersInTransit: inTransit, assignment: { savings: 420_000, needs: 100_000, wants: 50_000, momReserve: 60_000, heldForOthers: 5_500 } }));
+    if (!result.ok) throw new Error(JSON.stringify(result));
+    const b = result.book;
+    const bank = { ...POSTED, everydayCard: POSTED.everydayCard + 4_500 };
+    expect(b.selfCheck(bank)).toMatchObject({ inTransit: 20_000, ok: true });
+    b.receive(arrived('land1', '2026-10-07', 20_000, 'checking', 'everyday-card'));
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
+    expect(b.selfCheck({ ...bank, everydayCard: bank.everydayCard - 20_000 })).toMatchObject({ inTransit: 0, ok: true });
+  });
+
+  it('12.5 a payment to the old card in transit on setup day is not starting money; the debt goes down when it lands', () => {
+    const toOld = [sent('pay2', '2026-10-05', 10_000, 'checking', 'old-card')];
+    expect(startingMoney(POSTED, PENDING, toOld)).toBe(STARTING);
+    const b = started({ transfersInTransit: toOld });
+    expect(b.pots().needs).toBe(100_000);
+    b.receive(arrived('land2', '2026-10-07', 10_000, 'checking', 'old-card'));
+    expect(b.oldCardDebt()).toBe(280_000);
+    expect(b.pots().needs).toBe(100_000);
+  });
+
+  it('12.5 only payments that have left, not ones that arrived, can be in transit on setup day', () => {
+    expect(codeOf(() => startTracking(setup({ transfersInTransit: [arrived('x', '2026-10-05', 1, 'checking', 'savings') as never] })))).toBe('bad-transaction');
   });
 });

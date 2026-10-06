@@ -77,9 +77,39 @@ export interface Transfer {
   readonly description: string;
 }
 
-export type BankTransaction = Deposit | Purchase | Refund | CardCharge | PersonPayment | Transfer;
+// The two halves of a transfer, for when the bank shows them on different
+// days (rule 12.5): a card payment usually leaves checking a day or two
+// before it reaches the card. The bank connection sends whichever half it
+// sees; the book pairs them.
+export interface TransferSent {
+  readonly kind: 'transfer-sent';
+  readonly id: string;
+  readonly from: 'checking' | 'savings';
+  readonly to: AccountId;
+  readonly date: IsoDate;
+  readonly amount: Cents;
+  readonly description: string;
+}
 
-const ACCOUNTS_FOR: Record<Exclude<BankTransaction['kind'], 'transfer'>, readonly string[]> = {
+export interface TransferArrived {
+  readonly kind: 'transfer-arrived';
+  readonly id: string;
+  readonly from: 'checking' | 'savings';
+  readonly to: AccountId;
+  readonly date: IsoDate;
+  readonly amount: Cents;
+  readonly description: string;
+  // The id of the half that left, when the bank connection knows it.
+  readonly sentId?: string;
+}
+
+export type BankTransaction = Deposit | Purchase | Refund | CardCharge | PersonPayment | Transfer | TransferSent | TransferArrived;
+
+type BetweenAccounts = 'transfer' | 'transfer-sent' | 'transfer-arrived';
+
+const BETWEEN_ACCOUNTS: readonly string[] = ['transfer', 'transfer-sent', 'transfer-arrived'];
+
+const ACCOUNTS_FOR: Record<Exclude<BankTransaction['kind'], BetweenAccounts>, readonly string[]> = {
   deposit: ['checking', 'savings'],
   purchase: ['checking', 'everyday-card', 'old-card'],
   refund: ['checking', 'everyday-card', 'old-card'],
@@ -95,10 +125,10 @@ export function checkTransaction(txn: BankTransaction): void {
   };
   const isId = (id: unknown): boolean => typeof id === 'string' && id !== '' && !id.includes(':');
   if (typeof txn !== 'object' || txn === null) bad('not a transaction');
-  if (!(txn.kind in ACCOUNTS_FOR) && txn.kind !== 'transfer') bad('unknown kind');
+  if (!(txn.kind in ACCOUNTS_FOR) && !BETWEEN_ACCOUNTS.includes(txn.kind)) bad('unknown kind');
   if (!isId(txn.id)) bad('id must be non-empty text without ":"');
   if (typeof txn.description !== 'string') bad('description must be text');
-  if (txn.kind === 'transfer') {
+  if (txn.kind === 'transfer' || txn.kind === 'transfer-sent' || txn.kind === 'transfer-arrived') {
     if (txn.from !== 'checking' && txn.from !== 'savings') bad('a transfer comes from checking or savings');
     if (!ACCOUNTS.includes(txn.to) || txn.to === txn.from) bad('a transfer goes to one of your other accounts');
   } else if (!ACCOUNTS_FOR[txn.kind].includes(txn.account)) {
@@ -115,9 +145,13 @@ export function checkTransaction(txn: BankTransaction): void {
     case 'card-charge':
       if (txn.charge !== 'fee' && txn.charge !== 'interest') bad('a card charge is a fee or interest');
       break;
+    case 'transfer-arrived':
+      if (txn.sentId !== undefined && !isId(txn.sentId)) bad('sentId must be a transaction id');
+      break;
     case 'deposit':
     case 'payment-to-person':
     case 'transfer':
+    case 'transfer-sent':
       break;
   }
   assertIsoDate(txn.date, 'transaction date');

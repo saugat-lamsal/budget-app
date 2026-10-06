@@ -10,6 +10,8 @@ import {
   type PersonPayment,
   type Refund,
   type Transfer,
+  type TransferArrived,
+  type TransferSent,
   type Cents,
   type IsoDate,
   type OpenBookInput,
@@ -84,6 +86,16 @@ export function payPerson(id: string, date: IsoDate, amount: Cents, payee: strin
   return { kind: 'payment-to-person', id, account: 'checking', date, amount, description: `ZELLE TO ${payee}` };
 }
 
+// The two halves of a transfer, when the bank shows them on different days:
+// the money leaving one account, then arriving in the other (12.5).
+export function sent(id: string, date: IsoDate, amount: Cents, from: TransferSent['from'], to: TransferSent['to']): TransferSent {
+  return { kind: 'transfer-sent', id, from, to, date, amount, description: `PAYMENT FROM ${from} TO ${to}` };
+}
+
+export function arrived(id: string, date: IsoDate, amount: Cents, from: TransferArrived['from'], to: TransferArrived['to'], sentId?: string): TransferArrived {
+  return { kind: 'transfer-arrived', id, from, to, date, amount, description: `PAYMENT RECEIVED FROM ${from}`, ...(sentId === undefined ? {} : { sentId }) };
+}
+
 export function deposit(
   id: string,
   date: IsoDate,
@@ -108,6 +120,9 @@ export class TestBank {
   everydayCard = 0;
   // Not part of the self-check (12.4), tracked to compare with the debt shown.
   oldCard = 0;
+  // Money that has left checking or savings for checking, savings, or the
+  // everyday card and not arrived yet (12.5), worked out here on its own.
+  inTransit = 0;
 
   constructor(start: { checking?: Cents; savings?: Cents; everydayCard?: Cents; oldCard?: Cents } = {}) {
     Object.assign(this, start);
@@ -142,10 +157,23 @@ export class TestBank {
         break;
       case 'transfer':
         this[txn.from] -= txn.amount;
-        if (txn.to === 'checking' || txn.to === 'savings') this[txn.to] += txn.amount;
-        else this.#spend(txn.to, -txn.amount);
+        this.#land(txn.to, txn.amount);
+        break;
+      case 'transfer-sent':
+        this[txn.from] -= txn.amount;
+        if (txn.to !== 'old-card') this.inTransit += txn.amount;
+        break;
+      case 'transfer-arrived':
+        this.#land(txn.to, txn.amount);
+        if (txn.to !== 'old-card') this.inTransit -= txn.amount;
         break;
     }
+  }
+
+  // Money arriving in an account: checking and savings go up, a card owes less.
+  #land(account: Transfer['to'], amount: Cents): void {
+    if (account === 'checking' || account === 'savings') this[account] += amount;
+    else this.#spend(account, -amount);
   }
 
   // Money spent on an account: checking goes down, a card balance goes up.

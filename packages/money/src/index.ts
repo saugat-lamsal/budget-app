@@ -22,7 +22,17 @@ export {
 } from './settings.js';
 export { ACCOUNTS, type AccountId } from './accounts.js';
 export { splitPaycheck, type PaycheckSplit, type SplitSettings } from './payday.js';
-export type { BankTransaction, CardCharge, Deposit, PersonPayment, Purchase, Refund, Transfer } from './transactions.js';
+export type {
+  BankTransaction,
+  CardCharge,
+  Deposit,
+  PersonPayment,
+  Purchase,
+  Refund,
+  Transfer,
+  TransferArrived,
+  TransferSent,
+} from './transactions.js';
 export { BUCKETS, SPENDING_BUCKETS, type Bucket, type SplitBucket } from './buckets.js';
 export type { MoneyInChoice, PersonPaymentChoice, SortingRule } from './rules.js';
 export {
@@ -45,6 +55,8 @@ export {
   type ReceiveOutcome,
   type ReviewItem,
   type CheckedSafeToSpend,
+  type InTransit,
+  type InTransitItem,
   type SafeToSpend,
   type SavingsTransfer,
   type SelfCheck,
