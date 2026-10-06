@@ -118,6 +118,18 @@ This applies to every phase and every session, cloud or local.
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
-- Next: Phase 1 (the money math), once he says go.
+- Phase 1 (the money math): built Oct 6, 2026 on branch phase-1-money-math,
+  waiting for his review. 326 tests pass. Every numbered rule has a passing
+  test except 10.1 (low bucket alert, skipped until QUESTIONS.md A8 is
+  answered); 9.5 only has its "off" part (A7).
+  - The money math is in packages/money. The book (src/book.ts) applies
+    bank activity and his answers one at a time; every bucket can be
+    recounted from scratch (recountPots).
+  - Worked examples: packages/money/worked-examples.txt. Each "Check:" line
+    is read by a test.
+  - Break-it check: `node scripts/break-it.mjs` (or with section numbers).
+    The breaks are listed in packages/money/break-it.json; add new ones there
+    for each section.
+- Next: answers to QUESTIONS.md part A, then Phase 2 once he says go.
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.

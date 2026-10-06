@@ -233,8 +233,8 @@
   {
     "section": "3",
     "file": "packages/money/src/book.ts",
-    "find": "if ('txn' in existing && sameTransaction(existing.txn, txn)) return",
-    "replace": "if ('txn' in existing && false) return",
+    "find": "if (sameTransaction(known, txn)) return { id: txn.id, outcome: 'duplicate' };",
+    "replace": "if (false) return { id: txn.id, outcome: 'duplicate' };",
     "why": "3.1 refuse a repeated paycheck instead of ignoring it"
   },
   {
@@ -247,8 +247,8 @@
   {
     "section": "3",
     "file": "packages/money/src/book.ts",
-    "find": "const shouldBeInSavings = addCents(this.#pots.savings, this.#pots.momReserve);",
-    "replace": "const shouldBeInSavings = addCents(this.#pots.savings, 0);",
+    "find": "const shouldBeInSavings = addCents(this.#totals.savings, this.#totals.momReserve);",
+    "replace": "const shouldBeInSavings = addCents(this.#totals.savings, 0);",
     "why": "3.8 leave the mom reserve out of the savings account"
   },
   {
@@ -268,8 +268,8 @@
   {
     "section": "4",
     "file": "packages/money/src/book.ts",
-    "find": "const net = entry.amount - entry.refunded;\n    const sorted",
-    "replace": "const net = entry.amount + entry.refunded;\n    const sorted",
+    "find": "return entry.amount - entry.refunded - entry.countedAtSetup;",
+    "replace": "return entry.amount + entry.refunded - entry.countedAtSetup;",
     "why": "4.5 flip the sign of refunds"
   },
   {
@@ -324,8 +324,8 @@
   {
     "section": "4",
     "file": "packages/money/src/book.ts",
-    "find": "if (target.kind !== 'spend' || !target.pending) throw",
-    "replace": "if (target.kind !== 'spend') throw",
+    "find": "if ((target.kind !== 'spend' && target.kind !== 'old-card') || !target.pending) {",
+    "replace": "if (target.kind !== 'spend' && target.kind !== 'old-card') {",
     "why": "4.6 let a charge post twice"
   },
   {
@@ -352,15 +352,15 @@
   {
     "section": "4",
     "file": "packages/money/src/book.ts",
-    "find": "entry.spendingKind === 'purchase' ? null : 'needs'",
-    "replace": "entry.spendingKind === 'purchase' ? null : 'wants'",
+    "find": "['purchase', 'person-payment', 'mom-difference'].includes(entry.spendingKind) ? null : 'needs'",
+    "replace": "['purchase', 'person-payment', 'mom-difference'].includes(entry.spendingKind) ? null : 'wants'",
     "why": "4.8 suggest the wrong bucket for fees"
   },
   {
     "section": "4",
     "file": "packages/money/src/book.ts",
-    "find": "this.#setEffect(entry, { [choice.to]: entry.txn.amount });",
-    "replace": "this.#setEffect(entry, { [choice.to]: -entry.txn.amount });",
+    "find": "      effect = { [choice.to]: amount };",
+    "replace": "      effect = { [choice.to]: -amount };",
     "why": "4.5 flip the sign when sorting a refund from review"
   },
   {
@@ -450,7 +450,7 @@
   {
     "section": "5",
     "file": "packages/money/src/book.ts",
-    "find": "else this.#setEffect(entry, { oldCardDebt: txn.amount });",
+    "find": "else this.#setEffect(entry, { oldCardDebt: txn.amount - entry.countedAtSetup });",
     "replace": "else this.#setEffect(entry, { oldCardDebt: entry.effect.oldCardDebt ?? 0 });",
     "why": "5.4 keep the pending amount on the old card after posting"
   },
@@ -471,8 +471,8 @@
   {
     "section": "5",
     "file": "packages/money/src/book.ts",
-    "find": "    this.#review.delete(id);\n  }\n\n  // Rules 4.3, 4.4, 4.7, 4.8.",
-    "replace": "  }\n\n  // Rules 4.3, 4.4, 4.7, 4.8.",
+    "find": "    this.#review.delete(id);\n  }\n\n  // Rules 4.3, 4.4, 4.7, 4.8, 7.2.",
+    "replace": "  }\n\n  // Rules 4.3, 4.4, 4.7, 4.8, 7.2.",
     "why": "5.4 seeing the flag does not clear it"
   },
   {
