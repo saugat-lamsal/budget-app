@@ -114,7 +114,10 @@ describe('9.5 old card payoff countdown', () => {
     expect(payoffCountdown(life.book, '2026-01-05')).toEqual({ on: false, reason: 'no-promo-end-date' });
   });
 
-  it('9.5 on once the promo end date is entered', () => {
+  // SECOND OPINION, GROUP B (left failing on purpose). Rulebook 9.5 and
+  // section 16 say the countdown works once the promo date is entered, but
+  // the details are QUESTIONS.md A7, still open, so the code keeps it off.
+  it('9.5 on once the promo end date is entered [group b: QUESTIONS.md A7 open]', () => {
     // Rulebook: balance / paychecks left before the promo ends. With a date
     // entered the countdown should be on.
     const life = new Life({ settings: { oldCardPromoEndDate: '2026-12-31' } });

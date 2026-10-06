@@ -79,3 +79,40 @@ no test guesses at them.
 18. 0.4 "read-only" is a property of the whole app (no calls that move
     money). Inside the money package the only testable part is that the
     app's own moves are bookkeeping and need no bank change.
+
+
+STAGE 2 RESULTS (Oct 6, 2026)
+
+170 tests, 169 pass, 1 fails. No money code or existing test was changed.
+
+Group a (decided in QUESTIONS.md, rulebook lacks the wording): none.
+
+Group b (rulebook unclear, nothing decides it): 1, left failing and marked.
+  9.5 "on once the promo end date is entered". Rulebook 9.5 and section 16
+  say the countdown works once the date is entered; the code keeps it off
+  because the details are QUESTIONS.md A7, which is still open. Not a new
+  question: A7 already has the options and a recommendation.
+
+Group c (code disagrees with a clear rule): none.
+
+
+The "rulebook unclear" list above, checked against QUESTIONS.md in stage 2:
+  1  3.3 rounding direction ........ not in QUESTIONS.md
+  2  negative bucket at payday ..... not in QUESTIONS.md (test passed:
+                                      nothing asked, nothing moved)
+  3  3.8 savings over-full ......... not in QUESTIONS.md (B46 is related)
+  4  late-arriving purchase ........ B4 (open option, recommendation 2)
+  5  refund of a split purchase .... A1 (open)
+  6  period start date for 6.1 ..... B53 (deposit date)
+  7  payment on the closing date ... B28 (does not count)
+  8  payments not yet landed ....... B47
+  9  overdue once or daily ......... B30 (every day until paid)
+  10 9.5 details ................... A7 (open)
+  11 low and empty at once ......... B58 (only empty)
+  12 20% level rounding ............ B57 (exact, strictly below)
+  13 starts at zero, empty alert ... B50 (alerts again at a new period)
+  14 10.3 timing ................... B31 (Phase 5)
+  15 sign of the difference ........ not in QUESTIONS.md
+  16 payday passed, no paycheck .... B35 (days go negative)
+  17 arrival seen before departure . B45 (negative in transit)
+  18 0.4 read-only ................. not a money-package question
