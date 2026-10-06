@@ -265,3 +265,12 @@ B34. Safe to spend (11.1) can go below zero when wants are overspent or
 B35. Next payday (11.2) is the last paycheck plus 14 days. If that day
      passes with no paycheck, the days to payday go negative (the paycheck
      is late) instead of jumping ahead another 14 days.
+
+B36. The bank balances for the self-check come from the bank connection
+     with pending charges included (12.1). Only pending charges count,
+     not pending deposits or refunds: those are counted when they post.
+     The bank connection (Phase 3) has to supply balances the same way.
+
+B37. When the totals do not match (0.5), the app holds back the
+     safe-to-spend number and shows the difference instead. It still shows
+     the days to payday, which does not depend on the bank.

@@ -40,8 +40,10 @@ export {
   type Received,
   type ReceiveOutcome,
   type ReviewItem,
+  type CheckedSafeToSpend,
   type SafeToSpend,
   type SavingsTransfer,
+  type SelfCheck,
   type SortChoice,
   type SpendingKind,
   type SpendingSort,
@@ -57,3 +59,4 @@ export {
   type PayoffCountdown,
 } from './reminders.js';
 export { alertsNow, type Alert, type AlertInput } from './alerts.js';
+export { bankSide, withPendingCharges, type BankBalances, type PendingCharge } from './self-check.js';

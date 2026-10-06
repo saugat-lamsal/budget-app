@@ -266,8 +266,10 @@ function runLife(book: Book, bank: TestBank, steps: Step[]): void {
         break;
       }
     }
-    // No cent is created or lost: the buckets always match the bank.
+    // No cent is created or lost: the buckets always match the bank, and
+    // the daily self-check (section 12) agrees.
     expect(appSide(book.pots())).toBe(bank.side());
+    expect(book.selfCheck(bank)).toMatchObject({ ok: true, difference: 0 });
     // Safe to spend is always wants left minus unsorted spending (11.1).
     expect(book.safeToSpend(date).amount).toBe(book.pots().wants - book.pots().unsortedOut);
     // The old card debt always matches the bank, and is kept out of the buckets.

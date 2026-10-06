@@ -3,6 +3,7 @@ import { addCents, assertCents, assertPositiveCents, subtractCents, type Cents }
 import { addDays, assertIsoDate, daysBetween, monthOf, type IsoDate } from './dates.js';
 import { MoneyError } from './errors.js';
 import { splitPaycheck, type PaycheckSplit } from './payday.js';
+import { bankSide, type BankBalances } from './self-check.js';
 import { checkRules, findRule, isMoneyInChoice, isPersonPaymentChoice, type MoneyInChoice, type SortingRule } from './rules.js';
 import { matchesTextRule, validateSettings, type Settings } from './settings.js';
 import {
@@ -166,6 +167,20 @@ export interface SafeToSpend {
   // Negative when the expected paycheck is late.
   readonly daysToPayday: number;
 }
+
+// Rule 12.3: the bank side and the app side must be equal.
+export interface SelfCheck {
+  readonly bankSide: Cents;
+  readonly appSide: Cents;
+  // Bank side minus app side. Zero when they match.
+  readonly difference: Cents;
+  readonly ok: boolean;
+}
+
+// Rule 0.5: safe to spend only when the totals match the bank.
+export type CheckedSafeToSpend =
+  | { readonly ok: true; readonly safeToSpend: SafeToSpend }
+  | { readonly ok: false; readonly difference: Cents; readonly nextPayday: IsoDate; readonly daysToPayday: number };
 
 export interface SavingsTransfer {
   readonly shouldBeInSavings: Cents;
@@ -369,6 +384,27 @@ export class Book {
       nextPayday,
       daysToPayday: daysBetween(today, nextPayday),
     };
+  }
+
+  // Rules 12.1 to 12.4. The bank balances must include pending charges
+  // (withPendingCharges). The old card is not part of the check.
+  selfCheck(bank: BankBalances): SelfCheck {
+    const bankTotal = bankSide(bank);
+    const t = this.#totals;
+    // 12.2: savings + needs + wants + mom reserve + held for others
+    //       + unsorted money in - unsorted spending
+    const appTotal = subtractCents(addCents(t.savings, t.needs, t.wants, t.momReserve, t.heldForOthers, t.unsortedIn), t.unsortedOut);
+    const difference = subtractCents(bankTotal, appTotal);
+    return { bankSide: bankTotal, appSide: appTotal, difference, ok: difference === 0 };
+  }
+
+  // Rule 0.5: when the totals do not match the bank, say so instead of
+  // showing a safe-to-spend number the app cannot back up.
+  checkedSafeToSpend(today: IsoDate, bank: BankBalances): CheckedSafeToSpend {
+    const safeToSpend = this.safeToSpend(today);
+    const check = this.selfCheck(bank);
+    if (check.ok) return { ok: true, safeToSpend };
+    return { ok: false, difference: check.difference, nextPayday: safeToSpend.nextPayday, daysToPayday: safeToSpend.daysToPayday };
   }
 
   // Rule 3.8: what should be sitting in the savings account (savings plus

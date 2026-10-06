@@ -2,7 +2,7 @@
 // come from the "Check:" line in the text file itself, so the file you
 // check by hand and the test can never drift apart.
 import { describe, expect, it } from 'vitest';
-import { parseDollars, type Book, type Cents } from '../src/index.js';
+import { parseDollars, withPendingCharges, type Book, type Cents } from '../src/index.js';
 import text from '../worked-examples.txt?raw';
 import { MOM_NAME, cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, transfer } from './helpers.js';
 
@@ -151,6 +151,27 @@ const examples: Record<number, () => Record<string, Cents>> = {
     const safe = book.safeToSpend('2026-10-14');
     if (safe.daysToPayday !== 9 || safe.nextPayday !== '2026-10-23') throw new Error(`days to payday: ${JSON.stringify(safe)}`);
     return { ...buckets(book), 'safe to spend': safe.amount };
+  },
+  11: () => {
+    const book = openTestBook({
+      lastPaycheckDate: '2026-10-09',
+      oldCardDebt: parseDollars('2,900.00'),
+      pots: {
+        savings: parseDollars('2,000.00'),
+        needs: parseDollars('500.00'),
+        wants: parseDollars('300.00'),
+        momReserve: parseDollars('1,500.00'),
+        heldForOthers: parseDollars('60.00'),
+      },
+    });
+    book.receive(purchase('hardware', '2026-10-12', parseDollars('45.00'), 'MADE UP HARDWARE', { pending: true }));
+    book.receive(deposit('gift', '2026-10-13', parseDollars('200.00'), 'MADE UP GIFT'));
+    const posted = { checking: parseDollars('1,200.00'), savings: parseDollars('3,500.00'), everydayCard: parseDollars('140.00') };
+    const bank = withPendingCharges(posted, [{ account: 'everyday-card', amount: parseDollars('45.00') }]);
+    const check = book.selfCheck(bank);
+    const afterFee = book.checkedSafeToSpend('2026-10-15', { ...bank, checking: parseDollars('1,190.00') });
+    if (afterFee.ok) throw new Error('safe to spend should not be shown when the totals do not match');
+    return { 'app side': check.appSide, 'bank side': check.bankSide, difference: check.difference, 'difference after the fee': afterFee.difference };
   },
 };
 

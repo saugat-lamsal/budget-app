@@ -831,5 +831,75 @@
     "find": "daysToPayday: daysBetween(today, nextPayday),",
     "replace": "daysToPayday: daysBetween(today, nextPayday) + 1,",
     "why": "11.2 count one day too many"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/self-check.ts",
+    "find": "return subtractCents(addCents(bank.checking, bank.savings), bank.everydayCard);",
+    "replace": "return addCents(bank.checking, bank.savings, bank.everydayCard);",
+    "why": "12.1 add the card balance instead of taking it off"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/self-check.ts",
+    "find": "if (charge.account === 'everyday-card') everydayCard = addCents(everydayCard, charge.amount);",
+    "replace": "if (charge.account !== 'checking') everydayCard = addCents(everydayCard, charge.amount);",
+    "why": "12.4 let old card pending charges into the bank side"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/self-check.ts",
+    "find": "if (charge.account === 'checking') checking = subtractCents(checking, charge.amount);",
+    "replace": "",
+    "why": "12.1 leave out pending debit card charges"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "addCents(t.savings, t.needs, t.wants, t.momReserve, t.heldForOthers, t.unsortedIn), t.unsortedOut",
+    "replace": "addCents(t.savings, t.needs, t.wants, t.momReserve, t.heldForOthers), t.unsortedOut",
+    "why": "12.2 leave unsorted money in off the app side"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "addCents(t.savings, t.needs, t.wants, t.momReserve, t.heldForOthers, t.unsortedIn), t.unsortedOut",
+    "replace": "addCents(t.savings, t.needs, t.wants, t.momReserve, t.unsortedIn), t.unsortedOut",
+    "why": "12.2 leave held for others off the app side"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "addCents(t.savings, t.needs, t.wants, t.momReserve, t.heldForOthers, t.unsortedIn), t.unsortedOut",
+    "replace": "addCents(t.savings, t.needs, t.wants, t.momReserve, t.heldForOthers, t.unsortedIn, t.oldCardDebt), t.unsortedOut",
+    "why": "12.4 count the old card debt in the check"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "return { bankSide: bankTotal, appSide: appTotal, difference, ok: difference === 0 };",
+    "replace": "return { bankSide: bankTotal, appSide: appTotal, difference, ok: Math.abs(difference) <= 1 };",
+    "why": "12.3 let a one-cent difference pass"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "const difference = subtractCents(bankTotal, appTotal);",
+    "replace": "const difference = subtractCents(appTotal, bankTotal);",
+    "why": "12.3 flip the sign of the difference"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (check.ok) return { ok: true, safeToSpend };",
+    "replace": "    if (check.ok || true) return { ok: true, safeToSpend };",
+    "why": "0.5 show safe to spend even when the totals do not match"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/alerts.ts",
+    "find": "if (!check.ok) alerts.push",
+    "replace": "if (check.ok) alerts.push",
+    "why": "10.4 alert when the totals match instead of when they do not"
   }
 ]
