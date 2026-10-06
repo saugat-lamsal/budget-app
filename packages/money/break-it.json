@@ -758,16 +758,16 @@
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "      : seen.some((p) => p.amount >= minimumPayment);",
-    "replace": "      : seen.some((p) => p.amount > minimumPayment);",
-    "why": "9.3 shift the minimum boundary by one cent"
+    "find": "if (paid >= toPay) return [];",
+    "replace": "if (paid > toPay) return [];",
+    "why": "9.3 shift the paid-enough boundary by one cent"
   },
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "  if (paidInFull) return [];\n",
+    "find": "  if (paid >= toPay) return [];\n",
     "replace": "",
-    "why": "9.3 keep reminding after the minimum is paid"
+    "why": "9.3 keep reminding after it is paid"
   },
   {
     "section": "9",
@@ -779,7 +779,7 @@
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "return seen.length === 0 && minimumPayment > 0 ? [{ kind: 'overdue', card, dueDate, minimumPayment }] : [];",
+    "find": "return overdue ? [{ kind: 'overdue', card, dueDate, minimumPayment }] : [];",
     "replace": "return [];",
     "why": "9.4 never send the overdue alert"
   },
@@ -803,13 +803,6 @@
     "find": "  return card === 'everyday-card'\n    ? [",
     "replace": "  return card !== 'everyday-card'\n    ? [",
     "why": "9.2 show the statement balance on the old card instead"
-  },
-  {
-    "section": "9",
-    "file": "packages/money/src/reminders.ts",
-    "find": "  if (toPay <= 0) return [];\n",
-    "replace": "",
-    "why": "9.3 remind about a statement with nothing due"
   },
   {
     "section": "9",
@@ -1395,37 +1388,51 @@
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "      ? addCents(0, ...seen.map((p) => p.amount)) >= statementBalance",
-    "replace": "      ? seen.some((p) => p.amount >= minimumPayment)",
+    "find": "if (paid >= toPay) return [];",
+    "replace": "if (paid >= minimumPayment) return [];",
     "why": "9.3 stop everyday card reminders once the minimum is paid"
   },
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "      ? addCents(0, ...seen.map((p) => p.amount)) >= statementBalance",
-    "replace": "      ? addCents(0, ...seen.map((p) => p.amount)) > statementBalance",
-    "why": "9.3 shift the full-balance boundary by one cent"
+    "find": "if (paid >= toPay) return [];",
+    "replace": "if (paid + 1 >= toPay) return [];",
+    "why": "9.3 count one cent short as paid"
   },
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "      ? addCents(0, ...seen.map((p) => p.amount)) >= statementBalance",
-    "replace": "      ? seen.some((p) => p.amount >= statementBalance)",
-    "why": "9.3 stop adding up everyday card payments"
+    "find": "const paid = addCents(0, ...seen.map((p) => p.amount));",
+    "replace": "const paid = Math.max(0, ...seen.map((p) => p.amount));",
+    "why": "9.3 count only the largest payment instead of adding them up"
   },
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "      : seen.some((p) => p.amount >= minimumPayment);",
-    "replace": "      : addCents(0, ...seen.map((p) => p.amount)) >= minimumPayment;",
-    "why": "9.3 add up old card payments before A6 is answered"
+    "find": "card === 'old-card' ? paid < minimumPayment : seen.length === 0",
+    "replace": "card === 'old-card' ? seen.length === 0 : seen.length === 0",
+    "why": "9.4 old card: let any payment end the overdue alert (as before A6)"
   },
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "return seen.length === 0 && minimumPayment > 0 ? [{ kind: 'overdue'",
-    "replace": "return seen.length === 0 ? [{ kind: 'overdue'",
-    "why": "9.4 call a statement with no minimum overdue"
+    "find": ": seen.length === 0 && minimumPayment > 0;",
+    "replace": ": seen.length === 0;",
+    "why": "9.4 call an everyday card statement with no minimum overdue"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "card === 'old-card' ? paid < minimumPayment :",
+    "replace": "card === 'old-card' ? paid <= minimumPayment :",
+    "why": "9.4 old card: shift the overdue boundary by one cent"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": ": seen.length === 0 && minimumPayment > 0;",
+    "replace": ": paid < minimumPayment;",
+    "why": "9.4 everyday card: use the old card's rule before A6 is answered for it"
   },
   {
     "section": "12",

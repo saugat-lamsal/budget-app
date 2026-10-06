@@ -65,22 +65,21 @@ A5. ANSWERED Oct 6, built. Does "income" from review start a new pay
     new pay period. Rulebook 6.1 and 18a updated. Worked examples 7 and
     15. The readings I had to pick while building it are B52 to B55.
 
-A6. Paying the old card in more than one payment (9.3), and payments
-    below the minimum (9.4).
-    Settled for the everyday card by your review: its payments since the
-    statement add up toward the full balance (9.3). You confirmed that two
-    partial payments that together cover the balance stop the reminders
-    (Oct 6). Still open for the old card, and for the overdue alert on
-    both cards.
-    Now (the literal reading): old card reminders stop only when one
-    single payment is at least the minimum. On either card, any payment
-    at all, even below the minimum, stops the overdue alert (9.4).
+A6. PARTLY ANSWERED Oct 6. Paying the old card in more than one payment
+    (9.3), and payments below the minimum (9.4).
+    Your answer, built: on the old card, payments since the statement add
+    up. Reminders and the overdue alert stop once they total at least the
+    minimum. Rulebook 9.3, 9.4 and 18b updated. (The everyday card already
+    adds its payments up toward the full balance, as you confirmed.)
+    Still open: the overdue alert on the everyday card.
+    Now (the literal reading of 9.4): any payment at all, even below the
+    minimum, means the everyday card is not overdue.
     Option 1 (now): as above.
-    Option 2: add up the old card's payments too. Reminders stop once the
-    total reaches the minimum, and if the total is still under the
-    minimum on the due date, you get the overdue alert.
-    Recommendation: option 2. It matches what the bank checks before
-    charging a late fee.
+    Option 2: same as the old card. If the payments since the statement
+    add up to less than the minimum on the due date, you get the overdue
+    alert.
+    Recommendation: option 2, for the same reason you gave for the old
+    card: the bank charges a late fee when less than the minimum is paid.
 
 A7. Old card payoff countdown (9.5). Not built yet; it shows "off".
     The promo end date is still missing (rulebook section 16), and these

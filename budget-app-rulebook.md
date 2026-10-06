@@ -139,9 +139,11 @@ number so a test can point at it. Nothing gets coded until you approve this.
 9.3  Everyday card: reminders continue until the payments the app sees
      since the statement add up to the full statement balance. Paying less
      usually means interest on the rest.
-     Old card: reminders stop once the app sees a payment that covers at
-     least the minimum for that statement.
+     Old card: reminders stop once the payments the app sees since the
+     statement add up to at least the minimum.
 9.4  If the due date passes with no payment seen, you get an overdue alert.
+     On the old card, payments since the statement that add up to less
+     than the minimum also leave it overdue.
 9.5  Old card payoff countdown: balance divided by the paychecks left before
      the promo ends, counted from the pay schedule.
 
@@ -257,3 +259,5 @@ a.  Money in from review: "this is my paycheck" starts a new pay period,
     with the mom reserve first and then the split. "Other income" is
     split by the percentages only: no mom reserve, no new pay period
     (6.1).
+b.  Old card: payments since the statement add up. Reminders and the
+    overdue alert stop once they total at least the minimum (9.3, 9.4).

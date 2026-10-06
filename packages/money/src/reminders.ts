@@ -55,7 +55,6 @@ export function cardNotices(today: IsoDate, statement: CardStatement, payments: 
   // that is the full statement balance (paying less means interest on the
   // rest); on the old card it is the minimum.
   const toPay = card === 'everyday-card' ? statementBalance : minimumPayment;
-  if (toPay <= 0) return [];
   // Payments the app has seen for this statement. A payment belongs to the
   // statement whose date it reached the card after, the way the card applies
   // it; one still on its way will land after it. It counts as seen from the
@@ -68,16 +67,18 @@ export function cardNotices(today: IsoDate, statement: CardStatement, payments: 
     const forThisStatement = landed === null || daysBetween(closingDate, landed) > 0;
     return forThisStatement && daysBetween(p.date, today) >= 0;
   });
+  const paid = addCents(0, ...seen.map((p) => p.amount));
   const daysLeft = daysBetween(today, dueDate);
   if (daysLeft < 0) {
-    // 9.4: the due date passed with no payment seen, and something was due.
-    return seen.length === 0 && minimumPayment > 0 ? [{ kind: 'overdue', card, dueDate, minimumPayment }] : [];
+    // 9.4: the due date passed and not enough was paid. On the old card,
+    // that is payments since the statement adding up to less than the
+    // minimum. On the everyday card, no payment seen at all, while
+    // something was due (QUESTIONS.md A6).
+    const overdue = card === 'old-card' ? paid < minimumPayment : seen.length === 0 && minimumPayment > 0;
+    return overdue ? [{ kind: 'overdue', card, dueDate, minimumPayment }] : [];
   }
-  const paidInFull =
-    card === 'everyday-card'
-      ? addCents(0, ...seen.map((p) => p.amount)) >= statementBalance
-      : seen.some((p) => p.amount >= minimumPayment);
-  if (paidInFull) return [];
+  // 9.3: payments since the statement add up toward what has to be paid.
+  if (paid >= toPay) return [];
   if (!settings.cardReminderDaysBefore.includes(daysLeft)) return [];
   // 9.1 and 9.2: the everyday card shows its statement balance; the old card does not.
   return card === 'everyday-card'
