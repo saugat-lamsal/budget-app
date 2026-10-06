@@ -11,3 +11,6 @@ coverage/
 
 .DS_Store
 Thumbs.db
+
+# Left by scripts/break-it.mjs while a break is applied.
+*.break-it-backup

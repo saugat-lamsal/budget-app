@@ -114,10 +114,25 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 3, section 15 confirmed (a to j).
+- Rulebook: draft 5. Section 15 confirmed (a to j), section 17 changes
+  after the Phase 1 review, section 18 his part A answers (A5, A6, A8).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
-- Next: Phase 1 (the money math), once he says go.
+- Phase 1 (the money math): built Oct 6, 2026 on branch phase-1-money-math,
+  waiting for his review. 460 tests pass. Every numbered rule has a passing
+  test; 9.5 only has its "off" part (QUESTIONS.md A7).
+  - The money math is in packages/money. The book (src/book.ts) applies
+    bank activity and his answers one at a time; every bucket can be
+    recounted from scratch (recountPots).
+  - Worked examples: packages/money/worked-examples.txt. Each "Check:" line
+    is read by a test.
+  - Break-it check: `node scripts/break-it.mjs` (or with section numbers).
+    The breaks are listed in packages/money/break-it.json; add new ones there
+    for each section. Do not edit source or test files while it runs: it
+    breaks the source on purpose, and a failing new test makes every break
+    look caught.
+- Next: the rest of QUESTIONS.md part A (A1 to A4, A6's everyday card part,
+  A7, A9, A10), then Phase 2 once he says go.
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.

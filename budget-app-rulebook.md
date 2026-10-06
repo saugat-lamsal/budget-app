@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 3)
+# Budget App Rulebook (draft 5)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -28,7 +28,7 @@ number so a test can point at it. Nothing gets coded until you approve this.
 - Split: savings 50%, needs 30%, wants 20% (must add up to 100)
 - Mom reserve: $1,500 per paycheck, capped at $3,000
 - Mom monthly target: $2,000 to $3,000
-- Low-bucket alert: 20% left
+- Low-bucket alert: 20% of what the bucket started the pay period with
 - Card reminders: 7 days and 2 days before the due date
 - Daily review time: 8:00 PM
 - Leftover at payday: ask each time (other options: always roll over,
@@ -94,10 +94,16 @@ number so a test can point at it. Nothing gets coded until you approve this.
 
 ## 6. Deposits that are not a paycheck
 
-6.1  They always go to review, with three choices:
-     - Income: treated like a paycheck (reserve, then split)
+6.1  They always go to review, with four choices:
+     - This is my paycheck: starts a new pay period like any paycheck
+       (3.1 to 3.5): the mom reserve first, then the split
+     - Other income: split by the percentages only. No mom reserve is
+       taken and no new pay period starts. The reserve comes only from
+       paychecks.
      - Payback: goes into the bucket you pick
      - Not mine: goes to "held for others"
+     A paycheck-looking deposit held back under 3.7 gets the same
+     choices.
 6.2  A rule can make the choice automatic for a known source.
 
 
@@ -130,9 +136,14 @@ number so a test can point at it. Nothing gets coded until you approve this.
 9.1  Everyday card: reminders show the statement balance, the minimum, and
      the due date.
 9.2  Old card: reminders show the minimum and the due date.
-9.3  Reminders stop once the app sees a payment that covers at least the
-     minimum for that statement.
+9.3  Everyday card: reminders continue until the payments the app sees
+     since the statement add up to the full statement balance. Paying less
+     usually means interest on the rest.
+     Old card: reminders stop once the payments the app sees since the
+     statement add up to at least the minimum.
 9.4  If the due date passes with no payment seen, you get an overdue alert.
+     On the old card, payments since the statement that add up to less
+     than the minimum also leave it overdue.
 9.5  Old card payoff countdown: balance divided by the paychecks left before
      the promo ends, counted from the pay schedule.
 
@@ -140,8 +151,12 @@ number so a test can point at it. Nothing gets coded until you approve this.
 ## 10. Alerts
 
 10.1  Low bucket: needs or wants falls below the alert level. Once per bucket
+      per pay period. The level is 20% of what the bucket started the pay
+      period with, including what rolled over. If a bucket starts the pay
+      period at zero or below, there is no low alert; the empty alert
+      (10.2) covers it.
+10.2  Empty bucket: needs or wants reaches zero or below. Once per bucket
       per pay period.
-10.2  Empty bucket: needs or wants reaches zero or below.
 10.3  Daily review: sent at the review time, only if something is unsorted.
 10.4  Totals do not match the bank (section 12).
 10.5  Bank connection needs you to log in again.
@@ -168,6 +183,12 @@ number so a test can point at it. Nothing gets coded until you approve this.
       difference.
 12.4  The old card balance is tracked separately as debt and is not part of
       this check.
+12.5  Money in transit: a transfer that has left one of your accounts but not
+      yet arrived in another (a card payment, usually) is shown as "in
+      transit". The check is: bank side + in transit = app side. Money on its
+      way to the old card is shown but not counted, because the old card is
+      not part of this check (12.4). It comes out of needs when it leaves
+      checking (5.2), and the debt goes down when it lands.
 
 
 ## 13. Changing things on the fly
@@ -178,8 +199,15 @@ number so a test can point at it. Nothing gets coded until you approve this.
       Already-sorted ones stay put unless you re-sort them.
 13.3  You can move money between buckets by hand at any time.
 13.4  Moving money out of savings or the mom reserve asks you to confirm
-      first.
+      first. So does any move that would leave the bucket it comes out of
+      below zero, since that is usually a typo.
 13.5  Every change and every manual move is logged with the date.
+13.6  When you correct something and choose "always do this", the new rule
+      goes just ahead of the rule it corrects, so the correction sticks.
+      The rule it corrects is the first rule in your list that matches the
+      item, as it first showed up (often the pending description) or as it
+      posted. If no rule matches it, the new rule goes at the end of your
+      list.
 
 
 ## 14. Setup day
@@ -213,3 +241,29 @@ j.  Paydays are every 14 days, counted from the last paycheck (section 2,
 
 - The promo end date on the old card (you are checking). Until it is
   entered, the payoff countdown (9.5) stays off. Everything else works.
+
+
+## 17. Changes after the Phase 1 review (Oct 6, 2026)
+
+a.  Money in transit between your accounts is part of the self-check, so
+    a card payment on its way does not show as a mismatch (12.5).
+b.  A rule made from a correction beats the rule it corrects (13.6).
+c.  The empty-bucket alert comes once per bucket per pay period, like the
+    low-bucket alert (10.2).
+d.  A hand move that would take any bucket below zero asks you to confirm
+    first (13.4).
+e.  Everyday card reminders continue until the full statement balance is
+    paid. The old card stays at the minimum (9.3).
+
+
+## 18. Answers to the Phase 1 questions (Oct 6, 2026)
+
+a.  Money in from review: "this is my paycheck" starts a new pay period,
+    with the mom reserve first and then the split. "Other income" is
+    split by the percentages only: no mom reserve, no new pay period
+    (6.1).
+b.  Old card: payments since the statement add up. Reminders and the
+    overdue alert stop once they total at least the minimum (9.3, 9.4).
+c.  Low bucket alert: 20% of what the bucket started the pay period with,
+    including rollover. A bucket that starts at zero or below gets no low
+    alert; the empty alert covers it (10.1).

@@ -1,0 +1,1745 @@
+[
+  {
+    "section": "0",
+    "file": "packages/money/src/cents.ts",
+    "find": "!Number.isSafeInteger(value)",
+    "replace": "!Number.isFinite(value)",
+    "why": "0.1 let fractions of a cent through"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/cents.ts",
+    "find": "    total += amount;\n    assertCents(total, 'total');",
+    "replace": "    total += amount;",
+    "why": "0.1 stop checking that a total stays exact"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/cents.ts",
+    "find": "const result = from - amount;",
+    "replace": "const result = from + amount;",
+    "why": "0.1 flip the sign in subtraction"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/cents.ts",
+    "find": "return Number((BigInt(amount) * BigInt(percent)) / 100n);",
+    "replace": "return Math.round((amount * percent) / 100);",
+    "why": "0.1 round a percentage to nearest instead of down"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/cents.ts",
+    "find": "percent < 0 || percent > 100",
+    "replace": "percent < 0 || percent > 101",
+    "why": "0.1 shift the percent boundary by one"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/cents.ts",
+    "find": "(?:\\.(\\d{2}))?$",
+    "replace": "(?:\\.(\\d{1,2}))?$",
+    "why": "0.1 read \"1.5\" as dollars"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/cents.ts",
+    "find": "padStart(3, '0')",
+    "replace": "padStart(2, '0')",
+    "why": "0.1 write one cent wrong"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/cents.ts",
+    "find": "export function addCents(",
+    "replace": "export const peek = globalThis;\nexport function addCents(",
+    "why": "0.4 sneak a way out to the outside world into the money math"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/dates.ts",
+    "find": "return dayNumber(to, 'date') - dayNumber(from, 'date');",
+    "replace": "return dayNumber(from, 'date') - dayNumber(to, 'date');",
+    "why": "dates: count days backwards"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/dates.ts",
+    "find": "toISOString().slice(0, 10) === date",
+    "replace": "toISOString().slice(0, 4) === date.slice(0, 4)",
+    "why": "dates: accept Feb 30"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "s.split.savings + s.split.needs + s.split.wants === 100",
+    "replace": "s.split.savings + s.split.needs + s.split.wants <= 100",
+    "why": "0.2 allow a split under 100"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "momReserveCap: 300_000,",
+    "replace": "momReserveCap: 300_001,",
+    "why": "0.2 change the starting mom cap by one cent"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "earlyPaycheckDays: 10,",
+    "replace": "earlyPaycheckDays: 9,",
+    "why": "0.2 change the starting early-paycheck days"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "s.momMonthlyTarget.low <= s.momMonthlyTarget.high",
+    "replace": "s.momMonthlyTarget.low < s.momMonthlyTarget.high",
+    "why": "0.2 refuse a mom target of one exact amount"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "isWholeInRange(s.lowBucketAlertPercent, 0, 100)",
+    "replace": "isWholeInRange(s.lowBucketAlertPercent, 0, 99)",
+    "why": "0.2 shift the alert-percent boundary by one"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "/^([01]\\d|2[0-3]):[0-5]\\d$/",
+    "replace": "/^([01]\\d|2[0-4]):[0-5]\\d$/",
+    "why": "0.2 accept 24:00 as a review time"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "isWholeInRange(s.payScheduleDays, 1, Infinity)",
+    "replace": "isWholeInRange(s.payScheduleDays, 0, Infinity)",
+    "why": "0.2 accept a zero-day pay schedule"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "  return deepFreeze(copySettings(s));",
+    "replace": "  return copySettings(s);",
+    "why": "0.2 let settings be changed without the checks"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/payday.ts",
+    "find": "const room = Math.max(0, subtractCents(settings.momReserveCap, momReserveNow));",
+    "replace": "const room = subtractCents(settings.momReserveCap, momReserveNow);",
+    "why": "3.2 let a reserve over its cap shrink at payday"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/payday.ts",
+    "find": "const reserveTaken = Math.min(settings.momReservePerPaycheck, amount);",
+    "replace": "const reserveTaken = settings.momReservePerPaycheck;",
+    "why": "3.2 take the full reserve even from a smaller paycheck"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/payday.ts",
+    "find": "const toReserve = Math.min(reserveTaken, room);",
+    "replace": "const toReserve = Math.min(reserveTaken, room + 1);",
+    "why": "3.2 shift the cap by one cent"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/payday.ts",
+    "find": "const rest = amount - reserveTaken;",
+    "replace": "const rest = amount - toReserve;",
+    "why": "3.2 split the overflow again instead of sending it to savings"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/payday.ts",
+    "find": "savings: overflowToSavings + savingsShare + roundingToSavings,",
+    "replace": "savings: overflowToSavings + savingsShare,",
+    "why": "3.3 lose the leftover rounding cents"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/payday.ts",
+    "find": "const roundingToSavings = rest - savingsShare - needs - wants;",
+    "replace": "const roundingToSavings = 0;",
+    "why": "3.3 assume the shares never need rounding"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/payday.ts",
+    "find": "const needs = percentOf(rest, settings.split.needs);",
+    "replace": "const needs = percentOf(rest, settings.split.wants);",
+    "why": "3.3 use the wrong percentage for needs"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "daysBetween(this.#lastPaycheckDate, txn.date) < s.earlyPaycheckDays",
+    "replace": "daysBetween(this.#lastPaycheckDate, txn.date) <= s.earlyPaycheckDays",
+    "why": "3.7 shift the 10-day boundary by one day"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "if (amount <= 0 || choice === 'roll-over') return;",
+    "replace": "if (amount < 0 || choice === 'roll-over') return;",
+    "why": "3.4 ask about an empty bucket"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "if (amount <= 0 || choice === 'roll-over') return;",
+    "replace": "if (amount <= 1 || choice === 'roll-over') return;",
+    "why": "3.4 skip a one-cent leftover"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "{ [entry.bucket]: -entry.amount, savings: entry.amount }",
+    "replace": "{ [entry.bucket]: entry.amount, savings: entry.amount }",
+    "why": "3.4 flip the sign when moving leftovers to savings"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "else this.#answerLeftover(entry, 'move-to-savings');",
+    "replace": "else this.#answerLeftover(entry, 'roll-over');",
+    "why": "3.4 ignore the always-move setting"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "if (old.kind === 'leftover' && old.bucket === bucket) {",
+    "replace": "if (old.kind === 'leftover' && old.bucket !== bucket) {",
+    "why": "3.4 keep an old leftover question so money can move twice"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#lastPaycheckDate = txn.date;\n",
+    "replace": "",
+    "why": "3.1 forget to note the paycheck date"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "this.#period = { number: this.#period.number + 1, startDate: txn.date };",
+    "replace": "this.#period = { number: this.#period.number, startDate: txn.date };",
+    "why": "3.1 do not start a new pay period"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "if (sameTransaction(known, txn)) return { id: txn.id, outcome: 'duplicate' };",
+    "replace": "if (false) return { id: txn.id, outcome: 'duplicate' };",
+    "why": "3.1 refuse a repeated paycheck instead of ignoring it"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "this.#add(entry, { unsortedIn: txn.amount });",
+    "replace": "this.#add(entry, { unsortedOut: txn.amount });",
+    "why": "3.7 hold a deposit as spending instead of money in"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "const shouldBeInSavings = addCents(this.#totals.savings, this.#totals.momReserve);",
+    "replace": "const shouldBeInSavings = addCents(this.#totals.savings, 0);",
+    "why": "3.8 leave the mom reserve out of the savings account"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "const stillToMove = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));",
+    "replace": "const stillToMove = subtractCents(addCents(savingsAccountBalance, ...onItsWay), shouldBeInSavings);",
+    "why": "3.8 flip the sign of still-to-move"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/settings.ts",
+    "find": "description.toLowerCase().includes(",
+    "replace": "description.includes(",
+    "why": "3.1 make the paycheck rule care about upper and lower case"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "return entry.amount - entry.refunded - entry.countedAtSetup;",
+    "replace": "return entry.amount + entry.refunded - entry.countedAtSetup;",
+    "why": "4.5 flip the sign of refunds"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "txn.amount > target.amount - target.refunded",
+    "replace": "txn.amount >= target.amount - target.refunded",
+    "why": "4.5 send a refund of exactly what is left to review"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "txn.amount > target.amount - target.refunded",
+    "replace": "txn.amount > target.amount",
+    "why": "4.5 forget earlier refunds, so a purchase can be refunded twice"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "sorted.split.reduce((sum, part) => sum + part.amount, 0) !== net",
+    "replace": "false",
+    "why": "4.4 keep a split that no longer adds up"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "effect = { unsortedOut: net };",
+    "replace": "effect = { unsortedOut: entry.amount };",
+    "why": "4.5 ignore a refund on unsorted spending"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "effect = { [now.to]: -net };",
+    "replace": "effect = { [now.to]: -entry.amount };",
+    "why": "4.5 ignore a refund on sorted spending"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "    entry.amount = txn.amount;\n",
+    "replace": "",
+    "why": "4.6 keep the pending amount when the charge posts"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#aliases.set(txn.id, entry.id);\n",
+    "replace": "",
+    "why": "4.6 forget the posted id, so it can count twice"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if ((target.kind !== 'spend' && target.kind !== 'old-card') || !target.pending) {",
+    "replace": "if (target.kind !== 'spend' && target.kind !== 'old-card') {",
+    "why": "4.6 let a charge post twice"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if (total !== net) throw",
+    "replace": "if (total > net) throw",
+    "why": "4.4 accept a split that comes up short"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/rules.ts",
+    "find": "return rules.find((rule)",
+    "replace": "return rules.findLast((rule)",
+    "why": "4.2 let the last matching rule win"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "copy.charge === 'fee' ? 'card-fee' : 'card-interest', { to: 'unsorted' })",
+    "replace": "copy.charge === 'fee' ? 'card-fee' : 'card-interest', { to: 'needs' })",
+    "why": "4.8 sort fees to needs without asking"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "['purchase', 'person-payment', 'mom-difference'].includes(entry.spendingKind) ? null : 'needs'",
+    "replace": "['purchase', 'person-payment', 'mom-difference'].includes(entry.spendingKind) ? null : 'wants'",
+    "why": "4.8 suggest the wrong bucket for fees"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "      effect = { [choice.to]: amount };",
+    "replace": "      effect = { [choice.to]: -amount };",
+    "why": "4.5 flip the sign when sorting a refund from review"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "const change = subtractCents(next[name] ?? 0, entry.effect[name] ?? 0);",
+    "replace": "const change = next[name] ?? 0;",
+    "why": "4.7 re-sort without undoing the old bucket"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "    if ('to' in now && now.to === 'unsorted') this.#review.add(entry.id);\n    else this.#review.delete(entry.id);",
+    "replace": "    if ('to' in now && now.to === 'unsorted') this.#review.add(entry.id);",
+    "why": "4.3 leave sorted spending in review"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/buckets.ts",
+    "find": "Object.freeze(['needs', 'wants'])",
+    "replace": "Object.freeze(['needs', 'wants', 'savings'])",
+    "why": "4.3 let spending be sorted to savings"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/transactions.ts",
+    "find": "(txn.pending || !isId(txn.pendingId))",
+    "replace": "(!isId(txn.pendingId))",
+    "why": "4.6 let a pending charge claim to replace another"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "assertPositiveCents(part.amount, 'each part of a split');",
+    "replace": "assertCents(part.amount, 'each part of a split');",
+    "why": "4.4 allow zero and negative parts in a split"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (txn.to !== 'old-card') {\n",
+    "replace": "    if (true) {\n",
+    "why": "5.2 treat an old card payment like any transfer"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "return this.#addSpending(txn, 'debt-payoff', txn.from === 'checking' ? { to: 'needs' } : { to: 'unsorted' });",
+    "replace": "return this.#addSpending(txn, 'debt-payoff', txn.from === 'checking' ? { to: 'wants' } : { to: 'unsorted' });",
+    "why": "5.2 take old card payments from wants"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "received = this.#addSpending(txn, 'debt-payoff', txn.from === 'checking' ? { to: 'needs' } : { to: 'unsorted' });",
+    "replace": "received = this.#addSpending(txn, 'debt-payoff', txn.from === 'checking' ? { to: 'wants' } : { to: 'unsorted' });",
+    "why": "12.5 take an old card payment on its way from wants instead of needs (5.2)"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.spendingKind === 'debt-payoff' && entry.txn.kind === 'transfer') effect.oldCardDebt = -entry.amount;",
+    "replace": "if (entry.spendingKind === 'debt-payoff' && entry.txn.kind === 'transfer') effect.oldCardDebt = entry.amount;",
+    "why": "5.2 raise the debt when paying it"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (txn.account === 'old-card') return this.#addOldCard(txn);\n",
+    "replace": "",
+    "why": "5.4 let an old card purchase come out of a bucket"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "txn.kind === 'refund' ? -txn.amount : txn.amount",
+    "replace": "txn.amount",
+    "why": "old card refund raises the debt"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (txn.kind !== 'purchase') return { id: txn.id, outcome: 'sorted' };",
+    "replace": "    if (txn.kind !== 'refund') return { id: txn.id, outcome: 'sorted' };",
+    "why": "5.4 do not flag old card purchases"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "        if (copy.account === 'old-card') return this.#addOldCard(copy);\n",
+    "replace": "",
+    "why": "5.5 send old card interest to review like the everyday card"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "else this.#setEffect(entry, { oldCardDebt: txn.amount - entry.countedAtSetup });",
+    "replace": "else this.#setEffect(entry, { oldCardDebt: entry.effect.oldCardDebt ?? 0 });",
+    "why": "5.4 keep the pending amount on the old card after posting"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "target.txn.account !== txn.account",
+    "replace": "false",
+    "why": "5.4 let a posting move a charge to another account"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "if ((entry.txn.kind === 'transfer' || entry.txn.kind === 'transfer-sent') && entry.txn.from === 'checking') {",
+    "replace": "if ((entry.txn.kind === 'transfer' || entry.txn.kind === 'transfer-sent') && entry.txn.from === 'savings') {",
+    "why": "5.2 let the debt payoff line be re-sorted"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#review.delete(id);\n  }\n\n  // Rules 4.3, 4.4, 4.7, 4.8, 7.2.",
+    "replace": "  }\n\n  // Rules 4.3, 4.4, 4.7, 4.8, 7.2.",
+    "why": "5.4 seeing the flag does not clear it"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "target.spendingKind === 'debt-payoff' || ",
+    "replace": "",
+    "why": "5.2 let a refund attach to a debt payoff"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/transactions.ts",
+    "find": " || txn.to === txn.from",
+    "replace": "",
+    "why": "5.3 accept a transfer from an account to itself"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "this.#add({ kind: 'transfer', id: txn.id, txn, effect: {} }, {});",
+    "replace": "this.#add({ kind: 'transfer', id: txn.id, txn, effect: {} }, txn.to === 'savings' ? { savings: txn.amount, needs: -txn.amount } : {});",
+    "why": "5.3 move money between buckets when moving it to savings"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (rule === undefined) return result;\n",
+    "replace": "      if (rule === undefined || true) return result;\n",
+    "why": "6.2 ignore deposit rules"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "if (txn.kind === 'refund') throw new MoneyError('bad-choice', 'a store refund is not income');",
+    "replace": "",
+    "why": "6.1 let a store refund be income"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "incomeSplit = splitPaycheck(amount, this.#totals.momReserve, { ...this.#periodSplit, momReservePerPaycheck: 0 });",
+    "replace": "incomeSplit = splitPaycheck(amount, this.#totals.momReserve, this.#periodSplit);",
+    "why": "6.1 take the mom reserve from other income"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "effect = { momReserve: incomeSplit.momReserve, savings: incomeSplit.savings, needs: incomeSplit.needs, wants: incomeSplit.wants };",
+    "replace": "effect = { momReserve: incomeSplit.momReserve, savings: incomeSplit.savings, needs: incomeSplit.wants, wants: incomeSplit.needs };",
+    "why": "6.1 swap needs and wants for other income"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "effect = { heldForOthers: amount };",
+    "replace": "effect = { wants: amount };",
+    "why": "6.1 put not-mine money in wants"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/rules.ts",
+    "find": "return choice.to === 'other-income' || choice.to === 'not-mine' || isBucket(choice.to);",
+    "replace": "return choice.to === 'other-income' || choice.to === 'not-mine' || isBucket(choice.to) || choice.to === 'unsorted';",
+    "why": "6.1 accept an extra choice"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/rules.ts",
+    "find": " || (typeof choice === 'object' && choice !== null && 'to' in choice && choice.to === 'paycheck')",
+    "replace": "",
+    "why": "6.1 refuse \"this is my paycheck\""
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#remove(entry);\n      this.#payday(txn);",
+    "replace": "      this.#sortMoneyIn(entry, { to: 'other-income' });",
+    "why": "6.1 treat \"this is my paycheck\" as other income (no reserve, no new pay period)"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "if (daysBetween(this.#lastPaycheckDate, txn.date) < 0) {\n      throw new MoneyError('bad-choice', `${txn.id} is older",
+    "replace": "if (daysBetween(this.#lastPaycheckDate, txn.date) < -30) {\n      throw new MoneyError('bad-choice', `${txn.id} is older",
+    "why": "6.1 let a deposit older than the last paycheck start a pay period"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "if (daysBetween(this.#lastPaycheckDate, txn.date) < 0) {\n      throw new MoneyError('bad-choice', `${txn.id} is older",
+    "replace": "if (daysBetween(this.#lastPaycheckDate, txn.date) <= 0) {\n      throw new MoneyError('bad-choice', `${txn.id} is older",
+    "why": "6.1 shift the older-than-last-paycheck boundary by one day"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#remove(entry);\n      this.#payday(txn);",
+    "replace": "      this.#forget(entry.id);\n      this.#payday(txn);",
+    "why": "6.1 leave the deposit's earlier choice in the buckets"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/rules.ts",
+    "find": "if (!isDepositRuleChoice(rule.choice)) bad(",
+    "replace": "if (!isMoneyInChoice(rule.choice)) bad(",
+    "why": "6.2 let a deposit rule say \"this is my paycheck\""
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (!isDepositRuleChoice(choice)) {\n        throw new MoneyError('bad-choice', 'a deposit rule picks",
+    "replace": "      if (!isMoneyInChoice(choice)) {\n        throw new MoneyError('bad-choice', 'a deposit rule picks",
+    "why": "13.6 let \"always do this\" make a paycheck rule"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/rules.ts",
+    "find": "rule.for === kind && matchesTextRule(rule, description)",
+    "replace": "matchesTextRule(rule, description)",
+    "why": "6.2 let purchase rules apply to deposits"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (!matchesTextRule(s.paycheckRule, txn.description)) {\n      const rule",
+    "replace": "    if (!matchesTextRule(s.paycheckRule, txn.description) || findRule(this.#rules, 'deposit', txn.description)) {\n      const rule",
+    "why": "6.2 let a deposit rule take over a paycheck"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "      effect = { heldForOthers: -net };",
+    "replace": "      effect = { heldForOthers: net };",
+    "why": "7.2 raise held for others when paying out for someone"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "      effect = { heldForOthers: -net };",
+    "replace": "      effect = { wants: -net };",
+    "why": "7.2 count a not-mine payment as spending"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "heldForOthers === 0 ? 'settled' : heldForOthers > 0 ? 'holding-for-others' : 'owed-to-you'",
+    "replace": "heldForOthers === 0 ? 'settled' : heldForOthers >= 0 ? 'owed-to-you' : 'holding-for-others'",
+    "why": "7.3 swap who owes whom"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "heldForOthers === 0 ? 'settled' : heldForOthers > 0",
+    "replace": "heldForOthers === 1 ? 'settled' : heldForOthers > 0",
+    "why": "7.3 shift settled off zero by one cent"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "rule === undefined ? { to: 'unsorted' } : { to: rule.choice.to });\n  }",
+    "replace": "{ to: 'unsorted' });\n  }",
+    "why": "7.4 ignore rules for people"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (!isPersonPaymentChoice(choice)) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');\n      entry.sortedTo",
+    "replace": "      if (false) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');\n      entry.sortedTo",
+    "why": "7.4 let a payment to a person be split or sent to savings"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (!isPersonPaymentChoice(choice)) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');\n      newRule",
+    "replace": "      if (false) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');\n      newRule",
+    "why": "13.6 let \"always do this\" make a person rule that splits or picks savings"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/rules.ts",
+    "find": "return choice.to === 'not-mine' || isSpendingBucket(choice.to);",
+    "replace": "return choice.to === 'not-mine' || isSpendingBucket(choice.to) || choice.to === 'savings';",
+    "why": "7.4 let a person rule pick savings"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (matchesTextRule(this.#settings.momRule, txn.description)) return this.#payMom(txn);\n",
+    "replace": "",
+    "why": "8.1 treat mom like any other person"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "const fromReserve = Math.min(txn.amount, Math.max(0, this.#totals.momReserve));",
+    "replace": "const fromReserve = txn.amount;",
+    "why": "8.3 let the reserve go negative instead of asking"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "const fromReserve = Math.min(txn.amount, Math.max(0, this.#totals.momReserve));",
+    "replace": "const fromReserve = Math.min(txn.amount, Math.max(1, this.#totals.momReserve));",
+    "why": "8.3 shift the empty-reserve boundary by one cent"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "const fromReserve = Math.min(txn.amount, Math.max(0, this.#totals.momReserve));",
+    "replace": "const fromReserve = Math.min(txn.amount, this.#totals.momReserve);",
+    "why": "8.3 let a negative reserve make the difference bigger than the payment"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (difference === 0) return { id: txn.id, outcome: 'sorted' };",
+    "replace": "    if (difference <= 1) return { id: txn.id, outcome: 'sorted' };",
+    "why": "8.3 drop a one-cent difference"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.kind === 'mom' && monthOf(entry.txn.date) === month) sent = addCents(sent, entry.txn.amount);",
+    "replace": "if (entry.kind === 'mom' && monthOf(entry.txn.date) === month) sent = addCents(sent, entry.fromReserve);",
+    "why": "8.2 count only the part the reserve covered"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.kind === 'mom' && monthOf(entry.txn.date) === month) sent",
+    "replace": "if (entry.kind === 'mom' && entry.txn.date.slice(0, 4) === month.slice(0, 4)) sent",
+    "why": "8.2 add up the year instead of the month"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "    } else if (entry.spendingKind === 'mom-difference' && 'split' in choice) {",
+    "replace": "    } else if (false) {",
+    "why": "8.3 let the difference be split"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "const forThisStatement = landed === null || daysBetween(closingDate, landed) > 0;",
+    "replace": "const forThisStatement = landed === null || daysBetween(closingDate, landed) >= 0;",
+    "why": "9.3 count a payment made on the statement date"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "return forThisStatement && daysBetween(p.date, today) >= 0;",
+    "replace": "return forThisStatement;",
+    "why": "9.3 count a payment dated after today"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "if (paid >= toPay) return [];",
+    "replace": "if (paid > toPay) return [];",
+    "why": "9.3 shift the paid-enough boundary by one cent"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "  if (paid >= toPay) return [];\n",
+    "replace": "",
+    "why": "9.3 keep reminding after it is paid"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "  if (daysLeft < 0) {",
+    "replace": "  if (daysLeft <= 0) {",
+    "why": "9.4 call it overdue on the due date itself"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "return overdue ? [{ kind: 'overdue', card, dueDate, minimumPayment }] : [];",
+    "replace": "return [];",
+    "why": "9.4 never send the overdue alert"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "  if (!settings.cardReminderDaysBefore.includes(daysLeft)) return [];",
+    "replace": "  if (![7, 2].includes(daysLeft)) return [];",
+    "why": "9.1 hard-code 7 and 2 days instead of using the setting"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "  if (!settings.cardReminderDaysBefore.includes(daysLeft)) return [];",
+    "replace": "  if (!settings.cardReminderDaysBefore.includes(daysLeft + 1)) return [];",
+    "why": "9.1 remind one day off"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "  return card === 'everyday-card'\n    ? [",
+    "replace": "  return card !== 'everyday-card'\n    ? [",
+    "why": "9.2 show the statement balance on the old card instead"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "if (book.settings().oldCardPromoEndDate === null) return { on: false, reason: 'no-promo-end-date' };",
+    "replace": "",
+    "why": "9.5 forget why the countdown is off"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/book.ts",
+    "find": "if (txn === null || !('to' in txn) || txn.to !== card) continue;",
+    "replace": "if (txn === null || !('to' in txn) || txn.to === 'savings') continue;",
+    "why": "9.3 mix up which card a payment went to"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/book.ts",
+    "find": "amount: subtractCents(this.#totals.wants, this.#totals.unsortedOut),",
+    "replace": "amount: addCents(this.#totals.wants, this.#totals.unsortedOut),",
+    "why": "11.1 add unsorted spending instead of taking it off"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/book.ts",
+    "find": "amount: subtractCents(this.#totals.wants, this.#totals.unsortedOut),",
+    "replace": "amount: subtractCents(addCents(this.#totals.wants, this.#totals.needs), this.#totals.unsortedOut),",
+    "why": "11.1 count needs too"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/book.ts",
+    "find": "amount: subtractCents(this.#totals.wants, this.#totals.unsortedOut),",
+    "replace": "amount: subtractCents(addCents(this.#totals.wants, this.#totals.unsortedIn), this.#totals.unsortedOut),",
+    "why": "11.3 count unsorted money in"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/book.ts",
+    "find": "amount: subtractCents(this.#totals.wants, this.#totals.unsortedOut),",
+    "replace": "amount: subtractCents(addCents(this.#totals.wants, this.#totals.heldForOthers), this.#totals.unsortedOut),",
+    "why": "11.3 count held for others"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/book.ts",
+    "find": "const nextPayday = addDays(this.#lastPaycheckDate, this.#settings.payScheduleDays);",
+    "replace": "const nextPayday = addDays(this.#lastPaycheckDate, 14);",
+    "why": "11.2 hard-code 14 days instead of using the setting"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/book.ts",
+    "find": "daysToPayday: daysBetween(today, nextPayday),",
+    "replace": "daysToPayday: Math.max(0, daysBetween(today, nextPayday)),",
+    "why": "11.2 hide a late paycheck"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/book.ts",
+    "find": "daysToPayday: daysBetween(today, nextPayday),",
+    "replace": "daysToPayday: daysBetween(today, nextPayday) + 1,",
+    "why": "11.2 count one day too many"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/self-check.ts",
+    "find": "return subtractCents(addCents(bank.checking, bank.savings), bank.everydayCard);",
+    "replace": "return addCents(bank.checking, bank.savings, bank.everydayCard);",
+    "why": "12.1 add the card balance instead of taking it off"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/self-check.ts",
+    "find": "if (charge.account === 'everyday-card') everydayCard = addCents(everydayCard, charge.amount);",
+    "replace": "if (charge.account !== 'checking') everydayCard = addCents(everydayCard, charge.amount);",
+    "why": "12.4 let old card pending charges into the bank side"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/self-check.ts",
+    "find": "if (charge.account === 'checking') checking = subtractCents(checking, charge.amount);",
+    "replace": "",
+    "why": "12.1 leave out pending debit card charges"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "addCents(t.savings, t.needs, t.wants, t.momReserve, t.heldForOthers, t.unsortedIn), t.unsortedOut",
+    "replace": "addCents(t.savings, t.needs, t.wants, t.momReserve, t.heldForOthers), t.unsortedOut",
+    "why": "12.2 leave unsorted money in off the app side"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "addCents(t.savings, t.needs, t.wants, t.momReserve, t.heldForOthers, t.unsortedIn), t.unsortedOut",
+    "replace": "addCents(t.savings, t.needs, t.wants, t.momReserve, t.unsortedIn), t.unsortedOut",
+    "why": "12.2 leave held for others off the app side"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "addCents(t.savings, t.needs, t.wants, t.momReserve, t.heldForOthers, t.unsortedIn), t.unsortedOut",
+    "replace": "addCents(t.savings, t.needs, t.wants, t.momReserve, t.heldForOthers, t.unsortedIn, t.oldCardDebt), t.unsortedOut",
+    "why": "12.4 count the old card debt in the check"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "return { bankSide: bankTotal, inTransit: t.inTransit, appSide: appTotal, difference, ok: difference === 0 };",
+    "replace": "return { bankSide: bankTotal, inTransit: t.inTransit, appSide: appTotal, difference, ok: Math.abs(difference) <= 1 };",
+    "why": "12.3 let a one-cent difference pass"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "const difference = subtractCents(addCents(bankTotal, t.inTransit), appTotal);",
+    "replace": "const difference = subtractCents(appTotal, addCents(bankTotal, t.inTransit));",
+    "why": "12.3 flip the sign of the difference"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (check.ok) return { ok: true, safeToSpend };",
+    "replace": "    if (check.ok || true) return { ok: true, safeToSpend };",
+    "why": "0.5 show safe to spend even when the totals do not match"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      // 13.1: a change to the split or the reserve applies from this paycheck.\n      this.#periodSplit = splitSettingsOf(this.#settings);\n",
+    "replace": "",
+    "why": "13.1 never pick up a split change at the next paycheck"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "incomeSplit = splitPaycheck(amount, this.#totals.momReserve, { ...this.#periodSplit, momReservePerPaycheck: 0 });",
+    "replace": "incomeSplit = splitPaycheck(amount, this.#totals.momReserve, { ...splitSettingsOf(this.#settings), momReservePerPaycheck: 0 });",
+    "why": "13.1 apply a split change to other income before the next paycheck"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#settings = next;\n",
+    "replace": "    this.#settings = next;\n    this.#periodSplit = splitSettingsOf(next);\n",
+    "why": "13.1 apply a split change right away"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#log.push(Object.freeze({ date, kind: 'rule-added', rule: this.#ruleById(rule.id) }));\n      this.#sortWaitingByRules(rule.id);",
+    "replace": "      this.#log.push(Object.freeze({ date, kind: 'rule-added', rule: this.#ruleById(rule.id) }));",
+    "why": "13.2 a new rule ignores what is waiting in review"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "    for (const id of [...this.#review]) {\n      const entry = this.#entry(id);\n      const unsortedSpending = entry.kind === 'spend' && 'to' in entry.sortedTo && entry.sortedTo.to === 'unsorted';",
+    "replace": "    for (const id of [...this.#entries.keys()]) {\n      const entry = this.#entry(id);\n      const unsortedSpending = entry.kind === 'spend';",
+    "why": "13.2 a new rule re-sorts what you already sorted"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "this.#rules = checkRules(this.#rules.map((r) => (r.id === rule.id ? rule : r)));",
+    "replace": "this.#rules = checkRules(this.#rules);",
+    "why": "13.2 changing a rule keeps the old version"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "this.#rules = checkRules(this.#rules.filter((r) => r.id !== id));",
+    "replace": "this.#rules = checkRules(this.#rules);",
+    "why": "13.2 removing a rule keeps it"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (from === 'momReserve') reasons.push('out-of-mom-reserve');\n",
+    "replace": "",
+    "why": "13.4 move out of the mom reserve without asking"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "if (reasons.length > 0 && move.confirmed !== true) return",
+    "replace": "if (reasons.length > 0 && move.confirmed === false) return",
+    "why": "13.4 treat a missing confirmation as yes"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "this.#add(entry, { [from]: -amount, [to]: amount });",
+    "replace": "this.#add(entry, { [from]: amount, [to]: amount });",
+    "why": "13.3 flip the sign on the bucket money leaves"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#log.push(Object.freeze({ date, kind: 'money-moved', from, to, amount }));\n",
+    "replace": "",
+    "why": "13.5 forget to log a move"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#log.push(Object.freeze({ date, kind: 'settings-changed', changes }));\n",
+    "replace": "",
+    "why": "13.5 forget to log a settings change"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "const MOVABLE: readonly Pot[] = ['savings', 'needs', 'wants', 'momReserve', 'heldForOthers'];",
+    "replace": "const MOVABLE: readonly string[] = ['savings', 'needs', 'wants', 'momReserve', 'heldForOthers', 'unsortedIn'];",
+    "why": "13.3 let money be moved out of review by hand"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#moveCount += 1;\n",
+    "replace": "",
+    "why": "13.3 give two moves the same id"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "return addCents(bankSide(withPendingCharges(posted, pendingCharges)), ...travelling);",
+    "replace": "return addCents(bankSide(posted), ...travelling);",
+    "why": "14.1 leave pending charges out of the starting money"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "if (assigned !== money) return",
+    "replace": "if (Math.abs(assigned - money) > 1) return",
+    "why": "14.3 start tracking one cent off"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "difference: subtractCents(money, assigned) };",
+    "replace": "difference: subtractCents(assigned, money) };",
+    "why": "14.3 flip the sign of what is left to assign"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "oldCardDebt: addCents(input.oldCardBalance, ...oldCardPending),",
+    "replace": "oldCardDebt: input.oldCardBalance,",
+    "why": "14.1 leave old card pending charges out of the debt"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/book.ts",
+    "find": "return entry.amount - entry.refunded - entry.countedAtSetup;",
+    "replace": "return entry.amount - entry.refunded;",
+    "why": "14.2 count a setup-day pending charge twice"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/book.ts",
+    "find": "    if ('to' in sorted && sorted.to === 'counted-at-setup' && net !== 0) entry.sortedTo = { to: 'unsorted' };\n",
+    "replace": "",
+    "why": "14.2 swallow the difference when a setup-day charge posts"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/book.ts",
+    "find": "else this.#setEffect(entry, { oldCardDebt: txn.amount - entry.countedAtSetup });",
+    "replace": "else this.#setEffect(entry, { oldCardDebt: txn.amount });",
+    "why": "14.1 count a setup-day old card charge twice"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "if (charge.kind !== 'purchase' || !charge.pending) throw",
+    "replace": "if (charge.kind !== 'purchase') throw",
+    "why": "14.1 accept a posted charge as pending at setup"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "    if (ids.has(charge.id)) throw new MoneyError('conflicting-id', `two pending charges have the id ${charge.id}`);\n",
+    "replace": "",
+    "why": "14.1 accept the same pending charge twice"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "const difference = subtractCents(addCents(bankTotal, t.inTransit), appTotal);",
+    "replace": "const difference = subtractCents(bankTotal, appTotal);",
+    "why": "12.5 leave money in transit out of the check"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "this.#add({ kind: 'leg', id: txn.id, txn, effect: {} }, { inTransit: txn.amount });",
+    "replace": "this.#add({ kind: 'leg', id: txn.id, txn, effect: {} }, { inTransit: -txn.amount });",
+    "why": "12.5 flip the sign of money that left"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "txn.to === 'old-card' ? { oldCardDebt: -txn.amount } : { inTransit: -txn.amount });",
+    "replace": "txn.to === 'old-card' ? { oldCardDebt: -txn.amount } : {});",
+    "why": "12.5 keep money in transit after it lands"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "txn.to === 'old-card' ? { oldCardDebt: -txn.amount } : { inTransit: -txn.amount });",
+    "replace": "txn.to === 'old-card' ? {} : { inTransit: -txn.amount });",
+    "why": "12.5 do not lower the old card debt when a payment lands"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.spendingKind === 'debt-payoff' && entry.txn.kind === 'transfer') effect.oldCardDebt = -entry.amount;",
+    "replace": "if (entry.spendingKind === 'debt-payoff') effect.oldCardDebt = -entry.amount;",
+    "why": "12.5 lower the old card debt before the money lands"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "return a.from === b.from && a.to === b.to && a.amount === b.amount;",
+    "replace": "return a.from === b.from && a.to === b.to;",
+    "why": "12.5 pair halves of different amounts"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "if (txn?.kind === 'transfer-sent' && !this.#pairs.has(entry.id) && sameRoute(txn, arrival)) return entry.id;",
+    "replace": "if (txn?.kind === 'transfer-sent' && sameRoute(txn, arrival)) return entry.id;",
+    "why": "12.5 pair an arrival with a payment that already arrived"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "if (a.sentId === undefined && fallback === undefined && sameRoute(a, sent)) fallback = entry.id;",
+    "replace": "if (a.sentId === undefined && sameRoute(a, sent)) fallback = entry.id;",
+    "why": "12.5 pair with the newest early arrival instead of the oldest"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "if (namedTxn === null || namedTxn.kind !== 'transfer-sent' || !sameRoute(namedTxn, txn)) {",
+    "replace": "if (namedTxn === null || namedTxn.kind !== 'transfer-sent') {",
+    "why": "12.5 accept an arrival that names a different transfer"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "            throw new MoneyError('already-arrived', `${txn.sentId} has already arrived`);\n",
+    "replace": "",
+    "why": "12.5 let a payment arrive twice"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "|| this.#pairs.has(entry.id)) continue;\n      const { id, date, from, to, amount } = txn;",
+    "replace": ") continue;\n      const { id, date, from, to, amount } = txn;",
+    "why": "12.5 list transfers that have already landed"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "const stillToMove = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance, ...onItsWay));",
+    "replace": "const stillToMove = subtractCents(shouldBeInSavings, addCents(savingsAccountBalance));",
+    "why": "12.5 ask you to move money already on its way to savings"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "} else if (txn.kind === 'transfer-arrived' && partner === undefined) {",
+    "replace": "} else if (txn.kind === 'transfer-arrived') {",
+    "why": "12.5 count a card payment twice for reminders"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "copy.to === 'old-card' ? {} : { inTransit: travelling }",
+    "replace": "{ inTransit: travelling }",
+    "why": "12.5 count an old card payment in transit on setup day in the check"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/setup.ts",
+    "find": "return addCents(bankSide(withPendingCharges(posted, pendingCharges)), ...travelling);",
+    "replace": "return bankSide(withPendingCharges(posted, pendingCharges));",
+    "why": "12.5 leave money in transit out of the starting money"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/setup.ts",
+    "find": "    if (transfer.to === 'old-card') return 0;\n",
+    "replace": "",
+    "why": "12.5 count money on its way to the old card as starting money"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "const at = found === -1 ? this.#rules.length : found;",
+    "replace": "const at = this.#rules.length;",
+    "why": "13.6 put a correction rule at the end, behind the rule it corrects"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "const at = found === -1 ? this.#rules.length : found;",
+    "replace": "const at = 0;",
+    "why": "13.6 put a correction rule at the very top"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "const at = found === -1 ? this.#rules.length : found;",
+    "replace": "const at = found === -1 ? this.#rules.length : found + 1;",
+    "why": "13.6 put a correction rule just behind the rule it corrects"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "if (!covers(newRule)) throw new MoneyError('bad-rule'",
+    "replace": "if (false) throw new MoneyError('bad-rule'",
+    "why": "13.6 accept a correction rule that does not cover the item"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.sort(entry.id, choice, date);\n      const added",
+    "replace": "      const added",
+    "why": "13.6 add the rule but leave the item itself as it was"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "aheadOf: corrected?.id ?? null }));\n      this.#sortWaitingByRules(added.id);",
+    "replace": "aheadOf: corrected?.id ?? null }));",
+    "why": "13.6 leave matching waiting items unsorted"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.kind === 'spend' && entry.spendingKind === 'purchase') {\n      if ('split' in choice",
+    "replace": "if (entry.kind === 'spend' && entry.spendingKind !== 'person-payment') {\n      if ('split' in choice",
+    "why": "13.6 let fees get a rule"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "aheadOf: corrected?.id ?? null }));",
+    "replace": "aheadOf: null }));",
+    "why": "13.6 log the wrong rule as beaten"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "if (amount <= 0 && this.#emptyAlerted[bucket] !== this.#period.number) {",
+    "replace": "if (amount < 0 && this.#emptyAlerted[bucket] !== this.#period.number) {",
+    "why": "10.2 do not call exactly zero empty"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "if (amount <= 0 && this.#emptyAlerted[bucket] !== this.#period.number) {",
+    "replace": "if (amount <= 1 && this.#emptyAlerted[bucket] !== this.#period.number) {",
+    "why": "10.2 call one cent empty"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "if (amount <= 0 && this.#emptyAlerted[bucket] !== this.#period.number) {",
+    "replace": "if (amount <= 0) {",
+    "why": "10.2 repeat the empty alert every time"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    for (const bucket of newlyEmpty) this.#emptyAlerted[bucket] = this.#period.number;\n",
+    "replace": "    for (const bucket of newlyEmpty) this.#emptyAlerted[bucket] = this.#period.number + 1;\n",
+    "why": "10.2 skip the empty alert in the next pay period too"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    for (const bucket of ['needs', 'wants'] as const) {\n      const amount = this.#totals[bucket];\n      if (amount <= 0",
+    "replace": "    for (const bucket of ['needs'] as const) {\n      const amount = this.#totals[bucket];\n      if (amount <= 0",
+    "why": "10.2 forget wants"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    for (const bucket of ['needs', 'wants'] as const) {\n      const amount = this.#totals[bucket];\n      const startedWith",
+    "replace": "    for (const bucket of ['needs'] as const) {\n      const amount = this.#totals[bucket];\n      const startedWith",
+    "why": "10.1 forget wants"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "        newlyEmpty.push(bucket);\n",
+    "replace": "        newlyEmpty.push('needs');\n",
+    "why": "10.2 mark the wrong bucket as alerted"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    // 10.2: needs or wants at zero or below.\n    for (const bucket",
+    "replace": "    for (const bucket of ['needs', 'wants'] as const) this.#emptyAlerted[bucket] = this.#period.number;\n    for (const bucket",
+    "why": "10.2 mark buckets as alerted before they are empty"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "if (waiting > 0) alerts.push",
+    "replace": "if (waiting >= 0) alerts.push",
+    "why": "10.3 send the daily review with nothing waiting"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "at: this.#settings.dailyReviewTime, waiting });",
+    "replace": "at: '20:00', waiting });",
+    "why": "10.3 ignore the review time setting"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "if (input.bankConnection === 'needs-login') alerts.push",
+    "replace": "if (input.bankConnection !== 'needs-login') alerts.push",
+    "why": "10.5 alert when the connection is fine"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "BigInt(amount) * 100n < BigInt(startedWith) * percent",
+    "replace": "BigInt(amount) * 100n <= BigInt(startedWith) * percent",
+    "why": "10.1 alert at exactly the level, not only below it"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "BigInt(amount) * 100n < BigInt(startedWith) * percent",
+    "replace": "amount * 100 < startedWith * this.#settings.lowBucketAlertPercent",
+    "why": "10.1 compare with ordinary numbers, which lose cents on huge amounts"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "BigInt(amount) * 100n < BigInt(startedWith) * percent",
+    "replace": "BigInt(amount) < (BigInt(startedWith) * percent) / 100n",
+    "why": "10.1 round the alert level down to a cent before comparing"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "const low = amount > 0 && ",
+    "replace": "const low = amount >= 0 && ",
+    "why": "10.1 give the low alert at zero too, beside the empty one"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "BigInt(amount) * 100n < BigInt(startedWith) * percent",
+    "replace": "BigInt(amount) * 100n < BigInt(this.#opening[bucket]) * percent",
+    "why": "10.1 measure against setup day instead of this pay period's start"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "if (low && this.#lowAlerted[bucket] !== this.#period.number) {",
+    "replace": "if (low && this.#lowAlerted[bucket] === null) {",
+    "why": "10.1 give the low alert only once ever, not once per pay period"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "if (low && this.#lowAlerted[bucket] !== this.#period.number) {",
+    "replace": "if (low) {",
+    "why": "10.1 repeat the low alert every time"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    for (const bucket of newlyLow) this.#lowAlerted[bucket] = this.#period.number;\n",
+    "replace": "",
+    "why": "10.1 never mark the low alert as given"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#periodStart.needs = this.#totals.needs;\n",
+    "replace": "",
+    "why": "10.1 keep the old start for needs after payday"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#periodStart.wants = this.#totals.wants;\n",
+    "replace": "",
+    "why": "10.1 keep the old start for wants after payday"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#periodStart[entry.bucket] = start;\n    this.#review.delete(id);",
+    "replace": "    this.#review.delete(id);",
+    "why": "10.1 count a leftover moved to savings in the start"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "? subtractCents(this.#periodStart[entry.bucket], entry.amount) :",
+    "replace": "? addCents(this.#periodStart[entry.bucket], entry.amount) :",
+    "why": "10.1 flip the sign when a leftover moves to savings"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#periodStart = { needs, wants };",
+    "replace": "    this.#periodStart = { needs: 0, wants: 0 };",
+    "why": "10.1 start the first pay period from zero instead of setup day"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "        alerts.push({ kind: 'low-bucket', bucket, amount, startedWith });",
+    "replace": "        alerts.unshift({ kind: 'low-bucket', bucket, amount, startedWith });",
+    "why": "10.1 put the low alerts in the wrong order"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "if (!check.ok) alerts.push({ kind: 'totals-mismatch'",
+    "replace": "if (check.ok) alerts.push({ kind: 'totals-mismatch'",
+    "why": "10.4 alert when the totals match instead of when they do not"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "if (subtractCents(this.#totals[from], amount) < 0) reasons.push('below-zero');",
+    "replace": "",
+    "why": "13.4 move a bucket below zero without asking"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "if (subtractCents(this.#totals[from], amount) < 0) reasons.push('below-zero');",
+    "replace": "if (subtractCents(this.#totals[from], amount) <= 0) reasons.push('below-zero');",
+    "why": "13.4 ask when a move leaves exactly zero"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "if (subtractCents(this.#totals[from], amount) < 0) reasons.push('below-zero');",
+    "replace": "if (subtractCents(this.#totals[from], amount) < -1) reasons.push('below-zero');",
+    "why": "13.4 let one cent below zero through"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "if (subtractCents(this.#totals[from], amount) < 0) reasons.push('below-zero');",
+    "replace": "if (this.#totals[from] >= 0 && subtractCents(this.#totals[from], amount) < 0) reasons.push('below-zero');",
+    "why": "13.4 stop asking once a bucket is already below zero"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "if (subtractCents(this.#totals[from], amount) < 0) reasons.push('below-zero');",
+    "replace": "if (subtractCents(this.#totals[to], -amount) < 0) reasons.push('below-zero');",
+    "why": "13.4 check the bucket money goes into instead of the one it leaves"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "if (from === 'savings') reasons.push('out-of-savings');",
+    "replace": "",
+    "why": "13.4 move out of savings without asking"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "const toPay = card === 'everyday-card' ? statementBalance : minimumPayment;",
+    "replace": "const toPay = minimumPayment;",
+    "why": "9.3 stop everyday card reminders at the minimum again"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "if (paid >= toPay) return [];",
+    "replace": "if (paid >= minimumPayment) return [];",
+    "why": "9.3 stop everyday card reminders once the minimum is paid"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "if (paid >= toPay) return [];",
+    "replace": "if (paid + 1 >= toPay) return [];",
+    "why": "9.3 count one cent short as paid"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "const paid = addCents(0, ...seen.map((p) => p.amount));",
+    "replace": "const paid = Math.max(0, ...seen.map((p) => p.amount));",
+    "why": "9.3 count only the largest payment instead of adding them up"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "card === 'old-card' ? paid < minimumPayment : seen.length === 0",
+    "replace": "card === 'old-card' ? seen.length === 0 : seen.length === 0",
+    "why": "9.4 old card: let any payment end the overdue alert (as before A6)"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": ": seen.length === 0 && minimumPayment > 0;",
+    "replace": ": seen.length === 0;",
+    "why": "9.4 call an everyday card statement with no minimum overdue"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "card === 'old-card' ? paid < minimumPayment :",
+    "replace": "card === 'old-card' ? paid <= minimumPayment :",
+    "why": "9.4 old card: shift the overdue boundary by one cent"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": ": seen.length === 0 && minimumPayment > 0;",
+    "replace": ": paid < minimumPayment;",
+    "why": "9.4 everyday card: use the old card's rule before A6 is answered for it"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "if (currentTxn.kind !== 'transfer-arrived' || currentTxn.sentId !== undefined) {",
+    "replace": "if (true) {",
+    "why": "12.5 refuse a named landing when another was paired by guess"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (other !== undefined) this.#pair(other, displaced);\n",
+    "replace": "",
+    "why": "12.5 leave a displaced guessed landing unpaired when another payment fits"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (displaced !== undefined && partner !== undefined) this.#unpair(partner, displaced);\n",
+    "replace": "",
+    "why": "12.5 keep a stale guessed pairing after a named landing takes over"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "return transfer.kind === 'transfer-sent' ? transfer.amount : -transfer.amount;",
+    "replace": "return transfer.amount;",
+    "why": "12.5 add a setup-day landing to the starting money instead of taking it off"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/book.ts",
+    "find": "const travelling = copy.kind === 'transfer-sent' ? copy.amount : -copy.amount;",
+    "replace": "const travelling = copy.amount;",
+    "why": "12.5 count a setup-day landing as money still on its way"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (partner !== undefined) this.#pair(copy.kind === 'transfer-sent' ? copy.id : partner, copy.kind === 'transfer-sent' ? partner : copy.id);\n",
+    "replace": "",
+    "why": "12.5 leave both halves on setup day unpaired"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "const landed = p.landedOn === undefined ? p.date : p.landedOn;",
+    "replace": "const landed = p.date;",
+    "why": "9.3 place a payment by the day it left instead of the day it reached the card"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "const forThisStatement = landed === null || daysBetween(closingDate, landed) > 0;",
+    "replace": "const forThisStatement = landed !== null && daysBetween(closingDate, landed) > 0;",
+    "why": "9.3 ignore a payment still on its way"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/book.ts",
+    "find": "landedOn: partner === undefined ? null : this.#legTxn(partner).date",
+    "replace": "landedOn: null",
+    "why": "9.3 forget the day a payment reached the card"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "descriptions = [entry.txn.description, ...(entry.postedTxn === null ? [] : [entry.postedTxn.description])];",
+    "replace": "descriptions = [(entry.postedTxn ?? entry.txn).description];",
+    "why": "13.6 look only at the posted description"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "descriptions = [entry.txn.description, ...(entry.postedTxn === null ? [] : [entry.postedTxn.description])];",
+    "replace": "descriptions = [entry.txn.description];",
+    "why": "13.6 look only at the description it arrived with"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "return { sticks: findRule(this.#rules, newRule.for, descriptions[0] ?? '')?.id === added.id };",
+    "replace": "return { sticks: findRule(this.#rules, newRule.for, descriptions.at(-1) ?? '')?.id === added.id };",
+    "why": "13.6 judge whether the fix sticks by the posted description"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "    return rule?.id === ruleId ? rule : undefined;",
+    "replace": "    return rule;",
+    "why": "13.2 let any matching rule sort waiting items when a rule is added"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "        const rule = this.#firstMatchIfIt(ruleId, 'purchase', (entry.postedTxn ?? entry.txn).description);",
+    "replace": "        const rule = this.#firstMatchIfIt(ruleId, 'purchase', entry.txn.description.slice(0, 0));",
+    "why": "13.2 match waiting purchases against nothing"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "    try {\n      this.#setEffect(entry, effect);\n    } catch (error) {\n      this.#forget(entry.id);\n      throw error;\n    }",
+    "replace": "    this.#setEffect(entry, effect);",
+    "why": "0.1 keep an entry whose totals were refused as too large"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "    try {\n      this.#refreshSpending(entry);\n    } catch (error) {\n      this.#forget(entry.id);\n      throw error;\n    }\n  }\n\n  // Takes back",
+    "replace": "    this.#refreshSpending(entry);\n  }\n\n  // Takes back",
+    "why": "0.1 keep spending whose totals were refused as too large"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      Object.assign(entry, before, sortedBefore ?? {});\n",
+    "replace": "",
+    "why": "0.1 leave a refused posting half applied"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      Object.assign(target, before);\n      this.#forget(entry.id);",
+    "replace": "      this.#forget(entry.id);",
+    "why": "0.1 leave a refused refund on its purchase"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "        this.#remove(entry);\n        throw error;",
+    "replace": "        throw error;",
+    "why": "0.1 leave a deposit waiting after its rule was refused"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#remove(mom);\n",
+    "replace": "",
+    "why": "0.1 leave a refused mom payment on the reserve"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      // Too large to stay exact (0.1): it stays sorted the way it was.\n      Object.assign(entry, before);\n",
+    "replace": "",
+    "why": "0.1 leave a refused re-sort half applied"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#setEffect(entry, effect);\n    entry.sortedTo = choice.to;\n    entry.incomeSplit = incomeSplit;",
+    "replace": "    entry.sortedTo = choice.to;\n    entry.incomeSplit = incomeSplit;\n    this.#setEffect(entry, effect);",
+    "why": "0.1 mark money in as sorted before its totals are checked"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      Object.assign(this.#totals, saved.totals);\n",
+    "replace": "",
+    "why": "0.1 leave the totals as they were halfway when a change is refused"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      for (const entry of saved.entries) this.#entries.set(entry.id, entry);\n",
+    "replace": "",
+    "why": "0.1 lose every entry when a change is refused"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#entries.clear();\n      for (const entry of saved.entries)",
+    "replace": "      for (const entry of saved.entries)",
+    "why": "0.1 keep entries a refused change added"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      for (const id of saved.review) this.#review.add(id);\n",
+    "replace": "",
+    "why": "0.1 empty the review list when a change is refused"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#review.clear();\n      for (const id of saved.review)",
+    "replace": "      for (const id of saved.review)",
+    "why": "0.1 keep review items a refused change added"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#log.length = saved.log;\n",
+    "replace": "",
+    "why": "0.1 keep the change log line of a refused change"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#rules = saved.rules;\n",
+    "replace": "",
+    "why": "0.1 keep the rule of a refused change"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#periodSplit = saved.periodSplit;\n",
+    "replace": "",
+    "why": "0.1 keep the new split after a refused payday (13.1)"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      entries: [...this.#entries.values()].map((entry): Entry => ({ ...entry })),",
+    "replace": "      entries: [...this.#entries.values()],",
+    "why": "0.1 save the entries themselves instead of copies, so a refused change keeps its edits"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#atomically(() => {\n      this.#remove(entry);\n      this.#payday(txn);\n    });",
+    "replace": "    this.#remove(entry);\n    this.#payday(txn);",
+    "why": "0.1 make \"this is my paycheck\" outside the all-or-nothing guard"
+  }
+]

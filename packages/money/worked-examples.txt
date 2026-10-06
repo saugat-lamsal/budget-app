@@ -1,0 +1,526 @@
+WORKED EXAMPLES
+
+Made-up numbers, worked out step by step, so you can check the money math
+by hand. Every amount is in dollars and cents.
+
+Each example is also a test (packages/money/test/worked-examples.test.ts).
+The test reads the "Check:" line of every example straight from this file
+and compares it with what the app works out. If a number here is wrong, or
+the app disagrees with it, the test fails.
+
+Unless an example says otherwise, the settings are the starting ones from
+the rulebook: split 50% savings / 30% needs / 20% wants, mom reserve
+$1,500.00 a paycheck, capped at $3,000.00.
+
+Rounding: each share is rounded DOWN to the cent. Any cents left over from
+rounding go to savings (rule 3.3).
+
+
+========================================================================
+EXAMPLE 1. A normal paycheck (rules 3.2, 3.3)
+========================================================================
+
+Before payday: every bucket is at $0.00.
+
+Paycheck                                         2,345.67
+
+Step 1. The mom reserve comes off first.
+        Reserve is $0.00, cap is $3,000.00, so there is room.
+        To mom reserve                          -1,500.00
+        Rest to split                              845.67
+
+Step 2. Split the rest.
+        Savings 50% of 845.67 = 422.835  ->  422.83
+        Needs   30% of 845.67 = 253.701  ->  253.70
+        Wants   20% of 845.67 = 169.134  ->  169.13
+        Rounded shares add to 845.66, so 0.01 is left over.
+        The leftover 0.01 goes to savings: 422.83 + 0.01 = 422.84
+
+Step 3. Add it back up: 1,500.00 + 422.84 + 253.70 + 169.13 = 2,345.67
+        That is the paycheck exactly.
+
+Check: mom reserve 1,500.00 | savings 422.84 | needs 253.70 | wants 169.13
+
+
+========================================================================
+EXAMPLE 2. The mom reserve is close to its cap (rule 3.2)
+========================================================================
+
+Before payday: mom reserve $2,600.00. Everything else $0.00.
+
+Paycheck                                         3,000.00
+
+Step 1. The reserve takes $1,500.00 off the top, but only $400.00 fits
+        under the $3,000.00 cap (3,000.00 - 2,600.00 = 400.00).
+        To mom reserve                             400.00
+        Does not fit, goes to savings            1,100.00
+        Rest to split (3,000.00 - 1,500.00)      1,500.00
+
+Step 2. Split the rest.
+        Savings 50% of 1,500.00 =   750.00
+        Needs   30% of 1,500.00 =   450.00
+        Wants   20% of 1,500.00 =   300.00
+        No rounding needed.
+
+Step 3. Buckets after payday.
+        Mom reserve  2,600.00 + 400.00            = 3,000.00 (at the cap)
+        Savings      1,100.00 + 750.00            = 1,850.00
+        Needs                                         450.00
+        Wants                                         300.00
+        Paycheck check: 400.00 + 1,850.00 + 450.00 + 300.00 = 3,000.00
+
+Check: mom reserve 3,000.00 | savings 1,850.00 | needs 450.00 | wants 300.00
+
+
+========================================================================
+EXAMPLE 3. A paycheck smaller than the mom reserve (rule 3.2)
+========================================================================
+
+Before payday: mom reserve $2,000.00. Everything else $0.00.
+
+Paycheck                                         1,200.00
+
+Step 1. The reserve would take $1,500.00, but the paycheck is only
+        $1,200.00, so it can take at most $1,200.00.
+        Room under the cap: 3,000.00 - 2,000.00 = 1,000.00.
+        To mom reserve                           1,000.00
+        Does not fit, goes to savings              200.00
+        Rest to split                                0.00
+
+Step 2. Nothing is left to split. Needs and wants get $0.00.
+
+Check: mom reserve 3,000.00 | savings 200.00 | needs 0.00 | wants 0.00
+
+
+========================================================================
+EXAMPLE 4. Payday with money left over and an overspent bucket
+           (rules 3.2, 3.3, 3.4, 3.5, 3.8)
+========================================================================
+
+Before payday:
+        Savings 0.00 | Needs 85.20 | Wants -12.50 (overspent) |
+        Mom reserve 3,000.00 (at the cap)
+        The savings account at the bank holds 3,000.00.
+        Leftover setting: ask each time.
+
+Paycheck                                         2,800.00
+
+Step 1. Leftovers from the period that just ended.
+        Needs has 85.20 unspent, so the app asks: roll over or move?
+        Wants is at -12.50. It carries over as a negative. Nothing to ask.
+
+Step 2. The reserve is at its cap, so the whole 1,500.00 goes to
+        savings instead.
+        Rest to split: 2,800.00 - 1,500.00 = 1,300.00
+        Savings 50% = 650.00 | Needs 30% = 390.00 | Wants 20% = 260.00
+
+Step 3. Buckets after payday, before you answer.
+        Savings  1,500.00 + 650.00 = 2,150.00
+        Needs       85.20 + 390.00 =   475.20
+        Wants      -12.50 + 260.00 =   247.50
+        Mom reserve                  3,000.00
+
+Step 4. You answer "move to savings" for needs. The 85.20 moves.
+        Needs    475.20 - 85.20 =   390.00
+        Savings  2,150.00 + 85.20 = 2,235.20
+
+Step 5. How much should be in the savings account (rule 3.8)?
+        Savings + mom reserve = 2,235.20 + 3,000.00 = 5,235.20
+        The account holds 3,000.00, so you still need to move 2,235.20.
+
+Check: mom reserve 3,000.00 | savings 2,235.20 | needs 390.00 | wants 247.50 | still to move 2,235.20
+
+
+========================================================================
+EXAMPLE 5. A week of spending (rules 4.1 to 4.8)
+========================================================================
+
+Your rules: anything with "GROCER" goes to needs, "CAFE" goes to wants.
+Before: Needs 750.00 | Wants 500.00
+
+Step 1. Dinner at MADE UP CAFE shows up pending for 40.00.
+        It counts right away (4.1, 4.6). The CAFE rule picks wants.
+        Wants  500.00 - 40.00 = 460.00
+
+Step 2. The dinner posts at 48.00 (you added a tip).
+        The posted charge replaces the pending one (4.6). Only the
+        8.00 difference comes out.
+        Wants  460.00 - 8.00 = 452.00
+
+Step 3. 120.00 at MADE UP HARDWARE. No rule matches, so it is unsorted
+        and waits in review (4.2, 4.3).
+        Unsorted spending 120.00
+        You split it: 100.00 to needs, 20.00 to wants (4.4).
+        The parts add up to 120.00, so the split is accepted.
+        Needs  750.00 - 100.00 = 650.00
+        Wants  452.00 -  20.00 = 432.00
+        Unsorted spending  0.00
+
+Step 4. Lunch at MADE UP CAFE for 35.00, then refunded in full.
+        Wants  432.00 - 35.00 = 397.00
+        The refund goes back where the lunch came from (4.5).
+        Wants  397.00 + 35.00 = 432.00
+
+Step 5. A 29.00 late fee on the everyday card goes to review, with needs
+        suggested (4.8). You pick needs.
+        Needs  650.00 - 29.00 = 621.00
+
+Check: needs 621.00 | wants 432.00 | unsorted spending 0.00
+
+
+========================================================================
+EXAMPLE 6. Card payments and the old card (rules 5.1 to 5.5, 3.8)
+========================================================================
+
+Before: Savings 1,000.00 | Needs 900.00 | Mom reserve 500.00
+        Old card debt 3,000.00
+        The savings account at the bank holds 900.00.
+
+Step 1. You pay the everyday card 450.00 from checking.
+        Not spending: the purchases were already counted (5.1).
+        No bucket changes.
+
+Step 2. You move 600.00 from checking to savings (5.3).
+        No bucket changes. Only "still to move" changes (3.8):
+        Should be in savings: 1,000.00 + 500.00 = 1,500.00
+        Savings account now: 900.00 + 600.00   = 1,500.00
+        Still to move: 1,500.00 - 1,500.00     =     0.00
+
+Step 3. You pay the old card 200.00 from checking (5.2).
+        It comes out of needs, on a debt payoff line.
+        Needs  900.00 - 200.00     =   700.00
+        Debt   3,000.00 - 200.00   = 2,800.00
+
+Step 4. The old card charges 35.50 interest (5.5).
+        Debt goes up. No bucket changes until you pay it.
+        Debt   2,800.00 + 35.50    = 2,835.50
+
+Step 5. A forgotten subscription charges 12.99 on the old card (5.4).
+        It is flagged in review. Debt goes up, no bucket changes.
+        Debt   2,835.50 + 12.99    = 2,848.49
+
+Check: savings 1,000.00 | needs 700.00 | mom reserve 500.00 | old card debt 2,848.49 | still to move 0.00
+
+
+========================================================================
+EXAMPLE 7. Money in that is not a paycheck (rules 6.1, 3.3)
+========================================================================
+
+Before: Mom reserve 2,800.00. Everything else 0.00.
+
+Step 1. A 2,000.01 tax refund arrives. It is not a paycheck, so it waits
+        in review as unsorted money in (6.1). You pick "other income", so
+        it is split by the percentages only. No mom reserve is taken: the
+        reserve comes only from paychecks.
+        Savings 50% = 1,000.00 (1,000.005 rounded down)
+        Needs   30% =   600.00 (600.003 rounded down)
+        Wants   20% =   400.00 (400.002 rounded down)
+        Left over from rounding: 2,000.01 - 2,000.00 = 0.01, to savings
+        Savings 1,000.00 + 0.01 = 1,000.01
+        Mom reserve stays 2,800.00
+
+Step 2. A friend pays you back 25.00 for lunch. You pick "payback" into
+        wants.
+        Wants  400.00 + 25.00 = 425.00
+
+Step 3. Your roommate sends 60.00 for a utility bill you will pay for
+        them. You pick "not mine", so it goes to held for others (7.1).
+        Held for others 60.00
+
+Nothing is left waiting in review.
+
+Check: mom reserve 2,800.00 | savings 1,000.01 | needs 600.00 | wants 425.00 | held for others 60.00 | unsorted money in 0.00
+
+
+========================================================================
+EXAMPLE 8. Other people's money (rules 7.1 to 7.5)
+========================================================================
+
+Before: Wants 200.00 | Held for others 0.00
+
+Step 1. Your roommate sends you 90.00 for their part of a bill. You mark
+        it "not mine" (7.1). It is not income and is not split.
+        Held for others  0.00 + 90.00 = 90.00
+
+Step 2. You send that 90.00 on to the landlord, and mark it "not mine"
+        (7.2). It is not spending.
+        Held for others 90.00 - 90.00 = 0.00   (back to zero, 7.3)
+
+Step 3. You pay 45.00 for a friend's concert ticket and sort it to wants.
+        Wants  200.00 - 45.00 = 155.00
+
+Step 4. The friend pays you back 45.00. A payback goes into the bucket you
+        pick (7.5, 6.1). You pick wants.
+        Wants  155.00 + 45.00 = 200.00
+
+Step 5. You pay 30.00 for a neighbor's package and mark it "not mine".
+        Held for others  0.00 - 30.00 = -30.00
+        Negative means someone owes you (7.3): the neighbor owes 30.00.
+
+Check: wants 200.00 | held for others -30.00 | unsorted spending 0.00
+
+
+========================================================================
+EXAMPLE 9. A month of mom payments (rules 8.1 to 8.4, 3.2)
+========================================================================
+
+Before: Mom reserve 1,500.00 | Needs 600.00. Everything else 0.00.
+        Leftover setting: always roll over. Mom target: 2,000.00 to
+        3,000.00 a month.
+
+Step 1. Oct 3: you send mom 1,000.00. It matches the mom rule, so it
+        comes out of the reserve (8.1).
+        Mom reserve  1,500.00 - 1,000.00 = 500.00
+
+Step 2. Oct 9: a 4,000.00 paycheck.
+        Room under the cap: 3,000.00 - 500.00 = 2,500.00, so the full
+        1,500.00 fits.
+        Mom reserve  500.00 + 1,500.00 = 2,000.00
+        Rest to split: 4,000.00 - 1,500.00 = 2,500.00
+        Savings 50% = 1,250.00 | Needs 30% = 750.00 | Wants 20% = 500.00
+        Needs  600.00 + 750.00 = 1,350.00
+
+Step 3. Oct 20: you send mom 2,500.00. The reserve only has 2,000.00
+        (8.3). It covers 2,000.00 and goes to 0.00. The other 500.00
+        waits in review, and you pick needs.
+        Needs  1,350.00 - 500.00 = 850.00
+
+Step 4. Sent to mom in October (8.2): 1,000.00 + 2,500.00 = 3,500.00,
+        against a target of 2,000.00 to 3,000.00. The reserve carries
+        into November at 0.00 (8.4).
+
+Check: mom reserve 0.00 | savings 1,250.00 | needs 850.00 | wants 500.00 | sent this month 3,500.00
+
+
+========================================================================
+EXAMPLE 10. Safe to spend (rules 11.1 to 11.3)
+========================================================================
+
+Today is Oct 14. The last paycheck came Oct 9.
+Buckets: Savings 2,000.00 | Needs 500.00 | Wants 300.00 |
+         Mom reserve 1,500.00 | Held for others 60.00
+Waiting in review: a 45.00 purchase with no rule (unsorted spending), and
+a 200.00 deposit you have not sorted yet (unsorted money in).
+
+Step 1. Safe to spend = wants left - unsorted spending (11.1)
+                      = 300.00 - 45.00 = 255.00
+        Needs, savings, the mom reserve, held for others, and the 200.00
+        waiting in review are not part of it (11.3).
+
+Step 2. Days to the next payday (11.2): Oct 9 + 14 days = Oct 23.
+        Oct 14 to Oct 23 is 9 days.
+
+Check: safe to spend 255.00 | unsorted spending 45.00 | unsorted money in 200.00
+
+
+========================================================================
+EXAMPLE 11. The daily self-check (rules 12.1 to 12.4, 0.5)
+========================================================================
+
+The app's buckets (same as example 10):
+        Savings 2,000.00 | Needs 500.00 | Wants 300.00 |
+        Mom reserve 1,500.00 | Held for others 60.00
+        Unsorted money in 200.00 (a deposit waiting in review)
+        Unsorted spending 45.00 (a pending card purchase waiting in review)
+The bank:
+        Checking 1,200.00 | Savings 3,500.00
+        Everyday card owes 140.00 posted, plus the 45.00 pending charge
+        Old card owes 2,900.00
+
+Step 1. App side (12.2):
+        2,000.00 + 500.00 + 300.00 + 1,500.00 + 60.00   = 4,360.00
+        + unsorted money in 200.00                       = 4,560.00
+        - unsorted spending 45.00                        = 4,515.00
+
+Step 2. Bank side (12.1), including the pending charge:
+        Everyday card: 140.00 + 45.00 = 185.00
+        1,200.00 + 3,500.00 - 185.00                     = 4,515.00
+        The old card's 2,900.00 is not part of it (12.4).
+
+Step 3. They are equal (12.3). Difference 0.00. Safe to spend is shown:
+        300.00 - 45.00 = 255.00 (example 10).
+
+Step 4. Next day the bank shows a 10.00 fee in checking that the app has
+        not received yet. Checking is now 1,190.00.
+        Bank side: 1,190.00 + 3,500.00 - 185.00 = 4,505.00
+        Difference: 4,505.00 - 4,515.00 = -10.00
+        The app warns that the totals do not match, by -10.00, and shows
+        no safe-to-spend number until they do (0.5).
+
+Check: app side 4,515.00 | bank side 4,515.00 | difference 0.00 | difference after the fee -10.00
+
+
+========================================================================
+EXAMPLE 12. Changing things part way through a pay period
+            (rules 13.1, 13.3, 13.4, 13.5, 0.3)
+========================================================================
+
+Before: Savings 1,000.00 | Needs 400.00 | Wants 250.00 | Mom reserve 0.00
+        Split 50/30/20. Leftover setting: always roll over.
+
+Step 1. Oct 12: you change the split to 60% savings / 25% needs /
+        15% wants. Nothing moves now. It applies from the next paycheck
+        (13.1), and the current pay period is not redone (0.3).
+
+Step 2. Oct 13: you move 100.00 from wants to needs by hand (13.3).
+        Needs 400.00 + 100.00 = 500.00 | Wants 250.00 - 100.00 = 150.00
+
+Step 3. Oct 14: you move 200.00 from savings to wants. The app asks you
+        to confirm first (13.4). You confirm.
+        Savings 1,000.00 - 200.00 = 800.00 | Wants 150.00 + 200.00 = 350.00
+
+Step 4. Oct 23: a 3,000.00 paycheck, split the new way.
+        Mom reserve 1,500.00 (it was empty, so all of it fits)
+        Rest 1,500.00: Savings 60% = 900.00 | Needs 25% = 375.00 |
+                       Wants 15% = 225.00
+        Savings 800.00 + 900.00 = 1,700.00
+        Needs   500.00 + 375.00 =   875.00
+        Wants   350.00 + 225.00 =   575.00
+
+Step 5. The change log (13.5) has three lines: the split change (Oct 12)
+        and the two moves (Oct 13, Oct 14).
+
+Check: mom reserve 1,500.00 | savings 1,700.00 | needs 875.00 | wants 575.00
+
+
+========================================================================
+EXAMPLE 13. Setup day (rules 14.1 to 14.3, 12.1, 12.4)
+========================================================================
+
+Step 1. The app reads your balances (14.1):
+        Checking 2,500.00 | Savings 4,000.00
+        Everyday card owes 300.00, plus a 45.00 charge still pending
+        Old card owes 2,900.00
+
+Step 2. Starting money (14.2), with the pending charge included (12.1):
+        Everyday card: 300.00 + 45.00 = 345.00
+        2,500.00 + 4,000.00 - 345.00 = 6,155.00
+        The old card is not part of it. Its 2,900.00 becomes the debt
+        (12.4).
+
+Step 3. First try, you assign:
+        Savings 4,000.00 | Needs 1,000.00 | Wants 500.00 |
+        Mom reserve 600.00 | Held for others 50.00
+        That adds up to 6,150.00, so 5.00 is left to assign. The
+        self-check would fail, so tracking does not start (14.3).
+
+Step 4. You put held for others at 55.00 instead. Now it adds up to
+        6,155.00 exactly, and tracking starts.
+
+Step 5. The 45.00 pending charge posts at 52.00 (you added a tip). The
+        45.00 was already taken out of the starting money, so only the
+        7.00 difference waits in review. You pick wants.
+        Wants  500.00 - 7.00 = 493.00
+
+Check: savings 4,000.00 | needs 1,000.00 | wants 493.00 | mom reserve 600.00 | held for others 55.00 | old card debt 2,900.00 | left to assign on the first try 5.00
+
+
+========================================================================
+EXAMPLE 14. A card payment on its way (rules 12.5, 5.1, 5.2, 0.5)
+========================================================================
+
+Buckets: Savings 2,000.00 | Needs 500.00 | Wants 300.00 |
+         Mom reserve 1,500.00
+         App side: 2,000.00 + 500.00 + 300.00 + 1,500.00 = 4,300.00
+The bank: Checking 1,800.00 | Savings 3,500.00 | Everyday card owes
+          1,000.00 | Old card owes 2,000.00
+          Bank side: 1,800.00 + 3,500.00 - 1,000.00 = 4,300.00
+
+Step 1. Oct 12: you pay the everyday card 600.00 and the old card 150.00.
+        Both leave checking today; neither has reached its card yet.
+        Checking 1,800.00 - 600.00 - 150.00 = 1,050.00
+        The everyday card payment changes no bucket (5.1).
+        The old card payment is spending: it comes out of needs now
+        (5.2).  Needs 500.00 - 150.00 = 350.00
+        The old card debt stays at 2,000.00 until the money lands.
+
+Step 2. The self-check on Oct 12:
+        Bank side: 1,050.00 + 3,500.00 - 1,000.00     = 3,550.00
+        In transit: the 600.00 on its way to the everyday card.
+        The 150.00 for the old card is not counted: the old card is not
+        part of the check (12.4), and needs already took it.
+        Bank side + in transit: 3,550.00 + 600.00     = 4,150.00
+        App side: 2,000.00 + 350.00 + 300.00 + 1,500.00 = 4,150.00
+        Difference 0.00, so safe to spend is still shown (0.5): 300.00.
+
+Step 3. Oct 14: both payments land.
+        Everyday card owes 1,000.00 - 600.00 = 400.00
+        Old card debt 2,000.00 - 150.00 = 1,850.00
+        Bank side: 1,050.00 + 3,500.00 - 400.00 = 4,150.00
+        Nothing in transit. Difference 0.00.
+
+Check: in transit while on its way 600.00 | difference while on its way 0.00 | difference after it lands 0.00 | needs 350.00 | old card debt 1,850.00 | safe to spend 300.00
+
+
+========================================================================
+EXAMPLE 15. A paycheck the app did not recognize (rules 6.1, 3.1 to 3.4, 3.7, 11.2)
+========================================================================
+
+Before: Savings 500.00 | Needs 200.00 | Wants 100.00 |
+        Mom reserve 1,000.00
+        Last paycheck Sep 25. Leftover at payday: ask each time.
+
+Step 1. Oct 2: 2,000.00 arrives from "MADE UP NEW EMPLOYER", your first
+        paycheck from a new job. It does not match the paycheck rule, so
+        it waits in review (6.1). You pick "this is my paycheck".
+        A new pay period starts on Oct 2 (3.1). Needs has 200.00 left
+        and wants has 100.00 left, so the app asks about each (3.4).
+        Until you answer, the money stays where it is.
+        The reserve comes off first: 1,500.00. There is room for it
+        under the cap (3,000.00 - 1,000.00 = 2,000.00).
+        Mom reserve 1,000.00 + 1,500.00 = 2,500.00
+        Rest to split (2,000.00 - 1,500.00)       500.00
+        Savings 50% = 250.00 | Needs 30% = 150.00 | Wants 20% = 100.00
+        Savings 500.00 + 250.00 = 750.00
+        Needs   200.00 + 150.00 = 350.00
+        Wants   100.00 + 100.00 = 200.00
+        The pay schedule now counts from Oct 2: next payday Oct 16
+        (11.2).
+
+Step 2. You answer the leftover questions: needs rolls over, and the
+        100.00 left in wants moves to savings.
+        Wants   200.00 - 100.00 = 100.00
+        Savings 750.00 + 100.00 = 850.00
+
+Step 3. Oct 6: 300.00 arrives from "ACME PAYROLL". It matches the
+        paycheck rule, but it is only 4 days after the Oct 2 paycheck,
+        so it goes to review instead of splitting (3.7). It is a signing
+        bonus, so you pick "other income": split only, no reserve, and
+        the pay schedule stays as it is.
+        Savings 50% = 150.00 | Needs 30% = 90.00 | Wants 20% = 60.00
+        Savings 850.00 + 150.00 = 1,000.00
+        Needs   350.00 +  90.00 =   440.00
+        Wants   100.00 +  60.00 =   160.00
+        Next payday is still Oct 16.
+
+Check: savings 1,000.00 | needs 440.00 | wants 160.00 | mom reserve 2,500.00 | unsorted money in 0.00
+
+
+========================================================================
+EXAMPLE 16. Low and empty bucket alerts (rules 10.1, 10.2, 3.4, 3.5)
+========================================================================
+
+Before: Needs 50.00 left from last pay period | Wants -20.00 (overspent)
+        Leftover at payday: always roll over. Low-bucket alert: 20%.
+
+Step 1. A 4,000.00 paycheck. Reserve 1,500.00, rest 2,500.00:
+        Savings 1,250.00 | Needs 750.00 | Wants 500.00
+        Needs   50.00 + 750.00 = 800.00 (the 50.00 rolled over)
+        Wants  -20.00 + 500.00 = 480.00 (the overspending carried over)
+        That is what each bucket started this pay period with (10.1).
+        Needs alert level: 20% of 800.00 = 160.00
+        Wants alert level: 20% of 480.00 =  96.00
+
+Step 2. Groceries 640.00 from needs. Needs 800.00 - 640.00 = 160.00.
+        Exactly at the level is not below it, so no alert.
+
+Step 3. A 0.01 charge from needs. Needs 159.99, below 160.00: the low
+        alert for needs. It comes once this pay period.
+
+Step 4. Concert tickets 385.00 from wants. Wants 480.00 - 385.00 = 95.00,
+        below 96.00: the low alert for wants.
+
+Step 5. Dinner 95.00 from wants. Wants 0.00: the empty alert for wants
+        (10.2). At zero the empty alert covers it; no second low alert.
+
+Check: needs 159.99 | wants 0.00 | needs started with 800.00 | wants started with 480.00 | needs low alert at 159.99 | wants low alert at 95.00 | wants empty alert at 0.00
