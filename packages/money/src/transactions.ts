@@ -103,13 +103,23 @@ export interface TransferArrived {
   readonly sentId?: string;
 }
 
-export type BankTransaction = Deposit | Purchase | Refund | CardCharge | PersonPayment | Transfer | TransferSent | TransferArrived;
+// A pending charge the bank dropped without posting it, such as a gas station
+// or hotel hold that falls off (QUESTIONS.md A2). pendingId names the charge.
+export interface PendingDropped {
+  readonly kind: 'pending-dropped';
+  readonly id: string;
+  readonly pendingId: string;
+  readonly date: IsoDate;
+  readonly description: string;
+}
+
+export type BankTransaction = Deposit | Purchase | Refund | CardCharge | PersonPayment | Transfer | TransferSent | TransferArrived | PendingDropped;
 
 type BetweenAccounts = 'transfer' | 'transfer-sent' | 'transfer-arrived';
 
 const BETWEEN_ACCOUNTS: readonly string[] = ['transfer', 'transfer-sent', 'transfer-arrived'];
 
-const ACCOUNTS_FOR: Record<Exclude<BankTransaction['kind'], BetweenAccounts>, readonly string[]> = {
+const ACCOUNTS_FOR: Record<Exclude<BankTransaction['kind'], BetweenAccounts | 'pending-dropped'>, readonly string[]> = {
   deposit: ['checking', 'savings'],
   purchase: ['checking', 'everyday-card', 'old-card'],
   refund: ['checking', 'everyday-card', 'old-card'],
@@ -125,9 +135,15 @@ export function checkTransaction(txn: BankTransaction): void {
   };
   const isId = (id: unknown): boolean => typeof id === 'string' && id !== '' && !id.includes(':');
   if (typeof txn !== 'object' || txn === null) bad('not a transaction');
-  if (!(txn.kind in ACCOUNTS_FOR) && !BETWEEN_ACCOUNTS.includes(txn.kind)) bad('unknown kind');
+  if (!(txn.kind in ACCOUNTS_FOR) && !BETWEEN_ACCOUNTS.includes(txn.kind) && txn.kind !== 'pending-dropped') bad('unknown kind');
   if (!isId(txn.id)) bad('id must be non-empty text without ":"');
   if (typeof txn.description !== 'string') bad('description must be text');
+  if (txn.kind === 'pending-dropped') {
+    // No account or amount of its own: they are the pending charge's.
+    if (!isId(txn.pendingId)) bad('pendingId must be a transaction id');
+    assertIsoDate(txn.date, 'transaction date');
+    return;
+  }
   if (txn.kind === 'transfer' || txn.kind === 'transfer-sent' || txn.kind === 'transfer-arrived') {
     if (txn.from !== 'checking' && txn.from !== 'savings') bad('a transfer comes from checking or savings');
     if (!ACCOUNTS.includes(txn.to) || txn.to === txn.from) bad('a transfer goes to one of your other accounts');

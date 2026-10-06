@@ -7,6 +7,7 @@ import {
   type Cents,
   type Deposit,
   type IsoDate,
+  type PendingDropped,
   type PersonPayment,
   type Purchase,
   type Refund,
@@ -100,6 +101,13 @@ export class SimBank {
     this.#pending.delete(pendingId);
     this.#owe(hold.account, amount);
     return this.#add({ kind: 'purchase', id: this.#id('p'), account: hold.account, date, amount, description: hold.description, pending: false, pendingId });
+  }
+
+  // The bank drops a pending charge without posting it, such as a gas pump
+  // hold that falls off (QUESTIONS.md A2).
+  drop(pendingId: string, date: IsoDate): PendingDropped {
+    if (!this.#pending.delete(pendingId)) throw new Error(`the bank has no pending charge ${pendingId}`);
+    return this.#add({ kind: 'pending-dropped', id: this.#id('x'), pendingId, date, description: 'HOLD RELEASED' });
   }
 
   // A charge that posts straight away, with no pending stage.

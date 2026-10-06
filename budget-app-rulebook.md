@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 7)
+# Budget App Rulebook (draft 8)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -69,6 +69,8 @@ number so a test can point at it. Nothing gets coded until you approve this.
 4.1  A purchase on the debit card or the everyday card comes out of a bucket
      on the day of the purchase.
 4.2  The bucket is picked by your rules. No matching rule means "unsorted".
+     Spending goes to needs or wants only; to pay for something out of
+     savings, move the money by hand (13.3).
 4.3  Unsorted spending is held back from safe-to-spend until you sort it.
 4.4  A purchase can be split across buckets. The parts must add up to the
      total.
@@ -77,7 +79,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
      a partial one sends the purchase back to review to be split again. If
      the app cannot match a refund to a purchase, it goes to review.
 4.6  A pending charge counts once. When it posts, the final charge replaces
-     the pending one, even if the amount changed (a tip, for example).
+     the pending one, even if the amount changed (a tip, for example). If
+     the bank drops a pending charge without posting it (a hold that falls
+     off), it is removed and the money goes back to where it came from.
 4.7  Re-sorting a purchase updates the buckets right away.
 4.8  Fees and interest on the everyday card go to review. Suggested bucket:
      needs.
@@ -88,7 +92,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
 5.1  Checking to everyday card: not spending. The purchases were already
      counted under 4.1.
 5.2  Checking to old card: spending. It comes out of needs, on a "debt
-     payoff" line.
+     payoff" line. From savings, it waits in review and comes out of the
+     savings bucket once you confirm it, or out of needs if you pick that
+     instead.
 5.3  Checking to savings, or savings to checking: no bucket changes. The app
      only updates how much still needs to be moved (3.8).
 5.4  A new purchase on the old card is flagged and sent to review. Like
@@ -221,7 +227,11 @@ number so a test can point at it. Nothing gets coded until you approve this.
 13.1  A change to the split or the mom reserve applies from the next
       paycheck.
 13.2  A new or changed sorting rule applies to new and unsorted transactions.
-      Already-sorted ones stay put unless you re-sort them.
+      Already-sorted ones stay put unless you re-sort them. Setting the
+      paycheck rule or the mom rule does the same with what is waiting: a
+      deposit that matches the paycheck rule becomes a paycheck, still with
+      the 10-day check (3.7), and a payment that matches the mom rule comes
+      out of the mom reserve (8.1).
 13.3  You can move money between buckets by hand at any time.
 13.4  Moving money out of savings or the mom reserve asks you to confirm
       first. So does any move that would leave the bucket it comes out of
@@ -240,7 +250,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
 14.1  The app reads your current balances.
 14.2  You assign the starting money (checking + savings - everyday card
       balance) across savings, needs, wants, mom reserve, and held for
-      others.
+      others. Charges still pending that day are part of the starting
+      money. If one later posts at a different amount, is refunded, or is
+      dropped, only the difference waits in review.
 14.3  The self-check must pass before tracking starts.
 
 
@@ -310,6 +322,15 @@ i.  A bucket at zero or below at payday: nothing is asked and nothing
     moves. It carries over, and the new share is added on top (3.5).
 j.  The self-check difference is the bank side (plus money in transit)
     minus the app side (12.3).
+k.  A pending charge the bank drops without posting it is removed, and its
+    money goes back where it came from (4.6, QUESTIONS.md A2).
+l.  Spending goes to needs or wants only (4.2, A3).
+m.  A payment to the old card from savings comes out of the savings bucket
+    once you confirm it, or out of needs if you pick that (5.2, A4).
+n.  Setting the paycheck rule or the mom rule also checks what is waiting
+    in review (13.2, A9).
+o.  A charge pending on setup day: only a later difference waits in review
+    (14.2, A10).
 
 
 ## 19. Readings from QUESTIONS.md part B, now in the rules (Oct 6, 2026)

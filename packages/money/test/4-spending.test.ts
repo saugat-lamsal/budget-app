@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SortingRule } from '../src/index.js';
-import { cardCharge, codeOf, deposit, openTestBook, paycheck, posted, purchase, refund, type TestBookOptions } from './helpers.js';
+import { TestBank, appSide, cardCharge, codeOf, deposit, dropped, openTestBook, paycheck, posted, purchase, refund, type TestBookOptions } from './helpers.js';
 
 const RULES: SortingRule[] = [
   { id: 'grocer', for: 'purchase', contains: 'GROCER', bucket: 'needs' },
@@ -257,6 +257,63 @@ describe('4.5 a refund goes back to the bucket the purchase came from', () => {
     b.receive(purchase('e1', '2026-10-03', 3_500, 'MADE UP CAFE'));
     expect(b.receive(refund('r1', '2026-10-06', 3_500, 'e1', 'checking')).outcome).toBe('sorted');
     expect(b.pots().wants).toBe(50_000);
+  });
+});
+
+describe('4.6 a pending charge the bank drops without posting (QUESTIONS.md A2)', () => {
+  it('4.6 a dropped charge is removed, and its money goes back to its bucket', () => {
+    const b = book();
+    b.receive(purchase('h1', '2026-10-03', 10_000, 'MADE UP GROCER', { pending: true }));
+    expect(b.pots().needs).toBe(90_000);
+    expect(b.receive(dropped('d1', 'h1', '2026-10-05')).outcome).toBe('dropped');
+    expect(b.pots()).toMatchObject({ needs: 100_000, unsortedOut: 0 });
+    expect(b.purchases().find((p) => p.id === 'h1')).toMatchObject({ amount: 0, pending: false, sortedTo: { to: 'needs' } });
+  });
+
+  it('4.6 a dropped charge that was waiting in review leaves review', () => {
+    const b = book();
+    b.receive(purchase('h1', '2026-10-03', 10_000, 'MADE UP HOTEL', { pending: true }));
+    expect(b.pots().unsortedOut).toBe(10_000);
+    b.receive(dropped('d1', 'h1', '2026-10-05'));
+    expect(b.pots()).toMatchObject({ needs: 100_000, wants: 50_000, unsortedOut: 0 });
+    expect(b.reviewItems()).toEqual([]);
+  });
+
+  it('4.6 a dropped split purchase gives each bucket its part back', () => {
+    const b = book();
+    b.receive(purchase('h1', '2026-10-03', 10_000, 'MADE UP HOTEL', { pending: true }));
+    b.sort('h1', { split: [{ bucket: 'needs', amount: 6_000 }, { bucket: 'wants', amount: 4_000 }] }, '2026-10-03');
+    b.receive(dropped('d1', 'h1', '2026-10-05'));
+    expect(b.pots()).toMatchObject({ needs: 100_000, wants: 50_000, unsortedOut: 0 });
+    expect(b.reviewItems()).toEqual([]);
+  });
+
+  it('4.6 the same drop sent twice counts once', () => {
+    const b = book();
+    b.receive(purchase('h1', '2026-10-03', 10_000, 'MADE UP GROCER', { pending: true }));
+    b.receive(dropped('d1', 'h1', '2026-10-05'));
+    expect(b.receive(dropped('d1', 'h1', '2026-10-05')).outcome).toBe('duplicate');
+    expect(b.pots().needs).toBe(100_000);
+  });
+
+  it('4.6 only a pending charge can be dropped; anything else is refused and nothing changes', () => {
+    const b = book();
+    b.receive(purchase('p1', '2026-10-03', 4_000, 'MADE UP CAFE'));
+    const before = b.pots();
+    expect(codeOf(() => b.receive(dropped('d1', 'p1', '2026-10-05')))).toBe('not-pending');
+    expect(codeOf(() => b.receive(dropped('d2', 'nothing', '2026-10-05')))).toBe('not-pending');
+    expect(codeOf(() => b.receive({ ...dropped('d3', 'p1', '2026-10-05'), pendingId: 'a:b' }))).toBe('bad-transaction');
+    expect(b.pots()).toEqual(before);
+  });
+
+  it('4.6 after a drop, the bank and the book still match (12.1)', () => {
+    const b = book();
+    const bank = new TestBank({ checking: 300_000, savings: 0, everydayCard: 150_000 });
+    for (const txn of [purchase('h1', '2026-10-03', 10_000, 'MADE UP GROCER', { pending: true }), dropped('d1', 'h1', '2026-10-05')]) {
+      b.receive(txn);
+      bank.apply(txn);
+    }
+    expect(appSide(b.pots())).toBe(bank.side());
   });
 });
 

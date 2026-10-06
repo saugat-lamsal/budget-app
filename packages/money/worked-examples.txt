@@ -549,3 +549,23 @@ Step 3. On Jan 2, with the promo ended Jan 1, no paydays are left, so all
         3,000.00 is due now.
 
 Check: per payday 428.58 | last payment 428.52 | with the end on a payday 500.00 | with no paydays left 3,000.00
+
+
+========================================================================
+EXAMPLE 18. A gas pump hold that drops off (rules 4.1, 4.6; A2)
+========================================================================
+
+Before: Needs 500.00. A rule sends "MADE UP GAS" to needs.
+
+Step 1. The pump holds 100.00 while you fill up. The hold shows as
+        pending and comes out of needs on the day (4.1, 4.6).
+        Needs 500.00 - 100.00 = 400.00
+
+Step 2. Two days later the bank drops the hold without posting it, and
+        the real charge, 42.17, posts on its own.
+        The hold is removed and its 100.00 goes back to needs:
+        Needs 400.00 + 100.00 = 500.00
+        The real charge comes out of needs:
+        Needs 500.00 - 42.17 = 457.83
+
+Check: needs 457.83 | unsorted spending 0.00

@@ -21,37 +21,20 @@ A1. ANSWERED Oct 6, built. A refund on a split purchase, or a split
     purchase that posts at a different amount also goes back to review, as
     before. Rulebook 4.5 and 18g updated.
 
-A2. A pending charge that disappears without posting (4.6).
-    Gas stations and hotels often put a hold that drops off later. The
-    rulebook covers a pending charge posting, not one vanishing.
-    Now: not built. There is no way yet to tell the app a pending charge
-    was cancelled, so the bucket would stay lower than the bank.
-    Option 1: the charge is removed and the money goes back to the bucket
-    it came from.
-    Option 2: the money goes to review.
-    Recommendation: option 1. It is what actually happened.
+A2. ANSWERED Oct 6, built. A pending charge that disappears without
+    posting (4.6). Your answer, the recommendation: the charge is removed
+    and its money goes back to where it came from. The bank connection
+    reports it as a dropped charge. Rulebook 4.6 and 18k. Worked example 18.
 
-A3. Can spending be sorted straight to savings or the mom reserve?
-    (4.2, 4.4)
-    Now: spending goes to needs or wants only. To pay for something out of
-    savings, sort it to needs, then move money from savings to needs by
-    hand (13.3), which asks you to confirm (13.4).
-    Option 1 (now): needs or wants only.
-    Option 2: allow savings and the mom reserve too, with the same confirm
-    as 13.4.
-    Recommendation: option 1. It keeps the confirm step for savings.
+A3. ANSWERED Oct 6. Spending to savings or the mom reserve (4.2, 4.4).
+    Your answer, the recommendation: needs or wants only, as built. To
+    pay for something out of savings, move the money by hand (13.3).
+    Rulebook 4.2 and 18l.
 
-A4. A payment to the old card from savings instead of checking (5.2).
-    5.2 covers checking to the old card. From savings, which bucket pays?
-    Now: the debt goes down right away, and the payment waits in review
-    as unsorted spending until you pick needs or wants.
-    Option 1: needs, same as from checking. "Still to move" (3.8) would
-    then go up, because the money left the savings account but not the
-    savings bucket.
-    Option 2: the savings bucket, since that is where the money came from.
-    Asks you to confirm, like 13.4.
-    Option 3 (now): review each time.
-    Recommendation: option 2.
+A4. ANSWERED Oct 6, built. A payment to the old card from savings (5.2).
+    Your answer: it comes out of the savings bucket once you confirm it,
+    and when it asks you can pick needs instead. It waits in review with
+    savings suggested. Rulebook 5.2 and 18m.
 
 A5. ANSWERED Oct 6, built. Does "income" from review start a new pay
     period? (6.1 with 3.1, 3.7)
@@ -87,31 +70,18 @@ A8. ANSWERED Oct 6, built. Low bucket alert (10.1).
     updated. Worked example 16. The readings I had to pick while building
     it are B56 to B58.
 
-A9. Setting the paycheck rule or the mom rule after the first sync.
-    Section 2 says the paycheck rule is "set after first sync", so the
-    first paychecks will be waiting in review when you set it. 13.2 says a
-    new sorting rule also sorts what is waiting, but these two are
-    settings, not sorting rules.
-    Now: they apply to new transactions only. Deposits and payments
-    already waiting in review are not re-checked.
-    Option 1 (now): new transactions only.
-    Option 2: re-check what is waiting, like 13.2. A waiting deposit that
-    matches the new paycheck rule is then treated as a paycheck (with the
-    3.7 ten-day check), and a waiting payment that matches the mom rule
-    comes out of the mom reserve.
-    Recommendation: option 2.
+A9. ANSWERED Oct 6, built. Setting the paycheck rule or the mom rule
+    after the first sync. Your answer, the recommendation: what is waiting
+    in review is checked again, like 13.2. A waiting deposit that matches
+    the paycheck rule becomes a paycheck, oldest first, still with the
+    10-day check (3.7); one older than the last paycheck stays waiting as
+    an early paycheck (B54). A waiting payment that matches the mom rule
+    comes out of the mom reserve (8.1, 8.3). Rulebook 13.2 and 18n.
 
-A10. Charges still pending on setup day (14.2 with 4.6).
-     The starting money includes them (12.1), so they come out of no
-     bucket. The rulebook does not say what happens when one later posts
-     at a different amount, or is refunded.
-     Now: only the difference waits in review, and you pick the bucket.
-     Posting at the same amount changes nothing. Worked example 13.
-     Option 1 (now): as above.
-     Option 2: on setup day, you also pick a bucket for each pending
-     charge, so it behaves like any other purchase from then on.
-     Recommendation: option 1. Setup day usually has only a few pending
-     charges, and most post at the same amount.
+A10. ANSWERED Oct 6. Charges still pending on setup day (14.2 with 4.6).
+     Your answer, the recommendation: as built. If one later posts at a
+     different amount, is refunded, or is dropped, only the difference
+     waits in review. Rulebook 14.2 and 18o. Worked example 13.
 
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.

@@ -17,6 +17,7 @@ import {
   type LeftoverChoice,
   type Pot,
   type Pots,
+  type Purchase,
   type ReviewItem,
   type Settings,
   type SetupInput,
@@ -69,6 +70,7 @@ export const STAT_NAMES = [
   'purchases',
   'postedFromPending',
   'postedAtNewAmount',
+  'holdsDropped',
   'refundsLinked',
   'refundsInReview',
   'splitPurchases',
@@ -599,14 +601,40 @@ class Life {
     const finalAmount = amount + (store.tip ? share(amount, r.int(0, 22)) : 0);
     const id = this.#purchase(() => this.#bank.authorize(this.#date, account, hold, store.name), store);
     this.#laterOn(addDays(this.#date, r.int(1, 4)), () => {
+      // Some pumps drop the hold and post the real charge on its own (A2).
+      if (hold !== finalAmount && store.how === 'gas' && r.chance(1, 5)) {
+        this.#dropHold(id);
+        this.#purchase(() => this.#bank.purchase(this.#date, account, finalAmount, store.name), store);
+        return;
+      }
       const posted = this.#post(id, finalAmount);
       this.#maybeRefund(store, posted, finalAmount, account);
     });
   }
 
+  // QUESTIONS.md A2: the bank drops a pending charge without posting it, and
+  // its money goes back where it came from.
+  #dropHold(pendingId: string): void {
+    const first = this.#firstId.get(pendingId) ?? pendingId;
+    const standing = this.#standing.get(first);
+    const hold = this.#bank.pendingCharges().find((c) => c.id === pendingId);
+    if (hold === undefined) return;
+    const before = this.#book.pots();
+    const txn = this.#bank.drop(pendingId, this.#date);
+    const outcome = this.#receive(txn);
+    if (outcome !== 'dropped') throw new CheckFailed('4.6 a dropped pending charge (A2)', `${txn.id} came back as ${outcome}`);
+    let change: Change = {};
+    if (standing === 'needs' || standing === 'wants') change = { [standing]: hold.amount };
+    else if (standing === 'unsorted') change = { unsortedOut: -hold.amount };
+    else if (standing === 'split') change = { ...this.#splitParts.get(first) };
+    this.#expectChange(before, change, '4.6 a dropped pending charge gives its money back (A2)', txn.id);
+    this.#standing.set(first, 'unsorted');
+    this.#stats.holdsDropped++;
+  }
+
   // 4.1 to 4.3: a purchase comes out of the bucket its first matching rule
   // picks, on the day of the purchase; with no rule it waits in review.
-  #purchase(make: () => BankTransaction, store: Store | null): string {
+  #purchase(make: () => Purchase, store: Store | null): string {
     const before = this.#book.pots();
     const txn = make();
     if (store) this.#intents.set(txn.id, { type: 'store', sorting: store.sorting, store: store.name });
@@ -981,7 +1009,7 @@ class Life {
   #receive(txn: BankTransaction): string {
     const { outcome } = this.#book.receive(txn);
     this.#sent.push(txn);
-    this.#note(`receive ${txn.kind} ${txn.id} ${txn.amount}${'account' in txn ? ` ${txn.account}` : ''}${'to' in txn ? ` ${txn.from}->${txn.to}` : ''} "${txn.description}": ${outcome}`);
+    this.#note(`receive ${txn.kind} ${txn.id} ${'amount' in txn ? txn.amount : `for ${txn.pendingId}`}${'account' in txn ? ` ${txn.account}` : ''}${'to' in txn ? ` ${txn.from}->${txn.to}` : ''} "${txn.description}": ${outcome}`);
     return outcome;
   }
 
@@ -1092,7 +1120,7 @@ class Life {
       const split = (needs: Cents, wants: Cents) => () => this.#book.sort(item.id, { split: [{ bucket: 'needs', amount: needs }, { bucket: 'wants', amount: wants }] }, today);
       if (person) this.#expectRefused(split(1, item.amount - 1), before, item.id, 'splitting a payment to a person or a mom difference (B20, B23)');
       else if (r.chance(1, 2)) this.#expectRefused(split(1, item.amount - 2), before, item.id, 'a split one cent short (4.4)');
-      else this.#expectRefused(() => this.#book.sort(item.id, { to: 'savings' }, today), before, item.id, 'sorting spending to savings (4.2, QUESTIONS.md A3)');
+      else if (item.reason !== 'old-card-from-savings') this.#expectRefused(() => this.#book.sort(item.id, { to: 'savings' }, today), before, item.id, 'sorting spending to savings (4.2, QUESTIONS.md A3)');
     } else if (item.type === 'money-in' && item.reason === 'refund') {
       this.#expectRefused(() => this.#book.sort(item.id, { to: r.pick(['paycheck', 'other-income'] as const) }, today), before, item.id, 'calling a store refund income (B16)');
     }
@@ -1138,7 +1166,14 @@ class Life {
       return;
     }
     let change: Change;
-    if (item.reason === 'card-fee' || item.reason === 'card-interest' || item.reason === 'old-card-from-savings' || item.reason === 'setup-difference') {
+    if (item.reason === 'old-card-from-savings') {
+      // QUESTIONS.md A4: it suggests savings; the person mostly confirms it,
+      // and sometimes picks needs instead.
+      if (item.suggestion !== 'savings') throw new CheckFailed('5.2 an old card payment from savings suggests savings (A4)', JSON.stringify(item));
+      const to = r.chance(3, 4) ? 'savings' : 'needs';
+      this.#book.sort(item.id, { to }, today);
+      change = { [to]: -item.amount };
+    } else if (item.reason === 'card-fee' || item.reason === 'card-interest' || item.reason === 'setup-difference') {
       this.#book.sort(item.id, { to: 'needs' }, today);
       change = { needs: -item.amount };
     } else if (item.reason === 'mom-difference') {

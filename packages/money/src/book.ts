@@ -14,6 +14,7 @@ import {
   type BankTransaction,
   type CardCharge,
   type Deposit,
+  type PendingDropped,
   type PersonPayment,
   type Purchase,
   type Refund,
@@ -71,7 +72,7 @@ export interface OpenBookInput {
   readonly inTransitAtSetup?: readonly (TransferSent | TransferArrived)[];
 }
 
-export type ReceiveOutcome = 'paycheck' | 'sorted' | 'posted' | 'review' | 'duplicate';
+export type ReceiveOutcome = 'paycheck' | 'sorted' | 'posted' | 'dropped' | 'review' | 'duplicate';
 
 export interface Received {
   readonly id: string;
@@ -94,6 +95,9 @@ export type SpendingSort =
   | { readonly split: readonly SplitPart[] }
   // A payment to a person that was not your spending (7.2).
   | { readonly to: 'not-mine' }
+  // A payment to the old card from savings, taken from the savings bucket
+  // once you confirm it (QUESTIONS.md A4).
+  | { readonly to: 'savings' }
   // A charge pending on setup day, already counted in the starting money.
   | { readonly to: 'counted-at-setup' };
 
@@ -125,7 +129,8 @@ export type ReviewItem =
         | 'person-payment'
         | 'mom-difference'
         | 'setup-difference';
-      readonly suggestion: SplitBucket | null;
+      // Savings only for a payment to the old card from savings (A4).
+      readonly suggestion: SplitBucket | 'savings' | null;
     }
   | {
       // A new purchase on the old card (5.4): a flag to see, not money to sort.
@@ -287,7 +292,9 @@ interface MoneyInEntry {
   readonly kind: 'money-in';
   readonly id: string;
   readonly txn: Deposit | Refund;
-  readonly reason: MoneyInReason;
+  // A deposit waiting as a plain deposit becomes an early paycheck when a
+  // new paycheck rule matches it (A9).
+  reason: MoneyInReason;
   // A deposit you call your paycheck becomes a paycheck entry instead.
   sortedTo: 'unsorted' | DepositRuleChoice['to'];
   // How it was split, when sorted as other income.
@@ -309,6 +316,8 @@ interface SpendEntry {
   sortedTo: SpendingSort;
   // True when a split stopped adding up and was sent back to review.
   splitChanged: boolean;
+  // True when the bank dropped it while pending (QUESTIONS.md A2).
+  dropped?: boolean;
   effect: Effect;
 }
 
@@ -439,6 +448,8 @@ export class Book {
   readonly #pairs = new Map<string, string>();
   // Ids of entries waiting for you, in the order they arrived.
   readonly #review = new Set<string>();
+  // Pending charges the bank dropped, by the id of the drop (QUESTIONS.md A2).
+  readonly #drops = new Map<string, PendingDropped>();
   readonly #paychecks: PaycheckRecord[] = [];
   readonly #log: ChangeLogEntry[] = [];
   // Numbers hand moves, so each one has its own id.
@@ -773,7 +784,38 @@ export class Book {
         return this.#receiveArrived(copy);
       case 'payment-to-person':
         return this.#receivePersonPayment(copy);
+      case 'pending-dropped':
+        return this.#receiveDropped(copy);
     }
+  }
+
+  // QUESTIONS.md A2: a pending charge the bank drops without posting it is
+  // removed, and its money goes back where it came from: its bucket (or
+  // each part of a split), the unsorted spending, or the old card debt. One
+  // counted in the starting money on setup day leaves the difference in
+  // review, like any change to such a charge (A10).
+  #receiveDropped(txn: PendingDropped): Received {
+    const target = this.#entries.get(this.#aliases.get(txn.pendingId) ?? txn.pendingId);
+    if ((target?.kind !== 'spend' && target?.kind !== 'old-card') || !target.pending) {
+      throw new MoneyError('not-pending', `${txn.pendingId} is not a pending charge`);
+    }
+    const before = { pending: target.pending, amount: target.amount };
+    target.pending = false;
+    target.amount = 0;
+    try {
+      if (target.kind === 'spend') {
+        target.dropped = true;
+        this.#refreshSpending(target);
+      } else {
+        this.#setEffect(target, { oldCardDebt: -target.countedAtSetup });
+        this.#review.delete(target.id);
+      }
+    } catch (error) {
+      Object.assign(target, before, target.kind === 'spend' ? { dropped: false } : {});
+      throw error;
+    }
+    this.#drops.set(txn.id, txn);
+    return { id: txn.id, outcome: 'dropped' };
   }
 
   // Rule 12.5: the half of a transfer that left checking or savings. Buckets
@@ -893,6 +935,8 @@ export class Book {
   }
 
   #knownTransaction(id: string): BankTransaction | undefined {
+    const drop = this.#drops.get(id);
+    if (drop !== undefined) return drop;
     const postedFor = this.#aliases.get(id);
     if (postedFor !== undefined) {
       const entry = this.#entry(postedFor);
@@ -1101,7 +1145,8 @@ export class Book {
     // land (12.5).
     if (entry.spendingKind === 'debt-payoff' && entry.txn.kind === 'transfer') effect.oldCardDebt = -entry.amount;
     this.#setEffect(entry, effect);
-    if ('to' in now && now.to === 'unsorted') this.#review.add(entry.id);
+    // A dropped charge with nothing left has nothing to sort (QUESTIONS.md A2).
+    if ('to' in now && now.to === 'unsorted' && !(entry.dropped === true && net === 0)) this.#review.add(entry.id);
     else this.#review.delete(entry.id);
   }
 
@@ -1199,6 +1244,14 @@ export class Book {
     if (entry.spendingKind === 'person-payment') {
       if (!isPersonPaymentChoice(choice)) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');
       entry.sortedTo = Object.freeze({ to: choice.to });
+    } else if (entry.spendingKind === 'debt-payoff') {
+      // QUESTIONS.md A4: a payment to the old card from savings comes out of
+      // the savings bucket once you confirm it, or out of needs if you pick
+      // that instead (5.2).
+      if ('split' in choice || (choice.to !== 'savings' && choice.to !== 'needs')) {
+        throw new MoneyError('bad-choice', 'a payment to the old card from savings comes out of savings or needs');
+      }
+      entry.sortedTo = Object.freeze({ to: choice.to });
     } else if (entry.spendingKind === 'mom-difference' && 'split' in choice) {
       throw new MoneyError('bad-choice', 'the difference on a mom payment goes to needs or wants');
     } else if ('split' in choice) {
@@ -1285,9 +1338,54 @@ export class Book {
   changeSettings(patch: Partial<Settings>, date: IsoDate): void {
     assertIsoDate(date);
     const next = applySettingsChange(this.#settings, patch);
-    this.#settings = next;
-    const changes = Object.fromEntries(Object.keys(patch).map((key) => [key, next[key as keyof Settings]]));
-    this.#log.push(Object.freeze({ date, kind: 'settings-changed', changes }));
+    const before = this.#settings;
+    try {
+      this.#atomically(() => {
+        this.#settings = next;
+        const changes = Object.fromEntries(Object.keys(patch).map((key) => [key, next[key as keyof Settings]]));
+        this.#log.push(Object.freeze({ date, kind: 'settings-changed', changes }));
+        // QUESTIONS.md A9: a new paycheck rule or mom rule also checks what is
+        // waiting in review, the way a new sorting rule does (13.2).
+        if ('paycheckRule' in patch) this.#recheckForPaychecks();
+        if ('momRule' in patch) this.#recheckForMom();
+      });
+    } catch (error) {
+      this.#settings = before;
+      throw error;
+    }
+  }
+
+  // A9: waiting deposits that match the paycheck rule, oldest first. Each
+  // starts a pay period like any paycheck (3.1), unless it is less than 10
+  // days after the last paycheck, or older than it (3.7, B54); then it waits
+  // as an early paycheck, with the same choices (6.1).
+  #recheckForPaychecks(): void {
+    const matching = [...this.#review]
+      .map((id) => this.#entry(id))
+      .filter((entry): entry is MoneyInEntry & { txn: Deposit } => {
+        return entry.kind === 'money-in' && entry.reason === 'deposit' && entry.txn.kind === 'deposit' && matchesTextRule(this.#settings.paycheckRule, entry.txn.description);
+      })
+      .sort((a, b) => daysBetween(b.txn.date, a.txn.date));
+    for (const entry of matching) {
+      if (daysBetween(this.#lastPaycheckDate, entry.txn.date) < this.#settings.earlyPaycheckDays) entry.reason = 'early-paycheck';
+      else this.#makePaycheck(entry, entry.txn);
+    }
+  }
+
+  // A9: waiting payments to a person that match the mom rule come out of the
+  // mom reserve, oldest first (8.1); what the reserve cannot cover waits in
+  // review (8.3).
+  #recheckForMom(): void {
+    const matching = [...this.#review]
+      .map((id) => this.#entry(id))
+      .filter((entry): entry is SpendEntry & { txn: PersonPayment } => {
+        return entry.kind === 'spend' && entry.spendingKind === 'person-payment' && entry.txn.kind === 'payment-to-person' && matchesTextRule(this.#settings.momRule, entry.txn.description);
+      })
+      .sort((a, b) => daysBetween(b.txn.date, a.txn.date));
+    for (const entry of matching) {
+      this.#remove(entry);
+      this.#payMom(entry.txn);
+    }
   }
 
   // 13.2: a new or changed rule applies to new transactions and to those
@@ -1544,8 +1642,9 @@ export class Book {
       case 'spend': {
         const reason = entry.countedAtSetup > 0 ? 'setup-difference' : entry.splitChanged ? 'split-changed' : spendingReason(entry.spendingKind);
         const description = (entry.postedTxn ?? entry.txn).description;
-        // Fees, interest, and old card payments suggest needs (4.8, 5.2).
-        const suggestion = ['purchase', 'person-payment', 'mom-difference'].includes(entry.spendingKind) ? null : 'needs';
+        // Fees and interest suggest needs (4.8). A payment to the old card
+        // waiting here came from savings, so it suggests savings (A4).
+        const suggestion = entry.spendingKind === 'debt-payoff' ? 'savings' : ['purchase', 'person-payment', 'mom-difference'].includes(entry.spendingKind) ? null : 'needs';
         return { type: 'spending', id: entry.id, date: entry.txn.date, amount: netOf(entry), description, reason, suggestion };
       }
       case 'leftover':

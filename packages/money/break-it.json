@@ -394,8 +394,8 @@
   {
     "section": "4",
     "file": "packages/money/src/book.ts",
-    "find": "    if ('to' in now && now.to === 'unsorted') this.#review.add(entry.id);\n    else this.#review.delete(entry.id);",
-    "replace": "    if ('to' in now && now.to === 'unsorted') this.#review.add(entry.id);",
+    "find": "    if ('to' in now && now.to === 'unsorted' && !(entry.dropped === true && net === 0)) this.#review.add(entry.id);\n    else this.#review.delete(entry.id);",
+    "replace": "    if ('to' in now && now.to === 'unsorted' && !(entry.dropped === true && net === 0)) this.#review.add(entry.id);",
     "why": "4.3 leave sorted spending in review"
   },
   {
@@ -1818,5 +1818,103 @@
     "find": "    this.#atomically(() => {\n      this.#remove(entry);\n      this.#payday(txn);\n    });",
     "replace": "    this.#remove(entry);\n    this.#payday(txn);",
     "why": "0.1 make \"this is my paycheck\" outside the all-or-nothing guard"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if ((target?.kind !== 'spend' && target?.kind !== 'old-card') || !target.pending) {",
+    "replace": "if (target?.kind !== 'spend' && target?.kind !== 'old-card') {",
+    "why": "4.6 let a posted charge be dropped"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "    target.amount = 0;\n",
+    "replace": "",
+    "why": "4.6 keep a dropped charge's money out of its bucket"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": " && !(entry.dropped === true && net === 0)",
+    "replace": "",
+    "why": "4.6 keep a dropped charge waiting in review"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#drops.set(txn.id, txn);\n",
+    "replace": "",
+    "why": "4.6 forget a drop, so the same drop sent again is refused"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "        this.#setEffect(target, { oldCardDebt: -target.countedAtSetup });\n",
+    "replace": "",
+    "why": "5.4 leave a dropped old card charge in the debt"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "        this.#review.delete(target.id);\n      }\n    } catch (error) {\n      Object.assign(target, before,",
+    "replace": "      }\n    } catch (error) {\n      Object.assign(target, before,",
+    "why": "5.4 keep the flag of a dropped old card charge"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "entry.spendingKind === 'debt-payoff' ? 'savings' :",
+    "replace": "entry.spendingKind === 'debt-payoff' ? 'needs' :",
+    "why": "5.2 suggest needs for an old card payment from savings (A4)"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "(choice.to !== 'savings' && choice.to !== 'needs')",
+    "replace": "(choice.to !== 'savings' && choice.to !== 'needs' && choice.to !== 'wants')",
+    "why": "5.2 let wants pay for an old card payment from savings (A4)"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "('split' in choice || (choice.to !== 'savings' && choice.to !== 'needs'))",
+    "replace": "('split' in choice || choice.to !== 'needs')",
+    "why": "5.2 refuse savings for an old card payment from savings (A4)"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "        if ('paycheckRule' in patch) this.#recheckForPaychecks();\n",
+    "replace": "",
+    "why": "13.2 ignore what is waiting when the paycheck rule is set (A9)"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "        if ('momRule' in patch) this.#recheckForMom();\n",
+    "replace": "",
+    "why": "13.2 ignore what is waiting when the mom rule is set (A9)"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (daysBetween(this.#lastPaycheckDate, entry.txn.date) < this.#settings.earlyPaycheckDays) entry.reason = 'early-paycheck';\n      else this.#makePaycheck(entry, entry.txn);",
+    "replace": "      this.#makePaycheck(entry, entry.txn);",
+    "why": "13.2 skip the 10-day check when a new paycheck rule matches (A9)"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "matchesTextRule(this.#settings.paycheckRule, entry.txn.description);\n      })\n      .sort((a, b) => daysBetween(b.txn.date, a.txn.date));",
+    "replace": "matchesTextRule(this.#settings.paycheckRule, entry.txn.description);\n      })\n      .sort((a, b) => daysBetween(a.txn.date, b.txn.date));",
+    "why": "13.2 take the newest waiting paycheck first (A9)"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#settings = before;\n      throw error;",
+    "replace": "      throw error;",
+    "why": "13.2 keep a new rule whose re-check was refused (A9)"
   }
 ]

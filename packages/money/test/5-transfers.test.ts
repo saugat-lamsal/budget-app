@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TestBank, appSide, cardCharge, codeOf, openTestBook, posted, purchase, refund, transfer } from './helpers.js';
+import { TestBank, appSide, cardCharge, codeOf, dropped, openTestBook, posted, purchase, refund, transfer } from './helpers.js';
 
 function book() {
   return openTestBook({
@@ -140,6 +140,16 @@ describe('5.4 a new purchase on the old card is flagged and raises the debt', ()
     expect(codeOf(() => b.sort('o1', { to: 'needs' }, '2026-10-06'))).toBe('not-sortable');
   });
 
+  it('5.4 a pending old card charge the bank drops lowers the debt again and clears its flag (A2)', () => {
+    const b = book();
+    b.receive(purchase('o1', '2026-10-05', 7_500, 'MADE UP CAFE', { account: 'old-card', pending: true }));
+    expect(b.oldCardDebt()).toBe(307_500);
+    b.receive(dropped('d1', 'o1', '2026-10-07'));
+    expect(b.oldCardDebt()).toBe(300_000);
+    expect(b.pots()).toEqual(START);
+    expect(b.reviewItems()).toEqual([]);
+  });
+
   it('5.4 it touches needs only when you pay it (5.2)', () => {
     const b = book();
     b.receive(purchase('o1', '2026-10-05', 7_500, 'MADE UP CAFE', { account: 'old-card' }));
@@ -207,15 +217,48 @@ describe('the old card outside the rulebook (see QUESTIONS.md)', () => {
     expect(b.pots()).toEqual(START);
   });
 
-  it('a payment to the old card from savings lowers the debt and waits in review for a bucket', () => {
+  it('5.2 from savings, it lowers the debt and waits for your OK, with the savings bucket suggested (A4)', () => {
     const b = book();
     expect(b.receive(transfer('t1', '2026-10-05', 20_000, 'savings', 'old-card')).outcome).toBe('review');
     expect(b.oldCardDebt()).toBe(280_000);
     expect(b.pots()).toEqual({ ...START, unsortedOut: 20_000 });
     expect(b.reviewItems()).toEqual([
-      { type: 'spending', id: 't1', date: '2026-10-05', amount: 20_000, description: 'TRANSFER savings TO old-card', reason: 'old-card-from-savings', suggestion: 'needs' },
+      { type: 'spending', id: 't1', date: '2026-10-05', amount: 20_000, description: 'TRANSFER savings TO old-card', reason: 'old-card-from-savings', suggestion: 'savings' },
     ]);
+    b.sort('t1', { to: 'savings' }, '2026-10-06');
+    expect(b.pots()).toEqual({ ...START, savings: 480_000 });
+    expect(b.reviewItems()).toEqual([]);
+  });
+
+  it('5.2 from savings, you can pick needs instead (A4)', () => {
+    const b = book();
+    b.receive(transfer('t1', '2026-10-05', 20_000, 'savings', 'old-card'));
     b.sort('t1', { to: 'needs' }, '2026-10-06');
     expect(b.pots()).toEqual({ ...START, needs: 80_000 });
+  });
+
+  it('5.2 from savings, it cannot go to wants or be split, and a refusal changes nothing (A4)', () => {
+    const b = book();
+    b.receive(transfer('t1', '2026-10-05', 20_000, 'savings', 'old-card'));
+    expect(codeOf(() => b.sort('t1', { to: 'wants' }, '2026-10-06'))).toBe('bad-choice');
+    expect(codeOf(() => b.sort('t1', { to: 'momReserve' }, '2026-10-06'))).toBe('bad-choice');
+    expect(codeOf(() => b.sort('t1', { split: [{ bucket: 'needs', amount: 10_000 }, { bucket: 'wants', amount: 10_000 }] }, '2026-10-06'))).toBe('bad-choice');
+    expect(b.pots()).toEqual({ ...START, unsortedOut: 20_000 });
+  });
+
+  it('5.2 from savings, the choice can be changed later (4.7)', () => {
+    const b = book();
+    b.receive(transfer('t1', '2026-10-05', 20_000, 'savings', 'old-card'));
+    b.sort('t1', { to: 'savings' }, '2026-10-06');
+    b.sort('t1', { to: 'needs' }, '2026-10-07');
+    expect(b.pots()).toEqual({ ...START, needs: 80_000 });
+  });
+
+  it('5.2 from savings taken from the savings bucket leaves nothing extra to move (3.8)', () => {
+    const b = book();
+    // The savings account held exactly savings + reserve, 6,500.00, and the payment came out of it.
+    b.receive(transfer('t1', '2026-10-05', 20_000, 'savings', 'old-card'));
+    b.sort('t1', { to: 'savings' }, '2026-10-06');
+    expect(b.savingsTransfer(630_000)).toEqual({ shouldBeInSavings: 630_000, savingsAccountBalance: 630_000, stillToMove: 0 });
   });
 });

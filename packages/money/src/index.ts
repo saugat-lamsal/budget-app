@@ -26,6 +26,7 @@ export type {
   BankTransaction,
   CardCharge,
   Deposit,
+  PendingDropped,
   PersonPayment,
   Purchase,
   Refund,
