@@ -149,6 +149,37 @@ describe('13.2 a new or changed rule applies to new and unsorted transactions on
     expect(b.reviewItems().map((i) => i.id)).toEqual(['f1', 'p1']);
   });
 
+  function waitingToSplitAgain() {
+    // A grocery run split by hand, then partly refunded: back in review to be
+    // split again (A1). An older rule matches it, but it is his to decide.
+    const b = book({ rules: [{ id: 'grocer', for: 'purchase', contains: 'GROCER', bucket: 'needs' }] });
+    b.receive(purchase('e1', '2026-10-05', 12_000, 'MADE UP GROCER'));
+    b.sort('e1', { split: [{ bucket: 'needs', amount: 10_000 }, { bucket: 'wants', amount: 2_000 }] }, '2026-10-05');
+    b.receive(refund('r1', '2026-10-06', 2_000, 'e1'));
+    b.receive(purchase('e2', '2026-10-06', 3_000, 'MADE UP HARDWARE'));
+    return b;
+  }
+
+  it('13.2 a new rule sorts only what it is the first match for: an older rule does not sneak in (found in review)', () => {
+    const b = waitingToSplitAgain();
+    b.addRule({ id: 'hardware', for: 'purchase', contains: 'HARDWARE', bucket: 'needs' }, '2026-10-07');
+    expect(b.reviewItems().map((i) => i.id)).toEqual(['e1']);
+    expect(b.pots().unsortedOut).toBe(10_000);
+  });
+
+  it('13.2 a correction on another item leaves a purchase waiting to be split again alone (found in review)', () => {
+    const b = waitingToSplitAgain();
+    b.sortAlways('e2', { to: 'needs' }, { id: 'hardware', contains: 'HARDWARE' }, '2026-10-07');
+    expect(b.reviewItems().map((i) => i.id)).toEqual(['e1']);
+  });
+
+  it('13.2 a changed rule sorts a waiting item it is now the first match for', () => {
+    const b = waitingToSplitAgain();
+    b.changeRule({ id: 'grocer', for: 'purchase', contains: 'GROCER', bucket: 'wants' }, '2026-10-07');
+    expect(b.reviewItems().map((i) => i.id)).toEqual(['e2']);
+    expect(b.purchases()[0]?.sortedTo).toEqual({ to: 'wants' });
+  });
+
   it('13.2 a new rule goes to the end of the list, so an earlier matching rule still wins', () => {
     const b = book({ rules: [{ id: 'store', for: 'purchase', contains: 'STORE', bucket: 'needs' }] });
     b.addRule({ id: 'big-store', for: 'purchase', contains: 'BIG STORE', bucket: 'wants' }, '2026-10-06');

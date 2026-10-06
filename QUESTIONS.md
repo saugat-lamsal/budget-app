@@ -320,8 +320,11 @@ B38. "The split or the mom reserve" (13.1) covers the split and both mom
 B39. Changed after your review: see 13.6 in the rulebook. A rule made by
      correcting something ("always do this") goes just ahead of the rule
      it corrects, so the fix sticks. Any other new rule still goes to the
-     end of your list. A purchase waiting because its split stopped adding
-     up (A1) counts as unsorted, so a new rule can sort it.
+     end of your list. A new or changed rule sorts only the waiting items
+     it is now the first match for (13.2, found in the review). An older
+     rule never sorts them along the way: a purchase waiting because its
+     split stopped adding up (A1), or a setup-day difference (A10), stays
+     yours to decide unless the new rule itself is the first match.
 
 B40. Changed after your review: see 13.4 in the rulebook. A hand move that
      would leave the bucket it comes out of below zero now asks you to

@@ -877,15 +877,15 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "    this.#log.push(Object.freeze({ date, kind: 'rule-added', rule: this.#ruleById(rule.id) }));\n    this.#sortWaitingByRules();",
+    "find": "    this.#log.push(Object.freeze({ date, kind: 'rule-added', rule: this.#ruleById(rule.id) }));\n    this.#sortWaitingByRules(rule.id);",
     "replace": "    this.#log.push(Object.freeze({ date, kind: 'rule-added', rule: this.#ruleById(rule.id) }));",
     "why": "13.2 a new rule ignores what is waiting in review"
   },
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "    for (const id of [...this.#review]) {\n      const entry = this.#entry(id);\n      if (entry.kind === 'spend' && 'to' in entry.sortedTo && entry.sortedTo.to === 'unsorted') {",
-    "replace": "    for (const id of [...this.#entries.keys()]) {\n      const entry = this.#entry(id);\n      if (entry.kind === 'spend') {",
+    "find": "    for (const id of [...this.#review]) {\n      const entry = this.#entry(id);\n      const unsortedSpending = entry.kind === 'spend' && 'to' in entry.sortedTo && entry.sortedTo.to === 'unsorted';",
+    "replace": "    for (const id of [...this.#entries.keys()]) {\n      const entry = this.#entry(id);\n      const unsortedSpending = entry.kind === 'spend';",
     "why": "13.2 a new rule re-sorts what you already sorted"
   },
   {
@@ -1164,7 +1164,7 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "aheadOf: corrected?.id ?? null }));\n    this.#sortWaitingByRules();",
+    "find": "aheadOf: corrected?.id ?? null }));\n    this.#sortWaitingByRules(added.id);",
     "replace": "aheadOf: corrected?.id ?? null }));",
     "why": "13.6 leave matching waiting items unsorted"
   },
@@ -1426,5 +1426,19 @@
     "find": "return { sticks: findRule(this.#rules, newRule.for, descriptions[0] ?? '')?.id === added.id };",
     "replace": "return { sticks: findRule(this.#rules, newRule.for, descriptions.at(-1) ?? '')?.id === added.id };",
     "why": "13.6 judge whether the fix sticks by the posted description"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "    return rule?.id === ruleId ? rule : undefined;",
+    "replace": "    return rule;",
+    "why": "13.2 let any matching rule sort waiting items when a rule is added"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "        const rule = this.#firstMatchIfIt(ruleId, 'purchase', (entry.postedTxn ?? entry.txn).description);",
+    "replace": "        const rule = this.#firstMatchIfIt(ruleId, 'purchase', entry.txn.description.slice(0, 0));",
+    "why": "13.2 match waiting purchases against nothing"
   }
 ]

@@ -9,21 +9,38 @@
 //
 // Exits non-zero if any break survives (no test failed) or cannot be applied.
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 
 const root = new URL('../', import.meta.url);
 const breaks = JSON.parse(readFileSync(new URL('packages/money/break-it.json', root), 'utf8'));
 const sections = process.argv.slice(2);
 const chosen = sections.length === 0 ? breaks : breaks.filter((b) => sections.includes(String(b.section)));
 
+// While a break is applied, the untouched file is also kept next to it as
+// <file>.break-it-backup. If a run is killed before it can restore the file,
+// the next run puts it back first.
+const backupOf = (file) => new URL(`${file}.break-it-backup`, root);
+for (const file of new Set(breaks.map((b) => b.file))) {
+  if (existsSync(backupOf(file))) {
+    writeFileSync(new URL(file, root), readFileSync(backupOf(file), 'utf8'));
+    rmSync(backupOf(file));
+    console.log(`Restored ${file}: an earlier run was stopped while it was broken.`);
+  }
+}
+
 const originals = new Map();
 function restoreAll() {
-  for (const [file, text] of originals) writeFileSync(new URL(file, root), text);
+  for (const [file, text] of originals) {
+    writeFileSync(new URL(file, root), text);
+    rmSync(backupOf(file), { force: true });
+  }
 }
-process.on('SIGINT', () => {
-  restoreAll();
-  process.exit(130);
-});
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+  process.on(signal, () => {
+    restoreAll();
+    process.exit(130);
+  });
+}
 
 const results = [];
 for (const b of chosen) {
@@ -35,6 +52,7 @@ for (const b of chosen) {
     continue;
   }
   originals.set(b.file, original);
+  writeFileSync(backupOf(b.file), original);
   try {
     writeFileSync(url, original.replace(b.find, () => b.replace));
     const run = spawnSync('npx', ['vitest', 'run'], { cwd: root, encoding: 'utf8' });
@@ -46,6 +64,7 @@ for (const b of chosen) {
     results.push({ ...b, outcome });
   } finally {
     writeFileSync(url, original);
+    rmSync(backupOf(b.file), { force: true });
     originals.delete(b.file);
   }
 }

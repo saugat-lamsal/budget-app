@@ -1196,7 +1196,7 @@ export class Book {
     assertIsoDate(date);
     this.#rules = checkRules([...this.#rules, rule]);
     this.#log.push(Object.freeze({ date, kind: 'rule-added', rule: this.#ruleById(rule.id) }));
-    this.#sortWaitingByRules();
+    this.#sortWaitingByRules(rule.id);
   }
 
   // 13.6: re-sort an item and "always do this". The new rule goes just ahead
@@ -1239,7 +1239,7 @@ export class Book {
     this.#rules = rules;
     const added = this.#ruleById(newRule.id);
     this.#log.push(Object.freeze({ date, kind: 'rule-added-from-correction', rule: added, correcting: entry.id, aheadOf: corrected?.id ?? null }));
-    this.#sortWaitingByRules();
+    this.#sortWaitingByRules(added.id);
     return { sticks: findRule(this.#rules, newRule.for, descriptions[0] ?? '')?.id === added.id };
   }
 
@@ -1248,7 +1248,7 @@ export class Book {
     const before = this.#ruleById(rule.id);
     this.#rules = checkRules(this.#rules.map((r) => (r.id === rule.id ? rule : r)));
     this.#log.push(Object.freeze({ date, kind: 'rule-changed', before, after: this.#ruleById(rule.id) }));
-    this.#sortWaitingByRules();
+    this.#sortWaitingByRules(rule.id);
   }
 
   removeRule(id: string, date: IsoDate): void {
@@ -1264,23 +1264,32 @@ export class Book {
     return rule;
   }
 
-  #sortWaitingByRules(): void {
+  // 13.2: a new or changed rule sorts the items waiting in review that it is
+  // now the first match for. It never lets another, older rule sort them:
+  // an item an older rule matches is waiting for a reason (a split that
+  // stopped adding up, a difference from setup day), and is yours to decide.
+  #sortWaitingByRules(ruleId: string): void {
     for (const id of [...this.#review]) {
       const entry = this.#entry(id);
-      if (entry.kind === 'spend' && 'to' in entry.sortedTo && entry.sortedTo.to === 'unsorted') {
-        const description = (entry.postedTxn ?? entry.txn).description;
-        if (entry.spendingKind === 'purchase') {
-          const rule = findRule(this.#rules, 'purchase', description);
-          if (rule !== undefined) this.#sortSpending(entry, { to: rule.bucket });
-        } else if (entry.spendingKind === 'person-payment') {
-          const rule = findRule(this.#rules, 'person', description);
-          if (rule !== undefined) this.#sortSpending(entry, rule.choice);
-        }
+      const unsortedSpending = entry.kind === 'spend' && 'to' in entry.sortedTo && entry.sortedTo.to === 'unsorted';
+      if (unsortedSpending && entry.spendingKind === 'purchase') {
+        const rule = this.#firstMatchIfIt(ruleId, 'purchase', (entry.postedTxn ?? entry.txn).description);
+        if (rule !== undefined) this.#sortSpending(entry, { to: rule.bucket });
+      } else if (unsortedSpending && entry.spendingKind === 'person-payment') {
+        const rule = this.#firstMatchIfIt(ruleId, 'person', entry.txn.description);
+        if (rule !== undefined) this.#sortSpending(entry, rule.choice);
       } else if (entry.kind === 'money-in' && entry.reason === 'deposit' && entry.sortedTo === 'unsorted') {
-        const rule = findRule(this.#rules, 'deposit', entry.txn.description);
+        const rule = this.#firstMatchIfIt(ruleId, 'deposit', entry.txn.description);
         if (rule !== undefined) this.#sortMoneyIn(entry, rule.choice);
       }
     }
+  }
+
+  // The first rule of this kind that matches, but only if it is the rule
+  // with this id.
+  #firstMatchIfIt<K extends SortingRule['for']>(ruleId: string, kind: K, description: string): Extract<SortingRule, { for: K }> | undefined {
+    const rule = findRule(this.#rules, kind, description);
+    return rule?.id === ruleId ? rule : undefined;
   }
 
   // 13.3 and 13.4: move money between buckets by hand. Moving out of
