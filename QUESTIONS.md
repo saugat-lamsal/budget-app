@@ -45,6 +45,18 @@ A3. Can spending be sorted straight to savings or the mom reserve?
     as 13.4.
     Recommendation: option 1. It keeps the confirm step for savings.
 
+A4. A payment to the old card from savings instead of checking (5.2).
+    5.2 covers checking to the old card. From savings, which bucket pays?
+    Now: the debt goes down right away, and the payment waits in review
+    as unsorted spending until you pick needs or wants.
+    Option 1: needs, same as from checking. "Still to move" (3.8) would
+    then go up, because the money left the savings account but not the
+    savings bucket.
+    Option 2: the savings bucket, since that is where the money came from.
+    Asks you to confirm, like 13.4.
+    Option 3 (now): review each time.
+    Recommendation: option 2.
+
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
@@ -103,3 +115,16 @@ B10. When a pending charge posts, it keeps the bucket it already had, even
 
 B11. "The parts must add up to the total" (4.4) means what is left of the
      purchase after any refunds.
+
+B12. Paying the everyday card from savings is treated like paying it from
+     checking (5.1): not spending, no bucket changes.
+
+B13. A refund on the old card lowers the debt and touches no bucket. It has
+     to: the old card is outside the self-check (12.4), so moving a bucket
+     would break it.
+
+B14. Paying the old card more than it owes leaves a negative debt (a
+     credit). The whole payment still comes out of needs (5.2).
+
+B15. A pending old card purchase that posts at a new amount changes only
+     the debt (5.4). It stays flagged until you have seen it.

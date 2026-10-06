@@ -1,3 +1,4 @@
+import { ACCOUNTS, type AccountId } from './accounts.js';
 import { assertPositiveCents, type Cents } from './cents.js';
 import { assertIsoDate, type IsoDate } from './dates.js';
 import { MoneyError } from './errors.js';
@@ -15,13 +16,14 @@ export interface Deposit {
   readonly description: string;
 }
 
-// A purchase on the debit card (checking) or the everyday card. A pending
-// purchase is later replaced by its posted version, which the bank sends
-// with a new id and pendingId pointing at the pending one (rule 4.6).
+// A purchase on the debit card (checking), the everyday card, or the old
+// card. A pending purchase is later replaced by its posted version, which
+// the bank sends with a new id and pendingId pointing at the pending one
+// (rule 4.6).
 export interface Purchase {
   readonly kind: 'purchase';
   readonly id: string;
-  readonly account: 'checking' | 'everyday-card';
+  readonly account: 'checking' | 'everyday-card' | 'old-card';
   readonly date: IsoDate;
   readonly amount: Cents;
   readonly description: string;
@@ -34,31 +36,43 @@ export interface Purchase {
 export interface Refund {
   readonly kind: 'refund';
   readonly id: string;
-  readonly account: 'checking' | 'everyday-card';
+  readonly account: 'checking' | 'everyday-card' | 'old-card';
   readonly date: IsoDate;
   readonly amount: Cents;
   readonly description: string;
   readonly refundOf?: string;
 }
 
-// A fee or interest charged by a card (rule 4.8).
+// A fee or interest charged by a card (rules 4.8, 5.5).
 export interface CardCharge {
   readonly kind: 'card-charge';
   readonly id: string;
-  readonly account: 'everyday-card';
+  readonly account: 'everyday-card' | 'old-card';
   readonly date: IsoDate;
   readonly amount: Cents;
   readonly description: string;
   readonly charge: 'fee' | 'interest';
 }
 
-export type BankTransaction = Deposit | Purchase | Refund | CardCharge;
+// Money moved between your own accounts, including card payments
+// (section 5).
+export interface Transfer {
+  readonly kind: 'transfer';
+  readonly id: string;
+  readonly from: 'checking' | 'savings';
+  readonly to: AccountId;
+  readonly date: IsoDate;
+  readonly amount: Cents;
+  readonly description: string;
+}
 
-const ACCOUNTS_FOR: Record<BankTransaction['kind'], readonly string[]> = {
+export type BankTransaction = Deposit | Purchase | Refund | CardCharge | Transfer;
+
+const ACCOUNTS_FOR: Record<Exclude<BankTransaction['kind'], 'transfer'>, readonly string[]> = {
   deposit: ['checking', 'savings'],
-  purchase: ['checking', 'everyday-card'],
-  refund: ['checking', 'everyday-card'],
-  'card-charge': ['everyday-card'],
+  purchase: ['checking', 'everyday-card', 'old-card'],
+  refund: ['checking', 'everyday-card', 'old-card'],
+  'card-charge': ['everyday-card', 'old-card'],
 };
 
 // Refuses anything malformed before the book changes at all. Bank ids may
@@ -69,10 +83,15 @@ export function checkTransaction(txn: BankTransaction): void {
   };
   const isId = (id: unknown): boolean => typeof id === 'string' && id !== '' && !id.includes(':');
   if (typeof txn !== 'object' || txn === null) bad('not a transaction');
-  if (!(txn.kind in ACCOUNTS_FOR)) bad('unknown kind');
+  if (!(txn.kind in ACCOUNTS_FOR) && txn.kind !== 'transfer') bad('unknown kind');
   if (!isId(txn.id)) bad('id must be non-empty text without ":"');
-  if (!ACCOUNTS_FOR[txn.kind].includes(txn.account)) bad(`a ${txn.kind} cannot be on ${String(txn.account)}`);
   if (typeof txn.description !== 'string') bad('description must be text');
+  if (txn.kind === 'transfer') {
+    if (txn.from !== 'checking' && txn.from !== 'savings') bad('a transfer comes from checking or savings');
+    if (!ACCOUNTS.includes(txn.to) || txn.to === txn.from) bad('a transfer goes to one of your other accounts');
+  } else if (!ACCOUNTS_FOR[txn.kind].includes(txn.account)) {
+    bad(`a ${txn.kind} cannot be on ${String(txn.account)}`);
+  }
   switch (txn.kind) {
     case 'purchase':
       if (typeof txn.pending !== 'boolean') bad('pending must be true or false');
@@ -85,6 +104,7 @@ export function checkTransaction(txn: BankTransaction): void {
       if (txn.charge !== 'fee' && txn.charge !== 'interest') bad('a card charge is a fee or interest');
       break;
     case 'deposit':
+    case 'transfer':
       break;
   }
   assertIsoDate(txn.date, 'transaction date');

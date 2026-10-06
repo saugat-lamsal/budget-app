@@ -397,5 +397,103 @@
     "find": "assertPositiveCents(part.amount, 'each part of a split');",
     "replace": "assertCents(part.amount, 'each part of a split');",
     "why": "4.4 allow zero and negative parts in a split"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (txn.to !== 'old-card') {\n",
+    "replace": "    if (true) {\n",
+    "why": "5.2 treat an old card payment like any transfer"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "txn.from === 'checking' ? { to: 'needs' } : { to: 'unsorted' }",
+    "replace": "txn.from === 'checking' ? { to: 'wants' } : { to: 'unsorted' }",
+    "why": "5.2 take old card payments from wants"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.spendingKind === 'debt-payoff') effect.oldCardDebt = -entry.amount;",
+    "replace": "if (entry.spendingKind === 'debt-payoff') effect.oldCardDebt = entry.amount;",
+    "why": "5.2 raise the debt when paying it"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (txn.account === 'old-card') return this.#addOldCard(txn);\n",
+    "replace": "",
+    "why": "5.4 let an old card purchase come out of a bucket"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "txn.kind === 'refund' ? -txn.amount : txn.amount",
+    "replace": "txn.amount",
+    "why": "old card refund raises the debt"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (txn.kind !== 'purchase') return { id: txn.id, outcome: 'sorted' };",
+    "replace": "    if (txn.kind !== 'refund') return { id: txn.id, outcome: 'sorted' };",
+    "why": "5.4 do not flag old card purchases"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "        if (copy.account === 'old-card') return this.#addOldCard(copy);\n",
+    "replace": "",
+    "why": "5.5 send old card interest to review like the everyday card"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "else this.#setEffect(entry, { oldCardDebt: txn.amount });",
+    "replace": "else this.#setEffect(entry, { oldCardDebt: entry.effect.oldCardDebt ?? 0 });",
+    "why": "5.4 keep the pending amount on the old card after posting"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "target.txn.account !== txn.account",
+    "replace": "false",
+    "why": "5.4 let a posting move a charge to another account"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.txn.kind === 'transfer' && entry.txn.from === 'checking') {",
+    "replace": "if (entry.txn.kind === 'transfer' && entry.txn.from === 'savings') {",
+    "why": "5.2 let the debt payoff line be re-sorted"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#review.delete(id);\n  }\n\n  // Rules 4.3, 4.4, 4.7, 4.8.",
+    "replace": "  }\n\n  // Rules 4.3, 4.4, 4.7, 4.8.",
+    "why": "5.4 seeing the flag does not clear it"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "target.spendingKind === 'debt-payoff' || ",
+    "replace": "",
+    "why": "5.2 let a refund attach to a debt payoff"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/transactions.ts",
+    "find": " || txn.to === txn.from",
+    "replace": "",
+    "why": "5.3 accept a transfer from an account to itself"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "this.#add({ kind: 'transfer', id: txn.id, txn, effect: {} }, {});",
+    "replace": "this.#add({ kind: 'transfer', id: txn.id, txn, effect: {} }, txn.to === 'savings' ? { savings: txn.amount, needs: -txn.amount } : {});",
+    "why": "5.3 move money between buckets when moving it to savings"
   }
 ]

@@ -13,6 +13,7 @@ import {
   type Deposit,
   type Purchase,
   type Refund,
+  type Transfer,
 } from './transactions.js';
 
 // The book: every bucket and everything waiting in review. Bank activity and
@@ -37,9 +38,13 @@ export interface Pots extends StartingPots {
 }
 
 type PotName = keyof Pots;
-type Effect = Partial<Record<PotName, Cents>>;
+// What an entry does to the totals: the pots, plus the old card debt, which
+// is tracked on its own and is not part of the self-check (12.4).
+type TotalName = PotName | 'oldCardDebt';
+type Effect = Partial<Record<TotalName, Cents>>;
 
 const POT_NAMES: readonly PotName[] = ['savings', 'needs', 'wants', 'momReserve', 'heldForOthers', 'unsortedIn', 'unsortedOut'];
+const TOTAL_NAMES: readonly TotalName[] = [...POT_NAMES, 'oldCardDebt'];
 
 export interface OpenBookInput {
   // The day tracking starts.
@@ -71,7 +76,8 @@ export type SortChoice = { readonly to: Bucket } | { readonly split: readonly Sp
 
 export type SpendingSort = { readonly to: 'unsorted' } | { readonly to: SplitBucket } | { readonly split: readonly SplitPart[] };
 
-export type SpendingKind = 'purchase' | 'card-fee' | 'card-interest';
+// debt-payoff is a payment to the old card (5.2).
+export type SpendingKind = 'purchase' | 'card-fee' | 'card-interest' | 'debt-payoff';
 
 export type ReviewItem =
   | {
@@ -88,8 +94,16 @@ export type ReviewItem =
       readonly date: IsoDate;
       readonly amount: Cents;
       readonly description: string;
-      readonly reason: 'no-rule' | 'card-fee' | 'card-interest' | 'split-changed';
+      readonly reason: 'no-rule' | 'card-fee' | 'card-interest' | 'split-changed' | 'old-card-from-savings';
       readonly suggestion: SplitBucket | null;
+    }
+  | {
+      // A new purchase on the old card (5.4): a flag to see, not money to sort.
+      readonly type: 'old-card-purchase';
+      readonly id: string;
+      readonly date: IsoDate;
+      readonly amount: Cents;
+      readonly description: string;
     }
   | {
       readonly type: 'leftover';
@@ -152,7 +166,7 @@ interface MoneyInEntry {
 interface SpendEntry {
   readonly kind: 'spend';
   readonly id: string;
-  readonly txn: Purchase | CardCharge;
+  readonly txn: Purchase | CardCharge | Transfer;
   readonly spendingKind: SpendingKind;
   postedTxn: Purchase | null;
   pending: boolean;
@@ -173,6 +187,25 @@ interface RefundEntry {
   effect: Effect;
 }
 
+// A transfer that changes no bucket (5.1, 5.3), kept so it counts once.
+interface TransferEntry {
+  readonly kind: 'transfer';
+  readonly id: string;
+  readonly txn: Transfer;
+  effect: Effect;
+}
+
+// Old card activity that changes only the debt (5.4, 5.5).
+interface OldCardEntry {
+  readonly kind: 'old-card';
+  readonly id: string;
+  readonly txn: Purchase | CardCharge | Refund;
+  postedTxn: Purchase | null;
+  pending: boolean;
+  amount: Cents;
+  effect: Effect;
+}
+
 interface LeftoverEntry {
   readonly kind: 'leftover';
   readonly id: string;
@@ -183,15 +216,20 @@ interface LeftoverEntry {
   effect: Effect;
 }
 
-type Entry = PaycheckEntry | MoneyInEntry | SpendEntry | RefundEntry | LeftoverEntry;
+type Entry = PaycheckEntry | MoneyInEntry | SpendEntry | RefundEntry | TransferEntry | OldCardEntry | LeftoverEntry;
+
+function potsOf(totals: Record<TotalName, Cents>): Pots {
+  const { savings, needs, wants, momReserve, heldForOthers, unsortedIn, unsortedOut } = totals;
+  return Object.freeze({ savings, needs, wants, momReserve, heldForOthers, unsortedIn, unsortedOut });
+}
 
 export function openBook(input: OpenBookInput): Book {
   return new Book(input);
 }
 
 export class Book {
-  readonly #opening: StartingPots;
-  readonly #pots: Record<PotName, Cents>;
+  readonly #opening: StartingPots & { readonly oldCardDebt: Cents };
+  readonly #totals: Record<TotalName, Cents>;
   readonly #entries = new Map<string, Entry>();
   // Posted transaction id -> the entry of the pending purchase it replaced.
   readonly #aliases = new Map<string, string>();
@@ -208,10 +246,10 @@ export class Book {
     assertIsoDate(input.lastPaycheckDate, 'last paycheck date');
     assertCents(input.oldCardDebt, 'old card debt');
     const { savings, needs, wants, momReserve, heldForOthers } = input.pots;
-    this.#opening = Object.freeze({ savings, needs, wants, momReserve, heldForOthers });
+    this.#opening = Object.freeze({ savings, needs, wants, momReserve, heldForOthers, oldCardDebt: input.oldCardDebt });
     for (const [name, value] of Object.entries(this.#opening)) assertCents(value, name);
-    this.#pots = { ...this.#opening, unsortedIn: 0, unsortedOut: 0 };
-    addCents(...Object.values(this.#pots));
+    this.#totals = { ...this.#opening, unsortedIn: 0, unsortedOut: 0 };
+    addCents(savings, needs, wants, momReserve, heldForOthers);
     this.#settings = validateSettings(input.settings);
     this.#rules = checkRules(input.rules ?? []);
     this.#lastPaycheckDate = input.lastPaycheckDate;
@@ -221,17 +259,30 @@ export class Book {
   // ----- Reading -----
 
   pots(): Pots {
-    return Object.freeze({ ...this.#pots });
+    return potsOf(this.#totals);
+  }
+
+  // The old card balance, tracked separately as debt (12.4).
+  oldCardDebt(): Cents {
+    return this.#totals.oldCardDebt;
   }
 
   // Adds every bucket up again from the starting amounts and every entry.
   // Must always equal pots(); a difference means the book is broken.
   recountPots(): Pots {
-    const totals: Record<PotName, Cents> = { ...this.#opening, unsortedIn: 0, unsortedOut: 0 };
+    return potsOf(this.#recount());
+  }
+
+  recountOldCardDebt(): Cents {
+    return this.#recount().oldCardDebt;
+  }
+
+  #recount(): Record<TotalName, Cents> {
+    const totals: Record<TotalName, Cents> = { ...this.#opening, unsortedIn: 0, unsortedOut: 0 };
     for (const entry of this.#entries.values()) {
-      for (const name of POT_NAMES) totals[name] = addCents(totals[name], entry.effect[name] ?? 0);
+      for (const name of TOTAL_NAMES) totals[name] = addCents(totals[name], entry.effect[name] ?? 0);
     }
-    return Object.freeze(totals);
+    return totals;
   }
 
   settings(): Settings {
@@ -274,7 +325,7 @@ export class Book {
   // means the account holds more than the buckets say.
   savingsTransfer(savingsAccountBalance: Cents): SavingsTransfer {
     assertCents(savingsAccountBalance, 'savings account balance');
-    const shouldBeInSavings = addCents(this.#pots.savings, this.#pots.momReserve);
+    const shouldBeInSavings = addCents(this.#totals.savings, this.#totals.momReserve);
     return { shouldBeInSavings, savingsAccountBalance, stillToMove: subtractCents(shouldBeInSavings, savingsAccountBalance) };
   }
 
@@ -294,9 +345,12 @@ export class Book {
       case 'purchase':
         return this.#receivePurchase(copy);
       case 'refund':
-        return this.#receiveRefund(copy);
+        return copy.account === 'old-card' ? this.#addOldCard(copy) : this.#receiveRefund(copy);
       case 'card-charge':
+        if (copy.account === 'old-card') return this.#addOldCard(copy);
         return this.#addSpending(copy, copy.charge === 'fee' ? 'card-fee' : 'card-interest', { to: 'unsorted' });
+      case 'transfer':
+        return this.#receiveTransfer(copy);
     }
   }
 
@@ -304,10 +358,33 @@ export class Book {
     const postedFor = this.#aliases.get(id);
     if (postedFor !== undefined) {
       const entry = this.#entry(postedFor);
-      return entry.kind === 'spend' ? (entry.postedTxn ?? undefined) : undefined;
+      return 'postedTxn' in entry ? (entry.postedTxn ?? undefined) : undefined;
     }
     const entry = this.#entries.get(id);
     return entry !== undefined && 'txn' in entry ? entry.txn : undefined;
+  }
+
+  // Section 5.
+  #receiveTransfer(txn: Transfer): Received {
+    if (txn.to !== 'old-card') {
+      // 5.1 and 5.3: between your own accounts, so no bucket changes. A
+      // move to or from savings only changes what is left to move (3.8).
+      this.#add({ kind: 'transfer', id: txn.id, txn, effect: {} }, {});
+      return { id: txn.id, outcome: 'sorted' };
+    }
+    // 5.2: a payment to the old card is spending from needs. From savings
+    // the rulebook does not say, so it waits in review (QUESTIONS.md).
+    return this.#addSpending(txn, 'debt-payoff', txn.from === 'checking' ? { to: 'needs' } : { to: 'unsorted' });
+  }
+
+  // 5.4 and 5.5: old card activity changes the debt shown and no bucket. A
+  // new purchase is flagged in review.
+  #addOldCard(txn: Purchase | CardCharge | Refund): Received {
+    const entry: OldCardEntry = { kind: 'old-card', id: txn.id, txn, postedTxn: null, pending: txn.kind === 'purchase' && txn.pending, amount: txn.amount, effect: {} };
+    this.#add(entry, { oldCardDebt: txn.kind === 'refund' ? -txn.amount : txn.amount });
+    if (txn.kind !== 'purchase') return { id: txn.id, outcome: 'sorted' };
+    this.#review.add(entry.id);
+    return { id: txn.id, outcome: 'review' };
   }
 
   #receiveDeposit(txn: Deposit): Received {
@@ -331,16 +408,22 @@ export class Book {
     if (txn.pendingId !== undefined) {
       const target = this.#entries.get(this.#aliases.get(txn.pendingId) ?? txn.pendingId);
       if (target !== undefined) {
-        if (target.kind !== 'spend' || !target.pending) throw new MoneyError('already-posted', `${txn.pendingId} is not a pending purchase`);
+        if ((target.kind !== 'spend' && target.kind !== 'old-card') || !target.pending) {
+          throw new MoneyError('already-posted', `${txn.pendingId} is not a pending purchase`);
+        }
+        if (target.txn.kind !== 'purchase' || target.txn.account !== txn.account) {
+          throw new MoneyError('bad-transaction', `${txn.id} is on a different account from the pending charge it replaces`);
+        }
         return this.#post(target, txn);
       }
       // The app never saw the pending charge, so this is simply a new purchase.
     }
+    if (txn.account === 'old-card') return this.#addOldCard(txn);
     const rule = findRule(this.#rules, 'purchase', txn.description);
     return this.#addSpending(txn, 'purchase', rule === undefined ? { to: 'unsorted' } : { to: rule.bucket });
   }
 
-  #addSpending(txn: Purchase | CardCharge, spendingKind: SpendingKind, sortedTo: SpendingSort): Received {
+  #addSpending(txn: Purchase | CardCharge | Transfer, spendingKind: SpendingKind, sortedTo: SpendingSort): Received {
     const pending = txn.kind === 'purchase' && txn.pending;
     const entry: SpendEntry = {
       kind: 'spend',
@@ -361,19 +444,22 @@ export class Book {
   }
 
   // Rule 4.6: the posted charge replaces the pending one, even at a new amount.
-  #post(entry: SpendEntry, txn: Purchase): Received {
+  #post(entry: SpendEntry | OldCardEntry, txn: Purchase): Received {
     entry.postedTxn = txn;
     entry.pending = false;
     entry.amount = txn.amount;
     this.#aliases.set(txn.id, entry.id);
-    this.#refreshSpending(entry);
+    if (entry.kind === 'spend') this.#refreshSpending(entry);
+    else this.#setEffect(entry, { oldCardDebt: txn.amount });
     return { id: txn.id, outcome: 'posted' };
   }
 
   // Rule 4.5.
   #receiveRefund(txn: Refund): Received {
     const target = txn.refundOf === undefined ? undefined : this.#entries.get(this.#aliases.get(txn.refundOf) ?? txn.refundOf);
-    if (target?.kind !== 'spend' || txn.amount > target.amount - target.refunded) return this.#holdMoneyIn(txn, 'refund');
+    if (target?.kind !== 'spend' || target.spendingKind === 'debt-payoff' || txn.amount > target.amount - target.refunded) {
+      return this.#holdMoneyIn(txn, 'refund');
+    }
     this.#add({ kind: 'refund', id: txn.id, txn, of: target.id, effect: {} }, {});
     target.refunded = addCents(target.refunded, txn.amount);
     this.#refreshSpending(target);
@@ -400,6 +486,8 @@ export class Book {
     } else {
       effect = { [now.to]: -net };
     }
+    // A payment to the old card also lowers the debt, however it is sorted.
+    if (entry.spendingKind === 'debt-payoff') effect.oldCardDebt = -entry.amount;
     this.#setEffect(entry, effect);
     if ('to' in now && now.to === 'unsorted') this.#review.add(entry.id);
     else this.#review.delete(entry.id);
@@ -409,7 +497,7 @@ export class Book {
   #payday(txn: Deposit): void {
     this.#closePeriod('needs', txn);
     this.#closePeriod('wants', txn);
-    const split = splitPaycheck(txn.amount, this.#pots.momReserve, this.#settings);
+    const split = splitPaycheck(txn.amount, this.#totals.momReserve, this.#settings);
     const entry: PaycheckEntry = { kind: 'paycheck', id: txn.id, txn, split, effect: {} };
     this.#add(entry, { momReserve: split.momReserve, savings: split.savings, needs: split.needs, wants: split.wants });
     this.#paychecks.push({ id: txn.id, date: txn.date, amount: txn.amount, split });
@@ -429,7 +517,7 @@ export class Book {
         this.#entries.delete(id);
       }
     }
-    const amount = this.#pots[bucket];
+    const amount = this.#totals[bucket];
     const choice = this.#settings.leftoverAtPayday[bucket];
     if (amount <= 0 || choice === 'roll-over') return;
     const entry: LeftoverEntry = { kind: 'leftover', id: `leftover:${txn.id}:${bucket}`, date: txn.date, bucket, amount, answer: 'open', effect: {} };
@@ -461,12 +549,23 @@ export class Book {
     if (entry === undefined) throw new MoneyError('unknown-item', `no item ${id}`);
     switch (entry.kind) {
       case 'spend':
+        if (entry.txn.kind === 'transfer' && entry.txn.from === 'checking') {
+          throw new MoneyError('not-sortable', `${id} is a payment to the old card, which always comes out of needs (5.2)`);
+        }
         return this.#sortSpending(entry, choice);
       case 'money-in':
         return this.#sortMoneyIn(entry, choice);
       default:
         throw new MoneyError('not-sortable', `${id} is a ${entry.kind} and cannot be sorted`);
     }
+  }
+
+  // Clears a flag in review that has no money to sort (5.4).
+  acknowledge(id: string, date: IsoDate): void {
+    assertIsoDate(date);
+    const entry = this.#entries.get(id);
+    if (entry?.kind !== 'old-card' || !this.#review.has(id)) throw new MoneyError('unknown-item', `no flag ${id} waiting in review`);
+    this.#review.delete(id);
   }
 
   // Rules 4.3, 4.4, 4.7, 4.8.
@@ -514,12 +613,12 @@ export class Book {
   // Replaces what an entry does to the buckets. Works out every new total
   // first, so a total too large to stay exact changes nothing.
   #setEffect(entry: Entry, next: Effect): void {
-    const updated = { ...this.#pots };
-    for (const name of POT_NAMES) {
+    const updated = { ...this.#totals };
+    for (const name of TOTAL_NAMES) {
       const change = subtractCents(next[name] ?? 0, entry.effect[name] ?? 0);
       updated[name] = addCents(updated[name], change);
     }
-    Object.assign(this.#pots, updated);
+    Object.assign(this.#totals, updated);
     entry.effect = { ...next };
   }
 
@@ -530,15 +629,24 @@ export class Book {
         return { type: 'money-in', id, date, amount, description, reason: entry.reason };
       }
       case 'spend': {
-        const reason = entry.splitChanged ? 'split-changed' : entry.spendingKind === 'purchase' ? 'no-rule' : entry.spendingKind;
+        const reason = entry.splitChanged
+          ? 'split-changed'
+          : entry.spendingKind === 'purchase'
+            ? 'no-rule'
+            : entry.spendingKind === 'debt-payoff'
+              ? 'old-card-from-savings'
+              : entry.spendingKind;
         const description = (entry.postedTxn ?? entry.txn).description;
         const suggestion = entry.spendingKind === 'purchase' ? null : 'needs';
         return { type: 'spending', id: entry.id, date: entry.txn.date, amount: entry.amount - entry.refunded, description, reason, suggestion };
       }
       case 'leftover':
         return { type: 'leftover', id: entry.id, date: entry.date, bucket: entry.bucket, amount: entry.amount };
+      case 'old-card':
+        return { type: 'old-card-purchase', id: entry.id, date: entry.txn.date, amount: entry.amount, description: (entry.postedTxn ?? entry.txn).description };
       case 'paycheck':
       case 'refund':
+      case 'transfer':
         throw new MoneyError('broken-book', `${entry.kind} ${entry.id} should never be in review`);
     }
   }

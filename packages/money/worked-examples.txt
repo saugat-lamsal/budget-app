@@ -166,3 +166,37 @@ Step 5. A 29.00 late fee on the everyday card goes to review, with needs
         Needs  650.00 - 29.00 = 621.00
 
 Check: needs 621.00 | wants 432.00 | unsorted spending 0.00
+
+
+========================================================================
+EXAMPLE 6. Card payments and the old card (rules 5.1 to 5.5, 3.8)
+========================================================================
+
+Before: Savings 1,000.00 | Needs 900.00 | Mom reserve 500.00
+        Old card debt 3,000.00
+        The savings account at the bank holds 900.00.
+
+Step 1. You pay the everyday card 450.00 from checking.
+        Not spending: the purchases were already counted (5.1).
+        No bucket changes.
+
+Step 2. You move 600.00 from checking to savings (5.3).
+        No bucket changes. Only "still to move" changes (3.8):
+        Should be in savings: 1,000.00 + 500.00 = 1,500.00
+        Savings account now: 900.00 + 600.00   = 1,500.00
+        Still to move: 1,500.00 - 1,500.00     =     0.00
+
+Step 3. You pay the old card 200.00 from checking (5.2).
+        It comes out of needs, on a debt payoff line.
+        Needs  900.00 - 200.00     =   700.00
+        Debt   3,000.00 - 200.00   = 2,800.00
+
+Step 4. The old card charges 35.50 interest (5.5).
+        Debt goes up. No bucket changes until you pay it.
+        Debt   2,800.00 + 35.50    = 2,835.50
+
+Step 5. A forgotten subscription charges 12.99 on the old card (5.4).
+        It is flagged in review. Debt goes up, no bucket changes.
+        Debt   2,835.50 + 12.99    = 2,848.49
+
+Check: savings 1,000.00 | needs 700.00 | mom reserve 500.00 | old card debt 2,848.49 | still to move 0.00

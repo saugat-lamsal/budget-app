@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseDollars, type Book, type Cents } from '../src/index.js';
 import text from '../worked-examples.txt?raw';
-import { cardCharge, openTestBook, paycheck, posted, purchase, refund } from './helpers.js';
+import { cardCharge, openTestBook, paycheck, posted, purchase, refund, transfer } from './helpers.js';
 
 interface Example {
   number: number;
@@ -83,6 +83,22 @@ const examples: Record<number, () => Record<string, Cents>> = {
     book.receive(cardCharge('fee', '2026-10-10', parseDollars('29.00'), 'fee'));
     book.sort('fee', { to: 'needs' }, '2026-10-10');
     return buckets(book);
+  },
+  6: () => {
+    const book = openTestBook({
+      pots: { savings: parseDollars('1,000.00'), needs: parseDollars('900.00'), momReserve: parseDollars('500.00') },
+      oldCardDebt: parseDollars('3,000.00'),
+    });
+    book.receive(transfer('pay-card', '2026-10-05', parseDollars('450.00'), 'checking', 'everyday-card'));
+    book.receive(transfer('to-savings', '2026-10-05', parseDollars('600.00'), 'checking', 'savings'));
+    book.receive(transfer('pay-old', '2026-10-06', parseDollars('200.00'), 'checking', 'old-card'));
+    book.receive(cardCharge('interest', '2026-10-07', parseDollars('35.50'), 'interest', 'old-card'));
+    book.receive(purchase('subscription', '2026-10-08', parseDollars('12.99'), 'MADE UP STREAMING', { account: 'old-card' }));
+    return {
+      ...buckets(book),
+      'old card debt': book.oldCardDebt(),
+      'still to move': book.savingsTransfer(parseDollars('900.00') + parseDollars('600.00')).stillToMove,
+    };
   },
 };
 

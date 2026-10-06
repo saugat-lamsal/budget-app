@@ -8,6 +8,7 @@ import {
   type Deposit,
   type Purchase,
   type Refund,
+  type Transfer,
   type Cents,
   type IsoDate,
   type OpenBookInput,
@@ -55,22 +56,26 @@ export function purchase(
   date: IsoDate,
   amount: Cents,
   description = 'MADE UP STORE',
-  options: { account?: 'checking' | 'everyday-card'; pending?: boolean } = {},
+  options: { account?: Purchase['account']; pending?: boolean } = {},
 ): Purchase {
   return { kind: 'purchase', id, account: options.account ?? 'everyday-card', date, amount, description, pending: options.pending ?? false };
 }
 
 // The posted version of a pending purchase. The bank gives it a new id.
-export function posted(id: string, pendingId: string, date: IsoDate, amount: Cents, description = 'MADE UP STORE', account: 'checking' | 'everyday-card' = 'everyday-card'): Purchase {
+export function posted(id: string, pendingId: string, date: IsoDate, amount: Cents, description = 'MADE UP STORE', account: Purchase['account'] = 'everyday-card'): Purchase {
   return { kind: 'purchase', id, account, date, amount, description, pending: false, pendingId };
 }
 
-export function refund(id: string, date: IsoDate, amount: Cents, refundOf?: string, account: 'checking' | 'everyday-card' = 'everyday-card'): Refund {
+export function refund(id: string, date: IsoDate, amount: Cents, refundOf?: string, account: Refund['account'] = 'everyday-card'): Refund {
   return { kind: 'refund', id, account, date, amount, description: 'MADE UP STORE REFUND', ...(refundOf === undefined ? {} : { refundOf }) };
 }
 
-export function cardCharge(id: string, date: IsoDate, amount: Cents, charge: 'fee' | 'interest' = 'fee', account: 'everyday-card' = 'everyday-card'): CardCharge {
+export function cardCharge(id: string, date: IsoDate, amount: Cents, charge: 'fee' | 'interest' = 'fee', account: CardCharge['account'] = 'everyday-card'): CardCharge {
   return { kind: 'card-charge', id, account, date, amount, description: charge === 'fee' ? 'LATE FEE' : 'INTEREST CHARGE', charge };
+}
+
+export function transfer(id: string, date: IsoDate, amount: Cents, from: Transfer['from'], to: Transfer['to']): Transfer {
+  return { kind: 'transfer', id, from, to, date, amount, description: `TRANSFER ${from} TO ${to}` };
 }
 
 export function deposit(
@@ -95,13 +100,15 @@ export class TestBank {
   checking = 0;
   savings = 0;
   everydayCard = 0;
+  // Not part of the self-check (12.4), tracked to compare with the debt shown.
+  oldCard = 0;
 
-  constructor(start: { checking?: Cents; savings?: Cents; everydayCard?: Cents } = {}) {
+  constructor(start: { checking?: Cents; savings?: Cents; everydayCard?: Cents; oldCard?: Cents } = {}) {
     Object.assign(this, start);
   }
 
   // Pending purchases by id, so a posting can replace the pending amount.
-  readonly #pending = new Map<string, { account: 'checking' | 'everyday-card'; amount: Cents }>();
+  readonly #pending = new Map<string, { account: Purchase['account']; amount: Cents }>();
 
   apply(txn: BankTransaction): void {
     switch (txn.kind) {
@@ -122,14 +129,21 @@ export class TestBank {
         this.#spend(txn.account, -txn.amount);
         break;
       case 'card-charge':
-        this.everydayCard += txn.amount;
+        this.#spend(txn.account, txn.amount);
+        break;
+      case 'transfer':
+        this[txn.from] -= txn.amount;
+        if (txn.to === 'checking' || txn.to === 'savings') this[txn.to] += txn.amount;
+        else this.#spend(txn.to, -txn.amount);
         break;
     }
   }
 
-  #spend(account: 'checking' | 'everyday-card', amount: Cents): void {
+  // Money spent on an account: checking goes down, a card balance goes up.
+  #spend(account: Purchase['account'], amount: Cents): void {
     if (account === 'checking') this.checking -= amount;
-    else this.everydayCard += amount;
+    else if (account === 'everyday-card') this.everydayCard += amount;
+    else this.oldCard += amount;
   }
 
   side(): Cents {
