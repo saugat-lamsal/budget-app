@@ -766,6 +766,8 @@ export class Book {
   // card lowers the debt (5.2); anywhere else it ends its time in transit.
   #receiveArrived(txn: TransferArrived): Received {
     let partner: string | undefined;
+    // An arrival paired with the named half only by guess, which gives way.
+    let displaced: string | undefined;
     if (txn.sentId !== undefined) {
       const named = this.#entries.get(txn.sentId);
       if (named !== undefined) {
@@ -773,7 +775,14 @@ export class Book {
         if (namedTxn === null || namedTxn.kind !== 'transfer-sent' || !sameRoute(namedTxn, txn)) {
           throw new MoneyError('bad-transaction', `${txn.id} names ${txn.sentId}, which is not the same transfer`);
         }
-        if (this.#pairs.has(named.id)) throw new MoneyError('already-arrived', `${txn.sentId} has already arrived`);
+        const current = this.#pairs.get(named.id);
+        if (current !== undefined) {
+          const currentTxn = this.#legTxn(current);
+          if (currentTxn.kind !== 'transfer-arrived' || currentTxn.sentId !== undefined) {
+            throw new MoneyError('already-arrived', `${txn.sentId} has already arrived`);
+          }
+          displaced = current;
+        }
         partner = named.id;
       } else if (this.#waitingFor(txn.sentId)) {
         throw new MoneyError('already-arrived', `another arrival is already waiting for ${txn.sentId}`);
@@ -782,8 +791,28 @@ export class Book {
       partner = this.#oldestUnpairedSent(txn);
     }
     this.#add({ kind: 'leg', id: txn.id, txn, effect: {} }, txn.to === 'old-card' ? { oldCardDebt: -txn.amount } : { inTransit: -txn.amount });
+    if (displaced !== undefined && partner !== undefined) this.#unpair(partner, displaced);
     if (partner !== undefined) this.#pair(partner, txn.id);
+    if (displaced !== undefined) {
+      // The arrival that was paired by guess looks again for a leaving half.
+      const other = this.#oldestUnpairedSent(this.#legTxn(displaced) as TransferArrived);
+      if (other !== undefined) this.#pair(other, displaced);
+    }
     return { id: txn.id, outcome: 'sorted' };
+  }
+
+  #legTxn(id: string): TransferSent | TransferArrived {
+    const entry = this.#entry(id);
+    const txn = 'txn' in entry ? entry.txn : null;
+    if (txn === null || (txn.kind !== 'transfer-sent' && txn.kind !== 'transfer-arrived')) {
+      throw new MoneyError('broken-book', `${id} is not half of a transfer`);
+    }
+    return txn;
+  }
+
+  #unpair(a: string, b: string): void {
+    this.#pairs.delete(a);
+    this.#pairs.delete(b);
   }
 
   #oldestUnpairedSent(arrival: TransferArrived): string | undefined {

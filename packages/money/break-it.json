@@ -1080,8 +1080,8 @@
   {
     "section": "12",
     "file": "packages/money/src/book.ts",
-    "find": "if (this.#pairs.has(named.id)) throw new MoneyError('already-arrived'",
-    "replace": "if (false) throw new MoneyError('already-arrived'",
+    "find": "            throw new MoneyError('already-arrived', `${txn.sentId} has already arrived`);\n",
+    "replace": "",
     "why": "12.5 let a payment arrive twice"
   },
   {
@@ -1342,5 +1342,26 @@
     "find": "return seen.length === 0 && minimumPayment > 0 ? [{ kind: 'overdue'",
     "replace": "return seen.length === 0 ? [{ kind: 'overdue'",
     "why": "9.4 call a statement with no minimum overdue"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "if (currentTxn.kind !== 'transfer-arrived' || currentTxn.sentId !== undefined) {",
+    "replace": "if (true) {",
+    "why": "12.5 refuse a named landing when another was paired by guess"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (other !== undefined) this.#pair(other, displaced);\n",
+    "replace": "",
+    "why": "12.5 leave a displaced guessed landing unpaired when another payment fits"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (displaced !== undefined && partner !== undefined) this.#unpair(partner, displaced);\n",
+    "replace": "",
+    "why": "12.5 keep a stale guessed pairing after a named landing takes over"
   }
 ]

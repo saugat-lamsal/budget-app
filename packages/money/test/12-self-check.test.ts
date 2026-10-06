@@ -321,6 +321,44 @@ describe('12.5 money in transit: left one of your accounts, not yet arrived in a
     expect(b.inTransit().items.map((i) => i.id)).toEqual(['s8']);
   });
 
+  it('12.5 a landing that names its payment takes it over from one paired by guess (found in review)', () => {
+    const b = book();
+    const bank = new TestBank(MATCHING);
+    for (const txn of [
+      sent('s1', '2026-10-10', 20_000, 'checking', 'everyday-card'),
+      sent('s2', '2026-10-11', 20_000, 'checking', 'everyday-card'),
+      // No link: paired with s1, the oldest, by guess.
+      arrived('a2', '2026-10-12', 20_000, 'checking', 'everyday-card'),
+      // Names s1: it gets s1, and a2 moves over to s2.
+      arrived('a1', '2026-10-13', 20_000, 'checking', 'everyday-card', 's1'),
+    ]) {
+      expect(codeOf(() => b.receive(txn)), txn.id).toBe('no error');
+      bank.apply(txn);
+    }
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
+    expect(b.selfCheck(bank)).toMatchObject({ ok: true, difference: 0 });
+    expect(b.cardPayments('everyday-card').reduce((sum, p) => sum + p.amount, 0)).toBe(40_000);
+  });
+
+  it('12.5 a guessed pairing undone by a named landing leaves the guessed one waiting if nothing else fits (found in review)', () => {
+    const b = book();
+    const bank = new TestBank(MATCHING);
+    for (const txn of [
+      arrived('a0', '2026-10-02', 10_000, 'checking', 'savings'),
+      // Paired with a0 by guess.
+      sent('s1', '2026-10-03', 10_000, 'checking', 'savings'),
+      arrived('a1', '2026-10-04', 10_000, 'checking', 'savings', 's1'),
+    ]) {
+      expect(codeOf(() => b.receive(txn)), txn.id).toBe('no error');
+      bank.apply(txn);
+    }
+    expect(b.inTransit()).toEqual({
+      total: -10_000,
+      items: [{ id: 'a0', date: '2026-10-02', from: 'checking', to: 'savings', amount: 10_000, seen: 'arrived' }],
+    });
+    expect(b.selfCheck(bank)).toMatchObject({ ok: true });
+  });
+
   it('12.5 a payment that already arrived cannot arrive again', () => {
     const b = book();
     b.receive(sent('s1', '2026-10-12', 20_000, 'checking', 'everyday-card'));
