@@ -509,8 +509,7 @@ export class Book {
       splitChanged: false,
       effect: {},
     };
-    this.#register(entry);
-    this.#refreshSpending(entry);
+    this.#addSpendingEntry(entry);
   }
 
   // ----- Reading -----
@@ -873,7 +872,8 @@ export class Book {
   // in review for you to pick a bucket.
   #payMom(txn: PersonPayment): Received {
     const fromReserve = Math.min(txn.amount, Math.max(0, this.#totals.momReserve));
-    this.#add({ kind: 'mom', id: txn.id, txn, fromReserve, effect: {} }, { momReserve: -fromReserve });
+    const mom: MomEntry = { kind: 'mom', id: txn.id, txn, fromReserve, effect: {} };
+    this.#add(mom, { momReserve: -fromReserve });
     const difference = txn.amount - fromReserve;
     if (difference === 0) return { id: txn.id, outcome: 'sorted' };
     const entry: SpendEntry = {
@@ -890,8 +890,12 @@ export class Book {
       splitChanged: false,
       effect: {},
     };
-    this.#register(entry);
-    this.#refreshSpending(entry);
+    try {
+      this.#addSpendingEntry(entry);
+    } catch (error) {
+      this.#remove(mom);
+      throw error;
+    }
     return { id: txn.id, outcome: 'review' };
   }
 
@@ -926,7 +930,13 @@ export class Book {
       const result = this.#holdMoneyIn(txn, 'deposit');
       if (rule === undefined) return result;
       // 6.2: a rule for a known source makes the choice automatically.
-      this.#sortMoneyIn(this.#moneyInEntry(txn.id), rule.choice);
+      const entry = this.#moneyInEntry(txn.id);
+      try {
+        this.#sortMoneyIn(entry, rule.choice);
+      } catch (error) {
+        this.#remove(entry);
+        throw error;
+      }
       return { id: txn.id, outcome: 'sorted' };
     }
     // Rule 3.7: too soon after the last paycheck to split automatically.
@@ -978,19 +988,26 @@ export class Book {
       splitChanged: false,
       effect: {},
     };
-    this.#register(entry);
-    this.#refreshSpending(entry);
+    this.#addSpendingEntry(entry);
     return { id: txn.id, outcome: this.#review.has(entry.id) ? 'review' : 'sorted' };
   }
 
   // Rule 4.6: the posted charge replaces the pending one, even at a new amount.
   #post(entry: SpendEntry | OldCardEntry, txn: Purchase): Received {
+    const before = { postedTxn: entry.postedTxn, pending: entry.pending, amount: entry.amount };
+    const sortedBefore = entry.kind === 'spend' ? { sortedTo: entry.sortedTo, splitChanged: entry.splitChanged } : null;
     entry.postedTxn = txn;
     entry.pending = false;
     entry.amount = txn.amount;
+    try {
+      if (entry.kind === 'spend') this.#refreshSpending(entry);
+      else this.#setEffect(entry, { oldCardDebt: txn.amount - entry.countedAtSetup });
+    } catch (error) {
+      // Too large to stay exact (0.1): the pending charge stays as it was.
+      Object.assign(entry, before, sortedBefore ?? {});
+      throw error;
+    }
     this.#aliases.set(txn.id, entry.id);
-    if (entry.kind === 'spend') this.#refreshSpending(entry);
-    else this.#setEffect(entry, { oldCardDebt: txn.amount - entry.countedAtSetup });
     return { id: txn.id, outcome: 'posted' };
   }
 
@@ -1000,9 +1017,19 @@ export class Book {
     if (target?.kind !== 'spend' || target.spendingKind === 'debt-payoff' || txn.amount > target.amount - target.refunded) {
       return this.#holdMoneyIn(txn, 'refund');
     }
-    this.#add({ kind: 'refund', id: txn.id, txn, of: target.id, effect: {} }, {});
-    target.refunded = addCents(target.refunded, txn.amount);
-    this.#refreshSpending(target);
+    const refunded = addCents(target.refunded, txn.amount);
+    const before = { refunded: target.refunded, sortedTo: target.sortedTo, splitChanged: target.splitChanged };
+    const entry: RefundEntry = { kind: 'refund', id: txn.id, txn, of: target.id, effect: {} };
+    this.#add(entry, {});
+    target.refunded = refunded;
+    try {
+      this.#refreshSpending(target);
+    } catch (error) {
+      // Too large to stay exact (0.1): the purchase stays as it was.
+      Object.assign(target, before);
+      this.#forget(entry.id);
+      throw error;
+    }
     return { id: txn.id, outcome: 'sorted' };
   }
 
@@ -1044,6 +1071,7 @@ export class Book {
 
   // Rules 3.1 to 3.5.
   #payday(txn: Deposit): void {
+    this.#checkPaydayFits(txn);
     this.#closePeriod('needs', txn);
     this.#closePeriod('wants', txn);
     // 13.1: a change to the split or the reserve applies from this paycheck.
@@ -1054,6 +1082,25 @@ export class Book {
     this.#paychecks.push({ id: txn.id, date: txn.date, amount: txn.amount, split });
     this.#period = { number: this.#period.number + 1, startDate: txn.date };
     this.#lastPaycheckDate = txn.date;
+  }
+
+  // Works out the new totals of a payday first, so a paycheck too large to
+  // stay exact (0.1) is refused before any leftover moves or question.
+  #checkPaydayFits(txn: Deposit): void {
+    const t = this.#totals;
+    let savings = t.savings;
+    const after = { needs: t.needs, wants: t.wants };
+    for (const bucket of ['needs', 'wants'] as const) {
+      if (after[bucket] > 0 && this.#settings.leftoverAtPayday[bucket] === 'move-to-savings') {
+        savings = addCents(savings, after[bucket]);
+        after[bucket] = 0;
+      }
+    }
+    const split = splitPaycheck(txn.amount, t.momReserve, splitSettingsOf(this.#settings));
+    addCents(savings, split.savings);
+    addCents(after.needs, split.needs);
+    addCents(after.wants, split.wants);
+    addCents(t.momReserve, split.momReserve);
   }
 
   // Rule 3.4: unspent money in a bucket at payday either rolls over or moves
@@ -1089,8 +1136,8 @@ export class Book {
   }
 
   #answerLeftover(entry: LeftoverEntry, answer: LeftoverAnswer): void {
-    entry.answer = answer;
     if (answer === 'move-to-savings') this.#setEffect(entry, { [entry.bucket]: -entry.amount, savings: entry.amount });
+    entry.answer = answer;
   }
 
   // Sorts something waiting in review, or re-sorts it later (4.7).
@@ -1121,6 +1168,7 @@ export class Book {
 
   // Rules 4.3, 4.4, 4.7, 4.8, 7.2.
   #sortSpending(entry: SpendEntry, choice: SortChoice): void {
+    const before = { sortedTo: entry.sortedTo, splitChanged: entry.splitChanged };
     if (entry.spendingKind === 'person-payment') {
       if (!isPersonPaymentChoice(choice)) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');
       entry.sortedTo = Object.freeze({ to: choice.to });
@@ -1143,7 +1191,13 @@ export class Book {
       throw new MoneyError('bad-choice', `spending can go to needs or wants, not ${String(choice.to)}`);
     }
     entry.splitChanged = false;
-    this.#refreshSpending(entry);
+    try {
+      this.#refreshSpending(entry);
+    } catch (error) {
+      // Too large to stay exact (0.1): it stays sorted the way it was.
+      Object.assign(entry, before);
+      throw error;
+    }
   }
 
   // Rule 6.1: income, payback, or not mine. A store refund the app could
@@ -1165,9 +1219,9 @@ export class Book {
     } else {
       effect = { [choice.to]: amount };
     }
+    this.#setEffect(entry, effect);
     entry.sortedTo = choice.to;
     entry.incomeSplit = incomeSplit;
-    this.#setEffect(entry, effect);
     this.#review.delete(entry.id);
   }
 
@@ -1326,9 +1380,40 @@ export class Book {
     return entry;
   }
 
+  // Adds an entry and what it does. If its totals would be too large to
+  // stay exact (0.1), the entry is not kept, so nothing changes and the same
+  // transaction can be tried again.
   #add(entry: Entry, effect: Effect): void {
     this.#register(entry);
-    this.#setEffect(entry, effect);
+    try {
+      this.#setEffect(entry, effect);
+    } catch (error) {
+      this.#forget(entry.id);
+      throw error;
+    }
+  }
+
+  // The same for spending, whose effect follows from how it is sorted.
+  #addSpendingEntry(entry: SpendEntry): void {
+    this.#register(entry);
+    try {
+      this.#refreshSpending(entry);
+    } catch (error) {
+      this.#forget(entry.id);
+      throw error;
+    }
+  }
+
+  // Takes back an entry whose effect is already undone (or never applied).
+  #forget(id: string): void {
+    this.#entries.delete(id);
+    this.#review.delete(id);
+  }
+
+  // Undoes an entry completely.
+  #remove(entry: Entry): void {
+    this.#setEffect(entry, {});
+    this.#forget(entry.id);
   }
 
   // Two entries can never share an id: the second would silently replace

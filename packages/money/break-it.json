@@ -1440,5 +1440,68 @@
     "find": "        const rule = this.#firstMatchIfIt(ruleId, 'purchase', (entry.postedTxn ?? entry.txn).description);",
     "replace": "        const rule = this.#firstMatchIfIt(ruleId, 'purchase', entry.txn.description.slice(0, 0));",
     "why": "13.2 match waiting purchases against nothing"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "    try {\n      this.#setEffect(entry, effect);\n    } catch (error) {\n      this.#forget(entry.id);\n      throw error;\n    }",
+    "replace": "    this.#setEffect(entry, effect);",
+    "why": "0.1 keep an entry whose totals were refused as too large"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "    try {\n      this.#refreshSpending(entry);\n    } catch (error) {\n      this.#forget(entry.id);\n      throw error;\n    }\n  }\n\n  // Takes back",
+    "replace": "    this.#refreshSpending(entry);\n  }\n\n  // Takes back",
+    "why": "0.1 keep spending whose totals were refused as too large"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      Object.assign(entry, before, sortedBefore ?? {});\n",
+    "replace": "",
+    "why": "0.1 leave a refused posting half applied"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      Object.assign(target, before);\n      this.#forget(entry.id);",
+    "replace": "      this.#forget(entry.id);",
+    "why": "0.1 leave a refused refund on its purchase"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "        this.#remove(entry);\n        throw error;",
+    "replace": "        throw error;",
+    "why": "0.1 leave a deposit waiting after its rule was refused"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#remove(mom);\n",
+    "replace": "",
+    "why": "0.1 leave a refused mom payment on the reserve"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#checkPaydayFits(txn);\n",
+    "replace": "",
+    "why": "0.1 start a payday before checking it fits"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "      // Too large to stay exact (0.1): it stays sorted the way it was.\n      Object.assign(entry, before);\n",
+    "replace": "",
+    "why": "0.1 leave a refused re-sort half applied"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#setEffect(entry, effect);\n    entry.sortedTo = choice.to;\n    entry.incomeSplit = incomeSplit;",
+    "replace": "    entry.sortedTo = choice.to;\n    entry.incomeSplit = incomeSplit;\n    this.#setEffect(entry, effect);",
+    "why": "0.1 mark money in as sorted before its totals are checked"
   }
 ]
