@@ -22,19 +22,26 @@ export {
 } from './settings.js';
 export { ACCOUNTS, type AccountId } from './accounts.js';
 export { splitPaycheck, type PaycheckSplit, type SplitSettings } from './payday.js';
-export type { BankTransaction, Deposit } from './transactions.js';
+export type { BankTransaction, CardCharge, Deposit, Purchase, Refund } from './transactions.js';
+export { BUCKETS, SPENDING_BUCKETS, type Bucket, type SplitBucket } from './buckets.js';
+export type { SortingRule } from './rules.js';
 export {
   Book,
   openBook,
   type LeftoverAnswer,
+  type MoneyInReason,
   type OpenBookInput,
   type PaycheckRecord,
   type Period,
   type Pots,
+  type PurchaseView,
   type Received,
   type ReceiveOutcome,
   type ReviewItem,
   type SavingsTransfer,
-  type SplitBucket,
+  type SortChoice,
+  type SpendingKind,
+  type SpendingSort,
+  type SplitPart,
   type StartingPots,
 } from './book.js';

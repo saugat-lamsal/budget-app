@@ -2,17 +2,48 @@
 
 Two kinds of questions are listed here.
 
-Part A: the rulebook does not say, so the rule or case was skipped. It has
-no code yet. Each one has options and a recommendation.
+Part A: the rulebook does not say. Either the case is not built yet, or,
+where money has to land somewhere to keep the totals right, it goes to
+review so you decide each time. Each one has options and a recommendation.
 
 Part B: the plain reading of the rule was built, but a reasonable person
 could have meant something else. Each one says what the app does now.
 Nothing to do unless one of them is wrong.
 
 
-## Part A. Skipped until you answer
+## Part A. Waiting on your answer
 
-(None yet for sections 0 to 3.)
+A1. A refund on a split purchase, or a split purchase that posts at a
+    different amount (4.4 with 4.5 and 4.6).
+    Example: 120.00 split 100.00 needs / 20.00 wants, then 20.00 comes back.
+    Which bucket gets it?
+    Now: the purchase goes back to review with its new total, and you
+    split it again.
+    Option 1 (now): back to review to split again.
+    Option 2: share it out in the same proportions as the split.
+    Option 3: it all goes to the bigger part.
+    Recommendation: option 1. It is rare, and you know which part the
+    refund was for.
+
+A2. A pending charge that disappears without posting (4.6).
+    Gas stations and hotels often put a hold that drops off later. The
+    rulebook covers a pending charge posting, not one vanishing.
+    Now: not built. There is no way yet to tell the app a pending charge
+    was cancelled, so the bucket would stay lower than the bank.
+    Option 1: the charge is removed and the money goes back to the bucket
+    it came from.
+    Option 2: the money goes to review.
+    Recommendation: option 1. It is what actually happened.
+
+A3. Can spending be sorted straight to savings or the mom reserve?
+    (4.2, 4.4)
+    Now: spending goes to needs or wants only. To pay for something out of
+    savings, sort it to needs, then move money from savings to needs by
+    hand (13.3), which asks you to confirm (13.4).
+    Option 1 (now): needs or wants only.
+    Option 2: allow savings and the mom reserve too, with the same confirm
+    as 13.4.
+    Recommendation: option 1. It keeps the confirm step for savings.
 
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
@@ -52,3 +83,23 @@ B5. "Less than 10 days" (3.7) counts calendar days between the two dates.
 
 B6. A paycheck that lands in savings instead of checking is still a
     paycheck, as long as it matches the paycheck rule (3.1).
+
+B7. A refund of a purchase you have not sorted yet lowers the unsorted
+    spending. When you sort the purchase, only what is left of it goes to
+    the bucket. Re-sorting a partly refunded purchase moves only what is
+    left (4.5, 4.7).
+
+B8. Which purchase a refund belongs to comes from the bank connection
+    (Phase 3). A refund bigger than what is left of its purchase goes to
+    review (4.5).
+
+B9. A rule matches when the bank description contains its text, ignoring
+    upper and lower case. If two rules match, the first one in your list
+    wins (4.2).
+
+B10. When a pending charge posts, it keeps the bucket it already had, even
+     if the posted description would match a different rule (4.6). It also
+     keeps the date you made the purchase (4.1).
+
+B11. "The parts must add up to the total" (4.4) means what is left of the
+     purchase after any refunds.

@@ -4,6 +4,10 @@ import {
   openBook,
   type BankTransaction,
   type Book,
+  type CardCharge,
+  type Deposit,
+  type Purchase,
+  type Refund,
   type Cents,
   type IsoDate,
   type OpenBookInput,
@@ -42,8 +46,31 @@ export function openTestBook(options: TestBookOptions = {}): Book {
   });
 }
 
-export function paycheck(id: string, date: IsoDate, amount: Cents): BankTransaction {
+export function paycheck(id: string, date: IsoDate, amount: Cents): Deposit {
   return { kind: 'deposit', id, account: 'checking', date, amount, description: `${PAYROLL} DIRECT DEP` };
+}
+
+export function purchase(
+  id: string,
+  date: IsoDate,
+  amount: Cents,
+  description = 'MADE UP STORE',
+  options: { account?: 'checking' | 'everyday-card'; pending?: boolean } = {},
+): Purchase {
+  return { kind: 'purchase', id, account: options.account ?? 'everyday-card', date, amount, description, pending: options.pending ?? false };
+}
+
+// The posted version of a pending purchase. The bank gives it a new id.
+export function posted(id: string, pendingId: string, date: IsoDate, amount: Cents, description = 'MADE UP STORE', account: 'checking' | 'everyday-card' = 'everyday-card'): Purchase {
+  return { kind: 'purchase', id, account, date, amount, description, pending: false, pendingId };
+}
+
+export function refund(id: string, date: IsoDate, amount: Cents, refundOf?: string, account: 'checking' | 'everyday-card' = 'everyday-card'): Refund {
+  return { kind: 'refund', id, account, date, amount, description: 'MADE UP STORE REFUND', ...(refundOf === undefined ? {} : { refundOf }) };
+}
+
+export function cardCharge(id: string, date: IsoDate, amount: Cents, charge: 'fee' | 'interest' = 'fee', account: 'everyday-card' = 'everyday-card'): CardCharge {
+  return { kind: 'card-charge', id, account, date, amount, description: charge === 'fee' ? 'LATE FEE' : 'INTEREST CHARGE', charge };
 }
 
 export function deposit(
@@ -52,7 +79,7 @@ export function deposit(
   amount: Cents,
   description = 'MADE UP DEPOSIT',
   account: 'checking' | 'savings' = 'checking',
-): BankTransaction {
+): Deposit {
   return { kind: 'deposit', id, account, date, amount, description };
 }
 
@@ -73,12 +100,36 @@ export class TestBank {
     Object.assign(this, start);
   }
 
+  // Pending purchases by id, so a posting can replace the pending amount.
+  readonly #pending = new Map<string, { account: 'checking' | 'everyday-card'; amount: Cents }>();
+
   apply(txn: BankTransaction): void {
     switch (txn.kind) {
       case 'deposit':
         this[txn.account] += txn.amount;
         break;
+      case 'purchase': {
+        const earlier = txn.pendingId === undefined ? undefined : this.#pending.get(txn.pendingId);
+        if (earlier !== undefined && txn.pendingId !== undefined) {
+          this.#spend(earlier.account, -earlier.amount);
+          this.#pending.delete(txn.pendingId);
+        }
+        this.#spend(txn.account, txn.amount);
+        if (txn.pending) this.#pending.set(txn.id, { account: txn.account, amount: txn.amount });
+        break;
+      }
+      case 'refund':
+        this.#spend(txn.account, -txn.amount);
+        break;
+      case 'card-charge':
+        this.everydayCard += txn.amount;
+        break;
     }
+  }
+
+  #spend(account: 'checking' | 'everyday-card', amount: Cents): void {
+    if (account === 'checking') this.checking -= amount;
+    else this.everydayCard += amount;
   }
 
   side(): Cents {

@@ -129,3 +129,40 @@ Step 5. How much should be in the savings account (rule 3.8)?
         The account holds 3,000.00, so you still need to move 2,235.20.
 
 Check: mom reserve 3,000.00 | savings 2,235.20 | needs 390.00 | wants 247.50 | still to move 2,235.20
+
+
+========================================================================
+EXAMPLE 5. A week of spending (rules 4.1 to 4.8)
+========================================================================
+
+Your rules: anything with "GROCER" goes to needs, "CAFE" goes to wants.
+Before: Needs 750.00 | Wants 500.00
+
+Step 1. Dinner at MADE UP CAFE shows up pending for 40.00.
+        It counts right away (4.1, 4.6). The CAFE rule picks wants.
+        Wants  500.00 - 40.00 = 460.00
+
+Step 2. The dinner posts at 48.00 (you added a tip).
+        The posted charge replaces the pending one (4.6). Only the
+        8.00 difference comes out.
+        Wants  460.00 - 8.00 = 452.00
+
+Step 3. 120.00 at MADE UP HARDWARE. No rule matches, so it is unsorted
+        and waits in review (4.2, 4.3).
+        Unsorted spending 120.00
+        You split it: 100.00 to needs, 20.00 to wants (4.4).
+        The parts add up to 120.00, so the split is accepted.
+        Needs  750.00 - 100.00 = 650.00
+        Wants  452.00 -  20.00 = 432.00
+        Unsorted spending  0.00
+
+Step 4. Lunch at MADE UP CAFE for 35.00, then refunded in full.
+        Wants  432.00 - 35.00 = 397.00
+        The refund goes back where the lunch came from (4.5).
+        Wants  397.00 + 35.00 = 432.00
+
+Step 5. A 29.00 late fee on the everyday card goes to review, with needs
+        suggested (4.8). You pick needs.
+        Needs  650.00 - 29.00 = 621.00
+
+Check: needs 621.00 | wants 432.00 | unsorted spending 0.00

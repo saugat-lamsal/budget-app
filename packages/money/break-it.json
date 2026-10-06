@@ -264,5 +264,138 @@
     "find": "description.toLowerCase().includes(",
     "replace": "description.includes(",
     "why": "3.1 make the paycheck rule care about upper and lower case"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "const net = entry.amount - entry.refunded;\n    const sorted",
+    "replace": "const net = entry.amount + entry.refunded;\n    const sorted",
+    "why": "4.5 flip the sign of refunds"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "txn.amount > target.amount - target.refunded",
+    "replace": "txn.amount >= target.amount - target.refunded",
+    "why": "4.5 send a refund of exactly what is left to review"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "txn.amount > target.amount - target.refunded",
+    "replace": "txn.amount > target.amount",
+    "why": "4.5 forget earlier refunds, so a purchase can be refunded twice"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "sorted.split.reduce((sum, part) => sum + part.amount, 0) !== net",
+    "replace": "false",
+    "why": "4.4 keep a split that no longer adds up"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "effect = { unsortedOut: net };",
+    "replace": "effect = { unsortedOut: entry.amount };",
+    "why": "4.5 ignore a refund on unsorted spending"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "effect = { [now.to]: -net };",
+    "replace": "effect = { [now.to]: -entry.amount };",
+    "why": "4.5 ignore a refund on sorted spending"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "    entry.amount = txn.amount;\n",
+    "replace": "",
+    "why": "4.6 keep the pending amount when the charge posts"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#aliases.set(txn.id, entry.id);\n",
+    "replace": "",
+    "why": "4.6 forget the posted id, so it can count twice"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if (target.kind !== 'spend' || !target.pending) throw",
+    "replace": "if (target.kind !== 'spend') throw",
+    "why": "4.6 let a charge post twice"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if (total !== net) throw",
+    "replace": "if (total > net) throw",
+    "why": "4.4 accept a split that comes up short"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/rules.ts",
+    "find": "return rules.find((rule)",
+    "replace": "return rules.findLast((rule)",
+    "why": "4.2 let the last matching rule win"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "copy.charge === 'fee' ? 'card-fee' : 'card-interest', { to: 'unsorted' })",
+    "replace": "copy.charge === 'fee' ? 'card-fee' : 'card-interest', { to: 'needs' })",
+    "why": "4.8 sort fees to needs without asking"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "entry.spendingKind === 'purchase' ? null : 'needs'",
+    "replace": "entry.spendingKind === 'purchase' ? null : 'wants'",
+    "why": "4.8 suggest the wrong bucket for fees"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "this.#setEffect(entry, { [choice.to]: entry.txn.amount });",
+    "replace": "this.#setEffect(entry, { [choice.to]: -entry.txn.amount });",
+    "why": "4.5 flip the sign when sorting a refund from review"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "const change = subtractCents(next[name] ?? 0, entry.effect[name] ?? 0);",
+    "replace": "const change = next[name] ?? 0;",
+    "why": "4.7 re-sort without undoing the old bucket"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "    if ('to' in now && now.to === 'unsorted') this.#review.add(entry.id);\n    else this.#review.delete(entry.id);",
+    "replace": "    if ('to' in now && now.to === 'unsorted') this.#review.add(entry.id);",
+    "why": "4.3 leave sorted spending in review"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/buckets.ts",
+    "find": "Object.freeze(['needs', 'wants'])",
+    "replace": "Object.freeze(['needs', 'wants', 'savings'])",
+    "why": "4.3 let spending be sorted to savings"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/transactions.ts",
+    "find": "(txn.pending || !isId(txn.pendingId))",
+    "replace": "(!isId(txn.pendingId))",
+    "why": "4.6 let a pending charge claim to replace another"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "assertPositiveCents(part.amount, 'each part of a split');",
+    "replace": "assertCents(part.amount, 'each part of a split');",
+    "why": "4.4 allow zero and negative parts in a split"
   }
 ]

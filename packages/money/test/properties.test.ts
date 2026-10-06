@@ -2,8 +2,19 @@
 // true, checked against many made-up histories.
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, addDays, changeSettings, splitPaycheck, type Book, type LeftoverChoice } from '../src/index.js';
-import { TestBank, appSide, deposit, openTestBook, paycheck, START_DATE } from './helpers.js';
+import {
+  BUCKETS,
+  DEFAULT_SETTINGS,
+  addDays,
+  changeSettings,
+  splitPaycheck,
+  type BankTransaction,
+  type Book,
+  type LeftoverChoice,
+  type SortChoice,
+  type SortingRule,
+} from '../src/index.js';
+import { TestBank, appSide, cardCharge, deposit, openTestBook, paycheck, posted, purchase, refund, START_DATE } from './helpers.js';
 
 const splitArb = fc
   .integer({ min: 0, max: 100 })
@@ -54,44 +65,126 @@ type Step =
   | { type: 'paycheck'; gap: number; amount: number }
   | { type: 'deposit'; gap: number; amount: number }
   | { type: 'answer-leftover'; pick: number; choice: 'roll-over' | 'move-to-savings' }
-  | { type: 'repeat'; pick: number };
+  | { type: 'repeat'; pick: number }
+  | { type: 'purchase'; gap: number; amount: number; account: 'checking' | 'everyday-card'; pending: boolean; description: string }
+  | { type: 'post'; pick: number; change: number }
+  | { type: 'refund'; pick: number; amount: number; linked: boolean; account: 'checking' | 'everyday-card' }
+  | { type: 'card-charge'; amount: number; charge: 'fee' | 'interest' }
+  | { type: 'sort'; pick: number; seed: number }
+  | { type: 'resort'; pick: number; seed: number };
+
+const gapArb = fc.integer({ min: 0, max: 20 });
+const smallAmountArb = fc.oneof(fc.integer({ min: 1, max: 50_000 }), fc.constantFrom(1, 2, 100));
 
 const stepArb: fc.Arbitrary<Step> = fc.oneof(
-  fc.record({ type: fc.constant('paycheck' as const), gap: fc.integer({ min: 0, max: 20 }), amount: paycheckAmountArb }),
-  fc.record({ type: fc.constant('deposit' as const), gap: fc.integer({ min: 0, max: 20 }), amount: fc.integer({ min: 1, max: 1_000_000 }) }),
+  fc.record({ type: fc.constant('paycheck' as const), gap: gapArb, amount: paycheckAmountArb }),
+  fc.record({ type: fc.constant('deposit' as const), gap: gapArb, amount: fc.integer({ min: 1, max: 1_000_000 }) }),
   fc.record({ type: fc.constant('answer-leftover' as const), pick: fc.nat(), choice: fc.constantFrom('roll-over' as const, 'move-to-savings' as const) }),
   fc.record({ type: fc.constant('repeat' as const), pick: fc.nat() }),
+  fc.record({
+    type: fc.constant('purchase' as const),
+    gap: fc.integer({ min: 0, max: 3 }),
+    amount: smallAmountArb,
+    account: fc.constantFrom('checking' as const, 'everyday-card' as const),
+    pending: fc.boolean(),
+    description: fc.constantFrom('MADE UP GROCER', 'MADE UP CAFE', 'MADE UP HARDWARE'),
+  }),
+  fc.record({ type: fc.constant('post' as const), pick: fc.nat(), change: fc.integer({ min: -5_000, max: 5_000 }) }),
+  fc.record({
+    type: fc.constant('refund' as const),
+    pick: fc.nat(),
+    amount: smallAmountArb,
+    linked: fc.boolean(),
+    account: fc.constantFrom('checking' as const, 'everyday-card' as const),
+  }),
+  fc.record({ type: fc.constant('card-charge' as const), amount: smallAmountArb, charge: fc.constantFrom('fee' as const, 'interest' as const) }),
+  fc.record({ type: fc.constant('sort' as const), pick: fc.nat(), seed: fc.nat() }),
+  fc.record({ type: fc.constant('resort' as const), pick: fc.nat(), seed: fc.nat() }),
 );
 
 const potArb = fc.integer({ min: -1_000_000, max: 10_000_000 });
 const openingArb = fc.record({ savings: potArb, needs: potArb, wants: potArb, momReserve: fc.integer({ min: 0, max: 400_000 }), heldForOthers: potArb });
 
+const RULES: SortingRule[] = [
+  { id: 'grocer', for: 'purchase', contains: 'GROCER', bucket: 'needs' },
+  { id: 'cafe', for: 'purchase', contains: 'CAFE', bucket: 'wants' },
+];
+
+function pick<T>(list: readonly T[], index: number): T | undefined {
+  return list[index % Math.max(1, list.length)];
+}
+
+// A valid way to sort spending of this amount, chosen by the seed.
+function spendingChoice(amount: number, seed: number): SortChoice {
+  if (seed % 3 === 2 && amount >= 2) {
+    const needs = 1 + (seed % (amount - 1));
+    return { split: [{ bucket: 'needs', amount: needs }, { bucket: 'wants', amount: amount - needs }] };
+  }
+  return { to: seed % 3 === 0 ? 'needs' : 'wants' };
+}
+
+function moneyInChoice(seed: number): SortChoice {
+  return { to: BUCKETS[seed % BUCKETS.length] ?? 'savings' };
+}
+
 function runLife(book: Book, bank: TestBank, steps: Step[]): void {
   let date = START_DATE;
   let n = 0;
-  const received: Parameters<Book['receive']>[0][] = [];
+  const received: BankTransaction[] = [];
+  const send = (txn: BankTransaction): void => {
+    book.receive(txn);
+    bank.apply(txn);
+    received.push(txn);
+  };
   for (const step of steps) {
     switch (step.type) {
       case 'paycheck':
       case 'deposit': {
         date = addDays(date, step.gap);
         const id = `t${n++}`;
-        const txn = step.type === 'paycheck' ? paycheck(id, date, step.amount) : deposit(id, date, step.amount);
-        book.receive(txn);
-        bank.apply(txn);
-        received.push(txn);
+        send(step.type === 'paycheck' ? paycheck(id, date, step.amount) : deposit(id, date, step.amount));
         break;
       }
       case 'answer-leftover': {
-        const open = book.reviewItems().filter((i) => i.type === 'leftover');
-        const item = open[step.pick % Math.max(1, open.length)];
+        const item = pick(book.reviewItems().filter((i) => i.type === 'leftover'), step.pick);
         if (item) book.answerLeftover(item.id, step.choice, date);
         break;
       }
       case 'repeat': {
         // Nothing is counted twice: the bank sending the same thing again changes nothing.
-        const txn = received[step.pick % Math.max(1, received.length)];
+        const txn = pick(received, step.pick);
         if (txn) expect(book.receive(txn).outcome).toBe('duplicate');
+        break;
+      }
+      case 'purchase':
+        date = addDays(date, step.gap);
+        send(purchase(`t${n++}`, date, step.amount, step.description, { account: step.account, pending: step.pending }));
+        break;
+      case 'post': {
+        const target = pick(book.purchases().filter((p) => p.pending), step.pick);
+        const original = received.find((t) => t.id === target?.id);
+        if (target && original?.kind === 'purchase') {
+          send(posted(`t${n++}`, target.id, date, Math.max(1, target.amount + step.change), original.description, original.account));
+        }
+        break;
+      }
+      case 'refund': {
+        const target = pick(book.purchases(), step.pick);
+        send(refund(`t${n++}`, date, step.amount, step.linked ? target?.id : undefined, step.account));
+        break;
+      }
+      case 'card-charge':
+        send(cardCharge(`t${n++}`, date, step.amount, step.charge));
+        break;
+      case 'sort': {
+        const item = pick(book.reviewItems().filter((i) => i.type !== 'leftover'), step.pick);
+        if (item?.type === 'spending') book.sort(item.id, spendingChoice(item.amount, step.seed), date);
+        if (item?.type === 'money-in') book.sort(item.id, moneyInChoice(step.seed), date);
+        break;
+      }
+      case 'resort': {
+        const target = pick(book.purchases(), step.pick);
+        if (target) book.sort(target.id, spendingChoice(target.amount - target.refunded, step.seed), date);
         break;
       }
     }
@@ -104,14 +197,14 @@ function runLife(book: Book, bank: TestBank, steps: Step[]): void {
 }
 
 describe('random scenarios: the whole book', () => {
-  it('no cent is created or lost, and nothing is counted twice, through any mix of paydays and deposits', () => {
+  it('no cent is created or lost, and nothing is counted twice, through any mix of bank activity and sorting', () => {
     fc.assert(
-      fc.property(openingArb, leftoverChoiceArb, leftoverChoiceArb, splitArb, fc.array(stepArb, { maxLength: 40 }), (pots, needs, wants, split, steps) => {
-        const book = openTestBook({ pots, settings: { split, leftoverAtPayday: { needs, wants } } });
+      fc.property(openingArb, leftoverChoiceArb, leftoverChoiceArb, splitArb, fc.array(stepArb, { maxLength: 60 }), (pots, needs, wants, split, steps) => {
+        const book = openTestBook({ pots, rules: RULES, settings: { split, leftoverAtPayday: { needs, wants } } });
         const bank = new TestBank({ checking: appSide(book.pots()) });
         runLife(book, bank, steps);
       }),
-      { numRuns: 300 },
+      { numRuns: 500 },
     );
   });
 });

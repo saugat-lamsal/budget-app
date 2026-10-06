@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseDollars, type Book, type Cents } from '../src/index.js';
 import text from '../worked-examples.txt?raw';
-import { openTestBook, paycheck } from './helpers.js';
+import { cardCharge, openTestBook, paycheck, posted, purchase, refund } from './helpers.js';
 
 interface Example {
   number: number;
@@ -65,6 +65,24 @@ const examples: Record<number, () => Record<string, Cents>> = {
     book.receive(paycheck('pay', '2026-10-09', parseDollars('2,800.00')));
     book.answerLeftover('leftover:pay:needs', 'move-to-savings', '2026-10-09');
     return { ...buckets(book), 'still to move': book.savingsTransfer(parseDollars('3,000.00')).stillToMove };
+  },
+  5: () => {
+    const book = openTestBook({
+      pots: { needs: parseDollars('750.00'), wants: parseDollars('500.00') },
+      rules: [
+        { id: 'grocer', for: 'purchase', contains: 'GROCER', bucket: 'needs' },
+        { id: 'cafe', for: 'purchase', contains: 'CAFE', bucket: 'wants' },
+      ],
+    });
+    book.receive(purchase('dinner', '2026-10-05', parseDollars('40.00'), 'MADE UP CAFE', { pending: true }));
+    book.receive(posted('dinner-posted', 'dinner', '2026-10-07', parseDollars('48.00'), 'MADE UP CAFE'));
+    book.receive(purchase('hardware', '2026-10-06', parseDollars('120.00'), 'MADE UP HARDWARE'));
+    book.sort('hardware', { split: [{ bucket: 'needs', amount: parseDollars('100.00') }, { bucket: 'wants', amount: parseDollars('20.00') }] }, '2026-10-06');
+    book.receive(purchase('lunch', '2026-10-08', parseDollars('35.00'), 'MADE UP CAFE'));
+    book.receive(refund('lunch-refund', '2026-10-09', parseDollars('35.00'), 'lunch'));
+    book.receive(cardCharge('fee', '2026-10-10', parseDollars('29.00'), 'fee'));
+    book.sort('fee', { to: 'needs' }, '2026-10-10');
+    return buckets(book);
   },
 };
 
