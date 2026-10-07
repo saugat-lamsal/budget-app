@@ -44,7 +44,26 @@ async function addStyle(page: Page, css: string): Promise<void> {
   await page.addStyleTag({ content: css });
 }
 
-describe.each(ENGINES)('design rules in %s', (_name, engine) => {
+describe('design rules in the style sheets', () => {
+  const css = (file: string): string => readFileSync(new URL(`../../src/ui/${file}`, import.meta.url), 'utf8');
+
+  it("text sizes follow the phone's text size: the page's size is relative, and so is every other", () => {
+    const base = css('base.css');
+    expect(base).toMatch(/html \{[^}]*font-size: [\d.]+%;/);
+    expect(base).toMatch(/@supports \(font: -apple-system-body\) \{\s*html \{\s*font: -apple-system-body;/);
+    for (const file of ['tokens.css', 'base.css', 'blocks.css']) {
+      for (const [, value = ''] of css(file).matchAll(/(?:font-size|--text-[a-z]+):\s*([^;]+);/g)) {
+        // Relative sizes, the size tokens, or a small cap on a relative
+        // size (tab labels and the badge stay small, as iOS keeps them).
+        const relative = /^(?:[\d.]+(?:rem|em|%)|var\(--text-[a-z]+\)|inherit|min\(var\(--text-[a-z]+\), \d+px\)|min\(var\(--text-hero\), calc\(.*\)\))$/.test(value);
+        const badge = file === 'blocks.css' && value === '11px';
+        expect(relative || badge, `${file}: font-size ${value}`).toBe(true);
+      }
+    }
+  });
+});
+
+describe.each(ENGINES)('design rules in %s', (engineName, engine) => {
   const { browser, base } = useEngine(engine);
 
   it('light and dark mode follow the phone', async () => {
@@ -170,6 +189,24 @@ describe.each(ENGINES)('design rules in %s', (_name, engine) => {
       }
       await page.close();
     }
+    await context.close();
+  });
+
+  it("the screens start from the reader's own text size, not a fixed one", async () => {
+    // Chromium can be told a bigger default text size, the way a person
+    // sets it in their browser. (On the iPhone, -apple-system-body in
+    // base.css does the same from the phone's text size setting.)
+    if (engineName !== 'chromium') return;
+    const context = await browser().newContext(phone());
+    const page = await context.newPage();
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 26 } });
+    await page.goto(`${base()}/demo/normal`);
+    await page.getByTestId('safe-to-spend').waitFor();
+    // 106.25% of 32 pixels.
+    expect(await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)).toBe('34px');
+    expect(await page.locator('.row__title').first().evaluate((e) => getComputedStyle(e).fontSize)).toBe('34px');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(IPHONE.width);
     await context.close();
   });
 

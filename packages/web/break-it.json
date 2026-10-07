@@ -37,9 +37,9 @@
   {
     "section": "home",
     "file": "packages/web/src/ui/bar-fill.ts",
-    "find": "if (startedWith <= 0 || left >= startedWith) return 1;",
-    "replace": "if (left >= startedWith) return 1;",
-    "why": "10.1 a bucket that started at zero divides by zero"
+    "find": "if (left <= 0) return 0;",
+    "replace": "if (left < 0) return 0;",
+    "why": "10.2 an empty bucket that started at zero shows a full bar"
   },
   {
     "section": "home",
