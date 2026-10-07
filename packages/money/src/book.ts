@@ -1,5 +1,5 @@
 import { ACCOUNTS, type AccountId } from './accounts.js';
-import type { Alert, AlertInput } from './alerts.js';
+import { bucketLevel, type Alert, type AlertInput } from './alerts.js';
 import { isSpendingBucket, type SplitBucket } from './buckets.js';
 import type { CardPayment } from './reminders.js';
 import { addCents, assertCents, assertPositiveCents, subtractCents, type Cents } from './cents.js';
@@ -739,11 +739,11 @@ export class Book {
     // bucket started the pay period with, compared to the exact cent. At
     // zero or below the empty alert covers it, and a bucket that started at
     // zero or below has no level above zero to fall under.
-    const percent = BigInt(this.#settings.lowBucketAlertPercent);
+    const percent = this.#settings.lowBucketAlertPercent;
     for (const bucket of ['needs', 'wants'] as const) {
       const amount = this.#totals[bucket];
       const startedWith = this.#periodStart[bucket];
-      const low = amount > 0 && BigInt(amount) * 100n < BigInt(startedWith) * percent;
+      const low = bucketLevel(amount, startedWith, percent) === 'low';
       if (low && this.#lowAlerted[bucket] !== this.#period.number) {
         alerts.push({ kind: 'low-bucket', bucket, amount, startedWith });
         newlyLow.push(bucket);
@@ -752,7 +752,7 @@ export class Book {
     // 10.2: needs or wants at zero or below.
     for (const bucket of ['needs', 'wants'] as const) {
       const amount = this.#totals[bucket];
-      if (amount <= 0 && this.#emptyAlerted[bucket] !== this.#period.number) {
+      if (bucketLevel(amount, this.#periodStart[bucket], percent) === 'empty' && this.#emptyAlerted[bucket] !== this.#period.number) {
         alerts.push({ kind: 'empty-bucket', bucket, amount });
         newlyEmpty.push(bucket);
       }
