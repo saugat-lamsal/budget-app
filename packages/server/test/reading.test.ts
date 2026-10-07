@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { readPlaidItem } from '../src/bank/plaid-item.js';
 import { checkBankRules, readBankItem, type BankRule } from '../src/bank/reading.js';
 
 // How the bank connection tells kinds of bank activity apart before the money
@@ -95,6 +96,32 @@ describe('reading bank activity', () => {
 
   it('zero is not read as anything', () => {
     expect(readBankItem('checking', 0, 'CARD CHECK', rules)).toEqual({ kind: 'nothing' });
+  });
+});
+
+describe('B9 rules match the bank\'s own words', () => {
+  const base = {
+    transaction_id: 'tx-1',
+    account_id: 'acct-made-up',
+    amount: 400,
+    iso_currency_code: 'USD',
+    unofficial_currency_code: null,
+    date: '2026-10-02',
+    authorized_date: null,
+    pending: false,
+    pending_transaction_id: null,
+  };
+
+  it('B9 the description is the bank\'s own text when Plaid has it, not Plaid\'s tidied-up name', () => {
+    const read = readPlaidItem({ ...base, name: 'Mom Madeup', original_description: 'Zelle payment to MOM MADEUP Conf# 9' });
+    expect(read).toMatchObject({ ok: true, item: { description: 'Zelle payment to MOM MADEUP Conf# 9' } });
+    if (!read.ok) return;
+    expect(readBankItem('checking', read.item.amount, read.item.description, rules)).toEqual({ kind: 'payment-to-person' });
+  });
+
+  it('B9 without the bank\'s own text, Plaid\'s name is used', () => {
+    expect(readPlaidItem({ ...base, name: 'GROCERY OUTLET', original_description: null })).toMatchObject({ ok: true, item: { description: 'GROCERY OUTLET' } });
+    expect(readPlaidItem({ ...base, name: 'GROCERY OUTLET', original_description: '  ' })).toMatchObject({ ok: true, item: { description: 'GROCERY OUTLET' } });
   });
 });
 

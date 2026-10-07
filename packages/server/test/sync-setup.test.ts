@@ -92,6 +92,20 @@ describe('14 setup day from the test bank', () => {
     expect(status(h).selfCheck).toMatchObject({ ok: true, appSide: appBefore + 10_000 });
   });
 
+  it('B36 a deposit still pending on setup day is not in the starting money, and reaches the book when it posts', async () => {
+    const h = await connected({
+      history: (fake) => fake.addPending({ id: 'dep', account: ACCOUNT_IDS.checking, amount: -9_900, date: '2026-09-30', description: 'MOBILE DEPOSIT' }),
+    });
+    expect(setupPreview(h.db, []).startingMoney).toBe(755_000);
+    setUp(h);
+    expect(readItems(h.db).get('dep')?.status).toBe('waiting');
+    // The bank posts it under the same id.
+    h.fake.postInPlace('dep', { date: '2026-10-02' });
+    await h.sync('2026-10-02');
+    expect(book(h).reviewItems()).toMatchObject([{ type: 'money-in', id: 'dep', amount: 9_900 }]);
+    expect(status(h).selfCheck?.ok).toBe(true);
+  });
+
   it('B48 money on its way on setup day counts in the starting money, and pairs when it lands', async () => {
     const h = await connected({
       history: (fake) => fake.addPosted({ id: 'left', account: ACCOUNT_IDS.checking, amount: 20_000, date: '2026-09-30', description: 'Online payment to CRD 3333' }),
