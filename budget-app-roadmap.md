@@ -62,10 +62,12 @@ bank's balances.
 - Login with a passkey or Face ID.
 - Home: safe to spend, days to payday, anything needing attention.
 - Buckets: what is left in each, mom reserve, held for others.
-- Daily review: one tap per unsorted item, with "always do this".
+- Daily review: one tap per unsorted item, with "always do this". A refund
+  lists the purchases it likely belongs to (QUESTIONS.md A15).
 - Payday: move-to-savings amount and the leftover choice.
 - Settings: every number and rule, plus the change log.
-- Setup day.
+- Setup day, including bank rules suggested from the bank's own labels, for
+  you to confirm (QUESTIONS.md A12).
 - An AI agent uses the app in a browser like a person would and checks that
   what the screens show matches the money math.
 
@@ -77,7 +79,7 @@ screens and every number matches.
 
 - Phone notifications from the home-screen app.
 - Card reminders, low and empty bucket, daily review, self-check mismatch,
-  bank needs re-login.
+  bank needs re-login, and the bank taking back a transaction (10.6).
 - Tested with a fake clock so we can jump to any date.
 
 Finish line: in simulation, every alert fires at the right time, once, and
