@@ -60,7 +60,10 @@ export interface Harness {
 export const POSTED_AT_START = { checking: 300_000, savings: 500_000, everyday: 45_000, old: 300_000 };
 
 // Connected, with the first sync done and his accounts and bank rules set.
-export async function connected(options: { posted?: typeof POSTED_AT_START; history?: (fake: FakePlaid) => void } = {}): Promise<Harness> {
+export async function connected(
+  options: { posted?: typeof POSTED_AT_START; history?: (fake: FakePlaid) => void; rules?: readonly BankRule[]; today?: IsoDate } = {},
+): Promise<Harness> {
+  const today = options.today ?? SETUP_DAY;
   const fake = new FakePlaid(fourAccounts(options.posted ?? POSTED_AT_START));
   options.history?.(fake);
   const db = openDatabase(':memory:');
@@ -68,16 +71,16 @@ export async function connected(options: { posted?: typeof POSTED_AT_START; hist
   const log = memoryLog(lines, [fake.clientId, fake.secret]);
   const plaid = new PlaidClient(plaidKeysFromEnv({ PLAID_ENV: 'sandbox', PLAID_CLIENT_ID: fake.clientId, PLAID_SECRET: fake.secret }), { fetch: fake.fetch, log });
   const box = new TokenBox(TOKEN_KEY);
-  await connectTestBank({ db, plaid, box, log, today: SETUP_DAY, institutionId: 'ins_109508' });
-  const sync = (today: IsoDate, extra: Partial<SyncInput> = {}): Promise<SyncResult> => syncBank({ db, plaid, box, log, today, pageSize: 3, ...extra });
-  await sync(SETUP_DAY);
+  await connectTestBank({ db, plaid, box, log, today, institutionId: 'ins_109508' });
+  const sync = (day: IsoDate, extra: Partial<SyncInput> = {}): Promise<SyncResult> => syncBank({ db, plaid, box, log, today: day, pageSize: 3, ...extra });
+  await sync(today);
   setAccountRoles(db, {
     [ACCOUNT_IDS.checking]: 'checking',
     [ACCOUNT_IDS.savings]: 'savings',
     [ACCOUNT_IDS.everyday]: 'everyday-card',
     [ACCOUNT_IDS.old]: 'old-card',
   });
-  setBankRules(db, BANK_RULES, SETUP_DAY);
+  setBankRules(db, options.rules ?? BANK_RULES, today);
   return { fake, db, lines, plaid, box, sync };
 }
 

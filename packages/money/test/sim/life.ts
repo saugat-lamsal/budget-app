@@ -7,6 +7,7 @@ import {
   daysBetween,
   startTracking,
   withPendingCharges,
+  type BankBalances,
   type BankTransaction,
   type Book,
   type CardNotice,
@@ -24,7 +25,7 @@ import {
   type SortingRule,
   type TransferSent,
 } from '../../src/index.js';
-import { SimBank, type Card, type ChargeAccount, type OwnAccount } from './bank.js';
+import { SimBank, type Card, type ChargeAccount, type OwnAccount, type Posted } from './bank.js';
 import { Random } from './random.js';
 
 // Phase 2, the simulated you: a made-up person with made-up numbers, lived
@@ -41,6 +42,37 @@ export interface LifeOptions {
   // For the simulator's own tests: on this day the bank changes a balance
   // without telling the book, so the self-check must fail.
   readonly sabotageOnDay?: number;
+  // For the bank connection's tests (packages/server): what the bank did on
+  // setup day and on each day after, and the book's totals at the end of
+  // each day, so the same days can be played through the bank connection in
+  // Plaid's format. Recording changes nothing about the life.
+  readonly record?: LifeRecorder;
+}
+
+// The book's totals that bank activity alone decides. The person's answers
+// only move money between buckets, so these do not depend on them.
+export interface BookTotals {
+  readonly appSide: Cents;
+  readonly inTransit: Cents;
+  readonly oldCardDebt: Cents;
+}
+
+export interface RecordedBankDay {
+  readonly date: IsoDate;
+  // What the bank sent that day, in the order it sent it.
+  readonly feed: readonly BankTransaction[];
+  readonly posted: Posted;
+  // 12.1: posted plus pending charges.
+  readonly balances: BankBalances;
+  // Transfers with only one half showing, as "from to amount left|arrived".
+  readonly halvesShowing: readonly string[];
+  readonly totals: BookTotals;
+}
+
+export interface LifeRecorder {
+  // The bank as it started, what it sent before setup day, and setup day itself.
+  setupDay(setup: { readonly start: Posted; readonly feed: readonly BankTransaction[]; readonly input: SetupInput; readonly totals: BookTotals }): void;
+  day(day: RecordedBankDay): void;
 }
 
 export type LifeResult =
@@ -208,6 +240,10 @@ class Life {
   readonly #seed: number;
   readonly #days: number;
   readonly #sabotageOnDay: number | undefined;
+  readonly #record: LifeRecorder | undefined;
+  readonly #startPosted: Posted;
+  // How much of the bank's feed has been recorded.
+  #recordedUpTo = 0;
   readonly #random: Random;
   readonly #person: Person;
   readonly #bank: SimBank;
@@ -260,6 +296,7 @@ class Life {
     this.#seed = options.seed;
     this.#days = Math.round(options.years * 365);
     this.#sabotageOnDay = options.sabotageOnDay;
+    this.#record = options.record;
     this.#random = new Random(options.seed);
     this.#stats = Object.fromEntries(STAT_NAMES.map((name) => [name, 0])) as Stats;
     const r = this.#random;
@@ -279,12 +316,13 @@ class Life {
 
     // Setup day (section 14): the bank as it stands, with a few charges still
     // pending and sometimes a card payment on its way.
-    this.#bank = new SimBank({
+    this.#startPosted = {
       checking: r.int(150_000, 600_000),
       savings: r.int(200_000, 2_000_000),
       everydayCard: r.int(0, 250_000),
       oldCard: r.int(250_000, 350_000),
-    });
+    };
+    this.#bank = new SimBank(this.#startPosted);
     for (let i = r.int(0, 3); i > 0; i--) {
       const store = r.pick(STORES.filter((s) => s.how !== 'posted'));
       const account = r.chance(store.debitOutOf10, 10) ? 'checking' : 'everyday-card';
@@ -360,12 +398,17 @@ class Life {
   live(): LifeResult {
     try {
       this.#checkSetupDay();
+      if (this.#record !== undefined) {
+        this.#recordedUpTo = this.#bank.feed.length;
+        this.#record.setupDay({ start: { ...this.#startPosted }, feed: [...this.#bank.feed], input: this.#setupInput, totals: this.#totals() });
+      }
       for (this.#day = 0; this.#day < this.#days; this.#day++) {
         this.#date = addDays(this.#start, this.#day);
         this.#bankDay();
         if (this.#day === this.#sabotageOnDay) this.#bank.changeWithoutTelling('checking', -1);
         this.#evening();
         this.#check();
+        this.#recordDay();
         this.#stats.days++;
       }
       return { ok: true, seed: this.#seed, days: this.#days, stats: this.#stats };
@@ -374,6 +417,22 @@ class Life {
       const message = error instanceof Error ? error.message : String(error);
       return { ok: false, seed: this.#seed, day: this.#day, date: this.#date, check, message, recent: [...this.#recent], stats: this.#stats };
     }
+  }
+
+  #totals(): BookTotals {
+    const check = this.#book.selfCheck(this.#bank.balances());
+    return { appSide: check.appSide, inTransit: check.inTransit, oldCardDebt: this.#book.oldCardDebt() };
+  }
+
+  #recordDay(): void {
+    if (this.#record === undefined) return;
+    const feed = this.#bank.feed.slice(this.#recordedUpTo);
+    this.#recordedUpTo = this.#bank.feed.length;
+    const halvesShowing = this.#bank
+      .halvesShowing()
+      .map((h) => `${h.from} ${h.to} ${h.amount} ${h.kind === 'transfer-sent' ? 'left' : 'arrived'}`)
+      .sort();
+    this.#record.day({ date: this.#date, feed, posted: { ...this.#bank.posted }, balances: this.#bank.balances(), halvesShowing, totals: this.#totals() });
   }
 
   // 14.3: an assignment a cent off either way is refused, saying what is left.
