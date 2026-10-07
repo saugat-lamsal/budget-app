@@ -112,6 +112,29 @@ This applies to every phase and every session, cloud or local.
 - When something needs a decision, give the options and a recommendation.
 
 
+## Design rules (Phase 4 onward)
+
+- Built for an iPhone first. Respect the notch and the home bar. Tap
+  targets are at least 44 points. Bottom tab bar: Home, Buckets, Review,
+  Settings.
+- Clean and modern, not flashy. System font, plenty of spacing, one accent
+  color, subtle motion only. No charts yet.
+- Light and dark mode, following the phone's setting.
+- One main number per screen. On Home it is safe to spend.
+- Money is always formatted the same way, digits aligned, negatives
+  obvious.
+- Color is never the only signal. Low, empty, overdue, and mismatch states
+  also use words or an icon.
+- Every screen has a loading state, an empty state, and an error state. The
+  "totals do not match the bank" state is impossible to miss.
+- Anything final or hard to undo asks first, such as "this is my paycheck".
+- Readable contrast. The screens respect the phone's text size and
+  reduced-motion settings.
+- One shared set of building blocks (colors, type, spacing, card, list row,
+  button, bucket bar, bottom sheet) is used on every screen. No screen
+  makes up its own.
+
+
 ## Status
 
 - Rulebook: draft 9. Section 15 confirmed (a to j), section 17 changes
