@@ -22,6 +22,13 @@ describe('safety: no secrets in the repo', () => {
     expect(isIgnoredByGit('packages/server/.env')).toBe(true);
   });
 
+  // Found by CI on Windows: npm ci tried to compile better-sqlite3 from
+  // source, which it never needs, and failed without a C++ compiler.
+  it('safety: packages cannot run install scripts, so npm ci never compiles anything', () => {
+    const npmrc = readFileSync(new URL('.npmrc', repoRoot), 'utf8');
+    expect(npmrc).toMatch(/^ignore-scripts=true$/m);
+  });
+
   it('git ignores the database, where the bank data and the sealed bank key live', () => {
     for (const path of ['data/budget.sqlite', 'packages/server/budget.sqlite', 'budget.sqlite-wal', 'budget.sqlite-shm', 'data/anything.json']) {
       expect(isIgnoredByGit(path), path).toBe(true);
