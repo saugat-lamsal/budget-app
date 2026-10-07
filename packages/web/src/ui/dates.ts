@@ -27,3 +27,8 @@ export function asOfText(at: string, timeZone?: string): string {
     .toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', ...(timeZone === undefined ? {} : { timeZone }) })
     .replace(/\s/g, ' ');
 }
+
+// "October": the calendar month named by "2026-10".
+export function monthName(month: string): string {
+  return utc(`${month}-01`).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
+}

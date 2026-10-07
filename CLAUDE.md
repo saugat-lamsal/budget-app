@@ -248,7 +248,7 @@ This applies to every phase and every session, cloud or local.
   - Step 3, the shared building blocks and Home on made-up data: built.
     He OK'd the look (Oct 7) and asked for: "left of $X" under each bucket
     amount; A17 option 2 (rule 9.6); a take-back on Home until seen (10.6,
-    the screens' one request that sends anything, POST /api/seen); and the
+    one of the two things the screens send, POST /api/seen); and the
     last checked safe to spend, greyed, "as of", when the bank cannot be
     read (0.5). All built. Then stop, before he merges.
   - packages/web/src/ui: tokens.css (colors, type, spacing, motion, safe
@@ -257,7 +257,9 @@ This applies to every phase and every session, cloud or local.
     only these.
   - The screens never work money out. packages/server/src/views/home.ts
     builds Home from the book (the money math); the web server
-    (src/http/server.ts) is read-only and serves the app and /api/home.
+    (src/http/server.ts) serves the app and the screens' numbers
+    (/api/home, /api/buckets, /api/review). It only takes two things from
+    the screens (step 4): that a take-back was seen, and his choices.
   - npm run demo: made-up lives only (src/demo), no bank, no database
     (a test follows its imports). This computer only, unless --wifi.
     /demo picks a life. npm run screenshots: iPhone-size pictures, light
@@ -278,6 +280,45 @@ This applies to every phase and every session, cloud or local.
     (packages/web/src/app/api.ts, test/browser/loading.test.ts). Keep it
     that way. A failing browser test reports what the page, the browser,
     and the test server were doing (harness.ts, waitOrReport).
-  - Waiting on: his merge of PR #7, and B80, B81, B83, B85 to B87 to check.
+  - PR #7 merged (Oct 7, 2026). Still to check: B80, B81, B83, B85 to B87.
+- Phase 4, step 4, the Buckets and Review screens: built Oct 7, 2026 on
+  branch phase-4-buckets-and-review, on made-up data only. Then stop, for
+  his feedback.
+  - Buckets (packages/web/src/screens/Buckets.tsx, packages/server/src/views/buckets.ts):
+    everything in the buckets as the one main number (12.2), needs and
+    wants bars, savings, the mom reserve with this month against the target
+    (8.2), held for others (7.3), what waits in review, the old card debt
+    (12.4), and the same "totals do not match the bank" banner as Home.
+  - Review (Review.tsx, views/review.ts): every waiting item with exactly
+    the choices the money math offers for it. The money package decides what
+    is offered (src/review-options.ts, Book.reviewDetails), what a refund
+    likely belongs to (src/likely-purchases.ts, 20d, A15), and what "this is
+    my paycheck" would do (3.2, 3.3). The screen shows them and decides
+    nothing. Final choices ask first (my paycheck, a payday answer, "always
+    do this"): the screen asks, and the server refuses them without the yes.
+  - How taps reach the books: POST /api/choice (src/choices.ts, the choice
+    desk). It parses strictly, checks the choice is one offered for the
+    item, hands it to the book, and answers done or refused with why
+    (nothing changed). Each choice carries a decision number made once on
+    the phone; a repeat of it gets the first answer back and changes
+    nothing; a different number for an item already dealt with is told so.
+    The screens' only writes are now /api/seen and /api/choice (the guard
+    test packages/web/test/read-only.test.ts lists exactly those two).
+  - The choices are kept in memory in the demo, one live book per made-up
+    life (picking the life again starts it over). Keeping them with the
+    book's history in the database is for the real server (Phase 6).
+  - Demo lives added: review-busy (one of every kind of thing waiting) and
+    buckets-busy. packages/money/test/busy-book.ts is the same idea for
+    tests.
+  - Tests: money (review-options*.test.ts, 12-app-side.test.ts), server
+    (choices, views-buckets, views-review, http, demo), browser
+    (buckets, review, design-screens, random-lives-screens, worked
+    examples 7 to 11). The random-lives test taps random items and compares
+    with a twin of the book. Break-it: the new breaks are tagged "[review]"
+    (node scripts/break-it.mjs --match "\[review\]"; the screens' ones are
+    section "home" and run the browser tests; use --only to judge them by
+    one test file).
+  - Waiting on: his feedback on the look, A18 and A19, and B88 to B96 to
+    check.
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.

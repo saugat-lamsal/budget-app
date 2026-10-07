@@ -13,10 +13,14 @@ import { MINUS } from '../../src/ui/money-format.js';
 
 export const WEB_ROOT = fileURLToPath(new URL('../../dist/', import.meta.url));
 
-export const ENGINES: readonly (readonly [string, BrowserType])[] = [
-  ['chromium', chromium],
-  ['webkit', webkit],
-];
+// BROWSER_ENGINE=chromium (or webkit) runs one engine only. The break-it check
+// uses it to go faster: a break that one engine's tests catch is caught.
+export const ENGINES: readonly (readonly [string, BrowserType])[] = (
+  [
+    ['chromium', chromium],
+    ['webkit', webkit],
+  ] as const
+).filter(([name]) => process.env['BROWSER_ENGINE'] === undefined || process.env['BROWSER_ENGINE'] === name);
 
 // An iPhone 15 as a home-screen app: the whole screen, no browser bars.
 export const IPHONE = { width: 393, height: 852 } as const;
@@ -158,7 +162,8 @@ export async function openScenario(context: BrowserContext, base: string, scenar
   watchPage(page);
   await page.goto(`${base}/demo/${scenario}`);
   if (path !== '/home') await page.goto(`${base}${path}`);
-  await waitOrReport(page, base, '[data-testid="home"]:not([aria-busy="true"]), [data-testid="buckets"], [data-testid="review"], [data-testid="settings"]');
+  // Home, Buckets, and Review are ready once their numbers have loaded.
+  await waitOrReport(page, base, 'main[aria-busy="false"], [data-testid="settings"]');
   return page;
 }
 

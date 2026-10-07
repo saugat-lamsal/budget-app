@@ -1,9 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
+import { BucketsScreen } from '../screens/Buckets.js';
 import { ComingNext } from '../screens/ComingNext.js';
 import { HomeScreen } from '../screens/Home.js';
+import { ReviewScreen } from '../screens/Review.js';
 import { TabBar } from '../ui/TabBar.js';
-import { useHome } from './api.js';
+import { useBuckets, useHome, useReview, type Reload } from './api.js';
 import { TAB_LABELS, pathOf, tabOf, type Tab } from './routes.js';
+
+// Each of these loads its numbers when its tab opens, so it is always fresh.
+function BucketsTab() {
+  const [load, reload] = useBuckets();
+  return <BucketsScreen load={load} onRetry={reload} />;
+}
+
+function ReviewTab({ onChanged }: { readonly onChanged: Reload }) {
+  const [load, reload] = useReview();
+  return <ReviewScreen load={load} onRetry={reload} onChanged={onChanged} />;
+}
 
 // The app: the current tab's screen and the tab bar. The tab is in the
 // address (/home, /buckets, /review, /settings), so a refresh or a
@@ -52,7 +65,7 @@ export function App() {
   const waiting = home.status === 'ready' && home.value.state === 'tracking' ? home.value.waitingInReview : 0;
   return (
     <div className="app">
-      {tab === 'home' ? <HomeScreen load={home} onRetry={retryHome} /> : <ComingNext tab={tab} />}
+      {tab === 'home' ? <HomeScreen load={home} onRetry={retryHome} /> : tab === 'buckets' ? <BucketsTab /> : tab === 'review' ? <ReviewTab onChanged={retryHome} /> : <ComingNext tab={tab} />}
       <TabBar current={tab} onGo={go} waitingInReview={waiting} />
     </div>
   );

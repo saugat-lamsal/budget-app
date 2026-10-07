@@ -1,8 +1,9 @@
-WORKED EXAMPLES: THE HOME SCREEN
+WORKED EXAMPLES: THE SCREENS (HOME, BUCKETS, REVIEW)
 
 Made-up numbers, worked out step by step, so you can check by hand what
-Home shows. These are the demo's made-up lives (npm run demo, then /demo).
-Every amount is in dollars and cents.
+the screens show. These are the demo's made-up lives (npm run demo, then
+/demo). Every amount is in dollars and cents. Examples 1 to 6 are Home,
+7 and 8 are Buckets, 9 to 11 are Review.
 
 Each example is also a test. packages/web/test/worked-examples.test.ts
 reads the "Check:" lines straight from this file and compares them with
@@ -172,3 +173,129 @@ coffee.
   which the bank has not backed up (0.5).
 
 Check: last checked 628.69 | days to payday 9
+
+
+========================================================================
+EXAMPLE 7. Buckets on a normal Wednesday (demo life "normal"; rules
+           12.2, 10.1, 8.2, 7.3, 12.4, 4.3)
+========================================================================
+
+The same life as example 1. Buckets shows what is in each bucket:
+
+  Savings: 9,550.00 (example 1)
+  Needs 930.75 and wants 657.11 (example 1)
+  Mom reserve: 2,200.00 (example 1)
+  Held for others: 0.00, settled (7.3)
+  Waiting in review, not in any bucket yet: the two purchases with no
+          rule, 34.67 going out (4.3)
+  The one main number is everything in the buckets (12.2): savings, needs,
+          wants, mom reserve, held for others, and unsorted money in,
+          less unsorted spending:
+          9,550.00 + 930.75 + 657.11 + 2,200.00 + 0.00 - 34.67
+          = 13,303.19, the same app side as example 1.
+
+  Mom this month (8.2): October so far he sent 500.00 (Oct 3). The target
+  is 2,000.00 to 3,000.00 a month. 500.00 is under 2,000.00, so Buckets
+  says "Under target".
+
+  The old card (12.4): 2,980.00 owed. It is not part of the total.
+
+Check: total 13,303.19 | savings 9,550.00 | needs 930.75 | wants 657.11
+Check: mom reserve 2,200.00 | mom sent 500.00 | held for others 0.00
+Check: old card 2,980.00 | waiting out 34.67
+
+
+========================================================================
+EXAMPLE 8. Money held for a roommate, and mom within the target (demo
+           life "buckets-busy"; rules 7.1, 7.3, 8.1, 8.2)
+========================================================================
+
+The same life as example 1, plus:
+
+Oct 5  His roommate sends 120.00 for the rent. He marks it "not mine"
+       (7.1): held for others 0.00 + 120.00 = 120.00. Buckets says
+       "Holding money that isn't yours".
+Oct 6  ZELLE TO MADE UP MOM, 2,000.00. The mom rule matches (8.1):
+       mom reserve 2,200.00 - 2,000.00 = 200.00
+       Sent to mom in October: 500.00 + 2,000.00 = 2,500.00. That is
+       between 2,000.00 and 3,000.00, so Buckets says "In the target".
+
+  Everything in the buckets (12.2): example 7's 13,303.19, plus the
+  roommate's 120.00, less the 2,000.00 sent to mom:
+  13,303.19 + 120.00 - 2,000.00 = 11,423.19
+
+Check: total 11,423.19 | mom reserve 200.00 | mom sent 2,500.00
+Check: held for others 120.00
+
+
+========================================================================
+EXAMPLE 9. A paycheck-looking deposit that came early asks first (demo
+           life "review-busy"; rules 3.7, 6.1, 3.2, 3.3, B1, B52)
+========================================================================
+
+The same life as example 1, but with 17 things waiting in review (the
+two payday questions, a deposit, an early paycheck, a refund, the two
+purchases from example 1 and more).
+
+Oct 6  MADE UP EMPLOYER PAYROLL BONUS, 300.00. It matches the paycheck
+       rule, but it came 4 days after the Oct 2 paycheck, less than 10, so
+       it waits in review instead of splitting by itself (3.7).
+
+He taps "This is my paycheck". That cannot be undone here, so the screen
+asks first, and shows what it would do (3.2, 3.3):
+  The mom reserve comes off first: the most it takes is 1,500.00, but the
+          deposit is only 300.00, so it takes 300.00 (B1). The reserve
+          holds 0.00 by then (a 2,500.00 payment to mom took the 2,200.00
+          it had), and it has room up to 3,000.00, so all 300.00 fits.
+  Nothing is left to split: 300.00 - 300.00 = 0.00, so needs 0.00, wants
+          0.00, and savings 0.00.
+  The parts add up to the deposit: 300.00 + 0.00 + 0.00 + 0.00 = 300.00
+
+Only after he says "Yes, this is my paycheck" is anything sent.
+
+Check: preview mom 300.00 | preview savings 0.00 | preview needs 0.00
+Check: preview wants 0.00 | waiting 17
+
+
+========================================================================
+EXAMPLE 10. One purchase split, the rest worked out for him (demo life
+            "normal"; rules 4.4, 4.7, 12.2)
+========================================================================
+
+The same life as example 1. CORNER STORE, 11.50, has no rule, so it waits
+in review (4.2). He splits it: 4.00 to needs. Wants gets the rest. The
+screen does not work out the rest; the money math does:
+  The rest: 11.50 - 4.00 = 7.50
+  Needs: 930.75 - 4.00 = 926.75
+  Wants: 657.11 - 7.50 = 649.61
+  Unsorted spending: 34.67 - 11.50 = 23.17 (only ONLINE MARKETPLACE is
+          left waiting)
+  Everything in the buckets did not change (12.2): sorting only moves
+          money from "unsorted" to the buckets:
+          9,550.00 + 926.75 + 649.61 + 2,200.00 + 0.00 - 23.17
+          = 13,303.19
+
+Check: split needs 4.00 | split wants 7.50 | needs after 926.75
+Check: wants after 649.61 | waiting out after 23.17 | total after 13,303.19
+
+
+========================================================================
+EXAMPLE 11. A refund lists the purchases it likely belongs to (demo life
+            "review-busy"; rules 4.5, 20d, QUESTIONS.md A15)
+========================================================================
+
+The same life as example 9. On Oct 7 the everyday card shows a refund of
+23.17, ONLINE MARKETPLACE REFUND. The bank did not say which purchase it
+was for, so it waits in review (4.5). The app lists the purchases it
+likely belongs to: on the same card, on or before Oct 7, with at least
+23.17 left to refund, and either the same name or the same amount.
+  ONLINE MARKETPLACE, 23.17, Oct 6: the same name and the same amount.
+          It comes first.
+  ONLINE MARKETPLACE, 54.00, Oct 1: the same name, and 54.00 is at
+          least 23.17. It comes second.
+  MAIN ST RESTAURANT, 38.90 has enough left, but neither its name nor
+          its amount is the refund's, so it is not listed.
+Two purchases are listed. Putting the refund back in a bucket is his
+choice, one tap (payback, 6.1).
+
+Check: likely count 2 | likely first 23.17 | likely second 54.00

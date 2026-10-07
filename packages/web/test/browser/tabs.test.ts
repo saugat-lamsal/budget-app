@@ -80,7 +80,7 @@ describe.each(ENGINES)('tabs in %s', (_name, engine) => {
   });
 
   it('screens that come next say so', async () => {
-    const page = await openScenario(await browser().newContext(phone()), base(), 'normal', '/buckets');
+    const page = await openScenario(await browser().newContext(phone()), base(), 'normal', '/settings');
     expect(await page.getByTestId('coming-next').innerText()).toContain('Coming next');
     await page.context().close();
   });

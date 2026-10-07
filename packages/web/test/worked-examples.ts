@@ -8,7 +8,24 @@ import { readFileSync } from 'node:fs';
 const text = readFileSync(new URL('../worked-examples.txt', import.meta.url), 'utf8');
 
 // Which demo life each example is.
-export const EXAMPLE_LIVES: Readonly<Record<number, string>> = { 1: 'normal', 2: 'mismatch', 3: 'low', 4: 'overspent', 5: 'took-back', 6: 'bank-not-read' };
+export const EXAMPLE_LIVES: Readonly<Record<number, string>> = {
+  1: 'normal',
+  2: 'mismatch',
+  3: 'low',
+  4: 'overspent',
+  5: 'took-back',
+  6: 'bank-not-read',
+  7: 'normal',
+  8: 'buckets-busy',
+  9: 'review-busy',
+  10: 'normal',
+  11: 'review-busy',
+};
+
+// Which screen each example is about.
+export const HOME_EXAMPLES: readonly number[] = [1, 2, 3, 4, 5, 6];
+export const BUCKETS_EXAMPLES: readonly number[] = [7, 8];
+export const REVIEW_EXAMPLES: readonly number[] = [9, 10, 11];
 
 export function checksOf(number: number): Map<string, number> {
   const block = text.split(/^EXAMPLE /m).find((b) => b.startsWith(`${number}.`));

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { ChoiceDesk } from '../../server/src/choices.js';
 import { demoScenario } from '../../server/src/demo/scenarios.js';
+import { bucketsView } from '../../server/src/views/buckets.js';
 import { homeView } from '../../server/src/views/home.js';
-import { EXAMPLE_LIVES, checksOf, exampleNumbers } from './worked-examples.js';
+import { reviewView } from '../../server/src/views/review.js';
+import { BUCKETS_EXAMPLES, EXAMPLE_LIVES, HOME_EXAMPLES, REVIEW_EXAMPLES, checksOf, exampleNumbers } from './worked-examples.js';
 
 // Every example in packages/web/worked-examples.txt, against what the server
 // sends Home for the same made-up life.
@@ -16,11 +19,11 @@ function homeOf(number: number) {
 
 describe('worked examples: the Home screen', () => {
   it('every example in the file has a made-up life', () => {
-    expect(exampleNumbers()).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(exampleNumbers()).toEqual([...HOME_EXAMPLES, ...BUCKETS_EXAMPLES, ...REVIEW_EXAMPLES]);
     for (const n of exampleNumbers()) expect(EXAMPLE_LIVES[n], `example ${n}`).toBeDefined();
   });
 
-  it.each(exampleNumbers())('example %i: every Check line is what Home is sent', (n) => {
+  it.each(HOME_EXAMPLES)('example %i: every Check line is what Home is sent', (n) => {
     const { view, check } = homeOf(n);
     const review = view.attention.find((a) => a.kind === 'review');
     const savings = view.attention.find((a) => a.kind === 'move-to-savings');
@@ -60,5 +63,114 @@ describe('worked examples: the Home screen', () => {
 
   it("example 6 shows the time it was last checked, not today's number (0.5, B82)", () => {
     expect(homeOf(6).view.safeToSpend).toEqual({ shown: false, why: 'bank-not-read', lastChecked: { amount: 62_869, at: '2026-10-07T07:15:00-05:00' } });
+  });
+});
+
+function lifeOf(n: number) {
+  const input = demoScenario(EXAMPLE_LIVES[n] ?? '')?.input?.();
+  if (input === undefined || input.book === null || input.bank === null) throw new Error(`example ${n} has no life`);
+  return { book: input.book, bank: input.bank, today: input.today };
+}
+
+describe('worked examples: the Buckets screen', () => {
+  it.each(BUCKETS_EXAMPLES)('example %i: every Check line is what Buckets is sent', (n) => {
+    const { book, bank, today } = lifeOf(n);
+    const v = bucketsView({ today, book, bank, madeUpData: true });
+    if (v.state !== 'tracking') throw new Error('not tracking');
+    const got: Record<string, number> = {
+      total: v.total,
+      savings: v.savings,
+      needs: v.needs.left,
+      wants: v.wants.left,
+      'mom reserve': v.momReserve.amount,
+      'mom sent': v.momReserve.sent,
+      'held for others': v.heldForOthers.heldForOthers,
+      'old card': v.oldCard,
+      'waiting out': v.waiting.spending,
+    };
+    for (const [label, expected] of checksOf(n)) {
+      expect(label in got, `example ${n}: unknown check "${label}"`).toBe(true);
+      expect(got[label], `example ${n}: ${label}`).toBe(expected);
+    }
+  });
+
+  it('example 7 is under the target, example 8 is within it (8.2)', () => {
+    const position = (n: number) => {
+      const { book, bank, today } = lifeOf(n);
+      const v = bucketsView({ today, book, bank, madeUpData: true });
+      return v.state === 'tracking' ? v.momReserve.position : null;
+    };
+    expect(position(7)).toBe('under');
+    expect(position(8)).toBe('within');
+  });
+});
+
+describe('worked examples: the Review screen', () => {
+  it('example 9: the early deposit would give all 300.00 to the reserve, and asks first (B1, B52)', () => {
+    const { book, today } = lifeOf(9);
+    const v = reviewView({ today, book, madeUpData: true });
+    if (v.state !== 'tracking') throw new Error('not tracking');
+    const early = v.items.find((d) => d.item.id === 'busy-early');
+    const p = early?.paycheckPreview;
+    const got: Record<string, number | undefined> = {
+      'preview mom': p?.momReserve,
+      'preview savings': p?.savings,
+      'preview needs': p?.needs,
+      'preview wants': p?.wants,
+      waiting: v.items.length,
+    };
+    for (const [label, expected] of checksOf(9)) {
+      expect(label in got, `example 9: unknown check "${label}"`).toBe(true);
+      expect(got[label], `example 9: ${label}`).toBe(expected);
+    }
+    // Asking first: nothing is done without his OK.
+    const desk = new ChoiceDesk(book, () => today);
+    const before = JSON.stringify(book.pots());
+    expect(desk.decide({ id: 'worked-example-9', item: 'busy-early', choice: { to: 'paycheck' } })).toMatchObject({ ok: false, code: 'needs-confirmation' });
+    expect(JSON.stringify(book.pots())).toBe(before);
+  });
+
+  it('example 10: the split, with the rest worked out by the money math, and everything in the buckets unchanged', () => {
+    const { book, today } = lifeOf(10);
+    const before = bucketsView({ today, book, bank: null, madeUpData: true });
+    if (before.state !== 'tracking') throw new Error('not tracking');
+    const store = book.reviewItems().find((i) => 'description' in i && i.description === 'CORNER STORE');
+    if (store === undefined) throw new Error('no CORNER STORE waiting');
+    const desk = new ChoiceDesk(book, () => today);
+    const answer = desk.decide({ id: 'worked-example-10', item: store.id, choice: { split: [{ bucket: 'needs', amount: 400 }, { bucket: 'wants', amount: 'rest' }] } });
+    if (!answer.ok) throw new Error(answer.why);
+    const parts = 'split' in answer.done.choice ? answer.done.choice.split : [];
+    const after = bucketsView({ today, book, bank: null, madeUpData: true });
+    if (after.state !== 'tracking') throw new Error('not tracking');
+    const got: Record<string, number | undefined> = {
+      'split needs': parts.find((p) => p.bucket === 'needs')?.amount as number,
+      'split wants': parts.find((p) => p.bucket === 'wants')?.amount as number,
+      'needs after': after.needs.left,
+      'wants after': after.wants.left,
+      'waiting out after': after.waiting.spending,
+      'total after': after.total,
+    };
+    for (const [label, expected] of checksOf(10)) {
+      expect(label in got, `example 10: unknown check "${label}"`).toBe(true);
+      expect(got[label], `example 10: ${label}`).toBe(expected);
+    }
+    expect(after.total).toBe(before.total);
+  });
+
+  it('example 11: the refund lists the two purchases it likely belongs to, by name and amount (20d)', () => {
+    const { book, today } = lifeOf(11);
+    const v = reviewView({ today, book, madeUpData: true });
+    if (v.state !== 'tracking') throw new Error('not tracking');
+    const refund = v.items.find((d) => d.item.id === 'busy-refund');
+    const list = refund?.likelyPurchases ?? [];
+    const got: Record<string, number | undefined> = { 'likely count': list.length, 'likely first': list[0]?.amount, 'likely second': list[1]?.amount };
+    for (const [label, expected] of checksOf(11)) {
+      expect(label in got, `example 11: unknown check "${label}"`).toBe(true);
+      expect(got[label], `example 11: ${label}`).toBe(expected);
+    }
+    expect(list.map((p) => [p.sameName, p.sameAmount])).toEqual([
+      [true, true],
+      [true, false],
+    ]);
   });
 });

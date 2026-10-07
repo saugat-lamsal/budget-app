@@ -167,6 +167,40 @@ A17. ANSWERED Oct 7, built. When Home shows a card payment that is due.
      and a bill due in 5 days still does.
 
 
+## Part A, added with the Buckets and Review screens (Phase 4, Oct 7). Waiting on your answer.
+
+A18. A refund in review, and the purchase it belongs to (4.5, 6.1, A15).
+     Review lists the purchases a refund likely belongs to (20d), but
+     rulebook 6.1 gives a refund only two choices: payback into a bucket,
+     or not mine. So today, tapping "Into Wants" puts the money in Wants and
+     leaves the purchase as it was: the purchase does not count as
+     refunded. For a purchase in one bucket the buckets come out the same
+     as if the bank had matched them. They differ later: if you re-sort the
+     purchase to Needs, the purchase's money moves to Needs but the refund
+     stays in Wants. And a split purchase is not sent back to review to be
+     split again, as 4.5 does for a matched partial refund.
+     Option 1: keep it as built. The list only helps you choose a bucket.
+     Option 2: each likely purchase gets a button, "This refund is for this
+     one". The refund is then matched exactly as if the bank had said so
+     (4.5): back into the bucket the purchase came from, split purchases
+     handled as in A1. Needs new wording in 4.5 and 6.1.
+     Recommendation: option 2. A refund that follows its purchase cannot end
+     up in the wrong bucket later.
+
+A19. A new rule that cannot sort everything it matches (13.2, 7.6, B73).
+     Making "always do this" also sorts every waiting item the new rule is
+     the first match for (13.2). If one of those cannot take the choice,
+     the whole rule is refused, nothing changes, and the screen says so.
+     Example: "always for mom" for ZELLE TO A FRIEND, while another waiting
+     payment to the same friend was partly refunded: a partly refunded
+     payment cannot be for mom (B73), so no rule is made.
+     Option 1: keep it. Safe, but confusing: you may not see why.
+     Option 2: make the rule, sort the waiting items that can take it, and
+     leave the others waiting, saying which.
+     Recommendation: option 2. The rule is what you asked for; the one it
+     cannot sort is still yours to decide.
+
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 B1. Paycheck smaller than the mom reserve (3.2).
@@ -640,8 +674,105 @@ B86. With B82: "last checked" means the last time the bank was read and
 B87. With B84: "seen" means you tapped the take-back and pressed "Got it"
      on the sheet that shows what, how much, and when. Just opening Home
      does not count, and neither does the phone alert (Phase 5). Each
-     take-back is its own row, oldest first. Marking one seen is the only
-     thing the screens ever send to the server, and it changes no money.
+     take-back is its own row, oldest first. Marking one seen changes no
+     money. (Since the Review screen, his choices are sent to the server
+     too, B91; neither moves money at the bank.)
 
 B85. A late paycheck (B35) shows "Paycheck is 2 days late" with the date
      it was expected.
+
+
+## Part B, added with the Buckets and Review screens (Phase 4, Oct 7). Tell me if any is wrong.
+
+B88. Which purchases a refund likely belongs to (20d, A15). A purchase is
+     listed when it is on the same account as the refund, on or before the
+     day of the refund, has at least the refund's amount left to refund
+     (4.5), and either shares a name word with the refund or has exactly the
+     refund's amount left. A name word is a word of three or more letters
+     or digits, ignoring case and punctuation, and not a word that says what
+     the bank item is (refund, return, credit, reversal, adjustment,
+     purchase, payment). The best come first (same name and amount, then
+     same name, then same amount; the newest first among equals), at most
+     five. A purchase you already sorted is still listed, with where it
+     went. If none qualifies, the screen says "No likely purchase found."
+     What tapping does is A18.
+
+B89. Which choices an item gets is decided by the money math for that
+     kind of item, from the rulebook, and the screen shows exactly those
+     (packages/money/src/review-options.ts). In short: a deposit gets my
+     paycheck, other income, payback into any of the four buckets, not
+     mine, and a transfer from your other account; an early paycheck the
+     same; a store refund payback and not mine; a purchase needs or wants,
+     or a split between them; money out of savings the same; a fee or
+     interest the same; a payment to a person needs, wants, not mine, or
+     for mom, or a split across needs, wants and not mine; the difference
+     on a mom payment needs or wants; a payment to the old card from
+     savings savings or needs; a payday question roll over or move to
+     savings; an old card purchase "Got it". A choice that exists for the
+     kind of item but cannot be made right now (my paycheck for a deposit
+     older than the last paycheck, B54; a transfer for something pending,
+     partly refunded, counted on setup day, or taken back, B74) is not
+     offered, and the sheet says why. A split needs at least two cents,
+     one for each part, so one cent cannot be split.
+
+B90. "Always do this" (13.6, B49). It is in the "More choices" sheet. Its
+     text starts as the whole description the bank gave, which you can
+     shorten (a store's name, say), and it must match the description
+     (as it first showed or as it posted). With it on, only the choices a
+     rule can make are offered: not my paycheck (B55), not a split or a
+     transfer. Fees, money out of savings, early paychecks and store
+     refunds have no "always do this" (4.9, B17, B49). After it, the
+     screen says how many other waiting items the rule sorted too (13.2),
+     and whether the next one will go there by itself or may still wait
+     while it is pending (B49).
+
+B91. What asks first. "This is my paycheck" (it shows the split it would
+     get, from the money math, and the day the pay period starts, B53),
+     both answers to a payday question (3.4), and anything with "always do
+     this". They are the ones that cannot be taken back here. Everything
+     else is one tap, since sorting can be done again (4.7). The server
+     refuses them without the "yes" in the request too, so a tap that
+     skipped the question would do nothing. The screens send his choices
+     to the server, which hands them to the money math; this changes the
+     app's own books, never the bank (0.4).
+
+B92. Sending the same choice twice. Each decision gets a number on the
+     phone when he makes it, and a retry sends the same number. A repeat of
+     a number gets the first answer back and changes nothing, even if the
+     answer was lost on the way. A different number for an item that is no
+     longer waiting (a double tap that somehow got two numbers, or the
+     other window already did it) is told "already dealt with", and
+     changes nothing. A choice that was refused is not remembered, so
+     fixing it and sending again with the same number is fine. In the demo
+     the numbers are kept in memory; the real server must keep them with
+     the book's history (hosting, Phase 6), or a restart would forget
+     them. The item being no longer in review still protects him then.
+
+B93. The order on Review. Payday questions first, then money in, then
+     spending, then old card flags, each oldest first (the book's order for
+     the same day). The one main number is how many wait; under it, what
+     is held back from safe to spend (4.3), or, when only money back is
+     waiting, how much higher safe to spend is until it is sorted (11.1).
+
+B94. What the Buckets screen shows. The one main number is everything in
+     the buckets (12.2): savings, needs, wants, mom reserve, held for
+     others, and unsorted money in, less unsorted spending. The parts are
+     shown, and what waits in review is shown apart, in and out, so they
+     add up on the screen. Mom this month is the calendar month of today
+     (8.2). Against the target, "Under target" is below the low end, "In
+     the target" includes both ends, "Over target" is above the high end.
+     The old card debt is shown on its own and is not in the total (12.4);
+     a negative one is a credit (B14). Like Home, Buckets says when the
+     totals do not match the bank (0.5) and when the bank cannot be read.
+
+B95. Splitting on the screen. You type the amount for the first part (or
+     two parts, for a payment to a person); the last bucket gets "the rest",
+     worked out by the money math, never by the screen. A rest of nothing,
+     or less, is refused and says so, in dollars and cents. The answer says
+     what the rest came to.
+
+B96. Money back waiting in review. If a charge counted on setup day posts
+     for less, or the bank takes back a purchase after part of it was
+     refunded, what is left waiting is money back, shown as a negative
+     amount with a minus sign. It can go to needs or wants (it adds to
+     that bucket) but cannot be split (4.4).
