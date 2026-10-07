@@ -195,9 +195,10 @@ This applies to every phase and every session, cloud or local.
     after test-bank activity the self-check shows the activity as the gap.
     He accepted this as Phase 3's finish line (QUESTIONS.md A11, Oct 7);
     balances that really move get checked in Phase 7.
-- The Phase 3 pull request is PR #5 (phase-3-bank-connection).
+- Phase 3 merged as PR #5 (Oct 7, 2026).
 - His answers to QUESTIONS.md A12 to A16, B4 and B20: built Oct 7, 2026 on
-  branch answers-a12-to-a16, its own pull request on top of PR #5.
+  branch answers-a12-to-a16, PR #6. All 384 breaks caught; 2,000 simulated
+  years with every check passing, and 20 more through the bank connection.
   - Money math: a pending charge's new amount (4.6), the bank taking
     something back (4.10, with a log entry and alert 10.6), money leaving
     savings (4.9), "transfer between my accounts" in review (5.6), payments
