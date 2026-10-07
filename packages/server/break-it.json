@@ -278,5 +278,19 @@
   "find": "        updated.status = 'waiting';",
   "replace": "        updated.status = 'history';",
   "why": "B36 never send a deposit that was pending on setup day"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/sync.ts",
+  "find": "card.account_id !== null && storedCards.get(card.account_id)?.rawText !== JSON.stringify(card)",
+  "replace": "card.account_id !== null && roles.has(card.account_id) && storedCards.get(card.account_id)?.rawText !== JSON.stringify(card)",
+  "why": "9.1 keep statements only for accounts already set as his cards"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/status.ts",
+  "find": "return (a.role === 'everyday-card' || a.role === 'old-card') && raw !== undefined ? [{ card: a.role, result: cardStatement(a.role, raw) }] : [];",
+  "replace": "return a.role === 'everyday-card' && raw !== undefined ? [{ card: a.role, result: cardStatement(a.role, raw) }] : [];",
+  "why": "9.2 leave out the old card statement"
  }
 ]
