@@ -1,7 +1,11 @@
 import { readFile, stat } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';
+import { parseChoiceRequest } from '../choices.js';
+import type { BucketsView } from '../views/buckets.js';
+import type { ChoiceRequest, ChoiceResponse } from '../views/choice.js';
 import type { HomeView } from '../views/home.js';
+import type { ReviewView } from '../views/review.js';
 
 // The web server for the screens (Phase 4): the built app from packages/web,
 // and its numbers as JSON. It only reads. Hosting and login come later
@@ -25,35 +29,44 @@ export interface AppServerOptions {
   // 10.6: he has seen a take-back (QUESTIONS.md B84). Returns false when
   // there is no such take-back. Without it, nothing can be marked seen.
   readonly seen?: SeenHandler;
+  // The Buckets and Review screens' numbers for this request.
+  readonly buckets?: (request: IncomingMessage) => BucketsView | Promise<BucketsView>;
+  readonly review?: (request: IncomingMessage) => ReviewView | Promise<ReviewView>;
+  // His choice for an item waiting in review. The money math decides; a
+  // refusal comes back as an answer, with why. Without it, nothing can be sent.
+  readonly choice?: ChoiceHandler;
 }
 
 export type Seen = { readonly kind: 'bank-took-back'; readonly id: string };
 export type SeenHandler = (request: IncomingMessage, what: Seen) => boolean | Promise<boolean>;
+export type ChoiceHandler = (request: IncomingMessage, choice: ChoiceRequest) => ChoiceResponse | Promise<ChoiceResponse>;
 
 // The most a "seen" request may carry; the real one is under 100 bytes.
 const SEEN_LIMIT = 1024;
+// A choice is small too: even a three-way split is under 400 bytes.
+const CHOICE_LIMIT = 4096;
 
-// Takes a "seen" request only from the app's own page: JSON (which another
-// site cannot send without the browser asking first), from this origin, of
-// exactly the one shape, and small.
-async function markSeen(request: IncomingMessage, response: ServerResponse, seen: SeenHandler): Promise<void> {
+// Reads what the app's own page sent: JSON (which another site cannot send
+// without the browser asking first), from this origin, and small. Answers
+// the request itself and returns undefined when it is not that.
+async function readOwnJson(request: IncomingMessage, response: ServerResponse, limit: number): Promise<unknown> {
   const type = (request.headers['content-type'] ?? '').split(';')[0]?.trim().toLowerCase();
   if (type !== 'application/json') {
     send(response, 415, 'text/plain; charset=utf-8', 'JSON only.', 'no-store');
-    return;
+    return undefined;
   }
   const site = request.headers['sec-fetch-site'];
   const origin = request.headers.origin;
   const host = request.headers.host ?? '';
   if ((site !== undefined && site !== 'same-origin') || (origin !== undefined && origin !== `http://${host}` && origin !== `https://${host}`)) {
     send(response, 403, 'text/plain; charset=utf-8', 'Only from the app itself.', 'no-store');
-    return;
+    return undefined;
   }
   let body = '';
   let tooBig = false;
   for await (const chunk of request) {
     body += String(chunk);
-    if (Buffer.byteLength(body) > SEEN_LIMIT) {
+    if (Buffer.byteLength(body) > limit) {
       tooBig = true;
       break;
     }
@@ -61,15 +74,19 @@ async function markSeen(request: IncomingMessage, response: ServerResponse, seen
   if (tooBig) {
     response.setHeader('Connection', 'close');
     send(response, 413, 'text/plain; charset=utf-8', 'Too big.', 'no-store');
-    return;
+    return undefined;
   }
-  let what: unknown;
   try {
-    what = JSON.parse(body);
+    return JSON.parse(body) as unknown;
   } catch {
     send(response, 400, 'text/plain; charset=utf-8', 'Not JSON.', 'no-store');
-    return;
+    return undefined;
   }
+}
+
+async function markSeen(request: IncomingMessage, response: ServerResponse, seen: SeenHandler): Promise<void> {
+  const what = await readOwnJson(request, response, SEEN_LIMIT);
+  if (response.writableEnded || response.headersSent) return;
   if (!isSeen(what)) {
     send(response, 400, 'text/plain; charset=utf-8', 'Not something that can be seen.', 'no-store');
     return;
@@ -82,6 +99,21 @@ async function markSeen(request: IncomingMessage, response: ServerResponse, seen
   response.setHeader('Cache-Control', 'no-store');
   response.statusCode = 204;
   response.end();
+}
+
+// His choice for an item in review. A malformed request is a bad request;
+// anything well formed gets an answer: done, or refused with why (nothing
+// changed). A repeat of the same decision gets the first answer again.
+async function takeChoice(request: IncomingMessage, response: ServerResponse, choice: ChoiceHandler): Promise<void> {
+  const sent = await readOwnJson(request, response, CHOICE_LIMIT);
+  if (response.writableEnded || response.headersSent) return;
+  const parsed = parseChoiceRequest(sent);
+  if (parsed === null) {
+    send(response, 400, 'text/plain; charset=utf-8', 'Not a choice that can be made.', 'no-store');
+    return;
+  }
+  const answer = await choice(request, parsed);
+  send(response, answer.ok ? 200 : 422, 'application/json; charset=utf-8', JSON.stringify(answer), 'no-store');
 }
 
 function isSeen(value: unknown): value is Seen {
@@ -145,6 +177,16 @@ export function createAppServer(options: AppServerOptions): Server {
       await markSeen(request, response, options.seen);
       return;
     }
+    // His choice for an item in review: it changes the app's books, never the bank (0.4).
+    if (path === '/api/choice' && options.choice !== undefined) {
+      if (request.method !== 'POST') {
+        response.setHeader('Allow', 'POST');
+        send(response, 405, 'text/plain; charset=utf-8', 'Only POST.', 'no-store');
+        return;
+      }
+      await takeChoice(request, response, options.choice);
+      return;
+    }
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       response.setHeader('Allow', 'GET, HEAD');
       send(response, 405, 'text/plain; charset=utf-8', 'Only GET and HEAD.', 'no-store');
@@ -158,6 +200,22 @@ export function createAppServer(options: AppServerOptions): Server {
       } catch (error) {
         options.onError?.(error);
         send(response, 500, 'application/json; charset=utf-8', JSON.stringify({ error: 'home-unavailable' }), 'no-store');
+        return;
+      }
+      send(response, 200, 'application/json; charset=utf-8', JSON.stringify(view), 'no-store');
+      return;
+    }
+    for (const [name, make] of [
+      ['buckets', options.buckets],
+      ['review', options.review],
+    ] as const) {
+      if (path !== `/api/${name}` || make === undefined) continue;
+      let view: BucketsView | ReviewView;
+      try {
+        view = await make(request);
+      } catch (error) {
+        options.onError?.(error);
+        send(response, 500, 'application/json; charset=utf-8', JSON.stringify({ error: `${name}-unavailable` }), 'no-store');
         return;
       }
       send(response, 200, 'application/json; charset=utf-8', JSON.stringify(view), 'no-store');

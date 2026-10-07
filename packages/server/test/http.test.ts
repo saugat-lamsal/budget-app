@@ -5,7 +5,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { APP_PATHS, SECURITY_HEADERS, createAppServer } from '../src/http/server.js';
+import type { BucketsView } from '../src/views/buckets.js';
+import type { ChoiceResponse } from '../src/views/choice.js';
 import type { HomeView } from '../src/views/home.js';
+import type { ReviewView } from '../src/views/review.js';
 
 // The web server for the screens: it serves the built app and Home's
 // numbers, nothing else, and never anything outside the app's folder.
@@ -20,6 +23,13 @@ const errors: unknown[] = [];
 // What the screens marked as seen (10.6), and the only id the made-up book has.
 const seen: string[] = [];
 const KNOWN = 'p2';
+const BUCKETS: BucketsView = { state: 'not-set-up', madeUpData: true };
+const REVIEW: ReviewView = { state: 'not-set-up', madeUpData: true };
+let failBuckets = false;
+// What the screens sent as a choice, and what the made-up desk answers.
+const choices: unknown[] = [];
+const DONE: ChoiceResponse = { ok: true, replayed: false, done: { item: 'p1', choice: { to: 'wants' }, alsoSorted: 0, sticks: null } };
+let nextAnswer: ChoiceResponse = DONE;
 
 beforeAll(async () => {
   folder = mkdtempSync(join(tmpdir(), 'budget-web-'));
@@ -35,6 +45,15 @@ beforeAll(async () => {
     home: () => {
       if (failHome) throw new Error('database said: something private');
       return VIEW;
+    },
+    buckets: () => {
+      if (failBuckets) throw new Error('database said: something private');
+      return BUCKETS;
+    },
+    review: () => REVIEW,
+    choice: (_request, choice) => {
+      choices.push(choice);
+      return nextAnswer;
     },
     onError: (error) => errors.push(error),
     seen: (_request, what) => {
@@ -73,6 +92,12 @@ function get(path: string, method = 'GET', send?: { readonly body: string; reado
 function markSeen(body: string, headers: Record<string, string> = {}): Promise<Answer> {
   return get('/api/seen', 'POST', { body, headers: { 'Content-Type': 'application/json', Origin: `http://127.0.0.1:${port}`, ...headers } });
 }
+
+// What the screens send as a choice.
+function sendChoice(body: string, headers: Record<string, string> = {}): Promise<Answer> {
+  return get('/api/choice', 'POST', { body, headers: { 'Content-Type': 'application/json', Origin: `http://127.0.0.1:${port}`, ...headers } });
+}
+const GOOD_CHOICE = { id: 'decision-0001', item: 'p1', choice: { to: 'wants' } };
 
 describe('the web server', () => {
   it('every tab address gets the app, so a refresh or a notification link opens the right screen', async () => {
@@ -180,8 +205,111 @@ describe('the web server', () => {
     expect(seen.length).toBe(before);
   });
 
+  it("serves the Buckets and Review screens' numbers as JSON, never kept by the browser", async () => {
+    for (const [path, view] of [
+      ['/api/buckets', BUCKETS],
+      ['/api/review', REVIEW],
+    ] as const) {
+      const res = await get(path);
+      expect(res.status, path).toBe(200);
+      expect(res.headers['content-type'], path).toBe('application/json; charset=utf-8');
+      expect(res.headers['cache-control'], path).toBe('no-store');
+      expect(JSON.parse(res.body), path).toEqual(view);
+    }
+  });
+
+  it('when Buckets cannot be worked out, the phone is told without the details', async () => {
+    failBuckets = true;
+    try {
+      const res = await get('/api/buckets');
+      expect(res.status).toBe(500);
+      expect(JSON.parse(res.body)).toEqual({ error: 'buckets-unavailable' });
+      expect(res.body).not.toContain('private');
+    } finally {
+      failBuckets = false;
+    }
+  });
+
+  it('0.4 the Buckets and Review numbers can only be read: anything else is refused', async () => {
+    for (const path of ['/api/buckets', '/api/review']) {
+      for (const method of ['POST', 'PUT', 'DELETE', 'PATCH']) {
+        const res = await get(path, method);
+        expect(res.status, `${method} ${path}`).toBe(405);
+        expect(res.headers['allow']).toBe('GET, HEAD');
+      }
+    }
+  });
+
+  it('4.7 a choice for an item in review is handed to the desk, and the answer comes back as it was given', async () => {
+    const before = choices.length;
+    const res = await sendChoice(JSON.stringify(GOOD_CHOICE));
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toBe('application/json; charset=utf-8');
+    expect(res.headers['cache-control']).toBe('no-store');
+    expect(JSON.parse(res.body)).toEqual(DONE);
+    expect(choices.slice(before)).toEqual([GOOD_CHOICE]);
+  });
+
+  it('a refused choice is a well-formed answer with the reason, not a server error', async () => {
+    nextAnswer = { ok: false, code: 'refused', why: 'The parts add up to $11.00, but this is $11.50. Nothing was changed.' };
+    try {
+      const res = await sendChoice(JSON.stringify(GOOD_CHOICE));
+      expect(res.status).toBe(422);
+      expect(JSON.parse(res.body)).toEqual(nextAnswer);
+    } finally {
+      nextAnswer = DONE;
+    }
+  });
+
+  it('only a choice of exactly the right shape, small, from the app itself, is taken', async () => {
+    const before = choices.length;
+    const good = JSON.stringify(GOOD_CHOICE);
+    expect((await sendChoice(good, { 'Content-Type': 'text/plain' })).status).toBe(415);
+    expect((await sendChoice(good, { 'Content-Type': 'application/x-www-form-urlencoded' })).status).toBe(415);
+    expect((await sendChoice(good, { Origin: 'https://somewhere-else.example' })).status).toBe(403);
+    expect((await sendChoice(good, { 'Sec-Fetch-Site': 'cross-site' })).status).toBe(403);
+    expect((await sendChoice('{not json')).status).toBe(400);
+    expect((await sendChoice('null')).status).toBe(400);
+    expect((await sendChoice(JSON.stringify({ ...GOOD_CHOICE, choice: { to: 'groceries' } }))).status).toBe(400);
+    expect((await sendChoice(JSON.stringify({ ...GOOD_CHOICE, id: 'x' }))).status).toBe(400);
+    expect((await sendChoice(JSON.stringify({ ...GOOD_CHOICE, extra: 1 }))).status).toBe(400);
+    expect((await sendChoice(JSON.stringify({ ...GOOD_CHOICE, always: { contains: 'x'.repeat(5000) } }))).status).toBe(413);
+    expect(choices.length).toBe(before);
+  });
+
+  it('a choice is only ever a POST', async () => {
+    for (const method of ['GET', 'PUT', 'DELETE', 'PATCH']) {
+      const res = await get('/api/choice', method);
+      expect(res.status, method).toBe(405);
+      expect(res.headers['allow']).toBe('POST');
+    }
+  });
+
+  it('without a desk to hand choices to, nothing can be sent, and without the views they are not found', async () => {
+    const bare = createAppServer({ webRoot: folder, home: () => VIEW });
+    await new Promise<void>((done) => bare.listen(0, '127.0.0.1', done));
+    try {
+      const barePort = (bare.address() as AddressInfo).port;
+      const ask = (path: string, method: string): Promise<Answer> =>
+        new Promise((done, fail) => {
+          const req = httpRequest({ host: '127.0.0.1', port: barePort, path, method, headers: { 'Content-Type': 'application/json' } }, (r) => {
+            let body = '';
+            r.on('data', (chunk: Buffer) => (body += String(chunk)));
+            r.on('end', () => done({ status: r.statusCode ?? 0, headers: r.headers, body }));
+          });
+          req.on('error', fail);
+          req.end(method === 'POST' ? JSON.stringify(GOOD_CHOICE) : undefined);
+        });
+      expect((await ask('/api/choice', 'POST')).status).toBe(405);
+      for (const path of ['/api/buckets', '/api/review']) expect((await ask(path, 'GET')).status, path).toBe(404);
+    } finally {
+      bare.closeAllConnections();
+      await new Promise<void>((done) => bare.close(() => done()));
+    }
+  });
+
   it('every answer carries the security headers: only its own scripts and styles, no framing', async () => {
-    for (const path of ['/home', '/api/home', '/assets/index-abc123.js', '/nope', '/api/nope']) {
+    for (const path of ['/home', '/api/home', '/api/buckets', '/api/review', '/assets/index-abc123.js', '/nope', '/api/nope']) {
       const res = await get(path);
       for (const [name, value] of Object.entries(SECURITY_HEADERS)) expect(res.headers[name.toLowerCase()], `${path} ${name}`).toBe(value);
     }

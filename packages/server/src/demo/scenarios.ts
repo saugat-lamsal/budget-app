@@ -71,6 +71,12 @@ interface Story {
   readonly chargedTwice?: boolean;
   // The bank cannot be read today; it was last checked this morning (0.5).
   readonly bankNotRead?: boolean;
+  // One of every kind of thing waiting in Review, the payday questions
+  // unanswered (for the Review screen).
+  readonly reviewBusy?: boolean;
+  // More to see on Buckets: money held for a roommate, and mom paid this
+  // month within the target.
+  readonly bucketsBusy?: boolean;
 }
 
 // When the bank was last read and matched, in the "bank-not-read" life:
@@ -98,7 +104,7 @@ function story(s: Story): HomeInput {
   buy('2026-09-26', 575, 'BLUE DOOR COFFEE');
   book.receive({ kind: 'deposit', id: 'demo-pay', account: 'checking', date: PAYDAY, amount: x(420_000), description: `${EMPLOYER} DIR DEP` });
   for (const item of book.reviewItems()) {
-    if (item.type === 'leftover') book.answerLeftover(item.id, 'roll-over', PAYDAY);
+    if (item.type === 'leftover' && s.reviewBusy !== true) book.answerLeftover(item.id, 'roll-over', PAYDAY);
   }
   book.receive({ kind: 'payment-to-person', id: 'demo-mom', account: 'checking', date: '2026-10-03', amount: x(50_000), description: `ZELLE TO ${MOM}` });
   buy('2026-10-03', 8_643, 'GROCERY OUTLET #12', 'checking');
@@ -111,12 +117,53 @@ function story(s: Story): HomeInput {
   buy('2026-10-05', 1_599, 'STREAMING SERVICE');
   if (s.eatingOut !== undefined) buy('2026-10-06', s.eatingOut, 'HARBOR RESTAURANT');
   const unsorted = [buy('2026-10-06', 2_317, 'ONLINE MARKETPLACE'), buy('2026-10-06', 1_150, 'CORNER STORE')];
+  // What the extras take out of the savings account and put on the everyday card.
+  let savingsOut = 0;
+  let cardExtra = 0;
+  if (s.bucketsBusy === true) {
+    // A roommate's share of the rent, held until he passes it on (7.1).
+    book.receive({ kind: 'deposit', id: 'busy-roommate', account: 'checking', date: '2026-10-05', amount: x(12_000), description: 'ZELLE FROM MADE UP ROOMMATE' });
+    book.sort('busy-roommate', { to: 'not-mine' }, DEMO_TODAY);
+    // Mom again: 2,500.00 for the month so far, inside the 2,000.00 to 3,000.00 target (8.2).
+    book.receive({ kind: 'payment-to-person', id: 'busy-mom', account: 'checking', date: '2026-10-06', amount: x(200_000), description: `ZELLE TO ${MOM}` });
+  }
+  if (s.reviewBusy === true) {
+    const rid = (name: string): string => `busy-${name}`;
+    // Money in: a deposit, and a paycheck-looking one only four days after the last (3.7).
+    book.receive({ kind: 'deposit', id: rid('tax'), account: 'checking', date: '2026-10-05', amount: x(25_000), description: 'MADE UP TAX REFUND' });
+    book.receive({ kind: 'deposit', id: rid('early'), account: 'checking', date: '2026-10-06', amount: x(30_000), description: `${EMPLOYER} BONUS` });
+    // A refund the bank did not match to a purchase (4.5, A15).
+    buy('2026-10-01', 5_400, 'ONLINE MARKETPLACE');
+    book.receive({ kind: 'refund', id: rid('refund'), account: 'everyday-card', date: DEMO_TODAY, amount: x(2_317), description: 'ONLINE MARKETPLACE REFUND' });
+    cardExtra += 5_400 - 2_317;
+    // Fees and interest on the everyday card (4.8).
+    book.receive({ kind: 'card-charge', id: rid('fee'), account: 'everyday-card', date: '2026-10-04', amount: x(3_500), description: 'LATE FEE', charge: 'fee' });
+    book.receive({ kind: 'card-charge', id: rid('interest'), account: 'everyday-card', date: '2026-10-04', amount: x(1_842), description: 'PURCHASE INTEREST CHARGE', charge: 'interest' });
+    cardExtra += 3_500 + 1_842;
+    // Money out of savings (4.9, 5.2).
+    book.receive({ kind: 'savings-withdrawal', id: rid('water'), account: 'savings', date: '2026-10-06', amount: x(6_410), description: 'BILL PAY WATER UTILITY', pending: false });
+    book.receive({ kind: 'transfer', id: rid('old-card'), from: 'savings', to: 'old-card', date: '2026-10-06', amount: x(20_000), description: 'PAYMENT TO OLD CARD' });
+    savingsOut += 6_410 + 20_000;
+    // A new purchase on the old card (5.4).
+    book.receive({ kind: 'purchase', id: rid('furniture'), account: 'old-card', date: '2026-10-05', amount: x(8_000), description: 'MADE UP FURNITURE', pending: false });
+    // A friend (7.4), and a mom payment bigger than what the reserve holds (8.3).
+    book.receive({ kind: 'payment-to-person', id: rid('friend'), account: 'checking', date: '2026-10-06', amount: x(4_000), description: 'ZELLE TO MADE UP FRIEND' });
+    book.receive({ kind: 'payment-to-person', id: rid('mom'), account: 'checking', date: '2026-10-06', amount: x(250_000), description: `ZELLE TO ${MOM}` });
+    // A split purchase that was partly refunded, so it needs splitting again (4.5).
+    book.receive({ kind: 'purchase', id: rid('hardware'), account: 'checking', date: '2026-10-04', amount: x(9_000), description: 'HARDWARE SUPERSTORE', pending: false });
+    book.sort(rid('hardware'), { split: [{ bucket: 'needs', amount: x(6_000) }, { bucket: 'wants', amount: x(3_000) }] }, DEMO_TODAY);
+    book.receive({ kind: 'refund', id: rid('hardware-refund'), account: 'checking', date: '2026-10-06', amount: x(1_000), description: 'HARDWARE SUPERSTORE REFUND', refundOf: rid('hardware') });
+    // Still pending: it counts now but cannot be marked a transfer yet (4.6).
+    buy('2026-10-07', 980, 'CORNER DELI', 'everyday-card', true);
+    cardExtra += 980;
+  }
+
   // The last time the bank was read and matched was before the coffee.
   const checkedThisMorning = book.safeToSpend(s.today ?? DEMO_TODAY).amount;
   buy('2026-10-07', 625, 'BLUE DOOR COFFEE', 'everyday-card', true);
 
   let statements = s.statements ?? [EVERYDAY_STATEMENT, OLD_CARD_STATEMENT];
-  let everydayCardOwes = x(61_248 + 575 + 4_120 + 3_890 + 1_599 + 2_317 + 1_150 + 625) + (s.eatingOut === undefined ? 0 : x(s.eatingOut));
+  let everydayCardOwes = x(61_248 + 575 + 4_120 + 3_890 + 1_599 + 2_317 + 1_150 + 625 + cardExtra) + (s.eatingOut === undefined ? 0 : x(s.eatingOut));
   if (s.allDone === true) {
     for (const id of unsorted) book.sort(id, { to: 'wants' }, DEMO_TODAY);
     // The everyday card paid in full (9.3): not spending (5.1).
@@ -130,7 +177,7 @@ function story(s: Story): HomeInput {
   // been moved yet (3.8), and checking holds the rest.
   const pots = book.pots();
   const shouldBeInSavings = addCents(pots.savings, pots.momReserve);
-  const savings = s.allDone === true ? shouldBeInSavings : subtractCents(shouldBeInSavings, x(135_000));
+  const savings = s.allDone === true ? shouldBeInSavings : subtractCents(subtractCents(shouldBeInSavings, x(135_000)), x(savingsOut));
   const appSide = subtractCents(addCents(pots.savings, pots.needs, pots.wants, pots.momReserve, pots.heldForOthers, pots.unsortedIn), pots.unsortedOut);
   const checking = addCents(subtractCents(subtractCents(appSide, book.inTransit().total), savings), everydayCardOwes, s.bankOff ?? 0);
   const bank: BankBalances = { checking, savings, everydayCard: everydayCardOwes };
@@ -168,6 +215,8 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   { name: 'took-back', title: 'The bank took back a charge it showed twice', input: () => story({ chargedTwice: true }) },
   { name: 'bank-not-read', title: "The bank can't be read: safe to spend as of this morning", input: () => story({ bankNotRead: true }) },
   { name: 'big', title: 'Very large numbers', input: () => story({ scale: 100_000 }) },
+  { name: 'review-busy', title: 'Review: one of everything waiting', input: () => story({ reviewBusy: true }) },
+  { name: 'buckets-busy', title: 'Buckets: money held for a roommate, mom paid in the target', input: () => story({ bucketsBusy: true }) },
   {
     name: 'not-set-up',
     title: 'Before setup day',

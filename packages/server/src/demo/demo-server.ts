@@ -1,6 +1,9 @@
 import type { IncomingMessage, Server } from 'node:http';
+import { ChoiceDesk } from '../choices.js';
 import { createAppServer, send } from '../http/server.js';
-import { homeView } from '../views/home.js';
+import { bucketsView } from '../views/buckets.js';
+import { homeView, type HomeInput } from '../views/home.js';
+import { reviewView } from '../views/review.js';
 import { DEMO_SCENARIOS, demoScenario, type DemoScenario } from './scenarios.js';
 
 // The screens on made-up data only (Phase 4). /demo lists the made-up
@@ -8,28 +11,49 @@ import { DEMO_SCENARIOS, demoScenario, type DemoScenario } from './scenarios.js'
 // reads the database or talks to the bank, so it is safe to open over wifi.
 
 export function createDemoServer(options: { readonly webRoot: string; readonly onError?: (error: unknown) => void }): Server {
-  // The take-backs marked seen in each made-up life, kept only while the
-  // demo runs. Picking the life again starts it over.
-  const seenIn = new Map<string, Set<string>>();
-  const seenOf = (scenario: DemoScenario): Set<string> => {
-    let seen = seenIn.get(scenario.name);
-    if (seen === undefined) seenIn.set(scenario.name, (seen = new Set()));
-    return seen;
+  // Each made-up life is lived once, in memory, while the demo runs: the
+  // take-backs marked seen, and every choice made in Review, stay as they
+  // are. Picking the life again starts it over.
+  const lives = new Map<string, Live>();
+  const liveOf = (scenario: DemoScenario): Live => {
+    let live = lives.get(scenario.name);
+    if (live === undefined) {
+      if (scenario.input === null) throw new Error('made-up failure, for the demo');
+      const input = scenario.input();
+      lives.set(scenario.name, (live = { input, seen: new Set(), desk: input.book === null ? null : new ChoiceDesk(input.book, () => input.today) }));
+    }
+    return live;
+  };
+  // Slow lives take their time before any screen's numbers arrive.
+  const wait = async (scenario: DemoScenario): Promise<Live> => {
+    if (scenario.delayMs !== undefined) await new Promise((done) => setTimeout(done, scenario.delayMs));
+    return liveOf(scenario);
   };
   return createAppServer({
     webRoot: options.webRoot,
     ...(options.onError === undefined ? {} : { onError: options.onError }),
     home: async (request) => {
-      const scenario = scenarioOf(request);
-      if (scenario.delayMs !== undefined) await new Promise((done) => setTimeout(done, scenario.delayMs));
-      if (scenario.input === null) throw new Error('made-up failure, for the demo');
-      return homeView({ ...scenario.input(), seenTakeBacks: seenOf(scenario) });
+      const live = await wait(scenarioOf(request));
+      return homeView({ ...live.input, seenTakeBacks: live.seen });
+    },
+    buckets: async (request) => {
+      const { input } = await wait(scenarioOf(request));
+      return bucketsView({ today: input.today, book: input.book, bank: input.bank, madeUpData: input.madeUpData });
+    },
+    review: async (request) => {
+      const { input } = await wait(scenarioOf(request));
+      return reviewView({ today: input.today, book: input.book, madeUpData: input.madeUpData });
+    },
+    choice: (request, choice) => {
+      const { desk } = liveOf(scenarioOf(request));
+      // Before setup day there is nothing in review to choose from.
+      if (desk === null) return { ok: false, code: 'not-waiting', why: 'That one was already dealt with. Nothing was changed.' };
+      return desk.decide(choice);
     },
     seen: (request, what) => {
-      const scenario = scenarioOf(request);
-      const book = scenario.input?.().book ?? null;
-      const known = book?.changeLog().some((entry) => entry.kind === 'bank-took-back' && entry.id === what.id) ?? false;
-      if (known) seenOf(scenario).add(what.id);
+      const live = liveOf(scenarioOf(request));
+      const known = live.input.book?.changeLog().some((entry) => entry.kind === 'bank-took-back' && entry.id === what.id) ?? false;
+      if (known) live.seen.add(what.id);
       return known;
     },
     extra: (request, response, path) => {
@@ -47,13 +71,21 @@ export function createDemoServer(options: { readonly webRoot: string; readonly o
         send(response, 404, 'text/plain; charset=utf-8', 'No such made-up life.', 'no-store');
         return true;
       }
-      seenIn.delete(picked);
+      lives.delete(picked);
       response.setHeader('Set-Cookie', `demo=${picked}; Path=/; HttpOnly; SameSite=Strict`);
       response.setHeader('Location', '/home');
       send(response, 303, 'text/plain; charset=utf-8', 'Opening Home.', 'no-store');
       return true;
     },
   });
+}
+
+// One made-up life while the demo runs: its book, the take-backs seen, and
+// the desk that takes his choices.
+interface Live {
+  readonly input: HomeInput;
+  readonly seen: Set<string>;
+  readonly desk: ChoiceDesk | null;
 }
 
 // Where the demo listens: this computer only, unless --wifi.

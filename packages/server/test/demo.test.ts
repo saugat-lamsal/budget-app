@@ -6,7 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDemoServer, demoAddress } from '../src/demo/demo-server.js';
 import { DEMO_SCENARIOS, demoScenario } from '../src/demo/scenarios.js';
+import type { BucketsView } from '../src/views/buckets.js';
+import type { ChoiceResponse } from '../src/views/choice.js';
 import { homeView, type HomeView } from '../src/views/home.js';
+import type { ReviewView } from '../src/views/review.js';
 
 // The demo: the screens on made-up lives only. It must never reach the bank
 // or the database, so it is safe to open over wifi.
@@ -51,6 +54,44 @@ describe('the made-up lives', () => {
     expect(viewOf('bank-not-read').safeToSpend).toEqual({ shown: false, why: 'bank-not-read', lastChecked: { amount: 62_244 + 625, at: '2026-10-07T07:15:00-05:00' } });
     expect(homeView(demoScenario('not-set-up')!.input!())).toEqual({ state: 'not-set-up', madeUpData: true });
     expect(demoScenario('error')!.input).toBeNull();
+  });
+});
+
+describe('the made-up lives for Review and Buckets', () => {
+  it('10.3 B32 "review-busy" has one of every kind of thing waiting in review, and every offered choice works', () => {
+    const input = demoScenario('review-busy')!.input!();
+    const book = input.book!;
+    const kinds = book.reviewDetails().map((d) => (d.item.type === 'spending' || d.item.type === 'money-in' ? `${d.item.type}:${d.item.reason}` : d.item.type));
+    expect([...new Set(kinds)].sort()).toEqual(
+      [
+        'leftover',
+        'money-in:deposit',
+        'money-in:early-paycheck',
+        'money-in:refund',
+        'old-card-purchase',
+        'spending:card-fee',
+        'spending:card-interest',
+        'spending:from-savings',
+        'spending:mom-difference',
+        'spending:no-rule',
+        'spending:old-card-from-savings',
+        'spending:person-payment',
+        'spending:split-changed',
+      ].sort(),
+    );
+    // 20d: the refund lists the purchase it likely belongs to, by name and amount.
+    const refund = book.reviewDetails().find((d) => d.item.id === 'busy-refund')!;
+    expect(refund.likelyPurchases[0]).toMatchObject({ description: 'ONLINE MARKETPLACE', amount: 2_317, sameName: true, sameAmount: true });
+    expect(refund.likelyPurchases).toHaveLength(2);
+    // Money in the buckets does not move because things are waiting: the bank still agrees (12.3).
+    expect(book.selfCheck(input.bank!).ok).toBe(true);
+  });
+
+  it('8.2 7.3 "buckets-busy" holds a roommate\'s money and has sent mom 2,500.00 this month, within the target', () => {
+    const book = demoScenario('buckets-busy')!.input!().book!;
+    expect(book.othersMoney()).toEqual({ heldForOthers: 12_000, meaning: 'holding-for-others' });
+    expect(book.momSentInMonth('2026-10').sent).toBe(50_000 + 200_000);
+    expect(book.reviewItems()).toHaveLength(2);
   });
 });
 
@@ -108,6 +149,87 @@ describe('the demo server', () => {
     expect(await kindsNow()).toContain('bank-took-back');
   });
 
+  // Review and Buckets, and the choices sent from Review, end to end.
+  async function json<T>(path: string, cookie: string): Promise<T> {
+    return (await (await fetch(`${base}${path}`, { headers: { cookie } })).json()) as T;
+  }
+  function choose(cookie: string, body: object): Promise<Response> {
+    return fetch(`${base}/api/choice`, { method: 'POST', headers: { cookie, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  }
+
+  it('Buckets and Review are served for every made-up life', async () => {
+    for (const s of DEMO_SCENARIOS) {
+      if (s.input === null || s.delayMs !== undefined) continue;
+      const cookie = `demo=${s.name}`;
+      expect((await json<BucketsView>('/api/buckets', cookie)).state, s.name).toBe(s.name === 'not-set-up' ? 'not-set-up' : 'tracking');
+      expect((await json<ReviewView>('/api/review', cookie)).state, s.name).toBe(s.name === 'not-set-up' ? 'not-set-up' : 'tracking');
+    }
+  });
+
+  it('4.7 a choice made in Review stays made until the life is picked again', async () => {
+    const cookie = 'demo=normal';
+    await fetch(`${base}/demo/normal`, { redirect: 'manual' });
+    const waiting = async (): Promise<string[]> => {
+      const view = await json<ReviewView>('/api/review', cookie);
+      return view.state === 'tracking' ? view.items.map((d) => d.item.id) : [];
+    };
+    const first = await json<ReviewView>('/api/review', cookie);
+    if (first.state !== 'tracking') throw new Error('not tracking');
+    expect(first.items).toHaveLength(2);
+    const target = first.items[0]!.item.id;
+    const before = await json<HomeView>('/api/home', cookie);
+
+    const res = await choose(cookie, { id: 'demo-decision-1', item: target, choice: { to: 'wants' } });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as ChoiceResponse).ok).toBe(true);
+    expect(await waiting()).toHaveLength(1);
+
+    // Home follows: one fewer waiting, and what was held back is no longer held back.
+    const after = await json<HomeView>('/api/home', cookie);
+    expect(before.state === 'tracking' && after.state === 'tracking' && after.waitingInReview).toBe(1);
+
+    // The same decision again changes nothing and gets the first answer back.
+    const again = await choose(cookie, { id: 'demo-decision-1', item: target, choice: { to: 'wants' } });
+    expect(again.status).toBe(200);
+    expect(((await again.json()) as { replayed: boolean }).replayed).toBe(true);
+    expect(await waiting()).toHaveLength(1);
+
+    // A different life is not touched.
+    expect((await json<ReviewView>('/api/review', 'demo=review-busy')).state).toBe('tracking');
+    expect((await json<ReviewView & { items: unknown[] }>('/api/review', 'demo=normal')).state).toBe('tracking');
+
+    // Picking the life again starts it over.
+    await fetch(`${base}/demo/normal`, { redirect: 'manual' });
+    expect(await waiting()).toHaveLength(2);
+  });
+
+  it('a refused choice is a 422 with the reason, and nothing changes', async () => {
+    const cookie = 'demo=review-busy';
+    await fetch(`${base}/demo/review-busy`, { redirect: 'manual' });
+    const before = await json<ReviewView>('/api/review', cookie);
+    const res = await choose(cookie, { id: 'demo-decision-2', item: 'busy-tax', choice: { to: 'mom' } });
+    expect(res.status).toBe(422);
+    const answer = (await res.json()) as ChoiceResponse;
+    expect(answer.ok).toBe(false);
+    expect(!answer.ok && answer.why).toContain('Nothing was changed');
+    expect(await json<ReviewView>('/api/review', cookie)).toEqual(before);
+  });
+
+  it('"this is my paycheck" asks first even if the phone forgets to', async () => {
+    const cookie = 'demo=review-busy';
+    await fetch(`${base}/demo/review-busy`, { redirect: 'manual' });
+    const res = await choose(cookie, { id: 'demo-decision-3', item: 'busy-early', choice: { to: 'paycheck' } });
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { code: string }).code).toBe('needs-confirmation');
+    const ok = await choose(cookie, { id: 'demo-decision-3', item: 'busy-early', choice: { to: 'paycheck' }, confirmed: true });
+    expect(ok.status).toBe(200);
+  });
+
+  it('a choice before setup day finds nothing to choose from', async () => {
+    const res = await choose('demo=not-set-up', { id: 'demo-decision-4', item: 'anything', choice: { to: 'wants' } });
+    expect(res.status).toBe(422);
+  });
+
   it('the life that cannot load answers with an error', async () => {
     expect((await fetch(`${base}/api/home`, { headers: { cookie: 'demo=error' } })).status).toBe(500);
   });
@@ -145,7 +267,17 @@ describe('the demo is made-up data only', () => {
 
   it('it never loads the database, the bank connection, the bank key, or the settings file', () => {
     const { files, packages } = demoImports();
-    expect(files.sort()).toEqual(['demo/demo-server.ts', 'demo/main.ts', 'demo/scenarios.ts', 'http/server.ts', 'views/home.ts']);
+    expect(files.sort()).toEqual([
+      'choices.ts',
+      'demo/demo-server.ts',
+      'demo/main.ts',
+      'demo/scenarios.ts',
+      'http/server.ts',
+      'views/buckets.ts',
+      'views/choice.ts',
+      'views/home.ts',
+      'views/review.ts',
+    ]);
     expect([...packages].sort()).toEqual(['@budget-app/money', 'node:fs/promises', 'node:http', 'node:os', 'node:path', 'node:url']);
   });
 
