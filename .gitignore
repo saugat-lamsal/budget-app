@@ -12,5 +12,11 @@ coverage/
 .DS_Store
 Thumbs.db
 
+# The app's database. Bank data stays out of git, even the test bank's.
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
 # Left by scripts/break-it.mjs while a break is applied.
 *.break-it-backup

@@ -1,0 +1,108 @@
+WORKED EXAMPLES: READING THE BANK
+
+Made-up numbers, worked out step by step, so you can check by hand how the
+app reads what the bank sends. Every amount is in dollars and cents.
+
+Each example is also a test (packages/server/test/worked-examples.test.ts).
+The test reads the "Check:" lines straight from this file and compares them
+with what the app works out from the bank's own answers.
+
+How the bank connection (Plaid) writes amounts: a positive amount is money
+that left the account, a negative one is money that came in, on every kind
+of account. A card's balance is what you owe on it. The posted balance does
+not include anything pending.
+
+
+========================================================================
+EXAMPLE 1. A week at the test bank (rules 14.2, 12.1 to 12.5, 4.6, A2,
+           A10, 5.1 to 5.3, 3.2, 3.3)
+========================================================================
+
+These are the saved bank answers in
+packages/server/test/fixtures/a-week-at-the-test-bank.json.
+
+Setup day, Oct 1. What the bank shows:
+
+Checking, posted balance                         2,450.75
+  pending: GAS STATION 77                           46.23
+Savings, posted balance                          6,100.00
+Everyday card, owed                                412.30
+  pending: COFFEE SHOP 5                            12.00
+Old card, owed                                   2,980.44   (not in the self-check, 12.4)
+
+Step 1. The starting money (14.2): checking + savings - everyday card,
+        with pending charges included.
+        Checking with pending        2,450.75 - 46.23 = 2,404.52
+        Everyday card with pending     412.30 + 12.00 =   424.30
+        2,404.52 + 6,100.00 - 424.30 = 8,080.22
+
+Step 2. He assigns it: savings 5,000.00, mom reserve 1,100.00, wants
+        300.00, held for others 0.00, and needs the rest:
+        8,080.22 - 5,000.00 - 1,100.00 - 300.00 = 1,680.22
+        The two pending charges are already in the starting money, so they
+        take nothing from a bucket (A10).
+
+The next sync brings the week, Oct 2 to Oct 9:
+
+Oct 2  The gas charge posts at 48.10. The bank shows this as the pending
+       charge removed and a posted one added, linked to it. It was counted
+       at 46.23 on setup day, so only the difference, 1.87, waits in review
+       (4.6, A10).
+       The coffee hold is removed with nothing posted in its place: it was
+       dropped (A2). It was counted at 12.00 on setup day, so -12.00 waits
+       in review, to go back into a bucket (A10).
+Oct 3  300.00 from checking to savings: both halves seen. No bucket
+       changes (5.3).
+Oct 4  412.30 leaves checking for the everyday card. It is in transit.
+Oct 5  It lands on the card. Nothing in transit. No bucket changes (5.1).
+Oct 6  COFFEE SHOP 5 for 18.75 on the everyday card, wants by his rule:
+       wants 300.00 - 18.75 = 281.25
+Oct 6  150.00 leaves checking for the old card, out of needs (5.2):
+       needs 1,680.22 - 150.00 = 1,530.22
+Oct 7  It lands on the old card:
+       old card debt 2,980.44 - 150.00 = 2,830.44
+Oct 8  Interest of 7.89 on the everyday card waits in review (4.8).
+Oct 9  Paycheck 2,345.67, 14 days after the last one (Sep 25).
+       Mom reserve first: 1,100.00 + 1,500.00 = 2,600.00, under the cap.
+       Rest to split: 2,345.67 - 1,500.00 = 845.67
+       Savings 50% = 422.835 -> 422.83, needs 30% = 253.701 -> 253.70,
+       wants 20% = 169.134 -> 169.13. The 0.01 left over goes to savings:
+       422.84 (3.3).
+       savings 5,000.00 + 422.84 = 5,422.84
+       needs   1,530.22 + 253.70 = 1,783.92
+       wants     281.25 + 169.13 =   450.38
+
+Waiting in review as spending: 1.87 - 12.00 + 7.89 = -2.24
+
+What the bank shows after the week (nothing pending now):
+Checking   2,450.75 - 48.10 - 300.00 - 412.30 - 150.00 + 2,345.67 = 3,886.02
+Savings    6,100.00 + 300.00 = 6,400.00
+Everyday card owed   412.30 - 412.30 + 18.75 + 7.89 = 26.64
+Bank side (12.1): 3,886.02 + 6,400.00 - 26.64 = 10,259.38
+
+App side (12.2): savings + needs + wants + mom reserve + held for others
+                 + unsorted money in - unsorted spending
+   5,422.84 + 1,783.92 + 450.38 + 2,600.00 + 0.00 + 0.00 - (-2.24) = 10,259.38
+Difference (12.3): 10,259.38 + 0.00 in transit - 10,259.38 = 0.00
+
+Check: starting money 8,080.22 | savings 5,422.84 | needs 1,783.92 | wants 450.38 | mom reserve 2,600.00
+Check: unsorted spending -2.24 | bank side 10,259.38 | difference 0.00 | old card debt 2,830.44
+
+
+========================================================================
+EXAMPLE 2. Pending money in waits until it posts (rule 12.1, B36)
+========================================================================
+
+Checking, posted balance                         1,000.00
+  pending: a charge, GROCERY                        30.00
+  pending: a deposit coming in                     200.00
+Savings                                              0.00
+Everyday card, owed                                  0.00
+
+Plaid's "available" balance takes off pending money out and adds pending
+money in: 1,000.00 - 30.00 + 200.00 = 1,170.00. The app does not use it.
+
+Bank side (12.1): pending charges count, pending money in does not until it
+posts: 1,000.00 - 30.00 + 0.00 - 0.00 = 970.00
+
+Check: bank side 970.00 | available 1,170.00

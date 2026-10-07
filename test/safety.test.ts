@@ -22,6 +22,12 @@ describe('safety: no secrets in the repo', () => {
     expect(isIgnoredByGit('packages/server/.env')).toBe(true);
   });
 
+  it('git ignores the database, where the bank data and the sealed bank key live', () => {
+    for (const path of ['data/budget.sqlite', 'packages/server/budget.sqlite', 'budget.sqlite-wal', 'budget.sqlite-shm', 'data/anything.json']) {
+      expect(isIgnoredByGit(path), path).toBe(true);
+    }
+  });
+
   it('.env.example is kept in git and leaves every secret blank', () => {
     expect(isIgnoredByGit('.env.example')).toBe(false);
 

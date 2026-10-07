@@ -1,0 +1,128 @@
+import { DEFAULT_SETTINGS, type Cents, type IsoDate, type Settings, type SortingRule, type StartingPots } from '@budget-app/money';
+import { checkBankRules, type BankRule } from '../src/bank/reading.js';
+import { connectTestBank } from '../src/connect.js';
+import { TokenBox } from '../src/crypto/token-box.js';
+import { openDatabase, type Db } from '../src/db/database.js';
+import { loadBook, readItems, setAccountRoles, setBankRules } from '../src/db/store.js';
+import { memoryLog, type LogLine } from '../src/log.js';
+import { PlaidClient } from '../src/plaid/client.js';
+import { plaidKeysFromEnv } from '../src/plaid/sandbox-lock.js';
+import { setUpTracking, setupPreview, type SetupOutcome } from '../src/setup-day.js';
+import { bankStatus } from '../src/status.js';
+import { syncBank, type SyncInput, type SyncResult } from '../src/sync/sync.js';
+import { ACCOUNT_IDS, FakePlaid, fourAccounts } from './fake-plaid.js';
+
+// A bank connection to the made-up test bank, in a database that lives only
+// in memory. Every name and number is made up.
+export const TOKEN_KEY = Buffer.alloc(32, 7).toString('base64');
+export const SETUP_DAY = '2026-10-01';
+
+// How the made-up bank describes his transfers, payments to people, and card charges.
+export const BANK_RULES: readonly BankRule[] = checkBankRules([
+  { id: 'chk-to-sav', account: 'checking', contains: 'transfer to SAV 2222', means: 'transfer', other: 'savings' },
+  { id: 'sav-from-chk', account: 'savings', contains: 'transfer from CHK 1111', means: 'transfer', other: 'checking' },
+  { id: 'sav-to-chk', account: 'savings', contains: 'transfer to CHK 1111', means: 'transfer', other: 'checking' },
+  { id: 'chk-from-sav', account: 'checking', contains: 'transfer from SAV 2222', means: 'transfer', other: 'savings' },
+  { id: 'chk-pays-everyday', account: 'checking', contains: 'payment to CRD 3333', means: 'transfer', other: 'everyday-card' },
+  { id: 'chk-pays-old', account: 'checking', contains: 'payment to CRD 4444', means: 'transfer', other: 'old-card' },
+  { id: 'sav-pays-old', account: 'savings', contains: 'payment to CRD 4444', means: 'transfer', other: 'old-card' },
+  { id: 'sav-pays-everyday', account: 'savings', contains: 'payment to CRD 3333', means: 'transfer', other: 'everyday-card' },
+  { id: 'everyday-paid', account: 'everyday-card', contains: 'PAYMENT - THANK YOU', means: 'transfer', other: 'checking' },
+  { id: 'old-paid', account: 'old-card', contains: 'PAYMENT - THANK YOU', means: 'transfer', other: 'checking' },
+  { id: 'zelle', account: 'checking', contains: 'Zelle payment to', means: 'payment-to-person' },
+  { id: 'everyday-interest', account: 'everyday-card', contains: 'INTEREST CHARGE', means: 'card-interest' },
+  { id: 'old-interest', account: 'old-card', contains: 'INTEREST CHARGE', means: 'card-interest' },
+  { id: 'everyday-fee', account: 'everyday-card', contains: 'LATE FEE', means: 'card-fee' },
+]);
+
+export const SETTINGS: Settings = {
+  ...DEFAULT_SETTINGS,
+  paycheckRule: { contains: 'MADEUP CORP PAYROLL' },
+  momRule: { contains: 'Zelle payment to MOM MADEUP' },
+  leftoverAtPayday: { needs: 'roll-over', wants: 'roll-over' },
+};
+
+export const SORTING_RULES: readonly SortingRule[] = [
+  { id: 'groceries', for: 'purchase', contains: 'GROCERY', bucket: 'needs' },
+  { id: 'coffee', for: 'purchase', contains: 'COFFEE', bucket: 'wants' },
+  { id: 'gas', for: 'purchase', contains: 'GAS STATION', bucket: 'needs' },
+];
+
+export interface Harness {
+  readonly fake: FakePlaid;
+  readonly db: Db;
+  readonly lines: LogLine[];
+  readonly plaid: PlaidClient;
+  readonly box: TokenBox;
+  sync(today: IsoDate, extra?: Partial<SyncInput>): Promise<SyncResult>;
+}
+
+export const POSTED_AT_START = { checking: 300_000, savings: 500_000, everyday: 45_000, old: 300_000 };
+
+// Connected, with the first sync done and his accounts and bank rules set.
+export async function connected(options: { posted?: typeof POSTED_AT_START; history?: (fake: FakePlaid) => void } = {}): Promise<Harness> {
+  const fake = new FakePlaid(fourAccounts(options.posted ?? POSTED_AT_START));
+  options.history?.(fake);
+  const db = openDatabase(':memory:');
+  const lines: LogLine[] = [];
+  const log = memoryLog(lines, [fake.clientId, fake.secret]);
+  const plaid = new PlaidClient(plaidKeysFromEnv({ PLAID_ENV: 'sandbox', PLAID_CLIENT_ID: fake.clientId, PLAID_SECRET: fake.secret }), { fetch: fake.fetch, log });
+  const box = new TokenBox(TOKEN_KEY);
+  await connectTestBank({ db, plaid, box, log, today: SETUP_DAY, institutionId: 'ins_109508' });
+  const sync = (today: IsoDate, extra: Partial<SyncInput> = {}): Promise<SyncResult> => syncBank({ db, plaid, box, log, today, pageSize: 3, ...extra });
+  await sync(SETUP_DAY);
+  setAccountRoles(db, {
+    [ACCOUNT_IDS.checking]: 'checking',
+    [ACCOUNT_IDS.savings]: 'savings',
+    [ACCOUNT_IDS.everyday]: 'everyday-card',
+    [ACCOUNT_IDS.old]: 'old-card',
+  });
+  setBankRules(db, BANK_RULES, SETUP_DAY);
+  return { fake, db, lines, plaid, box, sync };
+}
+
+// Setup day with everything not in savings, the mom reserve, or wants put in needs.
+export function setUp(h: Harness, options: { savings?: Cents; momReserve?: Cents; wants?: Cents; inTransit?: readonly string[]; settings?: Settings } = {}): SetupOutcome {
+  const inTransit = options.inTransit ?? [];
+  const money = setupPreview(h.db, inTransit).startingMoney;
+  const savings = options.savings ?? 400_000;
+  const momReserve = options.momReserve ?? 100_000;
+  const wants = options.wants ?? 20_000;
+  const assignment: StartingPots = { savings, momReserve, wants, heldForOthers: 0, needs: money - savings - momReserve - wants };
+  return setUpTracking(h.db, {
+    today: SETUP_DAY,
+    assignment,
+    lastPaycheckDate: '2026-09-25',
+    settings: options.settings ?? SETTINGS,
+    rules: SORTING_RULES,
+    inTransit,
+  });
+}
+
+// Connected and set up, ready for new activity.
+export async function tracking(options: Parameters<typeof connected>[0] = {}): Promise<Harness> {
+  const h = await connected(options);
+  const outcome = setUp(h);
+  if (!outcome.ok) throw new Error('setup did not add up');
+  return h;
+}
+
+export function status(h: Harness): ReturnType<typeof bankStatus> {
+  return bankStatus(h.db);
+}
+
+export function book(h: Harness): NonNullable<ReturnType<typeof loadBook>> {
+  const b = loadBook(h.db);
+  if (b === null) throw new Error('not set up');
+  return b;
+}
+
+export function itemStatus(h: Harness, id: string): string | undefined {
+  return readItems(h.db).get(id)?.status;
+}
+
+// Everything in the database, for checking that nothing changed.
+export function dump(db: Db): Record<string, unknown[]> {
+  const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[]).map((t) => t.name);
+  return Object.fromEntries(tables.map((name) => [name, db.prepare(`SELECT * FROM ${name} ORDER BY rowid`).all()]));
+}

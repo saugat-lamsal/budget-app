@@ -1,0 +1,54 @@
+import { subtractCents, type Cents, type InTransit, type Pots, type SelfCheck } from '@budget-app/money';
+import { bankView, type BankViewResult } from './bank/balances.js';
+import { cardStatement, type StatementResult } from './bank/statements.js';
+import type { Db } from './db/database.js';
+import { loadBook, readAccounts, readAttention, readConnection, readItems, readStatements } from './db/store.js';
+
+// Where things stand, from what is saved: the self-check against the bank's
+// balances (section 12), the old card debt against the old card's balance,
+// money in transit, the card statements, and what waits for his decision.
+export interface BankStatus {
+  readonly connected: boolean;
+  // 10.5
+  readonly needsLogin: boolean;
+  readonly historyComplete: boolean;
+  // Setup day is done.
+  readonly tracking: boolean;
+  readonly bank: BankViewResult | null;
+  // 12.3: null before setup day, or when the bank side cannot be worked out.
+  readonly selfCheck: SelfCheck | null;
+  // 12.4: tracked on its own, not part of the self-check.
+  readonly oldCard: { readonly book: Cents; readonly bank: Cents; readonly difference: Cents } | null;
+  readonly inTransit: InTransit | null;
+  readonly pots: Pots | null;
+  readonly waitingInReview: number;
+  readonly statements: readonly { readonly card: 'everyday-card' | 'old-card'; readonly result: StatementResult }[];
+  readonly attention: readonly { readonly sync: number; readonly transactionId: string | null; readonly what: string }[];
+}
+
+export function bankStatus(db: Db): BankStatus {
+  const connection = readConnection(db);
+  const book = loadBook(db);
+  const accounts = readAccounts(db);
+  const bank = connection === null || accounts.length === 0 ? null : bankView(accounts, readItems(db));
+  const statements = [...readStatements(db)].map(([card, { raw }]) => ({ card, result: cardStatement(card, raw) }));
+  const selfCheck = book !== null && bank !== null && bank.ok ? book.selfCheck(bank.view.withPending) : null;
+  const oldCard =
+    book !== null && bank !== null && bank.ok
+      ? { book: book.oldCardDebt(), bank: bank.view.oldCardWithPending, difference: subtractCents(bank.view.oldCardWithPending, book.oldCardDebt()) }
+      : null;
+  return {
+    connected: connection !== null,
+    needsLogin: connection?.needsLogin ?? false,
+    historyComplete: connection?.historyComplete ?? false,
+    tracking: book !== null,
+    bank,
+    selfCheck,
+    oldCard,
+    inTransit: book?.inTransit() ?? null,
+    pots: book?.pots() ?? null,
+    waitingInReview: book?.reviewItems().length ?? 0,
+    statements: statements.sort((a, b) => a.card.localeCompare(b.card)),
+    attention: readAttention(db),
+  };
+}
