@@ -450,6 +450,41 @@
   {
     "section": "home",
     "file": "packages/web/src/app/api.ts",
+    "find": "    if (inFlight.current) return;\n",
+    "replace": "",
+    "why": "loading: a second request while one is on its way"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/api.ts",
+    "find": "      else if (wasHidden) {",
+    "replace": "      else {",
+    "why": "loading: the page saying it is visible as it opens loads again"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/api.ts",
+    "find": "export const TIME_LIMIT_MS = 15_000;",
+    "replace": "export const TIME_LIMIT_MS = 150_000;",
+    "why": "loading: no answer keeps Home loading far too long"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/api.ts",
+    "find": "      if (settled) return;\n",
+    "replace": "",
+    "why": "loading: a late answer replaces the error"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/api.ts",
+    "find": "    setLoad((current) => (current.status === 'ready' ? current : { status: 'loading' }));",
+    "replace": "    setLoad({ status: 'loading' });",
+    "why": "loading: the numbers disappear while they are fetched again"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/api.ts",
     "find": "if (!response.ok) throw new Error(`Home answered ${response.status}`);",
     "replace": "",
     "why": "an error from the server is shown as numbers"
