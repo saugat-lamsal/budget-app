@@ -84,6 +84,92 @@ A10. ANSWERED Oct 6. Charges still pending on setup day (14.2 with 4.6).
      waits in review. Rulebook 14.2 and 18o. Worked example 13.
 
 
+## Part A, added with Phase 3, the bank connection (Oct 7). Waiting on your answer.
+
+A11. ANSWERED Oct 7. Phase 3's finish line and the test bank.
+     Your answer: option 1, the recommendation. Also added, at your
+     question: the simulated you (Phase 2) through the bank connection, in
+     Plaid's format, with the self-check passing every day
+     (packages/server/test/simulated-life.test.ts).
+     The finish line says the self-check passes against the test bank's
+     balances once test-bank activity flows in. Plaid's test bank never
+     moves an account's balance when transactions are added; Plaid's own
+     docs say its test transactions "may show income and outflow
+     inconsistent with the balance shown on the account". So:
+     - On setup day the self-check passes against the test bank's real
+       balances, pending charges included (checked live).
+     - After new test-bank activity, the app's totals move by exactly what
+       the activity says ($2,230.49 in the live run), and the self-check
+       shows that same amount as the gap, because the test bank's balances
+       stayed put. The app is right to say so (0.5).
+     - With a made-up bank that does move its balances like a real one, the
+       self-check passes after every sync: 400 random scenarios, a saved
+       week worked through by hand, and the scenario tests.
+     Option 1: accept these as Phase 3's finish line. The check with
+     balances that really move comes in Phase 7, on your real accounts.
+     Option 2: something else you have in mind.
+     Recommendation: option 1.
+
+A12. How the app tells your transfers, payments to people, and card fees
+     from purchases.
+     Each bank item comes with its account and which way the money went.
+     That says most of it: money out of checking or a card is a purchase,
+     money into checking or savings is a deposit, money back on a card is
+     a refund. It cannot say which items are transfers between your own
+     accounts (checking to savings, a card payment), which are payments to
+     people (Zelle), and which are card fees or interest. For those the app
+     has bank rules: text the description contains, on one account, like
+     your paycheck and mom rules. Built and tested with made-up
+     descriptions; the real ones get set after your first real sync
+     (Phase 7).
+     Option 1 (built): you set the rules from what your statements say.
+     Anything they miss shows up as a purchase or a deposit to sort.
+     Option 2: the setup screen (Phase 4) also suggests rules from Plaid's
+     own labels for each item, for you to confirm.
+     Recommendation: option 2, on top of option 1. Either way the bank
+     rules join the settings in rulebook section 2, which needs your OK.
+
+A13. A pending charge whose amount changes while it is still pending (a
+     hold the bank updates, a tip added early).
+     4.6 covers a new amount when the charge posts. Plaid can also change
+     a pending charge's amount before then.
+     Option 1 (built for now): the first amount stays until it posts.
+     Meanwhile the self-check shows the difference, and the item says why.
+     Option 2: take the new amount right away, keeping its bucket, the way
+     posting does.
+     Recommendation: option 2, so a mismatch warning always means
+     something. It needs a small change to the money math.
+
+A14. The bank removing or changing a transaction the app already counted
+     (a posted one, not a pending one).
+     Plaid says posted transactions can change or go (a duplicate taken
+     out, a correction). The money math has no way to take one back.
+     Option 1 (built for now): it waits for your decision, and the
+     self-check shows the difference until then.
+     Option 2: follow the bank. Take it back out of the book, give the
+     money back to the bucket it came from, and tell you.
+     Recommendation: option 2, since the bank's balance already shows it.
+     It needs a new rule and a change to the money math.
+
+A15. Which purchase a refund belongs to (4.5).
+     The bank does not say. For now every refund waits in review, and you
+     put it back in a bucket as a payback: 4.5's fallback for a refund it
+     cannot match.
+     Option 1 (built): always ask.
+     Option 2: match a refund on its own only when exactly one purchase
+     fits (same account, same store, at least as much, not refunded yet);
+     otherwise ask.
+     Recommendation: option 1 until Phase 7 shows how your bank describes
+     refunds; then decide.
+
+A16. Money leaving savings that is not a transfer to one of your accounts
+     (a withdrawal, a payment straight out of savings).
+     Spending only comes out of needs or wants (A3), and the money math
+     has no way to take spending from savings. Such an item waits for your
+     decision, and the self-check shows it meanwhile.
+     Recommendation: keep it that way. It should be rare, and you decide
+     each one by hand.
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 B1. Paycheck smaller than the mom reserve (3.2).
@@ -407,3 +493,50 @@ B59. The countdown (9.5) counts paydays from the pay schedule, starting at
      yet, the payday is behind today, so it is not one of the paydays left,
      even though the money will still come. Until it does, the countdown
      asks a little more per payday.
+
+## Part B, added with Phase 3, the bank connection (Oct 7). Tell me if any is wrong.
+
+B60. Plaid's "current" balance is the posted one, and the app adds the
+     pending charges to it (12.1). Checked against the test bank: there
+     "available" is current minus pending money out (plus pending money
+     in), so current leaves pending items out. Your real bank gets checked
+     the same way in Phase 7.
+
+B61. Only pending purchases count while pending (4.6). Pending money in,
+     pending transfers, and pending payments to people (Zelle) wait until
+     they post: meanwhile they are in neither the book nor the bank side of
+     the self-check (B36). A pending Zelle to mom counts toward the month
+     (8.2) once it posts.
+
+B62. A purchase's day (4.1) is the day the bank says it was authorized,
+     when it says; otherwise Plaid's date. Everything else is dated the day
+     the bank shows it (for money arriving, the day it landed).
+
+B63. A pending charge the bank drops (A2) is dated the day the sync sees
+     it dropped, since the bank does not say.
+
+B64. Everything Plaid sends before setup day is history: it is already in
+     the starting balances and never reaches the book. Setup day waits
+     until Plaid has sent all of the history. Charges pending in it are
+     counted on setup day (A10). Halves of transfers with no other half in
+     the history are offered as "on their way" for you to confirm (B48).
+
+B65. Bank rules and sorting rules match the bank's own description when
+     Plaid has it, otherwise Plaid's tidied-up name. Plaid's name can be
+     shorter ("ExxonMobil" for "EXXON VILLAGE SHOP STO").
+
+B66. A card payment's arriving half pairs with money seen leaving for that
+     card for the same amount, even when it left savings and the card's
+     rule names checking: a card statement often does not say where a
+     payment came from (12.5).
+
+B67. Within one sync, items are applied in date order, keeping the bank's
+     order within a day (B25); removals come after.
+
+B68. Amounts that are not whole cents, and amounts not in dollars, wait for
+     your decision. They are never rounded or converted (0.1). The test
+     bank sends some, like 37.804077; real Bank of America amounts should
+     never need it.
+
+B69. Accounts in the connection that are not one of your four are left out
+     of everything.

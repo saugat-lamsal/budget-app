@@ -161,8 +161,39 @@ This applies to every phase and every session, cloud or local.
 - Phase 2: finish line crossed Oct 6, 2026 (PR #4 merged; 5,000 simulated
   years with no self-check failure; both sets of tests pass). All of
   QUESTIONS.md part A is answered (A1 to A10) and built.
-- Phase 3 (bank connection, test bank only): in progress on branch
+- Phase 3 (bank connection, test bank only): built Oct 7, 2026 on branch
   phase-3-bank-connection. Database: SQLite through better-sqlite3 (his OK,
   Oct 6). His Plaid sandbox keys are in .env.
+  - packages/server: the sandbox lock (src/plaid/sandbox-lock.ts; the
+    project-wide test test/sandbox-only.test.ts fails if anything points at
+    a real Plaid environment), the sealed bank key (src/crypto, AES-256-GCM
+    under BANK_TOKEN_KEY), a log that hides secrets, a Plaid client with
+    read-only calls only, reading bank items (src/bank: amounts, bank rules,
+    balances with pending charges, card statements), the sync (src/sync:
+    plan.ts decides, sync.ts fetches and saves everything in one SQLite
+    transaction with the cursor), setup day from the synced history
+    (src/setup-day.ts), and a status report (src/status.ts). The book is
+    rebuilt from its event log every time.
+  - npm test runs it all offline: a made-up bank whose balances move like a
+    real one (test/fake-plaid.ts), saved answers (test/fixtures; two were
+    recorded from the real test bank), and 25 random scenarios
+    (BANK_SCENARIOS=n runs more, SEED=n replays one).
+  - npm run test:sandbox calls Plaid's real test bank (needs the network and
+    the .env keys). LIVE_RECORD=<path> saves what it answered; never the
+    calls that hand out keys.
+  - Worked examples for the bank: packages/server/worked-examples.txt.
+    Break-it: packages/server/break-it.json, section "bank".
+  - The simulated you through the bank connection
+    (test/simulated-life.test.ts): the Phase 2 simulator's bank, in Plaid's
+    format, through the whole bank connection. Every day the self-check
+    passes and the money matches the simulator's own book. npm test lives
+    2 lives of 1 year; SIM_BANK_SEEDS, SIM_BANK_FIRST_SEED and
+    SIM_BANK_YEARS run more (20 simulated years passed, Oct 7).
+  - Plaid's test bank never moves balances when transactions are added, so
+    after test-bank activity the self-check shows the activity as the gap.
+    He accepted this as Phase 3's finish line (QUESTIONS.md A11, Oct 7);
+    balances that really move get checked in Phase 7.
+- Next: the Phase 3 pull request, then his answers to QUESTIONS.md A12 to
+  A16, then Phase 4 when he says go.
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.
