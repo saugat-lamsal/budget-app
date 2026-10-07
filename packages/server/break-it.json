@@ -100,8 +100,8 @@
  {
   "section": "bank",
   "file": "packages/server/src/bank/balances.ts",
-  "find": "if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined || role === 'savings') continue;",
-  "replace": "if (!item.pending || item.removed || item.replacedBy !== null || role === undefined || role === 'savings') continue;",
+  "find": "if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined) continue;",
+  "replace": "if (!item.pending || item.removed || item.replacedBy !== null || role === undefined) continue;",
   "why": "B36 count pending money in and pending transfers in the bank side"
  },
  {
@@ -163,9 +163,9 @@
  {
   "section": "bank",
   "file": "packages/server/src/sync/plan.ts",
-  "find": "    this.#notice(known, 'the bank removed a transaction the app had already counted');",
+  "find": "    // 4.10 (A14): the bank took back a transaction the app had counted. Its\n    // money goes back where it came from.\n    this.#takeBack(known);",
   "replace": "    void known;",
-  "why": "0.5 say nothing when the bank takes back a counted transaction"
+  "why": "4.10 do nothing and say nothing when the bank takes back a counted transaction (A14)"
  },
  {
   "section": "bank",
@@ -261,8 +261,8 @@
  {
   "section": "bank",
   "file": "packages/server/src/setup-day.ts",
-  "find": "    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || role === 'savings' || !read.ok || read.item.amount <= 0) continue;",
-  "replace": "    if (!item.pending || item.removed || role === undefined || role === 'savings' || !read.ok || read.item.amount === 0) continue;",
+  "find": "    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || !read.ok || read.item.amount <= 0) continue;",
+  "replace": "    if (!item.pending || item.removed || role === undefined || !read.ok || read.item.amount === 0) continue;",
   "why": "14.2 count pending money in as a pending charge"
  },
  {
@@ -303,9 +303,9 @@
  {
   "section": "bank",
   "file": "packages/server/src/bank/reading.ts",
-  "find": "          if (!isBankAccount(on)) bad('payments to people come out of checking or savings');",
-  "replace": "          if (on !== 'checking') bad('payments to people come out of checking or savings');",
-  "why": "7.4 refuse a bank rule for payments to people from savings (A16)"
+  "find": "          return Object.freeze({ ...base, account: on as 'checking' | 'savings', means: 'payment-to-person' as const });",
+  "replace": "          return Object.freeze({ ...base, account: 'checking' as const, means: 'payment-to-person' as const });",
+  "why": "7.4 turn a bank rule for payments to people from savings into one for checking (A16)"
  },
  {
   "section": "bank",

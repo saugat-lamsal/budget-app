@@ -216,6 +216,18 @@ describe('4.10 the bank takes back a transaction the app counted: the app takes 
     expect(b.inTransit()).toMatchObject({ total: 0, items: [] });
   });
 
+  it('4.10 an arriving half the bank took back is not paired with a leaving half that shows up later (12.5)', () => {
+    const b = book();
+    b.receive(arrived('t1', '2026-10-03', 30_000, 'checking', 'everyday-card'));
+    expect(b.inTransit()).toMatchObject({ total: -30_000, items: [{ id: 't1', seen: 'arrived' }] });
+    b.receive(takenBack('k1', 't1', '2026-10-04'));
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
+    b.receive(sent('t2', '2026-10-05', 30_000, 'checking', 'everyday-card'));
+    // Listed and counted the same way, so the list still adds up to the total.
+    expect(b.inTransit()).toMatchObject({ total: 30_000, items: [{ id: 't2', seen: 'left', amount: 30_000 }] });
+    expect(b.pots()).toEqual(START);
+  });
+
   it('4.10 a card payment the bank takes back no longer counts toward the card statement (9.3)', () => {
     const b = book();
     b.receive(transfer('t1', '2026-10-03', 20_000, 'checking', 'everyday-card'));
