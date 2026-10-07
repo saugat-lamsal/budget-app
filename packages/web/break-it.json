@@ -86,9 +86,44 @@
   {
     "section": "home",
     "file": "packages/server/src/views/home.ts",
-    "find": "if (bank === null) safeToSpend = { shown: false, why: 'bank-not-read' };",
+    "find": "if (bank === null) safeToSpend = { shown: false, why: 'bank-not-read', lastChecked: checkedLastChecked(input.lastChecked) };",
     "replace": "if (bank === null) safeToSpend = { shown: true, amount: plain.amount };",
     "why": "0.5 show safe to spend when the bank cannot be read"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "why: 'bank-not-read', lastChecked: checkedLastChecked(input.lastChecked) };",
+    "replace": "why: 'bank-not-read', lastChecked: null };",
+    "why": "0.5 forget the last checked safe to spend (B82)"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "if (!ISO_TIME.test(last.at) || Number.isNaN(Date.parse(last.at)))",
+    "replace": "if (Number.isNaN(Date.parse(last.at)))",
+    "why": "0.5 take a last-checked time with no time of day or offset"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "<Money cents={safeToSpend.lastChecked.amount} hero stale testId=\"safe-to-spend-stale\" />",
+    "replace": "<Money cents={safeToSpend.lastChecked.amount} hero testId=\"safe-to-spend-stale\" />",
+    "why": "0.5 the last checked number is not greyed (B82)"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": ".money.money--stale {\n  color: var(--text-2);",
+    "replace": ".money.money--stale {\n  color: inherit;",
+    "why": "0.5 greyed numbers are not grey"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/dates.ts",
+    "find": "...(timeZone === undefined ? {} : { timeZone })",
+    "replace": "timeZone: 'UTC'",
+    "why": "0.5 as of in UTC, not the phone's time zone"
   },
   {
     "section": "home",
@@ -170,16 +205,107 @@
   {
     "section": "home",
     "file": "packages/server/src/views/home.ts",
-    "find": "daysLeft: n.daysBefore, statementBalance: n.statementBalance,",
-    "replace": "daysLeft: n.daysBefore, statementBalance: n.minimumPayment,",
+    "find": "daysLeft: c.daysLeft, statementBalance: c.statementBalance,",
+    "replace": "daysLeft: c.daysLeft, statementBalance: c.minimumPayment,",
     "why": "9.1 the statement balance shows the minimum"
   },
   {
     "section": "home",
     "file": "packages/server/src/views/home.ts",
-    "find": "if (n.kind === 'overdue') attention.push",
-    "replace": "if (n.kind === 'reminder') attention.push",
+    "find": "if (c.kind === 'overdue') attention.push",
+    "replace": "if (c.kind === 'due') attention.push",
     "why": "9.4 overdue cards not shown"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "if (entry.kind === 'bank-took-back' && !input.seenTakeBacks.has(entry.id)) {",
+    "replace": "if (entry.kind === 'bank-took-back') {",
+    "why": "10.6 a take-back stays after he has seen it (B84)"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "if (entry.kind === 'bank-took-back' && !input.seenTakeBacks.has(entry.id)) {",
+    "replace": "if (entry.kind === 'bank-took-back' && input.seenTakeBacks.size === 0) {",
+    "why": "10.6 seeing one take-back hides them all"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "              close();\n              onChanged();",
+    "replace": "              close();",
+    "why": "10.6 Got it does not refresh Home"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/api.ts",
+    "find": "if (!response.ok) throw new Error(`marking it seen answered ${response.status}`);",
+    "replace": "",
+    "why": "10.6 a failed Got it looks saved"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "left of <Money cents={startedWith}",
+    "replace": "<Money cents={startedWith}",
+    "why": "10.1 the bar no longer says left of"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "left of <Money cents={startedWith}",
+    "replace": "left of <Money cents={left}",
+    "why": "10.1 left of shows what is left, not the start"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/http/server.ts",
+    "find": "if (type !== 'application/json') {",
+    "replace": "if (false) {",
+    "why": "safety: seen takes a form post from another site"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/http/server.ts",
+    "find": "if ((site !== undefined && site !== 'same-origin') || (origin !== undefined && origin !== `http://${host}` && origin !== `https://${host}`)) {",
+    "replace": "if (false) {",
+    "why": "safety: seen takes a request from another site"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/http/server.ts",
+    "find": "const SEEN_LIMIT = 1024;",
+    "replace": "const SEEN_LIMIT = 1_000_000;",
+    "why": "safety: seen reads a body of any size"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/http/server.ts",
+    "find": "return keys.join() === 'id,kind' && kind === 'bank-took-back'",
+    "replace": "return kind === 'bank-took-back'",
+    "why": "safety: seen takes extra fields"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/http/server.ts",
+    "find": "  if (!(await seen(request, what))) {",
+    "replace": "  if (!(await seen(request, what)) && false) {",
+    "why": "10.6 an unknown take-back looks marked seen"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/demo/demo-server.ts",
+    "find": "      seenIn.delete(picked);\n",
+    "replace": "",
+    "why": "demo: picking a life again keeps what was seen"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/demo/demo-server.ts",
+    "find": "      if (known) seenOf(scenario).add(what.id);\n      return known;",
+    "replace": "      seenOf(scenario).add(what.id);\n      return true;",
+    "why": "demo: marks any id seen"
   },
   {
     "section": "home",
@@ -387,8 +513,8 @@
   {
     "section": "home",
     "file": "packages/server/src/demo/scenarios.ts",
-    "find": "    madeUpData: true,\n  };\n}",
-    "replace": "    madeUpData: false,\n  };\n}",
+    "find": "    madeUpData: true,\n    seenTakeBacks: new Set(),\n    lastChecked: s.bankNotRead",
+    "replace": "    madeUpData: false,\n    seenTakeBacks: new Set(),\n    lastChecked: s.bankNotRead",
     "why": "safety: made-up numbers do not say so"
   }
 ]

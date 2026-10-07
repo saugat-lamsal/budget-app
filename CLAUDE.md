@@ -137,11 +137,12 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 9. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 10. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
-  Phase 3 questions (A12 to A16, B4, B20).
+  Phase 3 questions (A12 to A16, B4, B20), section 21 his answers to the
+  Phase 4 questions (A17, B82, B84: rules 0.5, 9.6, 10.6).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -244,8 +245,12 @@ This applies to every phase and every session, cloud or local.
   OK, with his changes): React + Vite in packages/web, plain CSS from one
   set of tokens, Playwright browser tests in Chromium and WebKit, the
   current tab in the address.
-  - Step 3, the shared building blocks and Home on made-up data: built,
-    waiting for his feedback on the look before any other screen.
+  - Step 3, the shared building blocks and Home on made-up data: built.
+    He OK'd the look (Oct 7) and asked for: "left of $X" under each bucket
+    amount; A17 option 2 (rule 9.6); a take-back on Home until seen (10.6,
+    the screens' one request that sends anything, POST /api/seen); and the
+    last checked safe to spend, greyed, "as of", when the bank cannot be
+    read (0.5). All built. Then stop, before he merges.
   - packages/web/src/ui: tokens.css (colors, type, spacing, motion, safe
     areas), blocks.tsx (Money, Card, ListRow, Button, StatusLabel,
     BucketBar, Banner, BottomSheet, StateMessage), TabBar. Screens use
@@ -266,7 +271,6 @@ This applies to every phase and every session, cloud or local.
     out. Browsers: npx playwright install chromium webkit.
   - Break-it: packages/web/break-it.json, section "home". The browser
     tests run only for that section.
-  - Waiting on: his feedback on the look, and QUESTIONS.md A17 (when Home
-    shows a card that is due) and B80 to B85.
+  - Waiting on: his merge of PR #7, and B80, B81, B83, B85 to B87 to check.
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.

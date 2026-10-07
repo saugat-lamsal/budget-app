@@ -1542,8 +1542,8 @@
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "const toPay = card === 'everyday-card' ? statementBalance : minimumPayment;",
-    "replace": "const toPay = minimumPayment;",
+    "find": "toPay: card === 'everyday-card' ? statementBalance : minimumPayment",
+    "replace": "toPay: minimumPayment",
     "why": "9.3 stop everyday card reminders at the minimum again"
   },
   {
@@ -1563,8 +1563,8 @@
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "const paid = addCents(0, ...seen.map((p) => p.amount));",
-    "replace": "const paid = Math.max(0, ...seen.map((p) => p.amount));",
+    "find": "return { paid: addCents(0, ...seen.map((p) => p.amount)),",
+    "replace": "return { paid: Math.max(0, ...seen.map((p) => p.amount)),",
     "why": "9.3 count only the largest payment instead of adding them up"
   },
   {
@@ -2329,5 +2329,40 @@
     "find": "BigInt(startedWith) * BigInt(percent) ? 'low' : 'ok'",
     "replace": "BigInt(startedWith) * BigInt(percent) ? 'ok' : 'low'",
     "why": "10.1 call a full bucket low and a low one fine"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "const firstReminder = Math.max(-1, ...settings.cardReminderDaysBefore);",
+    "replace": "const firstReminder = Math.min(...settings.cardReminderDaysBefore);",
+    "why": "9.6 start from the last reminder day instead of the first"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "const firstReminder = Math.max(-1, ...settings.cardReminderDaysBefore);",
+    "replace": "const firstReminder = 7;",
+    "why": "9.6 ignore the reminder days setting"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "if (daysLeft > firstReminder || paid >= toPay) return null;",
+    "replace": "if (daysLeft >= firstReminder || paid >= toPay) return null;",
+    "why": "9.6 skip the first reminder day itself"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "if (daysLeft > firstReminder || paid >= toPay) return null;",
+    "replace": "if (daysLeft > firstReminder || paid > toPay) return null;",
+    "why": "9.6 keep showing it when exactly enough is paid"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "if (daysLeft < 0) return paid < minimumPayment ? { kind: 'overdue', card, dueDate, minimumPayment } : null;",
+    "replace": "if (daysLeft <= 0) return paid < minimumPayment ? { kind: 'overdue', card, dueDate, minimumPayment } : null;",
+    "why": "9.6 call it overdue on the due date itself"
   }
 ]

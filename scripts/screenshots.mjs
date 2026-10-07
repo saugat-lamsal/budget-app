@@ -40,6 +40,9 @@ const SHOTS = [
   ['overspent', 'overspent', '/home'],
   ['all-clear', 'all-clear', '/home'],
   ['trouble', 'trouble', '/home'],
+  ['took-back', 'took-back', '/home'],
+  ['took-back-sheet', 'took-back', '/home', (page) => page.locator('[data-testid^="attention-bank-took-back-"]').click()],
+  ['bank-not-read', 'bank-not-read', '/home'],
   ['late', 'late', '/home'],
   ['not-set-up', 'not-set-up', '/home'],
   ['error', 'error', '/home'],
@@ -57,6 +60,8 @@ try {
       isMobile: true,
       hasTouch: true,
       colorScheme: scheme,
+      // The made-up lives' times are Central; so is the phone in the pictures.
+      timezoneId: 'America/Chicago',
       // Only to draw the iPhone's notch and home bar areas (safe areas).
       bypassCSP: true,
     });
