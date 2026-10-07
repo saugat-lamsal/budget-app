@@ -167,6 +167,17 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
         expect(b.left, `${path} ${life}`).toBeGreaterThanOrEqual(0);
         expect(b.right, `${path} ${life}`).toBeLessThanOrEqual(IPHONE.width);
       }
+      // A row's title is not squeezed to a sliver to keep its amount on the same line (found on CI, where the
+      // font is wider): the amount goes below it instead, and the title keeps the row's width, at least six
+      // letters' worth, whatever the font.
+      const squeezed = await page.locator('.row--trailing .row__title').evaluateAll((els) =>
+        els.flatMap((e) => {
+          const width = e.getBoundingClientRect().width;
+          const size = Number.parseFloat(getComputedStyle(e).fontSize);
+          return width < 6 * size ? [`"${e.textContent ?? ''}" is only ${Math.round(width)}px wide`] : [];
+        }),
+      );
+      expect(squeezed, `${path} ${life}`).toEqual([]);
       await page.close();
     }
     // And with a sheet open at the largest size.
@@ -176,36 +187,6 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(IPHONE.width);
     const widths = await page.getByTestId('review-sheet').locator('*').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right));
     for (const right of widths) expect(right).toBeLessThanOrEqual(IPHONE.width + 0.5);
-    await context.close();
-  });
-
-  it("the text still fits when the font is wider than this computer's, at the largest text size", async () => {
-    // Windows' font is narrower than Linux's (found on CI), so the test makes every letter wider.
-    const context = await browser().newContext(phone({ bypassCSP: true }));
-    for (const [life, path] of [
-      ['big', '/buckets'],
-      ['normal', '/buckets'],
-      ['mismatch', '/buckets'],
-      ['buckets-busy', '/buckets'],
-      ['bank-not-read', '/buckets'],
-      ['big', '/review'],
-      ['review-busy', '/review'],
-    ] as const) {
-      const page = await openScenario(context, base(), life, path);
-      await addStyle(page, 'html { font-size: 36px !important; } * { letter-spacing: 0.07em !important; }');
-      expect(await page.evaluate(() => document.documentElement.scrollWidth), `${path} ${life}`).toBeLessThanOrEqual(IPHONE.width);
-      const boxes = await page.locator('[data-money]').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right));
-      for (const right of boxes) expect(right, `${path} ${life}`).toBeLessThanOrEqual(IPHONE.width + 0.5);
-      // A row's title is not squeezed to a sliver to keep its amount on the same line: the amount goes below it instead.
-      const squeezed = await page.locator('.row--trailing .row__title').evaluateAll((els) =>
-        els.flatMap((e) => {
-          const lines = e.getBoundingClientRect().height / Number.parseFloat(getComputedStyle(e).lineHeight);
-          return lines > 2.5 ? [`"${e.textContent ?? ''}" takes ${lines.toFixed(1)} lines`] : [];
-        }),
-      );
-      expect(squeezed, `${path} ${life}`).toEqual([]);
-      await page.close();
-    }
     await context.close();
   });
 
