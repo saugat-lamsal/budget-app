@@ -292,5 +292,82 @@
   "find": "return (a.role === 'everyday-card' || a.role === 'old-card') && raw !== undefined ? [{ card: a.role, result: cardStatement(a.role, raw) }] : [];",
   "replace": "return a.role === 'everyday-card' && raw !== undefined ? [{ card: a.role, result: cardStatement(a.role, raw) }] : [];",
   "why": "9.2 leave out the old card statement"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/reading.ts",
+  "find": "  return out ? { kind: 'purchase' } : { kind: 'deposit' };",
+  "replace": "  return out && account === 'checking' ? { kind: 'purchase' } : { kind: 'deposit' };",
+  "why": "4.9 read money leaving savings as money in (A16)"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/reading.ts",
+  "find": "          if (!isBankAccount(on)) bad('payments to people come out of checking or savings');",
+  "replace": "          if (on !== 'checking') bad('payments to people come out of checking or savings');",
+  "why": "7.4 refuse a bank rule for payments to people from savings (A16)"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/plan.ts",
+  "find": "        return role === 'checking' || role === 'savings' ? { ...base, kind: 'payment-to-person', account: role, date: item.day } : null;",
+  "replace": "        return role === 'checking' ? { ...base, kind: 'payment-to-person', account: role, date: item.day } : null;",
+  "why": "7.4 hold a payment to a person from savings (A16)"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/plan.ts",
+  "find": "    return role === 'savings' ? { ...base, kind: 'savings-withdrawal', account: role } : { ...base, kind: 'purchase', account: role };",
+  "replace": "    return { ...base, kind: 'purchase', account: role } as Purchase;",
+  "why": "4.9 send money leaving savings as a purchase (A16)"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/balances.ts",
+  "find": "      if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined) continue;",
+  "replace": "      if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined || role === 'savings') continue;",
+  "why": "12.1 leave a charge pending on savings out of the bank side (A16)"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/setup-day.ts",
+  "find": "    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || !read.ok || read.item.amount <= 0) continue;",
+  "replace": "    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || role === 'savings' || !read.ok || read.item.amount <= 0) continue;",
+  "why": "14.2 leave a charge pending on savings out of the starting money (A16)"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/plan.ts",
+  "find": "      this.#give(change, known);\n      return;",
+  "replace": "      this.#notice(known, 'the bank changed a pending charge');\n      return;",
+  "why": "4.6 keep the first amount of a pending charge until it posts (A13)"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/plan.ts",
+  "find": "      if (!this.#takeBack(known)) return;\n",
+  "replace": "",
+  "why": "4.10 count a corrected transaction on top of the old one (A14)"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/plan.ts",
+  "find": "      if (this.#give(fresh, known)) known.bookId = fresh.id;",
+  "replace": "      this.#give(fresh, known);",
+  "why": "4.10 lose track of a corrected transaction's new version (A14)"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/plan.ts",
+  "find": "    // 4.10 (A14): the bank took back a transaction the app had counted. Its\n    // money goes back where it came from.\n    this.#takeBack(known);",
+  "replace": "    this.#notice(known, 'the bank removed a transaction the app had already counted');",
+  "why": "4.10 wait for his decision when the bank takes something back (A14)"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/plan.ts",
+  "find": "      id: `${known.transactionId}-taken-back-${this.#in.sync}`,",
+  "replace": "      id: `${known.transactionId}-taken-back`,",
+  "why": "4.10 give two take-backs of the same item the same id (A14)"
  }
 ]
