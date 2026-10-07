@@ -238,6 +238,35 @@ This applies to every phase and every session, cloud or local.
     charges are pending, charges a purchase twice and takes the copy back,
     shows transfers as spending and a deposit for him to mark, and pays
     people "for mom" or split three ways.
-- Next: Phase 4 when he says go.
+- PR #6 merged (Oct 7, 2026).
+- Phase 4 (the screens), started Oct 7, 2026 on branch
+  phase-4-design-and-home. Design rules above (his list). Framework (his
+  OK, with his changes): React + Vite in packages/web, plain CSS from one
+  set of tokens, Playwright browser tests in Chromium and WebKit, the
+  current tab in the address.
+  - Step 3, the shared building blocks and Home on made-up data: built,
+    waiting for his feedback on the look before any other screen.
+  - packages/web/src/ui: tokens.css (colors, type, spacing, motion, safe
+    areas), blocks.tsx (Money, Card, ListRow, Button, StatusLabel,
+    BucketBar, Banner, BottomSheet, StateMessage), TabBar. Screens use
+    only these.
+  - The screens never work money out. packages/server/src/views/home.ts
+    builds Home from the book (the money math); the web server
+    (src/http/server.ts) is read-only and serves the app and /api/home.
+  - npm run demo: made-up lives only (src/demo), no bank, no database
+    (a test follows its imports). This computer only, unless --wifi.
+    /demo picks a life. npm run screenshots: iPhone-size pictures, light
+    and dark, into screenshots/ (not in git).
+  - Browser tests (packages/web/test/browser, run by npm test): every
+    number on Home against the money math, the tabs in the address,
+    contrast (axe), 44-point tap targets, the notch and home bar, text
+    size, reduced motion, random lives from the simulator (WEB_LIVES,
+    WEB_FIRST_SEED), and the worked examples
+    (packages/web/worked-examples.txt). SKIP_BROWSER_TESTS=1 leaves them
+    out. Browsers: npx playwright install chromium webkit.
+  - Break-it: packages/web/break-it.json, section "home". The browser
+    tests run only for that section.
+  - Waiting on: his feedback on the look, and QUESTIONS.md A17 (when Home
+    shows a card that is due) and B80 to B85.
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.
