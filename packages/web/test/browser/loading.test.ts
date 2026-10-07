@@ -70,6 +70,11 @@ describe.each(ENGINES)('loading Home in %s', (_name, engine) => {
     await home.release();
     await page.getByTestId('safe-to-spend').waitFor();
     expect(home.count()).toBe(1);
+    // Saying "visible" again once loaded, without ever having been hidden,
+    // is not coming back to the app either.
+    await setVisibility(page, 'visible');
+    await page.waitForTimeout(300);
+    expect(home.count()).toBe(1);
     expect(failed.map((r) => r.url())).toEqual([]);
     await page.context().close();
   });

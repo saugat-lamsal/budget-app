@@ -271,6 +271,13 @@ This applies to every phase and every session, cloud or local.
     out. Browsers: npx playwright install chromium webkit.
   - Break-it: packages/web/break-it.json, section "home". The browser
     tests run only for that section.
+  - Found on Linux CI (Oct 7): WebKit there loses the answer to a request
+    sent right after one it cancelled. The screens never cancel a request,
+    send one at a time, refresh only after the app was really in the
+    background, and give up after 15 seconds with Try again
+    (packages/web/src/app/api.ts, test/browser/loading.test.ts). Keep it
+    that way. A failing browser test reports what the page, the browser,
+    and the test server were doing (harness.ts, waitOrReport).
   - Waiting on: his merge of PR #7, and B80, B81, B83, B85 to B87 to check.
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.
