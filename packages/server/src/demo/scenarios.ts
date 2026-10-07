@@ -67,7 +67,15 @@ interface Story {
   readonly bankOff?: Cents;
   readonly needsLogin?: boolean;
   readonly statements?: readonly CardStatement[];
+  // A restaurant charge the bank shows twice, then takes the copy back (4.10).
+  readonly chargedTwice?: boolean;
+  // The bank cannot be read today; it was last checked this morning (0.5).
+  readonly bankNotRead?: boolean;
 }
+
+// When the bank was last read and matched, in the "bank-not-read" life:
+// 7:15 in the morning, Central time.
+const LAST_CHECKED_AT = '2026-10-07T07:15:00-05:00';
 
 function story(s: Story): HomeInput {
   const x = (cents: Cents): Cents => cents * (s.scale ?? 1);
@@ -96,9 +104,15 @@ function story(s: Story): HomeInput {
   buy('2026-10-03', 8_643, 'GROCERY OUTLET #12', 'checking');
   buy('2026-10-04', 4_120, 'CORNER GAS STATION');
   buy('2026-10-05', 3_890, 'MAIN ST RESTAURANT');
+  if (s.chargedTwice === true) {
+    const copy = buy('2026-10-05', 3_890, 'MAIN ST RESTAURANT');
+    book.receive({ kind: 'taken-back', id: 'demo-correction', takenId: copy, date: '2026-10-06', description: 'CORRECTION' });
+  }
   buy('2026-10-05', 1_599, 'STREAMING SERVICE');
   if (s.eatingOut !== undefined) buy('2026-10-06', s.eatingOut, 'HARBOR RESTAURANT');
   const unsorted = [buy('2026-10-06', 2_317, 'ONLINE MARKETPLACE'), buy('2026-10-06', 1_150, 'CORNER STORE')];
+  // The last time the bank was read and matched was before the coffee.
+  const checkedThisMorning = book.safeToSpend(s.today ?? DEMO_TODAY).amount;
   buy('2026-10-07', 625, 'BLUE DOOR COFFEE', 'everyday-card', true);
 
   let statements = s.statements ?? [EVERYDAY_STATEMENT, OLD_CARD_STATEMENT];
@@ -124,10 +138,12 @@ function story(s: Story): HomeInput {
   return {
     today: s.today ?? DEMO_TODAY,
     book,
-    bank,
+    bank: s.bankNotRead === true ? null : bank,
     needsLogin: s.needsLogin ?? false,
     statements: statements.map((st) => ({ ...st, statementBalance: x(st.statementBalance), minimumPayment: x(st.minimumPayment) })),
     madeUpData: true,
+    seenTakeBacks: new Set(),
+    lastChecked: s.bankNotRead === true ? { amount: checkedThisMorning, at: LAST_CHECKED_AT } : null,
   };
 }
 
@@ -149,8 +165,14 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   { name: 'payday', title: 'Payday is today', input: () => story({ today: '2026-10-16', allDone: true, statements: [] }) },
   { name: 'late', title: 'The paycheck is two days late', input: () => story({ today: '2026-10-18', allDone: true, statements: [] }) },
   { name: 'trouble', title: 'Bank needs a login, old card overdue', input: () => story({ needsLogin: true, statements: [OLD_CARD_OVERDUE] }) },
+  { name: 'took-back', title: 'The bank took back a charge it showed twice', input: () => story({ chargedTwice: true }) },
+  { name: 'bank-not-read', title: "The bank can't be read: safe to spend as of this morning", input: () => story({ bankNotRead: true }) },
   { name: 'big', title: 'Very large numbers', input: () => story({ scale: 100_000 }) },
-  { name: 'not-set-up', title: 'Before setup day', input: () => ({ today: DEMO_TODAY, book: null, bank: null, needsLogin: false, statements: [], madeUpData: true }) },
+  {
+    name: 'not-set-up',
+    title: 'Before setup day',
+    input: () => ({ today: DEMO_TODAY, book: null, bank: null, needsLogin: false, statements: [], madeUpData: true, seenTakeBacks: new Set(), lastChecked: null }),
+  },
   { name: 'slow', title: 'Slow to load (3 seconds)', input: () => story({}), delayMs: 3_000 },
   { name: 'error', title: 'Cannot load', input: null },
 ];

@@ -44,6 +44,11 @@ describe('the made-up lives', () => {
     expect(viewOf('trouble').attention.slice(0, 2).map((a) => a.kind)).toEqual(['bank-login', 'card-overdue']);
     const big = viewOf('big').safeToSpend;
     expect(big.shown && big.amount > 1_000_000_000).toBe(true);
+    expect(viewOf('took-back').attention[0]).toEqual({ kind: 'bank-took-back', id: 'demo-6', date: '2026-10-06', description: 'MAIN ST RESTAURANT', amount: 3_890 });
+    // 4.10: the copy's money went back, so safe to spend is what it is in the normal life.
+    expect(viewOf('took-back').safeToSpend).toEqual(viewOf('normal').safeToSpend);
+    // B82: this morning's check came before the 6.25 coffee.
+    expect(viewOf('bank-not-read').safeToSpend).toEqual({ shown: false, why: 'bank-not-read', lastChecked: { amount: 62_244 + 625, at: '2026-10-07T07:15:00-05:00' } });
     expect(homeView(demoScenario('not-set-up')!.input!())).toEqual({ state: 'not-set-up', madeUpData: true });
     expect(demoScenario('error')!.input).toBeNull();
   });
@@ -81,6 +86,26 @@ describe('the demo server', () => {
     expect(await (await fetch(`${base}/api/home`)).json()).toEqual(JSON.parse(JSON.stringify(viewOf('normal'))));
     expect((await fetch(`${base}/demo/nothing-like-this`, { redirect: 'manual' })).status).toBe(404);
     expect(await (await fetch(`${base}/api/home`, { headers: { cookie: 'demo=nothing-like-this' } })).json()).toEqual(JSON.parse(JSON.stringify(viewOf('normal'))));
+  });
+
+  it('10.6 a take-back marked seen leaves Home, and picking the life again brings it back', async () => {
+    const cookie = 'demo=took-back';
+    const kindsNow = async (): Promise<string[]> => {
+      const view = (await (await fetch(`${base}/api/home`, { headers: { cookie } })).json()) as HomeView;
+      return view.state === 'tracking' ? view.attention.map((a) => a.kind) : [];
+    };
+    await fetch(`${base}/demo/took-back`, { redirect: 'manual' });
+    expect(await kindsNow()).toContain('bank-took-back');
+    const mark = (id: string): Promise<Response> =>
+      fetch(`${base}/api/seen`, { method: 'POST', headers: { cookie, 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'bank-took-back', id }) });
+    expect((await mark('nothing-like-this')).status).toBe(404);
+    expect(await kindsNow()).toContain('bank-took-back');
+    expect((await mark('demo-6')).status).toBe(204);
+    expect(await kindsNow()).not.toContain('bank-took-back');
+    // Another life is not touched.
+    expect((await fetch(`${base}/api/seen`, { method: 'POST', headers: { cookie: 'demo=normal', 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'bank-took-back', id: 'demo-6' }) })).status).toBe(404);
+    await fetch(`${base}/demo/took-back`, { redirect: 'manual' });
+    expect(await kindsNow()).toContain('bank-took-back');
   });
 
   it('the life that cannot load answers with an error', async () => {

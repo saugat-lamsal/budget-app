@@ -14,6 +14,18 @@ async function fetchHome(signal: AbortSignal): Promise<HomeView> {
   return view;
 }
 
+// 10.6: tells the server he has seen a take-back, so Home stops showing it
+// (QUESTIONS.md B84). The only thing the screens ever send; no money moves.
+export async function markTakeBackSeen(id: string): Promise<void> {
+  const response = await fetch('/api/seen', {
+    method: 'POST',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kind: 'bank-took-back', id }),
+  });
+  if (!response.ok) throw new Error(`marking it seen answered ${response.status}`);
+}
+
 // Loads Home's numbers, again when asked (Try again), and again whenever the
 // app comes back to the front.
 export function useHome(): [Load<HomeView>, () => void] {

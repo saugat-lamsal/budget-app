@@ -132,3 +132,43 @@ The same life as example 1, plus HARBOR RESTAURANT, 700.00 on Oct 6.
   (B34).
 
 Check: wants -42.89 | safe to spend -77.56
+
+
+========================================================================
+EXAMPLE 5. The bank takes back a charge it showed twice (demo life
+           "took-back"; rules 4.10, 10.6, QUESTIONS.md B84)
+========================================================================
+
+The same life as example 1, but on Oct 5 the bank shows MAIN ST
+RESTAURANT, 38.90, twice. On Oct 6 it takes the copy back.
+
+Oct 5  Both charges count, wants by his rule:
+       wants 718.25 - 38.90 - 38.90 = 640.45
+       then STREAMING SERVICE, 15.99: 640.45 - 15.99 = 624.46
+Oct 6  The bank takes the copy back. The app takes it back too (4.10): its
+       38.90 goes back to wants. 624.46 + 38.90 = 663.36
+Oct 7  The pending coffee, 6.25: 663.36 - 6.25 = 657.11, as in example 1.
+
+  Safe to spend: 657.11 - 34.67 = 622.44, as in example 1.
+  Needs attention shows "The bank took back a transaction: MAIN ST
+  RESTAURANT, $38.90, on Tue, Oct 6." It stays there until he taps it and
+  says he has seen it (B84).
+
+Check: wants 657.11 | safe to spend 622.44 | taken back 38.90
+
+
+========================================================================
+EXAMPLE 6. The bank cannot be read (demo life "bank-not-read"; rule 0.5,
+           QUESTIONS.md B82)
+========================================================================
+
+The same life as example 1, but today the bank cannot be read. The last
+time it was read and the totals matched was 7:15 this morning, before the
+coffee.
+
+  Safe to spend then: wants 663.36 (no coffee yet) - 34.67 = 628.69
+  Home shows 628.69 greyed, "As of Wed, Oct 7, 7:15 AM", and says it
+  cannot reach the bank to check it now. It does not show today's 622.44,
+  which the bank has not backed up (0.5).
+
+Check: last checked 628.69 | days to payday 9

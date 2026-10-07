@@ -3,7 +3,7 @@ import fc from 'fast-check';
 import { parseDollars } from '@budget-app/money';
 import { MINUS, moneyText, moneyWords } from '../src/ui/money-format.js';
 import { barFill } from '../src/ui/bar-fill.js';
-import { longDate, shortDate } from '../src/ui/dates.js';
+import { asOfText, longDate, shortDate } from '../src/ui/dates.js';
 import { dueText, paydayText, waitingText } from '../src/screens/home-text.js';
 
 // How the screens write money, dates, and counts. Made-up numbers only.
@@ -123,5 +123,25 @@ describe('dates on the screens', () => {
     expect(shortDate('2026-03-08')).toBe('Sun, Mar 8');
     expect(shortDate('2026-11-01')).toBe('Sun, Nov 1');
     expect(shortDate('2026-12-31')).toBe('Thu, Dec 31');
+  });
+});
+
+describe('0.5 when safe to spend was last checked, in words (B82)', () => {
+  it('0.5 the day and the time, in the phone\'s time zone', () => {
+    expect(asOfText('2026-10-07T07:15:00-05:00', 'America/Chicago')).toBe('Wed, Oct 7, 7:15 AM');
+    expect(asOfText('2026-10-07T07:15:00-05:00', 'America/New_York')).toBe('Wed, Oct 7, 8:15 AM');
+  });
+
+  it('0.5 a time just before midnight there can be the next day here', () => {
+    expect(asOfText('2026-10-07T23:30:00-05:00', 'America/New_York')).toBe('Thu, Oct 8, 12:30 AM');
+  });
+
+  it('0.5 noon and midnight', () => {
+    expect(asOfText('2026-10-07T12:00:00Z', 'UTC')).toBe('Wed, Oct 7, 12:00 PM');
+    expect(asOfText('2026-10-07T00:00:00Z', 'UTC')).toBe('Wed, Oct 7, 12:00 AM');
+  });
+
+  it('0.5 refuses something that is not a time', () => {
+    expect(() => asOfText('yesterday', 'UTC')).toThrow();
   });
 });

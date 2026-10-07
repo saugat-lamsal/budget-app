@@ -22,6 +22,73 @@ export interface AppServerOptions {
   // Told about anything that went wrong while answering, without the details
   // reaching the phone.
   readonly onError?: (error: unknown) => void;
+  // 10.6: he has seen a take-back (QUESTIONS.md B84). Returns false when
+  // there is no such take-back. Without it, nothing can be marked seen.
+  readonly seen?: SeenHandler;
+}
+
+export type Seen = { readonly kind: 'bank-took-back'; readonly id: string };
+export type SeenHandler = (request: IncomingMessage, what: Seen) => boolean | Promise<boolean>;
+
+// The most a "seen" request may carry; the real one is under 100 bytes.
+const SEEN_LIMIT = 1024;
+
+// Takes a "seen" request only from the app's own page: JSON (which another
+// site cannot send without the browser asking first), from this origin, of
+// exactly the one shape, and small.
+async function markSeen(request: IncomingMessage, response: ServerResponse, seen: SeenHandler): Promise<void> {
+  const type = (request.headers['content-type'] ?? '').split(';')[0]?.trim().toLowerCase();
+  if (type !== 'application/json') {
+    send(response, 415, 'text/plain; charset=utf-8', 'JSON only.', 'no-store');
+    return;
+  }
+  const site = request.headers['sec-fetch-site'];
+  const origin = request.headers.origin;
+  const host = request.headers.host ?? '';
+  if ((site !== undefined && site !== 'same-origin') || (origin !== undefined && origin !== `http://${host}` && origin !== `https://${host}`)) {
+    send(response, 403, 'text/plain; charset=utf-8', 'Only from the app itself.', 'no-store');
+    return;
+  }
+  let body = '';
+  let tooBig = false;
+  for await (const chunk of request) {
+    body += String(chunk);
+    if (Buffer.byteLength(body) > SEEN_LIMIT) {
+      tooBig = true;
+      break;
+    }
+  }
+  if (tooBig) {
+    response.setHeader('Connection', 'close');
+    send(response, 413, 'text/plain; charset=utf-8', 'Too big.', 'no-store');
+    return;
+  }
+  let what: unknown;
+  try {
+    what = JSON.parse(body);
+  } catch {
+    send(response, 400, 'text/plain; charset=utf-8', 'Not JSON.', 'no-store');
+    return;
+  }
+  if (!isSeen(what)) {
+    send(response, 400, 'text/plain; charset=utf-8', 'Not something that can be seen.', 'no-store');
+    return;
+  }
+  if (!(await seen(request, what))) {
+    send(response, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'not-found' }), 'no-store');
+    return;
+  }
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.setHeader(name, value);
+  response.setHeader('Cache-Control', 'no-store');
+  response.statusCode = 204;
+  response.end();
+}
+
+function isSeen(value: unknown): value is Seen {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const keys = Object.keys(value).sort();
+  const { kind, id } = value as Record<string, unknown>;
+  return keys.join() === 'id,kind' && kind === 'bank-took-back' && typeof id === 'string' && id.length > 0 && id.length <= 200;
 }
 
 const TYPES: Readonly<Record<string, string>> = {
@@ -60,16 +127,27 @@ export function createAppServer(options: AppServerOptions): Server {
   });
 
   async function answer(request: IncomingMessage, response: ServerResponse): Promise<void> {
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
-      response.setHeader('Allow', 'GET, HEAD');
-      send(response, 405, 'text/plain; charset=utf-8', 'Only GET and HEAD.', 'no-store');
-      return;
-    }
     let path: string;
     try {
       path = decodeURIComponent(new URL(request.url ?? '/', 'http://localhost').pathname);
     } catch {
       send(response, 400, 'text/plain; charset=utf-8', 'Bad address.', 'no-store');
+      return;
+    }
+    // The one thing the screens can send: that he has seen a notice. It
+    // changes no money (0.4).
+    if (path === '/api/seen' && options.seen !== undefined) {
+      if (request.method !== 'POST') {
+        response.setHeader('Allow', 'POST');
+        send(response, 405, 'text/plain; charset=utf-8', 'Only POST.', 'no-store');
+        return;
+      }
+      await markSeen(request, response, options.seen);
+      return;
+    }
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      response.setHeader('Allow', 'GET, HEAD');
+      send(response, 405, 'text/plain; charset=utf-8', 'Only GET and HEAD.', 'no-store');
       return;
     }
 

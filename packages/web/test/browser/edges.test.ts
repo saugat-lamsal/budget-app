@@ -13,7 +13,7 @@ import { ENGINES, WEB_ROOT, centsAt, close, listen, phone, waitOrReport, watchPa
 function oneWaiting(): HomeInput {
   const book = openTestBook({ pots: { wants: 10_000 } });
   book.receive(purchase('p1', START_DATE, 1, 'NO RULE SHOP'));
-  return { today: START_DATE, book, bank: { checking: appSide(book.pots()), savings: 0, everydayCard: 0 }, needsLogin: false, statements: [], madeUpData: true };
+  return { today: START_DATE, book, bank: { checking: appSide(book.pots()), savings: 0, everydayCard: 0 }, needsLogin: false, statements: [], madeUpData: true, seenTakeBacks: new Set(), lastChecked: null };
 }
 
 describe.each(ENGINES)('edges on Home in %s', (_name, engine) => {

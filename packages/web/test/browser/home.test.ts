@@ -52,6 +52,13 @@ describe.each(ENGINES)('Home in %s', (_name, engine) => {
     expect(await centsAt(page, 'bucket-needs-left')).toBe(book.pots().needs);
     expect(await centsAt(page, 'bucket-wants-left')).toBe(book.pots().wants);
     expect(await page.getByTestId('bucket-needs').getAttribute('data-level')).toBe('ok');
+    // Under each amount: left of what the bucket started the pay period with.
+    expect(await centsAt(page, 'bucket-needs-of')).toBe(book.startedPeriodWith().needs);
+    expect(await centsAt(page, 'bucket-wants-of')).toBe(book.startedPeriodWith().wants);
+    expect(await textAt(page, 'bucket-needs')).toBe('Needs $930.75 left of $1,058.38');
+    const amount = await page.getByTestId('bucket-needs-left').boundingBox();
+    const of = await page.getByTestId('bucket-needs-of').boundingBox();
+    expect(of!.y).toBeGreaterThan(amount!.y + amount!.height - 1);
     await page.context().close();
   });
 
@@ -126,6 +133,68 @@ describe.each(ENGINES)('Home in %s', (_name, engine) => {
     expect(rows).toEqual(['attention-bank-login', 'attention-card-overdue-old-card', 'attention-review', 'attention-move-to-savings']);
     expect(await textAt(page, 'attention-card-overdue-old-card')).toBe('Old card payment Overdue Minimum $40.00 was due Sat, Oct 3.');
     expect(await textAt(page, 'attention-bank-login')).toContain('Log in to the bank again');
+    await page.context().close();
+  });
+
+  it('10.6 a take-back stays in Needs attention until he says he has seen it (B84)', async () => {
+    const { book } = life('took-back');
+    const entry = book.changeLog().find((e) => e.kind === 'bank-took-back');
+    if (entry?.kind !== 'bank-took-back') throw new Error('no take-back in the made-up life');
+    const page = await openScenario(await browser().newContext(phone()), base(), 'took-back');
+    const row = page.getByTestId(`attention-bank-took-back-${entry.id}`);
+    expect(await textAt(page, `attention-bank-took-back-${entry.id}`)).toBe('The bank took back a transaction MAIN ST RESTAURANT, $38.90, on Tue, Oct 6.');
+    expect(await row.locator('[data-money]').innerText()).toBe('$38.90');
+    // Still there after a refresh.
+    await page.reload();
+    await row.waitFor();
+    await row.click();
+    const sheet = page.getByTestId(`took-back-sheet-${entry.id}`);
+    await sheet.waitFor();
+    expect((await sheet.innerText()).replace(/\s+/g, ' ')).toContain('What MAIN ST RESTAURANT Amount $38.90 When Tue, Oct 6');
+    await sheet.getByTestId('seen').click();
+    await row.waitFor({ state: 'detached' });
+    // The rest of Needs attention is still there.
+    expect(await page.getByTestId('attention-review').count()).toBe(1);
+    // Seen stays seen.
+    await page.reload();
+    await page.getByTestId('safe-to-spend').waitFor();
+    expect(await row.count()).toBe(0);
+    await page.context().close();
+  });
+
+  it('10.6 if marking it seen does not save, it says so and the take-back stays', async () => {
+    const page = await openScenario(await browser().newContext(phone()), base(), 'took-back');
+    await page.route('**/api/seen', (route) => route.fulfill({ status: 500, body: '' }));
+    const row = page.locator('[data-testid^="attention-bank-took-back-"]');
+    await row.click();
+    await page.getByTestId('seen').click();
+    await page.getByTestId('seen-failed').waitFor();
+    expect(await page.getByTestId('seen-failed').innerText()).toContain("Couldn't save that");
+    await page.keyboard.press('Escape');
+    expect(await row.count()).toBe(1);
+    await page.context().close();
+  });
+
+  it('0.5 when the bank cannot be read, the last checked safe to spend shows greyed, as of when it was checked (B82)', async () => {
+    const input = demoScenario('bank-not-read')!.input!();
+    const { book, today } = input;
+    if (book === null) throw new Error('no book');
+    expect(input.bank).toBeNull();
+    const page = await openScenario(await browser().newContext(phone()), base(), 'bank-not-read');
+    expect(await page.getByTestId('safe-to-spend').count()).toBe(0);
+    expect(await centsAt(page, 'safe-to-spend-stale')).toBe(input.lastChecked!.amount);
+    expect(input.lastChecked!.amount).not.toBe(book.safeToSpend(today).amount);
+    expect(await textAt(page, 'as-of')).toBe("As of Wed, Oct 7, 7:15 AM. Can't reach the bank to check it now.");
+    expect(await page.getByTestId('as-of').locator('[data-icon="clock"]').count()).toBe(1);
+    // Greyed: the secondary text color, not the main one.
+    const colors = await page.evaluate(() => ({
+      number: getComputedStyle(document.querySelector('[data-testid="safe-to-spend-stale"]')!).color,
+      label: getComputedStyle(document.querySelector('.hero__label')!).color,
+      body: getComputedStyle(document.body).color,
+    }));
+    expect(colors.number).toBe(colors.label);
+    expect(colors.number).not.toBe(colors.body);
+    expect(await textAt(page, 'payday')).toBe('9 days to payday · Fri, Oct 16');
     await page.context().close();
   });
 

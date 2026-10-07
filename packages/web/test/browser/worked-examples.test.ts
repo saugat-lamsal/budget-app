@@ -1,7 +1,7 @@
 import type { Page } from 'playwright';
 import { describe, expect, it } from 'vitest';
 import { EXAMPLE_LIVES, checksOf, exampleNumbers } from '../worked-examples.js';
-import { ENGINES, centsAt, openScenario, phone, textAt, useEngine } from './harness.js';
+import { ENGINES, centsAt, openScenario, phone, readCents, textAt, useEngine } from './harness.js';
 
 // Every example in packages/web/worked-examples.txt, against what the screen
 // shows a person for the same made-up life.
@@ -56,8 +56,16 @@ describe.each(ENGINES)('worked examples on the screen in %s', (_name, engine) =>
           expect(await inCheckSheet(page, 'check-app'), label).toBe(expected);
           break;
         case 'needs started with':
+          expect(await centsAt(page, 'bucket-needs-of'), label).toBe(expected);
+          break;
         case 'wants started with':
-          // Not on the screen as a number: the bar shows it as how full it is.
+          expect(await centsAt(page, 'bucket-wants-of'), label).toBe(expected);
+          break;
+        case 'taken back':
+          expect(await readCents(await page.locator('[data-testid^="attention-bank-took-back-"] [data-money]').innerText()), label).toBe(expected);
+          break;
+        case 'last checked':
+          expect(await centsAt(page, 'safe-to-spend-stale'), label).toBe(expected);
           break;
         default:
           throw new Error(`example ${n}: no way to read "${label}" off the screen`);

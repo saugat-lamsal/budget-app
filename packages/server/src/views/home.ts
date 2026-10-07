@@ -1,4 +1,4 @@
-import { bucketLevel, cardNotices, type BankBalances, type Book, type BucketLevel, type CardStatement, type Cents, type IsoDate, type SelfCheck } from '@budget-app/money';
+import { assertCents, bucketLevel, cardDue, type BankBalances, type Book, type BucketLevel, type CardStatement, type Cents, type IsoDate, type SelfCheck } from '@budget-app/money';
 
 // What the Home screen shows, worked out on the server from the book. The
 // screen only formats it: every number here comes from the money math, in
@@ -17,6 +17,18 @@ export interface HomeInput {
   readonly statements: readonly CardStatement[];
   // True only for the demo's made-up numbers, so the screen can say so.
   readonly madeUpData: boolean;
+  // 10.6: the take-backs he has marked as seen, by the id in the change log.
+  // Until then each stays in Needs attention (QUESTIONS.md B84).
+  readonly seenTakeBacks: ReadonlySet<string>;
+  // 0.5: the last safe to spend that the self-check backed up, and when, as
+  // an ISO time with its offset. Shown greyed while the bank cannot be read
+  // (QUESTIONS.md B82). Null if there has not been one.
+  readonly lastChecked: LastChecked | null;
+}
+
+export interface LastChecked {
+  readonly amount: Cents;
+  readonly at: string;
 }
 
 export type HomeView =
@@ -41,8 +53,9 @@ export type SafeToSpendView =
   // 0.5: the totals do not match the bank, so the number is held back and
   // the self-check is shown instead (12.3, B37).
   | { readonly shown: false; readonly why: 'totals-do-not-match'; readonly check: SelfCheck }
-  // The bank could not be read, so the number cannot be checked.
-  | { readonly shown: false; readonly why: 'bank-not-read' };
+  // The bank could not be read, so today's number cannot be checked. The
+  // last one that was checked is shown greyed, with when (B82).
+  | { readonly shown: false; readonly why: 'bank-not-read'; readonly lastChecked: LastChecked | null };
 
 export interface BucketBar {
   readonly left: Cents;
@@ -56,6 +69,9 @@ export type Attention =
   | { readonly kind: 'bank-login' }
   // 9.4: the due date passed with less than the minimum paid.
   | { readonly kind: 'card-overdue'; readonly card: 'everyday-card' | 'old-card'; readonly dueDate: IsoDate; readonly minimumPayment: Cents }
+  // 10.6: the bank took back a transaction the app had counted (4.10). It
+  // stays until he marks it seen (B84). id is the change log's.
+  | { readonly kind: 'bank-took-back'; readonly id: string; readonly date: IsoDate; readonly description: string; readonly amount: Cents }
   // 10.3: something waits in review. heldBack is the unsorted spending kept
   // out of safe to spend (4.3).
   | { readonly kind: 'review'; readonly waiting: number; readonly heldBack: Cents }
@@ -66,7 +82,7 @@ export type Attention =
       readonly shouldBeInSavings: Cents;
       readonly savingsAccountBalance: Cents;
     }
-  // 9.1: a reminder day for the everyday card.
+  // 9.1, 9.6: the everyday card is due, from the first reminder day until paid.
   | {
       readonly kind: 'card-due';
       readonly card: 'everyday-card';
@@ -75,7 +91,7 @@ export type Attention =
       readonly statementBalance: Cents;
       readonly minimumPayment: Cents;
     }
-  // 9.2: a reminder day for the old card.
+  // 9.2, 9.6: the old card is due, from the first reminder day until paid.
   | { readonly kind: 'card-due'; readonly card: 'old-card'; readonly dueDate: IsoDate; readonly daysLeft: number; readonly minimumPayment: Cents };
 
 export function homeView(input: HomeInput): HomeView {
@@ -89,18 +105,24 @@ export function homeView(input: HomeInput): HomeView {
 
   const plain = book.safeToSpend(today);
   let safeToSpend: SafeToSpendView;
-  if (bank === null) safeToSpend = { shown: false, why: 'bank-not-read' };
+  if (bank === null) safeToSpend = { shown: false, why: 'bank-not-read', lastChecked: checkedLastChecked(input.lastChecked) };
   else {
     // 0.5: only a number the self-check backs up is shown.
     const checked = book.checkedSafeToSpend(today, bank);
     safeToSpend = checked.ok ? { shown: true, amount: checked.safeToSpend.amount } : { shown: false, why: 'totals-do-not-match', check: book.selfCheck(bank) };
   }
 
-  const notices = input.statements.flatMap((statement) => cardNotices(today, statement, book.cardPayments(statement.card), settings));
+  const cards = input.statements.flatMap((statement) => cardDue(today, statement, book.cardPayments(statement.card), settings) ?? []);
   const attention: Attention[] = [];
   if (input.needsLogin) attention.push({ kind: 'bank-login' });
-  for (const n of notices) {
-    if (n.kind === 'overdue') attention.push({ kind: 'card-overdue', card: n.card, dueDate: n.dueDate, minimumPayment: n.minimumPayment });
+  for (const c of cards) {
+    if (c.kind === 'overdue') attention.push({ kind: 'card-overdue', card: c.card, dueDate: c.dueDate, minimumPayment: c.minimumPayment });
+  }
+  // 10.6: each take-back in the change log, oldest first, until seen (B84).
+  for (const entry of book.changeLog()) {
+    if (entry.kind === 'bank-took-back' && !input.seenTakeBacks.has(entry.id)) {
+      attention.push({ kind: 'bank-took-back', id: entry.id, date: entry.date, description: entry.description, amount: entry.amount });
+    }
   }
   const waitingInReview = book.reviewItems().length;
   if (waitingInReview > 0) attention.push({ kind: 'review', waiting: waitingInReview, heldBack: pots.unsortedOut });
@@ -115,12 +137,13 @@ export function homeView(input: HomeInput): HomeView {
       });
     }
   }
-  for (const n of notices) {
-    if (n.kind !== 'reminder') continue;
+  // 9.6: a card is due from the first reminder day until it is paid (A17).
+  for (const c of cards) {
+    if (c.kind !== 'due') continue;
     attention.push(
-      n.card === 'everyday-card'
-        ? { kind: 'card-due', card: n.card, dueDate: n.dueDate, daysLeft: n.daysBefore, statementBalance: n.statementBalance, minimumPayment: n.minimumPayment }
-        : { kind: 'card-due', card: n.card, dueDate: n.dueDate, daysLeft: n.daysBefore, minimumPayment: n.minimumPayment },
+      c.card === 'everyday-card'
+        ? { kind: 'card-due', card: c.card, dueDate: c.dueDate, daysLeft: c.daysLeft, statementBalance: c.statementBalance, minimumPayment: c.minimumPayment }
+        : { kind: 'card-due', card: c.card, dueDate: c.dueDate, daysLeft: c.daysLeft, minimumPayment: c.minimumPayment },
     );
   }
 
@@ -134,4 +157,14 @@ export function homeView(input: HomeInput): HomeView {
     buckets: { needs: bar(pots.needs, started.needs), wants: bar(pots.wants, started.wants) },
     waitingInReview,
   };
+}
+
+// An ISO time with its offset, such as 2026-10-07T07:15:00-05:00.
+const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+
+function checkedLastChecked(last: LastChecked | null): LastChecked | null {
+  if (last === null) return null;
+  assertCents(last.amount, 'last checked safe to spend');
+  if (!ISO_TIME.test(last.at) || Number.isNaN(Date.parse(last.at))) throw new Error(`not a time with its offset: ${last.at}`);
+  return { amount: last.amount, at: last.at };
 }

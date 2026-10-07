@@ -12,13 +12,14 @@ export type Tone = 'info' | 'warning' | 'danger' | 'ok';
 // ----- Money -----
 
 // Every amount on every screen. Tabular digits, a real minus sign, and the
-// negative color on top of the sign, never instead of it.
-export function Money({ cents, hero = false, testId }: { readonly cents: Cents; readonly hero?: boolean; readonly testId?: string | undefined }) {
+// negative color on top of the sign, never instead of it. A stale amount
+// (one that could not be checked today) is greyed, and the screen says why.
+export function Money({ cents, hero = false, stale = false, testId }: { readonly cents: Cents; readonly hero?: boolean; readonly stale?: boolean; readonly testId?: string | undefined }) {
   const text = moneyText(cents);
   const negative = cents < 0;
   return (
     <span
-      className={`money${hero ? ' money--hero' : ''}${negative ? ' is-negative' : ''}`}
+      className={`money${hero ? ' money--hero' : ''}${negative ? ' is-negative' : ''}${stale ? ' money--stale' : ''}`}
       data-money=""
       data-testid={testId}
       aria-label={negative ? moneyWords(cents) : undefined}
@@ -154,9 +155,9 @@ export function BucketBar({ name, left, startedWith, level, testId }: { readonly
         {level !== 'ok' && <StatusLabel status={level} />}
         <span className="bucket__left">
           <Money cents={left} testId={testId === undefined ? undefined : `${testId}-left`} />
-          <span className="sr-only">
+          <span className="bucket__of">
             {' '}
-            left of {moneyWords(startedWith)}
+            left of <Money cents={startedWith} testId={testId === undefined ? undefined : `${testId}-of`} />
           </span>
         </span>
       </div>

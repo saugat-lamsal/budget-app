@@ -11,7 +11,7 @@ import { ENGINES, IPHONE, IPHONE_INSETS, openScenario, phone, useEngine } from '
 const AXE = readFileSync(createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8');
 
 // Every screen state worth checking.
-const STATES = ['normal', 'mismatch', 'low', 'overspent', 'trouble', 'all-clear', 'not-set-up', 'error', 'big'] as const;
+const STATES = ['normal', 'mismatch', 'low', 'overspent', 'trouble', 'all-clear', 'not-set-up', 'error', 'big', 'took-back', 'bank-not-read'] as const;
 
 interface AxeViolation {
   readonly id: string;

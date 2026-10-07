@@ -79,7 +79,7 @@ describe.each(ENGINES)('random lives on Home in %s', (_name, engine) => {
     const life = randomDay(seed);
     const where = `seed ${life.seed}, day ${life.day} (${life.today})`;
     const { book, today, bank } = life;
-    showing.set(String(seed), { today, book, bank, needsLogin: false, statements: [], madeUpData: true });
+    showing.set(String(seed), { today, book, bank, needsLogin: false, statements: [], madeUpData: true, seenTakeBacks: new Set(), lastChecked: null });
     await context.addCookies([{ name: 'life', value: String(seed), url: base }]);
     const page = await context.newPage();
     // A stuck wait names what it waited for, well inside the test's own limit.

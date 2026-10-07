@@ -17,6 +17,9 @@ let server: Server;
 let port = 0;
 let failHome = false;
 const errors: unknown[] = [];
+// What the screens marked as seen (10.6), and the only id the made-up book has.
+const seen: string[] = [];
+const KNOWN = 'p2';
 
 beforeAll(async () => {
   folder = mkdtempSync(join(tmpdir(), 'budget-web-'));
@@ -34,6 +37,11 @@ beforeAll(async () => {
       return VIEW;
     },
     onError: (error) => errors.push(error),
+    seen: (_request, what) => {
+      if (what.id !== KNOWN) return false;
+      seen.push(what.id);
+      return true;
+    },
   });
   await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
   port = (server.address() as AddressInfo).port;
@@ -45,18 +53,25 @@ afterAll(async () => {
   rmSync(folder, { recursive: true, force: true });
 });
 
+type Answer = { status: number; headers: Record<string, string | string[] | undefined>; body: string };
+
 // Sends the path exactly as written, without the client tidying it up.
-function get(path: string, method = 'GET'): Promise<{ status: number; headers: Record<string, string | string[] | undefined>; body: string }> {
+function get(path: string, method = 'GET', send?: { readonly body: string; readonly headers: Record<string, string> }): Promise<Answer> {
   return new Promise((done, fail) => {
-    const req = httpRequest({ host: '127.0.0.1', port, path, method }, (res) => {
+    const req = httpRequest({ host: '127.0.0.1', port, path, method, headers: send?.headers ?? {} }, (res) => {
       let body = '';
       res.setEncoding('utf8');
       res.on('data', (chunk: string) => (body += chunk));
       res.on('end', () => done({ status: res.statusCode ?? 0, headers: res.headers, body }));
     });
     req.on('error', fail);
-    req.end();
+    req.end(send?.body);
   });
+}
+
+// What the screens send to mark a take-back seen.
+function markSeen(body: string, headers: Record<string, string> = {}): Promise<Answer> {
+  return get('/api/seen', 'POST', { body, headers: { 'Content-Type': 'application/json', Origin: `http://127.0.0.1:${port}`, ...headers } });
 }
 
 describe('the web server', () => {
@@ -118,15 +133,51 @@ describe('the web server', () => {
     expect((await get('/%E0%A4%A')).status).toBe(400);
   });
 
-  it('it only reads: anything but GET and HEAD is refused', async () => {
+  it('0.4 it only reads, apart from marking something seen: anything but GET and HEAD is refused', async () => {
     for (const method of ['POST', 'PUT', 'DELETE', 'PATCH']) {
-      const res = await get('/api/home', method);
+      for (const path of ['/api/home', '/home', '/api/nope', '/api/seen/extra']) {
+        const res = await get(path, method);
+        expect(res.status, `${method} ${path}`).toBe(405);
+        expect(res.headers['allow']).toBe('GET, HEAD');
+      }
+    }
+    for (const method of ['PUT', 'DELETE', 'PATCH', 'GET']) {
+      const res = await get('/api/seen', method);
       expect(res.status, method).toBe(405);
-      expect(res.headers['allow']).toBe('GET, HEAD');
+      expect(res.headers['allow']).toBe('POST');
     }
     const head = await get('/home', 'HEAD');
     expect(head.status).toBe(200);
     expect(head.body).toBe('');
+  });
+
+  it('10.6 marking a take-back seen: the server is told which one, and answers with nothing', async () => {
+    const before = seen.length;
+    const res = await markSeen(JSON.stringify({ kind: 'bank-took-back', id: KNOWN }));
+    expect(res.status).toBe(204);
+    expect(res.body).toBe('');
+    expect(seen.slice(before)).toEqual([KNOWN]);
+  });
+
+  it('10.6 an id the book does not have is not found', async () => {
+    const res = await markSeen(JSON.stringify({ kind: 'bank-took-back', id: 'nothing-like-this' }));
+    expect(res.status).toBe(404);
+  });
+
+  it('only what the screens send is taken: JSON of the one shape, small, from the app itself', async () => {
+    const before = seen.length;
+    const good = JSON.stringify({ kind: 'bank-took-back', id: KNOWN });
+    expect((await markSeen(good, { 'Content-Type': 'text/plain' })).status).toBe(415);
+    expect((await markSeen(good, { 'Content-Type': 'application/x-www-form-urlencoded' })).status).toBe(415);
+    expect((await markSeen(good, { Origin: 'https://somewhere-else.example' })).status).toBe(403);
+    expect((await markSeen(good, { 'Sec-Fetch-Site': 'cross-site' })).status).toBe(403);
+    expect((await markSeen('{not json')).status).toBe(400);
+    expect((await markSeen(JSON.stringify({ kind: 'move-money', id: KNOWN }))).status).toBe(400);
+    expect((await markSeen(JSON.stringify({ kind: 'bank-took-back', id: 7 }))).status).toBe(400);
+    expect((await markSeen(JSON.stringify({ kind: 'bank-took-back', id: '' }))).status).toBe(400);
+    expect((await markSeen(JSON.stringify({ kind: 'bank-took-back', id: KNOWN, extra: 'x' }))).status).toBe(400);
+    expect((await markSeen(JSON.stringify({ kind: 'bank-took-back', id: 'x'.repeat(5000) }))).status).toBe(413);
+    expect(seen.length).toBe(before);
   });
 
   it('every answer carries the security headers: only its own scripts and styles, no framing', async () => {

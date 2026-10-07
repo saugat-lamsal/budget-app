@@ -43,6 +43,8 @@ export function phone(options: PhoneOptions = {}): BrowserContextOptions {
     colorScheme: options.colorScheme ?? 'light',
     reducedMotion: options.reducedMotion ?? 'no-preference',
     bypassCSP: options.bypassCSP ?? false,
+    // Times on the screens are in the phone's time zone; the tests pin one.
+    timezoneId: 'America/Chicago',
   };
 }
 

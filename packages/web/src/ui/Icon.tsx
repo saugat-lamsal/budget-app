@@ -19,6 +19,7 @@ const PATHS = {
   clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7.5V12l3 2',
   tray: 'M3 13.5h5l1.5 2.5h5l1.5-2.5h5M5.5 4h13l2.5 9.5V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5.5z',
   info: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v5.5M12 7.75V8',
+  undo: 'M9 14.5 4 9.5l5-5M4 9.5h10.5a5.5 5.5 0 0 1 0 11H10',
 } as const;
 
 export type IconName = keyof typeof PATHS;

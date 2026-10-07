@@ -10,6 +10,7 @@ import {
   paycheck,
   purchase,
   sent,
+  takenBack,
   transfer,
 } from '../../money/test/helpers.js';
 import { homeView, type Attention, type HomeInput, type HomeView } from '../src/views/home.js';
@@ -36,6 +37,8 @@ function input(book: Book | null, over: Partial<HomeInput> = {}): HomeInput {
     needsLogin: false,
     statements: [],
     madeUpData: false,
+    seenTakeBacks: new Set(),
+    lastChecked: null,
     ...over,
   };
 }
@@ -163,9 +166,36 @@ describe('0.5 Home when the totals do not match the bank', () => {
     expect(view.payday).toEqual({ next: '2026-10-09', days: 8 });
   });
 
-  it('0.5 with the bank not read, safe to spend is held back too', () => {
+  it('0.5 with the bank not read and never checked, safe to spend is held back with nothing to show', () => {
     const view = tracking(homeView(input(openTestBook({ pots: { wants: 9_999 } }), { bank: null })));
-    expect(view.safeToSpend).toEqual({ shown: false, why: 'bank-not-read' });
+    expect(view.safeToSpend).toEqual({ shown: false, why: 'bank-not-read', lastChecked: null });
+  });
+
+  it('0.5 with the bank not read, the last checked safe to spend is sent, with when (B82)', () => {
+    const lastChecked = { amount: 61_250, at: '2026-10-07T07:15:00-05:00' };
+    const view = tracking(homeView(input(openTestBook({ pots: { wants: 9_999 } }), { bank: null, lastChecked })));
+    expect(view.safeToSpend).toEqual({ shown: false, why: 'bank-not-read', lastChecked });
+  });
+
+  it('0.5 the last checked number is that number, not one worked out now', () => {
+    // Since the check, he sorted things and spent: the book says 9,999 now.
+    const view = tracking(homeView(input(openTestBook({ pots: { wants: 9_999 } }), { bank: null, lastChecked: { amount: -1, at: '2026-10-06T21:00:00Z' } })));
+    expect(view.safeToSpend).toMatchObject({ lastChecked: { amount: -1 } });
+  });
+
+  it('0.5 when the bank can be read, the last checked number plays no part', () => {
+    const book = openTestBook({ pots: { wants: 9_999 } });
+    expect(tracking(homeView(input(book, { lastChecked: { amount: 5, at: '2026-10-06T21:00:00Z' } }))).safeToSpend).toEqual({ shown: true, amount: 9_999 });
+    const bank = matchingBank(book);
+    const off = tracking(homeView(input(book, { bank: { ...bank, checking: bank.checking + 1 }, lastChecked: { amount: 5, at: '2026-10-06T21:00:00Z' } })));
+    expect(off.safeToSpend).toMatchObject({ shown: false, why: 'totals-do-not-match' });
+  });
+
+  it('0.5 a last checked number that is not whole cents, or a time that is not a time, is refused', () => {
+    const book = openTestBook();
+    expect(() => homeView(input(book, { bank: null, lastChecked: { amount: 1.5, at: '2026-10-07T07:15:00Z' } }))).toThrow();
+    expect(() => homeView(input(book, { bank: null, lastChecked: { amount: 100, at: '2026-10-07' } }))).toThrow();
+    expect(() => homeView(input(book, { bank: null, lastChecked: { amount: 100, at: 'yesterday' } }))).toThrow();
   });
 
   it('12.5 a card payment on its way is not a mismatch', () => {
@@ -329,8 +359,14 @@ describe('9.1 to 9.4 card reminders on Home', () => {
     expect(kinds(onDay('2026-10-13', [everyday]))).toEqual(['card-due']);
   });
 
-  it('9.1 not on the days between the reminders', () => {
-    expect(kinds(onDay('2026-10-10', [everyday]))).toEqual([]);
+  it('9.6 on the days between the reminders too, until it is paid (A17)', () => {
+    expect(tracking(onDay('2026-10-10', [everyday])).attention).toEqual([
+      { kind: 'card-due', card: 'everyday-card', dueDate: '2026-10-15', daysLeft: 5, statementBalance: 123_456, minimumPayment: 3_500 },
+    ]);
+  });
+
+  it('9.6 not before the first reminder day', () => {
+    expect(kinds(onDay('2026-10-07', [everyday]))).toEqual([]);
   });
 
   it('9.2 the old card shows its minimum and due date only', () => {
@@ -362,19 +398,64 @@ describe('9.1 to 9.4 card reminders on Home', () => {
     expect(kinds(onDay('2026-10-16', [old], book))).toEqual([]);
   });
 
-  it('9.4 on the due date itself it is not overdue yet', () => {
-    expect(kinds(onDay('2026-10-15', [old]))).toEqual([]);
+  it('9.4 9.6 on the due date itself it is due, not overdue yet', () => {
+    expect(tracking(onDay('2026-10-15', [old])).attention).toEqual([{ kind: 'card-due', card: 'old-card', dueDate: '2026-10-15', daysLeft: 0, minimumPayment: 4_000 }]);
+  });
+});
+
+describe('10.6 a take-back on Home, until it is seen (B84)', () => {
+  function tookBack(): ReturnType<typeof openTestBook> {
+    const book = openTestBook({ pots: { wants: 50_000 }, rules: [WANTS_RULE] });
+    book.receive(purchase('p1', '2026-10-02', 3_890, 'COFFEE BAR'));
+    book.receive(purchase('p2', '2026-10-02', 3_890, 'COFFEE BAR'));
+    book.receive(takenBack('tb1', 'p2', '2026-10-03'));
+    return book;
+  }
+
+  it('10.6 the bank taking back a charge shows what, how much, and when', () => {
+    const view = tracking(homeView(input(tookBack(), { today: '2026-10-03' })));
+    expect(view.attention).toEqual([{ kind: 'bank-took-back', id: 'p2', date: '2026-10-03', description: 'COFFEE BAR', amount: 3_890 }]);
+    // 4.10: its money went back where it came from.
+    expect(shownAmount(view)).toBe(50_000 - 3_890);
+  });
+
+  it('10.6 it stays, day after day, until he has seen it', () => {
+    const book = tookBack();
+    expect(kinds(homeView(input(book, { today: '2026-10-20' })))).toEqual(['bank-took-back']);
+    // Taking the phone alert (Phase 5) does not count as seeing it on Home.
+    book.takeAlerts({ bankConnection: 'ok', bankBalances: matchingBank(book) });
+    expect(kinds(homeView(input(book, { today: '2026-10-20' })))).toEqual(['bank-took-back']);
+  });
+
+  it('10.6 once seen, it is gone', () => {
+    expect(kinds(homeView(input(tookBack(), { seenTakeBacks: new Set(['p2']) })))).toEqual([]);
+  });
+
+  it('10.6 each take-back on its own, oldest first, and seeing one leaves the other', () => {
+    const book = tookBack();
+    book.receive(purchase('p3', '2026-10-04', 1, 'COFFEE BAR'));
+    book.receive(takenBack('tb2', 'p3', '2026-10-05'));
+    const both = tracking(homeView(input(book, { today: '2026-10-05' })));
+    expect(both.attention.map((a) => (a.kind === 'bank-took-back' ? a.id : a.kind))).toEqual(['p2', 'p3']);
+    const one = tracking(homeView(input(book, { today: '2026-10-05', seenTakeBacks: new Set(['p2']) })));
+    expect(one.attention).toEqual([{ kind: 'bank-took-back', id: 'p3', date: '2026-10-05', description: 'COFFEE BAR', amount: 1 }]);
+  });
+
+  it('10.6 nothing taken back, nothing shown; a seen id that matches nothing changes nothing', () => {
+    expect(kinds(homeView(input(openTestBook(), { seenTakeBacks: new Set(['nothing-like-this']) })))).toEqual([]);
   });
 });
 
 describe('Home: what comes first', () => {
-  it('bank login, overdue cards, review, savings, then card reminders', () => {
+  it('bank login, overdue cards, take-backs, review, savings, then cards due', () => {
     const book = openTestBook({ pots: { savings: 100_000, needs: 500_000 } });
     book.receive(purchase('p1', '2026-10-13', 1_000, 'NO RULE SHOP'));
+    book.receive(purchase('p2', '2026-10-13', 500, 'NO RULE SHOP'));
+    book.receive(takenBack('tb1', 'p2', '2026-10-13'));
     const overdue: CardStatement = { card: 'old-card', closingDate: '2026-09-01', dueDate: '2026-10-01', statementBalance: 1_000, minimumPayment: 1_000 };
     const due: CardStatement = { card: 'everyday-card', closingDate: '2026-09-20', dueDate: '2026-10-15', statementBalance: 9_999, minimumPayment: 2_500 };
     const view = homeView(input(book, { today: '2026-10-13', needsLogin: true, statements: [due, overdue], bank: matchingBank(book, 50_000) }));
-    expect(kinds(view)).toEqual(['bank-login', 'card-overdue', 'review', 'move-to-savings', 'card-due']);
+    expect(kinds(view)).toEqual(['bank-login', 'card-overdue', 'bank-took-back', 'review', 'move-to-savings', 'card-due']);
   });
 });
 

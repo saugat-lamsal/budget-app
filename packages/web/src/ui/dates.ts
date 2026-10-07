@@ -17,3 +17,13 @@ export function shortDate(date: IsoDate): string {
 export function longDate(date: IsoDate): string {
   return utc(date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
 }
+
+// "Wed, Oct 7, 7:15 AM": a moment, such as when safe to spend was last
+// checked (0.5, B82), in the phone's own time zone unless one is given.
+export function asOfText(at: string, timeZone?: string): string {
+  const moment = new Date(at);
+  if (Number.isNaN(moment.getTime())) throw new Error(`not a time: ${at}`);
+  return moment
+    .toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', ...(timeZone === undefined ? {} : { timeZone }) })
+    .replace(/\s/g, ' ');
+}

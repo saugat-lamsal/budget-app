@@ -1,10 +1,10 @@
 import type { SelfCheck } from '@budget-app/money';
 import type { Attention, HomeView } from '@budget-app/server/views';
 import { useState } from 'react';
-import type { Load } from '../app/api.js';
+import { markTakeBackSeen, type Load } from '../app/api.js';
 import { pathOf } from '../app/routes.js';
 import { Banner, BottomSheet, BucketBar, Button, Card, ListRow, Money, Skeleton, StateMessage, StatusLabel } from '../ui/blocks.js';
-import { longDate, shortDate } from '../ui/dates.js';
+import { asOfText, longDate, shortDate } from '../ui/dates.js';
 import { Icon } from '../ui/Icon.js';
 import { dueText, paydayText, waitingText } from './home-text.js';
 
@@ -34,7 +34,7 @@ export function HomeScreen({ load, onRetry }: { readonly load: Load<HomeView>; r
           />
         </>
       )}
-      {load.status === 'ready' && load.value.state === 'tracking' && <HomeReady view={load.value} />}
+      {load.status === 'ready' && load.value.state === 'tracking' && <HomeReady view={load.value} onChanged={onRetry} />}
     </main>
   );
 }
@@ -67,9 +67,10 @@ function HomeLoading() {
 }
 
 type Tracking = Extract<HomeView, { state: 'tracking' }>;
+type TakeBack = Extract<Attention, { kind: 'bank-took-back' }>;
 
-function HomeReady({ view }: { readonly view: Tracking }) {
-  const [sheet, setSheet] = useState<'check' | 'savings' | null>(null);
+function HomeReady({ view, onChanged }: { readonly view: Tracking; readonly onChanged: () => void }) {
+  const [sheet, setSheet] = useState<'check' | 'savings' | TakeBack | null>(null);
   const close = (): void => setSheet(null);
   const { safeToSpend, payday } = view;
   const savings = view.attention.find((a) => a.kind === 'move-to-savings');
@@ -110,6 +111,19 @@ function HomeReady({ view }: { readonly view: Tracking }) {
           </Button>
           {paydayLine}
         </Banner>
+      ) : safeToSpend.lastChecked !== null ? (
+        // B82: the bank cannot be read; the last checked number, greyed, with when.
+        <section className="hero" aria-labelledby="safe-to-spend-label" data-testid="stale">
+          <h2 id="safe-to-spend-label" className="hero__label">
+            Safe to spend
+          </h2>
+          <Money cents={safeToSpend.lastChecked.amount} hero stale testId="safe-to-spend-stale" />
+          <p className="hero__stale" data-testid="as-of">
+            <Icon name="clock" size={16} />
+            <span>As of {asOfText(safeToSpend.lastChecked.at)}. Can't reach the bank to check it now.</span>
+          </p>
+          {paydayLine}
+        </section>
       ) : (
         <Banner tone="warning" icon="alert" title="Can't check against the bank" testId="bank-not-read">
           <p className="banner__body">Safe to spend is hidden until the bank can be read again.</p>
@@ -121,7 +135,7 @@ function HomeReady({ view }: { readonly view: Tracking }) {
         {view.attention.length === 0 ? (
           <ListRow icon="check" tone="ok" title="Nothing needs you right now" testId="all-clear" />
         ) : (
-          view.attention.map((item) => <AttentionRow key={rowKey(item)} item={item} onSavings={() => setSheet('savings')} />)
+          view.attention.map((item) => <AttentionRow key={rowKey(item)} item={item} onSavings={() => setSheet('savings')} onTakeBack={setSheet} />)
         )}
       </Card>
 
@@ -157,7 +171,66 @@ function HomeReady({ view }: { readonly view: Tracking }) {
           <p className="sheet__note">Move it from checking to savings in your bank's app. This app never moves money.</p>
         </BottomSheet>
       )}
+      {view.attention.map((item) =>
+        item.kind === 'bank-took-back' ? (
+          <TakeBackSheet
+            key={item.id}
+            item={item}
+            open={typeof sheet === 'object' && sheet?.id === item.id}
+            onClose={close}
+            onSeen={() => {
+              close();
+              onChanged();
+            }}
+          />
+        ) : null,
+      )}
     </>
+  );
+}
+
+// 10.6: what the bank took back, until he says he has seen it (B84).
+function TakeBackSheet({ item, open, onClose, onSeen }: { readonly item: TakeBack; readonly open: boolean; readonly onClose: () => void; readonly onSeen: () => void }) {
+  const [saving, setSaving] = useState<'idle' | 'saving' | 'failed'>('idle');
+  return (
+    <BottomSheet open={open} title="Taken back by the bank" onClose={onClose} testId={`took-back-sheet-${item.id}`}>
+      <div className="card">
+        <dl className="figures">
+          <dt>What</dt>
+          <dd>{item.description}</dd>
+          <dt>Amount</dt>
+          <dd>
+            <Money cents={item.amount} testId="took-back-amount" />
+          </dd>
+          <dt>When</dt>
+          <dd>{shortDate(item.date)}</dd>
+        </dl>
+      </div>
+      <p className="sheet__note">The bank removed this after the app had counted it, so the app took it back too: its money went back where it came from. The change log keeps a record.</p>
+      {saving === 'failed' && (
+        <p className="hero__stale" role="alert" data-testid="seen-failed">
+          <Icon name="alert" size={16} />
+          <span>Couldn't save that. Try again.</span>
+        </p>
+      )}
+      <Button
+        wide
+        testId="seen"
+        onClick={() => {
+          if (saving === 'saving') return;
+          setSaving('saving');
+          markTakeBackSeen(item.id).then(
+            () => {
+              setSaving('idle');
+              onSeen();
+            },
+            () => setSaving('failed'),
+          );
+        }}
+      >
+        {saving === 'saving' ? 'Saving…' : 'Got it'}
+      </Button>
+    </BottomSheet>
   );
 }
 
@@ -191,14 +264,31 @@ function CheckFigures({ check }: { readonly check: SelfCheck }) {
 }
 
 function rowKey(item: Attention): string {
-  return item.kind === 'card-due' || item.kind === 'card-overdue' ? `${item.kind}-${item.card}` : item.kind;
+  if (item.kind === 'card-due' || item.kind === 'card-overdue') return `${item.kind}-${item.card}`;
+  if (item.kind === 'bank-took-back') return `${item.kind}-${item.id}`;
+  return item.kind;
 }
 
 const CARD_NAMES = { 'everyday-card': 'Everyday card', 'old-card': 'Old card' } as const;
 
-function AttentionRow({ item, onSavings }: { readonly item: Attention; readonly onSavings: () => void }) {
+function AttentionRow({ item, onSavings, onTakeBack }: { readonly item: Attention; readonly onSavings: () => void; readonly onTakeBack: (item: TakeBack) => void }) {
   const testId = `attention-${rowKey(item)}`;
   switch (item.kind) {
+    case 'bank-took-back':
+      return (
+        <ListRow
+          icon="undo"
+          tone="warning"
+          title="The bank took back a transaction"
+          detail={
+            <>
+              {item.description}, <Money cents={item.amount} />, on {shortDate(item.date)}.
+            </>
+          }
+          onClick={() => onTakeBack(item)}
+          testId={testId}
+        />
+      );
     case 'bank-login':
       return <ListRow icon="lock" tone="warning" title="Log in to the bank again" detail="New activity can't come in until you do." testId={testId} />;
     case 'card-overdue':
