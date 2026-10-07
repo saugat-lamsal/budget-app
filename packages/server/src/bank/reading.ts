@@ -16,8 +16,9 @@ export type BankRule =
   // Half of a transfer between two of his accounts: money leaving `account`
   // for `other`, or arriving in `account` from `other`, by the sign.
   | { readonly id: string; readonly account: AccountId; readonly contains: string; readonly means: 'transfer'; readonly other: AccountId }
-  // A payment to a person out of checking, such as Zelle (7.4, 8.1).
-  | { readonly id: string; readonly account: 'checking'; readonly contains: string; readonly means: 'payment-to-person' }
+  // A payment to a person out of checking or savings, such as Zelle (7.4,
+  // 8.1, QUESTIONS.md A16).
+  | { readonly id: string; readonly account: 'checking' | 'savings'; readonly contains: string; readonly means: 'payment-to-person' }
   // A fee or interest on a card (4.8, 5.5).
   | { readonly id: string; readonly account: 'everyday-card' | 'old-card'; readonly contains: string; readonly means: 'card-fee' | 'card-interest' };
 
@@ -29,8 +30,6 @@ export type Reading =
   | { readonly kind: 'payment-to-person' }
   | { readonly kind: 'transfer-sent'; readonly to: AccountId }
   | { readonly kind: 'transfer-arrived'; readonly from: 'checking' | 'savings' }
-  // Money moved, but the money math has no kind for it as read.
-  | { readonly kind: 'not-understood'; readonly why: string }
   // Zero: no money moved.
   | { readonly kind: 'nothing' };
 
@@ -47,9 +46,9 @@ export function readBankItem(account: AccountId, amount: Cents, description: str
     if (reading !== null) return reading;
   }
   if (isCard(account)) return out ? { kind: 'purchase' } : { kind: 'refund' };
-  if (!out) return { kind: 'deposit' };
-  if (account === 'checking') return { kind: 'purchase' };
-  return { kind: 'not-understood', why: 'money left savings, and no rule says which of your accounts it went to' };
+  // Money leaving savings that no rule names is spending too; the money math
+  // sends it to review whatever it is (4.9, A16).
+  return out ? { kind: 'purchase' } : { kind: 'deposit' };
 }
 
 // What a matching rule says, or null when it does not fit the way the money
@@ -96,8 +95,8 @@ export function checkBankRules(rules: unknown): readonly BankRule[] {
           return Object.freeze({ ...base, account: on, means: 'transfer' as const, other: other as AccountId });
         }
         case 'payment-to-person':
-          if (on !== 'checking') bad('payments to people come out of checking');
-          return Object.freeze({ ...base, account: 'checking' as const, means: 'payment-to-person' as const });
+          if (!isBankAccount(on)) bad('payments to people come out of checking or savings');
+          return Object.freeze({ ...base, account: on as 'checking' | 'savings', means: 'payment-to-person' as const });
         case 'card-fee':
         case 'card-interest':
           if (!isCard(on)) bad('fees and interest are on a card');

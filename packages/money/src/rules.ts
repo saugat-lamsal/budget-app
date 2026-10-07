@@ -22,13 +22,14 @@ export function isDepositRuleChoice(choice: unknown): choice is DepositRuleChoic
   return choice.to === 'other-income' || choice.to === 'not-mine' || isBucket(choice.to);
 }
 
-// What a payment to a person can be (7.2, 7.4): spending from needs or
-// wants, or not mine (lowers held for others).
-export type PersonPaymentChoice = { readonly to: SplitBucket | 'not-mine' };
+// What a payment to a person can be (7.2, 7.4, 7.6): spending from needs or
+// wants, not mine (lowers held for others), or for mom (out of the mom
+// reserve, like a payment the mom rule matches, 8.1).
+export type PersonPaymentChoice = { readonly to: SplitBucket | 'not-mine' | 'mom' };
 
 export function isPersonPaymentChoice(choice: unknown): choice is PersonPaymentChoice {
   if (typeof choice !== 'object' || choice === null || !('to' in choice)) return false;
-  return choice.to === 'not-mine' || isSpendingBucket(choice.to);
+  return choice.to === 'not-mine' || choice.to === 'mom' || isSpendingBucket(choice.to);
 }
 
 // Your sorting rules (4.2, 6.2, 7.4). A rule matches a bank description that
@@ -72,7 +73,7 @@ export function checkRules(rules: readonly SortingRule[]): readonly SortingRule[
         if (!isDepositRuleChoice(rule.choice)) bad('a deposit rule must pick other income, a bucket, or not mine');
         return Object.freeze({ ...rule, choice: Object.freeze({ to: rule.choice.to }) });
       case 'person':
-        if (!isPersonPaymentChoice(rule.choice)) bad('a person rule must pick needs, wants, or not mine');
+        if (!isPersonPaymentChoice(rule.choice)) bad('a person rule must pick needs, wants, not mine, or mom');
         return Object.freeze({ ...rule, choice: Object.freeze({ to: rule.choice.to }) });
       default:
         return bad('unknown kind of rule');

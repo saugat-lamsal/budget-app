@@ -198,15 +198,15 @@
   {
     "section": "3",
     "file": "packages/money/src/book.ts",
-    "find": "{ [entry.bucket]: -entry.amount, savings: entry.amount }",
-    "replace": "{ [entry.bucket]: entry.amount, savings: entry.amount }",
+    "find": "{ [entry.bucket]: -amount, savings: amount }",
+    "replace": "{ [entry.bucket]: amount, savings: amount }",
     "why": "3.4 flip the sign when moving leftovers to savings"
   },
   {
     "section": "3",
     "file": "packages/money/src/book.ts",
-    "find": "else this.#answerLeftover(entry, 'move-to-savings');",
-    "replace": "else this.#answerLeftover(entry, 'roll-over');",
+    "find": "else this.#answerLeftover(entry, 'move-to-savings', amount);",
+    "replace": "else this.#answerLeftover(entry, 'roll-over', amount);",
     "why": "3.4 ignore the always-move setting"
   },
   {
@@ -394,8 +394,8 @@
   {
     "section": "4",
     "file": "packages/money/src/book.ts",
-    "find": "    if ('to' in now && now.to === 'unsorted' && !(entry.dropped === true && net === 0)) this.#review.add(entry.id);\n    else this.#review.delete(entry.id);",
-    "replace": "    if ('to' in now && now.to === 'unsorted' && !(entry.dropped === true && net === 0)) this.#review.add(entry.id);",
+    "find": "    if ('to' in now && now.to === 'unsorted' && !(gone && net === 0)) this.#review.add(entry.id);\n    else this.#review.delete(entry.id);",
+    "replace": "    if ('to' in now && now.to === 'unsorted' && !(gone && net === 0)) this.#review.add(entry.id);",
     "why": "4.3 leave sorted spending in review"
   },
   {
@@ -429,8 +429,8 @@
   {
     "section": "4",
     "file": "packages/money/src/book.ts",
-    "find": "if (net !== 0) for (const part of now.split)",
-    "replace": "for (const part of now.split)",
+    "find": "      if (net !== 0) {\n        for (const part of now.split) {",
+    "replace": "      if (true) {\n        for (const part of now.split) {",
     "why": "4.5 keep taking the split parts after a full refund"
   },
   {
@@ -513,8 +513,8 @@
   {
     "section": "5",
     "file": "packages/money/src/book.ts",
-    "find": "    this.#review.delete(id);\n  }\n\n  // Rules 4.3, 4.4, 4.7, 4.8, 7.2.",
-    "replace": "  }\n\n  // Rules 4.3, 4.4, 4.7, 4.8, 7.2.",
+    "find": "    this.#review.delete(id);\n  }\n\n  // Rules 4.3, 4.4, 4.7, 4.8, 7.2, 7.6.",
+    "replace": "  }\n\n  // Rules 4.3, 4.4, 4.7, 4.8, 7.2, 7.6.",
     "why": "5.4 seeing the flag does not clear it"
   },
   {
@@ -681,28 +681,28 @@
   {
     "section": "7",
     "file": "packages/money/src/book.ts",
-    "find": "      if (!isPersonPaymentChoice(choice)) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');\n      entry.sortedTo",
-    "replace": "      if (false) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');\n      entry.sortedTo",
-    "why": "7.4 let a payment to a person be split or sent to savings"
+    "find": "      if (!isPersonPaymentChoice(choice)) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, not mine, or for mom, or is split across needs, wants and not mine');",
+    "replace": "      if (false) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, not mine, or for mom, or is split across needs, wants and not mine');",
+    "why": "7.4 let a payment to a person be sent to savings"
   },
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "      if (!isPersonPaymentChoice(choice)) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');\n      newRule",
-    "replace": "      if (false) throw new MoneyError('bad-choice', 'a payment to a person goes to needs, wants, or not mine');\n      newRule",
+    "find": "      if (!isPersonPaymentChoice(choice)) throw new MoneyError('bad-choice', 'a person rule picks needs, wants, not mine, or mom; it cannot split');\n      newRule",
+    "replace": "      if (false) throw new MoneyError('bad-choice', 'a person rule picks needs, wants, not mine, or mom; it cannot split');\n      newRule",
     "why": "13.6 let \"always do this\" make a person rule that splits or picks savings"
   },
   {
     "section": "7",
     "file": "packages/money/src/rules.ts",
-    "find": "return choice.to === 'not-mine' || isSpendingBucket(choice.to);",
-    "replace": "return choice.to === 'not-mine' || isSpendingBucket(choice.to) || choice.to === 'savings';",
+    "find": "  return choice.to === 'not-mine' || choice.to === 'mom' || isSpendingBucket(choice.to);",
+    "replace": "  return choice.to === 'not-mine' || choice.to === 'mom' || isSpendingBucket(choice.to) || choice.to === 'savings';",
     "why": "7.4 let a person rule pick savings"
   },
   {
     "section": "8",
     "file": "packages/money/src/book.ts",
-    "find": "    if (matchesTextRule(this.#settings.momRule, txn.description)) return this.#payMom(txn);\n",
+    "find": "    if (matchesTextRule(this.#settings.momRule, txn.description)) return this.#payMom(txn, 'mom-rule');\n",
     "replace": "",
     "why": "8.1 treat mom like any other person"
   },
@@ -737,15 +737,15 @@
   {
     "section": "8",
     "file": "packages/money/src/book.ts",
-    "find": "if (entry.kind === 'mom' && monthOf(entry.txn.date) === month) sent = addCents(sent, entry.txn.amount);",
-    "replace": "if (entry.kind === 'mom' && monthOf(entry.txn.date) === month) sent = addCents(sent, entry.fromReserve);",
+    "find": "if (entry.kind === 'mom' && !this.#gone(entry) && monthOf(entry.txn.date) === month) sent = addCents(sent, entry.txn.amount);",
+    "replace": "if (entry.kind === 'mom' && !this.#gone(entry) && monthOf(entry.txn.date) === month) sent = addCents(sent, entry.fromReserve);",
     "why": "8.2 count only the part the reserve covered"
   },
   {
     "section": "8",
     "file": "packages/money/src/book.ts",
-    "find": "if (entry.kind === 'mom' && monthOf(entry.txn.date) === month) sent",
-    "replace": "if (entry.kind === 'mom' && entry.txn.date.slice(0, 4) === month.slice(0, 4)) sent",
+    "find": "if (entry.kind === 'mom' && !this.#gone(entry) && monthOf(entry.txn.date) === month) sent",
+    "replace": "if (entry.kind === 'mom' && !this.#gone(entry) && entry.txn.date.slice(0, 4) === month.slice(0, 4)) sent",
     "why": "8.2 add up the year instead of the month"
   },
   {
@@ -870,8 +870,8 @@
   {
     "section": "9",
     "file": "packages/money/src/book.ts",
-    "find": "if (txn === null || !('to' in txn) || txn.to !== card) continue;",
-    "replace": "if (txn === null || !('to' in txn) || txn.to === 'savings') continue;",
+    "find": "if (txn === null || !('to' in txn) || txn.to !== card || this.#gone(entry)) continue;",
+    "replace": "if (txn === null || !('to' in txn) || txn.to === 'savings' || this.#gone(entry)) continue;",
     "why": "9.3 mix up which card a payment went to"
   },
   {
@@ -1136,8 +1136,8 @@
   {
     "section": "14",
     "file": "packages/money/src/setup.ts",
-    "find": "if (charge.kind !== 'purchase' || !charge.pending) throw",
-    "replace": "if (charge.kind !== 'purchase') throw",
+    "find": "if ((charge.kind !== 'purchase' && charge.kind !== 'savings-withdrawal') || !charge.pending) throw",
+    "replace": "if (charge.kind !== 'purchase' && charge.kind !== 'savings-withdrawal') throw",
     "why": "14.1 accept a posted charge as pending at setup"
   },
   {
@@ -1192,15 +1192,15 @@
   {
     "section": "12",
     "file": "packages/money/src/book.ts",
-    "find": "if (txn?.kind === 'transfer-sent' && !this.#pairs.has(entry.id) && sameRoute(txn, arrival)) return entry.id;",
-    "replace": "if (txn?.kind === 'transfer-sent' && sameRoute(txn, arrival)) return entry.id;",
+    "find": "if (txn?.kind === 'transfer-sent' && !this.#pairs.has(entry.id) && !this.#gone(entry) && sameRoute(txn, arrival)) return entry.id;",
+    "replace": "if (txn?.kind === 'transfer-sent' && !this.#gone(entry) && sameRoute(txn, arrival)) return entry.id;",
     "why": "12.5 pair an arrival with a payment that already arrived"
   },
   {
     "section": "12",
     "file": "packages/money/src/book.ts",
-    "find": "if (a.sentId === undefined && fallback === undefined && sameRoute(a, sent)) fallback = entry.id;",
-    "replace": "if (a.sentId === undefined && sameRoute(a, sent)) fallback = entry.id;",
+    "find": "if (this.#namesNoHalf(a) && fallback === undefined && sameRoute(a, sent)) fallback = entry.id;",
+    "replace": "if (this.#namesNoHalf(a) && sameRoute(a, sent)) fallback = entry.id;",
     "why": "12.5 pair with the newest early arrival instead of the oldest"
   },
   {
@@ -1220,8 +1220,8 @@
   {
     "section": "12",
     "file": "packages/money/src/book.ts",
-    "find": "|| this.#pairs.has(entry.id)) continue;\n      const { id, date, from, to, amount } = txn;",
-    "replace": ") continue;\n      const { id, date, from, to, amount } = txn;",
+    "find": "|| this.#pairs.has(entry.id) || this.#gone(entry)) continue;\n      const { id, date, from, to, amount } = txn;",
+    "replace": "|| this.#gone(entry)) continue;\n      const { id, date, from, to, amount } = txn;",
     "why": "12.5 list transfers that have already landed"
   },
   {
@@ -1304,8 +1304,8 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "if (entry.kind === 'spend' && entry.spendingKind === 'purchase') {\n      if ('split' in choice",
-    "replace": "if (entry.kind === 'spend' && entry.spendingKind !== 'person-payment') {\n      if ('split' in choice",
+    "find": "if (entry.kind === 'spend' && entry.spendingKind === 'purchase' && !fromSavings) {\n      if ('split' in choice",
+    "replace": "if (entry.kind === 'spend' && entry.spendingKind !== 'person-payment' && !fromSavings) {\n      if ('split' in choice",
     "why": "13.6 let fees get a rule"
   },
   {
@@ -1472,8 +1472,8 @@
   {
     "section": "10",
     "file": "packages/money/src/book.ts",
-    "find": "? subtractCents(this.#periodStart[entry.bucket], entry.amount) :",
-    "replace": "? addCents(this.#periodStart[entry.bucket], entry.amount) :",
+    "find": "? subtractCents(this.#periodStart[entry.bucket], amount) :",
+    "replace": "? addCents(this.#periodStart[entry.bucket], amount) :",
     "why": "10.1 flip the sign when a leftover moves to savings"
   },
   {
@@ -1822,8 +1822,8 @@
   {
     "section": "4",
     "file": "packages/money/src/book.ts",
-    "find": "if ((target?.kind !== 'spend' && target?.kind !== 'old-card') || !target.pending) {",
-    "replace": "if (target?.kind !== 'spend' && target?.kind !== 'old-card') {",
+    "find": "if ((target?.kind !== 'spend' && target?.kind !== 'old-card') || !target.pending) {\n      throw new MoneyError('not-pending', `${txn.pendingId} is not a pending charge`);\n    }\n    const before = { pending: target.pending, amount: target.amount };",
+    "replace": "if (target?.kind !== 'spend' && target?.kind !== 'old-card') {\n      throw new MoneyError('not-pending', `${txn.pendingId} is not a pending charge`);\n    }\n    const before = { pending: target.pending, amount: target.amount };",
     "why": "4.6 let a posted charge be dropped"
   },
   {
@@ -1836,8 +1836,8 @@
   {
     "section": "4",
     "file": "packages/money/src/book.ts",
-    "find": " && !(entry.dropped === true && net === 0)",
-    "replace": "",
+    "find": "    const gone = entry.dropped === true || entry.takenBack === true;",
+    "replace": "    const gone = entry.takenBack === true;",
     "why": "4.6 keep a dropped charge waiting in review"
   },
   {
@@ -1916,5 +1916,404 @@
     "find": "      this.#settings = before;\n      throw error;",
     "replace": "      throw error;",
     "why": "13.2 keep a new rule whose re-check was refused (A9)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/transactions.ts",
+    "find": "    if (txn.kind === 'pending-changed') assertPositiveCents(txn.amount, 'new amount');\n",
+    "replace": "",
+    "why": "4.6 let a pending charge change to zero (A13)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "    target.amount = txn.amount;\n    try {\n      if (target.kind === 'spend') this.#refreshSpending(target);",
+    "replace": "    try {\n      if (target.kind === 'spend') this.#refreshSpending(target);",
+    "why": "4.6 ignore a pending charge's new amount (A13)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "      else this.#setEffect(target, { oldCardDebt: txn.amount - target.countedAtSetup });",
+    "replace": "      else this.#setEffect(target, { oldCardDebt: target.countedAtSetup - txn.amount });",
+    "why": "4.6 flip the sign of an old card charge's new amount (A13)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "!target.pending) {\n      throw new MoneyError('not-pending', `${txn.pendingId} is not a pending charge`);\n    }\n    const before = { amount: target.amount };",
+    "replace": "false) {\n      throw new MoneyError('not-pending', `${txn.pendingId} is not a pending charge`);\n    }\n    const before = { amount: target.amount };",
+    "why": "4.6 change the amount of a charge that already posted (A13)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (target.takenBack === true) throw new MoneyError('already-taken-back', `${txn.takenId} was taken back already`);\n",
+    "replace": "",
+    "why": "4.10 take the same transaction back twice (A14)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "&& target.pending) {\n      throw new MoneyError('still-pending'",
+    "replace": "&& false) {\n      throw new MoneyError('still-pending'",
+    "why": "4.10 take back a charge that is still pending instead of dropping it (A14)"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#log.push(Object.freeze({ date: txn.date, kind: 'bank-took-back', id: target.id, description: shown.description, amount }));\n",
+    "replace": "",
+    "why": "13.5 leave a take-back out of the change log (A14)"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#notices.push(Object.freeze({ kind: 'bank-took-back', id: target.id, date: txn.date, description: shown.description, amount }));\n",
+    "replace": "",
+    "why": "10.6 never say the bank took something back (A14)"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#notices.length = 0;\n    return alerts;",
+    "replace": "    return alerts;",
+    "why": "10.6 say the bank took something back every time the alerts are taken (A14)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "        entry.amount = 0;\n        entry.takenBack = true;\n        this.#refreshSpending(entry);",
+    "replace": "        entry.takenBack = true;\n        this.#refreshSpending(entry);",
+    "why": "4.10 leave a taken-back purchase's money where it went (A14)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "        this.#setEffect(entry, { oldCardDebt: -entry.countedAtSetup });\n        this.#review.delete(entry.id);\n        break;",
+    "replace": "        this.#review.delete(entry.id);\n        break;",
+    "why": "4.10 leave old card activity in the debt after the bank takes it back (A14)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "        purchase.refunded = subtractCents(purchase.refunded, entry.txn.amount);",
+    "replace": "        purchase.refunded = addCents(purchase.refunded, entry.txn.amount);",
+    "why": "4.10 count a taken-back refund twice instead of not at all (A14)"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "        if (difference !== undefined) this.#takeBack(difference);\n",
+    "replace": "",
+    "why": "4.10 leave a mom payment's difference waiting after the bank takes the payment back (A14)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "      case 'leg':\n        entry.takenBack = true;\n        this.#setEffect(entry, {});",
+    "replace": "      case 'leg':\n        entry.takenBack = true;",
+    "why": "4.10 leave money in, a paycheck, or a transfer counted after the bank takes it back (A14)"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "    // Its other half, if any, is on its way again (12.5).\n    this.#unpairAll(entry.id);\n",
+    "replace": "",
+    "why": "12.5 keep a taken-back half paired with its other half (A14)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "    return 'takenBack' in entry && entry.takenBack === true;",
+    "replace": "    return false;",
+    "why": "4.10 forget what the bank took back (A14)"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.kind === 'mom' && !this.#gone(entry) && monthOf(entry.txn.date) === month)",
+    "replace": "if (entry.kind === 'mom' && monthOf(entry.txn.date) === month)",
+    "why": "8.2 count a mom payment the bank took back (A14)"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "|| this.#pairs.has(entry.id) || this.#gone(entry)) continue;\n      const { id, date, from, to, amount } = txn;",
+    "replace": "|| this.#pairs.has(entry.id)) continue;\n      const { id, date, from, to, amount } = txn;",
+    "why": "12.5 list a taken-back half as on its way (A14)"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/book.ts",
+    "find": "if (txn === null || !('to' in txn) || txn.to !== card || this.#gone(entry)) continue;",
+    "replace": "if (txn === null || !('to' in txn) || txn.to !== card) continue;",
+    "why": "9.3 count a card payment the bank took back (A14)"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "|| this.#pairs.has(entry.id) || this.#gone(entry)) continue;\n      const a = entry.txn;",
+    "replace": "|| this.#pairs.has(entry.id)) continue;\n      const a = entry.txn;",
+    "why": "12.5 pair a leaving half with an arrival the bank took back (A14)"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "    return named !== undefined && this.#gone(named);",
+    "replace": "    return false;",
+    "why": "12.5 never pair an arrival that names a half the bank took back (A14)"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "        if (this.#gone(named)) {\n          partner = this.#oldestUnpairedSent(txn);",
+    "replace": "        if (this.#gone(named)) {\n          partner = named.id;",
+    "why": "12.5 pair an arrival with the half the bank took back (A14)"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "&& !this.#pairs.has(entry.id) && !this.#gone(entry) && sameRoute(txn, arrival)) return entry.id;",
+    "replace": "&& !this.#pairs.has(entry.id) && sameRoute(txn, arrival)) return entry.id;",
+    "why": "12.5 pair a new arrival with a leaving half the bank took back (A14)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "    const gone = entry.dropped === true || entry.takenBack === true;",
+    "replace": "    const gone = entry.dropped === true;",
+    "why": "4.10 leave a taken-back purchase waiting in review (A14)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (this.#gone(entry) && !this.#review.has(entry.id)) throw new MoneyError('not-sortable', `the bank took back ${id}`);\n",
+    "replace": "",
+    "why": "4.10 let a taken-back purchase be sorted (A14)"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "    return Math.min(entry.amount, Math.max(0, subtractCents(entry.amount, late)));",
+    "replace": "    return Math.max(0, subtractCents(entry.amount, late));",
+    "why": "3.4 let money back on an old purchase raise the leftover question (B4)"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "    return Math.min(entry.amount, Math.max(0, subtractCents(entry.amount, late)));",
+    "replace": "    return Math.min(entry.amount, subtractCents(entry.amount, late));",
+    "why": "3.4 let late spending take the leftover question below zero (B4)"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.kind === 'spend' && daysBetween(entry.txn.date, day) > 0) spent = subtractCents(spent, entry.effect[bucket] ?? 0);",
+    "replace": "if (entry.kind === 'spend' && daysBetween(entry.txn.date, day) >= 0) spent = subtractCents(spent, entry.effect[bucket] ?? 0);",
+    "why": "3.4 count payday's own spending as from before payday (B4)"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.kind === 'spend' && daysBetween(entry.txn.date, day) > 0) spent = subtractCents(spent, entry.effect[bucket] ?? 0);",
+    "replace": "if (entry.kind === 'spend' && daysBetween(entry.txn.date, day) > 0) spent = addCents(spent, entry.effect[bucket] ?? 0);",
+    "why": "3.4 let late spending raise the leftover question instead of lowering it (B4)"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "    const amount = this.#asked(entry);",
+    "replace": "    const amount = entry.amount;",
+    "why": "3.4 move what was left at payday, ignoring late spending (B4)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/transactions.ts",
+    "find": "  'savings-withdrawal': ['savings'],",
+    "replace": "  'savings-withdrawal': ['savings', 'checking'],",
+    "why": "4.9 let a withdrawal come out of checking (A16)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/transactions.ts",
+    "find": "  purchase: ['checking', 'everyday-card', 'old-card'],",
+    "replace": "  purchase: ['checking', 'savings', 'everyday-card', 'old-card'],",
+    "why": "4.9 let a purchase be on savings (A16)"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/transactions.ts",
+    "find": "  'payment-to-person': ['checking', 'savings'],",
+    "replace": "  'payment-to-person': ['checking'],",
+    "why": "7.4 refuse a payment to a person from savings (A16)"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/self-check.ts",
+    "find": "    if (charge.account === 'savings') savings = subtractCents(savings, charge.amount);\n",
+    "replace": "",
+    "why": "12.1 leave money pending out of savings out of the bank side (A16)"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "    if ((charge.kind !== 'purchase' && charge.kind !== 'savings-withdrawal') || !charge.pending)",
+    "replace": "    if (charge.kind !== 'purchase' || !charge.pending)",
+    "why": "14.2 refuse a withdrawal pending on setup day (A16)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (txn.kind === 'savings-withdrawal') return this.#addSpending(txn, 'purchase', { to: 'unsorted' });\n",
+    "replace": "",
+    "why": "4.9 let a sorting rule sort money leaving savings (A16)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "        const fromSavings = entry.txn.kind === 'savings-withdrawal';",
+    "replace": "        const fromSavings = false;",
+    "why": "4.9 show money leaving savings as an ordinary purchase in review (A16)"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "    const fromSavings = entry.kind === 'spend' && entry.txn.kind === 'savings-withdrawal';\n    if ('transfer' in choice)",
+    "replace": "    const fromSavings = false;\n    if ('transfer' in choice)",
+    "why": "4.9 let \"always do this\" make a rule for money leaving savings (A16)"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      const fromSavings = entry.kind === 'spend' && entry.txn.kind === 'savings-withdrawal';\n      if (unsortedSpending",
+    "replace": "      const fromSavings = false;\n      if (unsortedSpending",
+    "why": "4.9 let a new rule sort money leaving savings that is waiting (A16)"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/rules.ts",
+    "find": "  return choice.to === 'not-mine' || choice.to === 'mom' || isSpendingBucket(choice.to);",
+    "replace": "  return choice.to === 'not-mine' || isSpendingBucket(choice.to);",
+    "why": "7.6 refuse \"for mom\" for a payment to a person (B20)"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (rule?.choice.to === 'mom') return this.#payMom(txn, 'person-rule');\n",
+    "replace": "",
+    "why": "7.6 ignore a person rule that picks mom (B20)"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/book.ts",
+    "find": "        if (entry.how === 'mom-rule') throw",
+    "replace": "        if (false) throw",
+    "why": "8.1 let a payment the mom rule matched be sorted another way (B20)"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "|| entry.refunded > 0) throw new MoneyError('bad-choice', `${entry.id} cannot be for mom",
+    "replace": ") throw new MoneyError('bad-choice', `${entry.id} cannot be for mom",
+    "why": "7.6 mark a partly refunded payment for mom (B20)"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (choice.to === 'mom') {",
+    "replace": "      if (false) {",
+    "why": "7.6 treat \"for mom\" as a bucket (B20)"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (difference !== undefined) this.#remove(difference);\n",
+    "replace": "",
+    "why": "7.6 keep the mom difference after a payment for mom is sorted another way (B20)"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "          const pot = part.bucket === 'not-mine' ? 'heldForOthers' : part.bucket;",
+    "replace": "          const pot = part.bucket === 'not-mine' ? 'wants' : part.bucket;",
+    "why": "7.6 put the not-mine part of a split payment in wants (B20)"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "        if (!isSpendingBucket(part.bucket) && !(person && part.bucket === 'not-mine')) {",
+    "replace": "        if (!isSpendingBucket(part.bucket) && part.bucket !== 'not-mine') {",
+    "why": "7.6 let a purchase have a not-mine part (B20)"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (other === from) refuse('a transfer goes to another of your accounts');\n",
+    "replace": "",
+    "why": "5.6 let a transfer go to the account it left (A12)"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (entry.pending) throw new MoneyError('still-pending'",
+    "replace": "      if (false) throw new MoneyError('still-pending'",
+    "why": "5.6 mark a charge that is still pending as a transfer (A12)"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (entry.refunded > 0 || entry.countedAtSetup > 0 || entry.dropped === true || this.#gone(entry)) refuse(",
+    "replace": "      if (entry.dropped === true || this.#gone(entry)) refuse(",
+    "why": "5.6 mark a refunded purchase as a transfer (A12)"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (other !== 'checking' && other !== 'savings') refuse('money arrives from checking or savings');\n",
+    "replace": "",
+    "why": "5.6 let money arrive from a card (A12)"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (other === txn.account) refuse('a transfer comes from another of your accounts');\n",
+    "replace": "",
+    "why": "5.6 let money arrive from the account it came into (A12)"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (originalPosted !== undefined) this.#dispatch(originalPosted);\n",
+    "replace": "",
+    "why": "5.6 lose the posted version when a marked transfer is sorted another way (A12)"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "entry.original !== undefined && !oldCardFromSavings) {",
+    "replace": "entry.original !== undefined) {",
+    "why": "5.6 undo the mark on a payment to the old card from savings when it is sorted (A12)"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "    return ('original' in entry ? entry.original : undefined) ?? entry.txn;",
+    "replace": "    return entry.txn;",
+    "why": "5.6 call the bank resending a marked transaction a conflict (A12)"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "      if ('originalPosted' in entry && entry.originalPosted !== undefined) return entry.originalPosted;\n",
+    "replace": "",
+    "why": "5.6 call the bank resending a marked charge's posting a conflict (A12)"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (typeof other !== 'string' || !(ACCOUNTS as readonly string[]).includes(other)) {",
+    "replace": "    if (typeof other !== 'string') {",
+    "why": "5.6 let a transfer be with an account that is not one of his four (A12)"
   }
 ]

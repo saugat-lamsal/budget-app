@@ -40,6 +40,13 @@ describe('8.1 any payment matching the mom rule comes out of the mom reserve', (
     expect(b.pots()).toEqual({ ...START, unsortedOut: 100_000 });
   });
 
+  it('8.1 whatever the account it leaves: from savings, it comes out of the reserve the same way (A16)', () => {
+    const b = book();
+    expect(b.receive({ ...payMom('m1', '2026-10-03', 100_000), account: 'savings' })).toEqual({ id: 'm1', outcome: 'sorted' });
+    expect(b.pots()).toEqual({ ...START, momReserve: 50_000 });
+    expect(b.momSentInMonth('2026-10').sent).toBe(100_000);
+  });
+
   it('8.1 a mom payment always stays on the reserve and cannot be re-sorted', () => {
     const b = book();
     b.receive(payMom('m1', '2026-10-03', 100_000));

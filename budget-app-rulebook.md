@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 8)
+# Budget App Rulebook (draft 9)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -37,6 +37,11 @@ number so a test can point at it. Nothing gets coded until you approve this.
 - Paycheck rule: how your pay shows up on the statement (set after first sync)
 - Pay schedule: every 14 days, counted from the last paycheck
 - Mom rule: her name as it appears on transfers (you enter it in the app)
+- Bank rules: which bank items are transfers between your accounts,
+  payments to people, and card fees or interest. Each is text the bank's
+  description contains, on one account (set after the first sync; the
+  setup screen also suggests some from the bank's own labels, for you to
+  confirm)
 
 
 ## 3. Payday
@@ -51,7 +56,10 @@ number so a test can point at it. Nothing gets coded until you approve this.
 3.4  At each payday, unspent needs and unspent wants either roll over into
      the next pay period or move to savings. You choose for each bucket
      separately. Until you answer, the money stays where it is, and you can
-     still move it by hand later (13.3).
+     still move it by hand later (13.3). While the question is open,
+     spending made before payday that shows up or changes after it (4.1)
+     changes the amount asked about by as much, never below zero and never
+     above what was asked at payday.
 3.5  An overspent bucket carries over as a negative, so the next period
      starts smaller. At payday nothing is asked about it and nothing moves;
      the new share is added on top.
@@ -80,11 +88,28 @@ number so a test can point at it. Nothing gets coded until you approve this.
      the app cannot match a refund to a purchase, it goes to review.
 4.6  A pending charge counts once. When it posts, the final charge replaces
      the pending one, even if the amount changed (a tip, for example). If
-     the bank drops a pending charge without posting it (a hold that falls
-     off), it is removed and the money goes back to where it came from.
+     the bank changes a pending charge's amount before it posts, the new
+     amount counts right away, in the same bucket. If the bank drops a
+     pending charge without posting it (a hold that falls off), it is
+     removed and the money goes back to where it came from.
 4.7  Re-sorting a purchase updates the buckets right away.
 4.8  Fees and interest on the everyday card go to review. Suggested bucket:
      needs.
+4.9  Money leaving savings that is not a transfer to one of your accounts
+     (5.3, 5.6) or a payment to a person (7.4), such as a withdrawal or a
+     bill paid straight from savings, always waits in review, even when a
+     rule matches it. It has the same choices as any spending (4.2 to 4.4).
+     To pay for it out of savings, sort it and then move the money by hand
+     (13.3).
+4.10 If the bank takes back a transaction the app already counted (a charge
+     shown twice, a correction), the app takes it back too: whatever it did
+     to the buckets, the mom reserve, money in transit, or the old card
+     debt is undone, and its money goes back where it came from. The change
+     is logged (13.5) and you are told (10.6). If the bank changes the
+     amount of a posted transaction, the old one is taken back and the new
+     one counts as new. A paycheck taken back keeps the pay period it
+     started; only its money comes back out of the buckets. A pending
+     charge is dropped, not taken back (4.6).
 
 
 ## 5. Transfers and card payments
@@ -102,6 +127,12 @@ number so a test can point at it. Nothing gets coded until you approve this.
      only when you pay it (5.2).
 5.5  Interest or fees on the old card raise the debt shown. They touch a
      bucket only when you pay them.
+5.6  Review also offers "transfer between my accounts" for money out of
+     checking or savings, and for money in, that the bank did not show as
+     a transfer. It then counts as that transfer's half: no bucket changes
+     (5.1, 5.3), it is in transit until its other half shows (12.5), and a
+     payment to the old card counts as one (5.2). Sorting it another way
+     later makes it what the bank sent again.
 
 
 ## 6. Deposits that are not a paycheck
@@ -130,14 +161,22 @@ number so a test can point at it. Nothing gets coded until you approve this.
 7.3  "Held for others" is shown as its own number and should return to zero.
      A negative number means someone owes you.
 7.4  Payments to people go to the daily review unless there is a rule for
-     that person.
+     that person. This is the same whichever of your accounts they leave.
 7.5  A friend paying you back is a payback (6.1).
+7.6  In review, a payment to a person can go to needs, wants, not mine, or
+     "for mom", or be split across needs, wants, and not mine; the parts
+     must add up to the payment. "For mom" takes it out of the mom reserve
+     and counts it toward the month, like a payment the mom rule matches
+     (8.1 to 8.3). A rule for a person can say "for mom" too. One marked
+     for mom this way can be sorted again later; one the mom rule matches
+     cannot.
 
 
 ## 8. Mom
 
 8.1  Any payment that matches the mom rule comes out of the mom reserve,
-     whatever the day or amount.
+     whatever the day or amount, and whichever account it leaves. So does
+     a payment to a person you mark "for mom" (7.6).
 8.2  The app shows how much you have sent this calendar month against the
      target.
 8.3  If a payment is bigger than the reserve, the app asks which bucket
@@ -186,6 +225,8 @@ number so a test can point at it. Nothing gets coded until you approve this.
 10.3  Daily review: sent at the review time, only if something is unsorted.
 10.4  Totals do not match the bank (section 12).
 10.5  Bank connection needs you to log in again.
+10.6  The bank took back a transaction the app had counted (4.10). Once,
+      when it happens.
 
 
 ## 11. Safe to spend
@@ -201,7 +242,8 @@ number so a test can point at it. Nothing gets coded until you approve this.
 ## 12. Daily self-check
 
 12.1  Bank side: checking + savings - everyday card balance, including
-      pending charges (they already count in the buckets under 4.6).
+      pending charges (they already count in the buckets under 4.6),
+      savings ones too (4.9).
 12.2  App side: savings + needs + wants + mom reserve + held for others
       + unsorted money in - unsorted spending.
       Unsorted money in: deposits and refunds waiting in review
@@ -339,3 +381,29 @@ The second-opinion tests (PR #4) found these places unclear in the
 rulebook. QUESTIONS.md part B already had the answers, and the app already
 works that way: 6.1 (B53), 9.3 (B28, B47), 9.4 (B30), 10.1 (B57, B58),
 10.2 (B50), 11.2 (B35), 12.5 (B45).
+
+
+## 20. Answers to the Phase 3 questions (Oct 7, 2026)
+
+a.  How the app tells transfers, payments to people, and card fees from
+    purchases: bank rules, now a setting (section 2). The setup screen
+    will also suggest rules from the bank's own labels, for you to confirm
+    (Phase 4). Review also offers "transfer between my accounts" (5.6,
+    QUESTIONS.md A12).
+b.  A pending charge whose amount changes before it posts: the new amount
+    counts right away, in the same bucket (4.6, A13).
+c.  A transaction the bank takes back or changes after the app counted it:
+    the app follows the bank, logs the change, and tells you (4.10, 10.6,
+    A14).
+d.  Which purchase a refund belongs to: every refund the bank does not
+    match waits in review, as now (4.5). In Phase 4, review lists the
+    purchases it likely belongs to (A15).
+e.  A payment to a person is handled the same whichever of your accounts
+    it leaves; mom's from savings comes out of the mom reserve. Other money
+    leaving savings waits in review with the usual choices (4.9, 7.4, 8.1,
+    A16).
+f.  A purchase from before payday that shows up after it lowers the open
+    leftover question, never below zero (3.4, QUESTIONS.md B4).
+g.  "For mom" is a review choice for payments to people, and a payment to
+    a person can be split across needs, wants, and not mine (7.6,
+    QUESTIONS.md B20 and B26).

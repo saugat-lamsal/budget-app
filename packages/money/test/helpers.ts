@@ -7,8 +7,11 @@ import {
   type CardCharge,
   type Deposit,
   type Purchase,
+  type SavingsWithdrawal,
+  type PendingChanged,
   type PendingDropped,
   type PersonPayment,
+  type TakenBack,
   type Refund,
   type Transfer,
   type TransferArrived,
@@ -65,6 +68,11 @@ export function purchase(
   return { kind: 'purchase', id, account: options.account ?? 'everyday-card', date, amount, description, pending: options.pending ?? false };
 }
 
+// Other money leaving savings, such as a bill paid from it (4.9, A16).
+export function withdrawal(id: string, date: IsoDate, amount: Cents, description = 'MADE UP BILL PAY', options: { pending?: boolean; pendingId?: string } = {}): SavingsWithdrawal {
+  return { kind: 'savings-withdrawal', id, account: 'savings', date, amount, description, pending: options.pending ?? false, ...(options.pendingId === undefined ? {} : { pendingId: options.pendingId }) };
+}
+
 // The posted version of a pending purchase. The bank gives it a new id.
 export function posted(id: string, pendingId: string, date: IsoDate, amount: Cents, description = 'MADE UP STORE', account: Purchase['account'] = 'everyday-card'): Purchase {
   return { kind: 'purchase', id, account, date, amount, description, pending: false, pendingId };
@@ -87,9 +95,19 @@ export function transfer(id: string, date: IsoDate, amount: Cents, from: Transfe
   return { kind: 'transfer', id, from, to, date, amount, description: `TRANSFER ${from} TO ${to}` };
 }
 
-// Money sent to a person (Zelle and the like), always from checking.
-export function payPerson(id: string, date: IsoDate, amount: Cents, payee: string): PersonPayment {
-  return { kind: 'payment-to-person', id, account: 'checking', date, amount, description: `ZELLE TO ${payee}` };
+// Money sent to a person (Zelle and the like), from checking or savings (A16).
+export function payPerson(id: string, date: IsoDate, amount: Cents, payee: string, account: PersonPayment['account'] = 'checking'): PersonPayment {
+  return { kind: 'payment-to-person', id, account, date, amount, description: `ZELLE TO ${payee}` };
+}
+
+// The bank changing a pending charge's amount before it posts (QUESTIONS.md A13).
+export function pendingChanged(id: string, pendingId: string, date: IsoDate, amount: Cents): PendingChanged {
+  return { kind: 'pending-changed', id, pendingId, date, amount, description: 'MADE UP STORE' };
+}
+
+// The bank taking back a transaction the app had counted (QUESTIONS.md A14).
+export function takenBack(id: string, takenId: string, date: IsoDate): TakenBack {
+  return { kind: 'taken-back', id, takenId, date, description: 'CORRECTION' };
 }
 
 // The two halves of a transfer, when the bank shows them on different days:
@@ -135,14 +153,18 @@ export class TestBank {
   }
 
   // Pending purchases by id, so a posting can replace the pending amount.
-  readonly #pending = new Map<string, { account: Purchase['account']; amount: Cents }>();
+  readonly #pending = new Map<string, { account: Purchase['account'] | 'savings'; amount: Cents }>();
+  // Everything applied, by id, so the bank can take one back.
+  readonly #applied = new Map<string, BankTransaction>();
 
   apply(txn: BankTransaction): void {
+    this.#applied.set(txn.id, txn);
     switch (txn.kind) {
       case 'deposit':
         this[txn.account] += txn.amount;
         break;
-      case 'purchase': {
+      case 'purchase':
+      case 'savings-withdrawal': {
         const earlier = txn.pendingId === undefined ? undefined : this.#pending.get(txn.pendingId);
         if (earlier !== undefined && txn.pendingId !== undefined) {
           this.#spend(earlier.account, -earlier.amount);
@@ -159,7 +181,7 @@ export class TestBank {
         this.#spend(txn.account, txn.amount);
         break;
       case 'payment-to-person':
-        this.checking -= txn.amount;
+        this[txn.account] -= txn.amount;
         break;
       case 'transfer':
         this[txn.from] -= txn.amount;
@@ -181,6 +203,57 @@ export class TestBank {
         }
         break;
       }
+      case 'pending-changed': {
+        const earlier = this.#pending.get(txn.pendingId);
+        if (earlier !== undefined) {
+          this.#spend(earlier.account, txn.amount - earlier.amount);
+          earlier.amount = txn.amount;
+        }
+        break;
+      }
+      case 'taken-back': {
+        const gone = this.#applied.get(txn.takenId);
+        if (gone !== undefined) this.#undo(gone);
+        break;
+      }
+    }
+  }
+
+  // The bank taking a transaction back: as if it had never happened.
+  #undo(txn: BankTransaction): void {
+    switch (txn.kind) {
+      case 'deposit':
+        this[txn.account] -= txn.amount;
+        break;
+      case 'purchase':
+      case 'savings-withdrawal':
+        this.#spend(txn.account, -txn.amount);
+        break;
+      case 'refund':
+        this.#spend(txn.account, txn.amount);
+        break;
+      case 'card-charge':
+        this.#spend(txn.account, -txn.amount);
+        break;
+      case 'payment-to-person':
+        this[txn.account] += txn.amount;
+        break;
+      case 'transfer':
+        this[txn.from] += txn.amount;
+        this.#land(txn.to, -txn.amount);
+        break;
+      case 'transfer-sent':
+        this[txn.from] += txn.amount;
+        if (txn.to !== 'old-card') this.inTransit -= txn.amount;
+        break;
+      case 'transfer-arrived':
+        this.#land(txn.to, -txn.amount);
+        if (txn.to !== 'old-card') this.inTransit += txn.amount;
+        break;
+      case 'pending-dropped':
+      case 'pending-changed':
+      case 'taken-back':
+        break;
     }
   }
 
@@ -190,9 +263,9 @@ export class TestBank {
     else this.#spend(account, -amount);
   }
 
-  // Money spent on an account: checking goes down, a card balance goes up.
-  #spend(account: Purchase['account'], amount: Cents): void {
-    if (account === 'checking') this.checking -= amount;
+  // Money spent on an account: checking and savings go down, a card balance goes up.
+  #spend(account: Purchase['account'] | 'savings', amount: Cents): void {
+    if (account === 'checking' || account === 'savings') this[account] -= amount;
     else if (account === 'everyday-card') this.everydayCard += amount;
     else this.oldCard += amount;
   }

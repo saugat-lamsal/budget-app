@@ -7,10 +7,13 @@ import {
   type Cents,
   type Deposit,
   type IsoDate,
+  type PendingChanged,
   type PendingDropped,
   type PersonPayment,
   type Purchase,
   type Refund,
+  type SavingsWithdrawal,
+  type TakenBack,
   type Transfer,
   type TransferArrived,
   type TransferSent,
@@ -126,10 +129,37 @@ export class SimBank {
     return this.#add({ kind: 'deposit', id: this.#id('d'), account, date, amount, description });
   }
 
-  // Money sent to a person from checking (Zelle and the like).
-  payPerson(date: IsoDate, amount: Cents, payee: string): PersonPayment {
-    this.posted.checking -= amount;
-    return this.#add({ kind: 'payment-to-person', id: this.#id('z'), account: 'checking', date, amount, description: `ZELLE TO ${payee}` });
+  // Money sent to a person (Zelle and the like), from checking or savings (A16).
+  payPerson(date: IsoDate, amount: Cents, payee: string, from: OwnAccount = 'checking'): PersonPayment {
+    this.posted[from] -= amount;
+    return this.#add({ kind: 'payment-to-person', id: this.#id('z'), account: from, date, amount, description: `ZELLE TO ${payee}` });
+  }
+
+  // Other money leaving savings, such as a bill paid from it (4.9).
+  payFromSavings(date: IsoDate, amount: Cents, description: string): SavingsWithdrawal {
+    this.posted.savings -= amount;
+    return this.#add({ kind: 'savings-withdrawal', id: this.#id('s'), account: 'savings', date, amount, description, pending: false });
+  }
+
+  // The bank changes a pending charge's amount before it posts (A13).
+  changePending(pendingId: string, date: IsoDate, amount: Cents): PendingChanged {
+    const hold = this.#pending.get(pendingId);
+    if (hold === undefined) throw new Error(`the bank has no pending charge ${pendingId}`);
+    this.#pending.set(pendingId, { ...hold, amount });
+    return this.#add({ kind: 'pending-changed', id: this.#id('k'), pendingId, date, amount, description: hold.description });
+  }
+
+  // The bank charges a purchase a second time by mistake...
+  chargeTwice(date: IsoDate, first: Purchase): Purchase {
+    this.#owe(first.account, first.amount);
+    return this.#add({ kind: 'purchase', id: this.#id('p'), account: first.account, date, amount: first.amount, description: first.description, pending: false });
+  }
+
+  // ...and then takes the copy back (4.10).
+  takeBack(date: IsoDate, copy: Purchase): TakenBack {
+    if (copy.pending) throw new Error('the simulated bank only takes back a posted charge');
+    this.#owe(copy.account, -copy.amount);
+    return this.#add({ kind: 'taken-back', id: this.#id('k'), takenId: copy.id, date, description: 'CORRECTION' });
   }
 
   cardCharge(date: IsoDate, card: Card, charge: 'fee' | 'interest', amount: Cents): CardCharge {
@@ -159,6 +189,29 @@ export class SimBank {
     this.#land(sent.to, sent.amount);
     const { from, to, amount } = sent;
     return this.#add({ kind: 'transfer-arrived', id: this.#id('t'), from, to, date, amount, description: `PAYMENT RECEIVED FROM ${from}`, ...(linked ? { sentId: sent.id } : {}) });
+  }
+
+  // A move between checking and savings that the feed shows as spending on
+  // the account it leaves, and later as a deposit on the one it reaches
+  // (5.6, QUESTIONS.md A12). The bank's own record has it on its way.
+  misreadSend(date: IsoDate, from: OwnAccount, to: OwnAccount, amount: Cents): Purchase | SavingsWithdrawal {
+    this.posted[from] -= amount;
+    const description = `ONLINE BANKING TRANSFER TO ${to.toUpperCase()}`;
+    const id = this.#id('m');
+    const txn: Purchase | SavingsWithdrawal =
+      from === 'savings'
+        ? { kind: 'savings-withdrawal', id, account: 'savings', date, amount, description, pending: false }
+        : { kind: 'purchase', id, account: from, date, amount, description, pending: false };
+    this.#halfway.set(txn.id, { kind: 'transfer-sent', id: txn.id, from, to, date, amount, description });
+    return this.#add(txn);
+  }
+
+  misreadLand(date: IsoDate, left: Purchase | SavingsWithdrawal): Deposit {
+    const half = this.#halfway.get(left.id);
+    if (half?.kind !== 'transfer-sent' || (half.to !== 'checking' && half.to !== 'savings')) throw new Error(`the bank has no transfer ${left.id} on its way`);
+    this.#halfway.delete(left.id);
+    this.posted[half.to] += half.amount;
+    return this.#add({ kind: 'deposit', id: this.#id('m'), account: half.to, date, amount: half.amount, description: `ONLINE BANKING TRANSFER FROM ${half.from.toUpperCase()}` });
   }
 
   // A transfer that shows landing before it shows leaving.

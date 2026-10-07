@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SortingRule } from '../src/index.js';
-import { codeOf, deposit, openTestBook, payPerson, purchase, type TestBookOptions } from './helpers.js';
+import { codeOf, deposit, openTestBook, payPerson, purchase, refund, type TestBookOptions } from './helpers.js';
 
 function book(options: TestBookOptions = {}) {
   return openTestBook({ pots: { savings: 10_000, needs: 20_000, wants: 30_000, momReserve: 40_000, heldForOthers: 0 }, ...options });
@@ -100,25 +100,127 @@ describe('7.4 payments to people go to the daily review unless there is a rule f
     expect(b.receive(purchase('e1', '2026-10-06', 500, 'MADE UP CAFE')).outcome).toBe('review');
   });
 
-  it('7.4 a payment to a person can be sorted to needs, wants, or not mine, and nothing else', () => {
+  it('7.4 a payment to a person can be sorted to needs, wants, not mine, or for mom, and nothing else (7.6)', () => {
     const b = book();
     b.receive(payPerson('z1', '2026-10-06', 2_500, 'MADE UP FRIEND'));
-    for (const choice of [{ to: 'savings' }, { to: 'other-income' }, { to: 'paycheck' }, { to: 'momReserve' }, { split: [{ bucket: 'needs', amount: 2_500 }] }]) {
+    for (const choice of [{ to: 'savings' }, { to: 'other-income' }, { to: 'paycheck' }, { to: 'momReserve' }, { split: [{ bucket: 'savings', amount: 2_500 }] }]) {
       expect(codeOf(() => b.sort('z1', choice as never, '2026-10-07')), JSON.stringify(choice)).toBe('bad-choice');
     }
     b.sort('z1', { to: 'needs' }, '2026-10-07');
     expect(b.pots()).toEqual({ ...START, needs: 17_500 });
   });
 
-  it('7.4 a person rule must pick needs, wants, or not mine', () => {
-    for (const choice of [{ to: 'savings' }, { to: 'other-income' }, { to: 'paycheck' }, { to: 'unsorted' }]) {
+  it('7.4 a person rule must pick needs, wants, not mine, or mom', () => {
+    for (const choice of [{ to: 'savings' }, { to: 'other-income' }, { to: 'paycheck' }, { to: 'unsorted' }, { to: 'momReserve' }]) {
       expect(codeOf(() => book({ rules: [{ id: 'x', for: 'person', contains: 'A', choice } as never] })), JSON.stringify(choice)).toBe('bad-rule');
     }
   });
 
-  it('7.4 a payment to a person comes from checking', () => {
+  it('7.4 a payment to a person is handled the same from savings as from checking (A16)', () => {
+    const b = book({ rules: [{ id: 'barber', for: 'person', contains: 'BARBER', choice: { to: 'wants' } }] });
+    expect(b.receive(payPerson('z1', '2026-10-06', 2_500, 'MADE UP FRIEND', 'savings')).outcome).toBe('review');
+    expect(b.reviewItems()).toMatchObject([{ type: 'spending', id: 'z1', reason: 'person-payment', amount: 2_500 }]);
+    expect(b.pots()).toEqual({ ...START, unsortedOut: 2_500 });
+    b.sort('z1', { to: 'not-mine' }, '2026-10-07');
+    expect(b.pots()).toEqual({ ...START, heldForOthers: -2_500 });
+    // A rule for the person applies from savings too.
+    expect(b.receive(payPerson('z2', '2026-10-08', 4_000, 'MADE UP BARBER', 'savings')).outcome).toBe('sorted');
+    expect(b.pots()).toEqual({ ...START, heldForOthers: -2_500, wants: 26_000 });
+  });
+
+  it('7.4 a payment to a person comes from checking or savings, never from a card', () => {
     const b = book();
-    expect(codeOf(() => b.receive({ ...payPerson('z1', '2026-10-06', 2_500, 'MADE UP FRIEND'), account: 'savings' } as never))).toBe('bad-transaction');
+    for (const account of ['everyday-card', 'old-card']) {
+      expect(codeOf(() => b.receive({ ...payPerson('z1', '2026-10-06', 2_500, 'MADE UP FRIEND'), account } as never)), account).toBe('bad-transaction');
+    }
+    expect(b.pots()).toEqual(START);
+  });
+});
+
+describe('7.6 in review, a payment to a person can go to needs, wants, not mine, or for mom, or be split across needs, wants and not mine', () => {
+  it('7.6 for mom: it comes out of the mom reserve and counts toward the month (8.1, 8.2)', () => {
+    const b = book();
+    b.receive(payPerson('z1', '2026-10-06', 2_500, 'MADE UP AUNT'));
+    b.sort('z1', { to: 'mom' }, '2026-10-07');
+    expect(b.pots()).toEqual({ ...START, momReserve: 37_500 });
+    expect(b.momSentInMonth('2026-10').sent).toBe(2_500);
+    expect(b.reviewItems()).toEqual([]);
+  });
+
+  it('7.6 a payment partly refunded cannot be for mom, and nothing changes; it can still go to a bucket', () => {
+    const b = book();
+    b.receive(payPerson('z1', '2026-10-06', 10_000, 'MADE UP AUNT'));
+    b.receive(refund('r1', '2026-10-07', 2_500, 'z1', 'checking'));
+    const before = b.pots();
+    expect(codeOf(() => b.sort('z1', { to: 'mom' }, '2026-10-07'))).toBe('bad-choice');
+    expect(b.pots()).toEqual(before);
+    expect(b.momSentInMonth('2026-10').sent).toBe(0);
+    b.sort('z1', { to: 'needs' }, '2026-10-07');
+    expect(b.pots()).toEqual({ ...START, needs: 12_500 });
+  });
+
+  it('7.6 for mom, bigger than the reserve: the reserve covers what it can, and the difference waits (8.3)', () => {
+    const b = book();
+    b.receive(payPerson('z1', '2026-10-06', 50_000, 'MADE UP AUNT'));
+    b.sort('z1', { to: 'mom' }, '2026-10-07');
+    expect(b.pots()).toEqual({ ...START, momReserve: 0, unsortedOut: 10_000 });
+    expect(b.reviewItems()).toMatchObject([{ type: 'spending', id: 'z1:difference', reason: 'mom-difference', amount: 10_000 }]);
+    expect(b.momSentInMonth('2026-10').sent).toBe(50_000);
+  });
+
+  it('7.6 one marked for mom by hand can be sorted again; the reserve gets its money back, and the difference goes away', () => {
+    const b = book();
+    b.receive(payPerson('z1', '2026-10-06', 50_000, 'MADE UP AUNT'));
+    b.sort('z1', { to: 'mom' }, '2026-10-07');
+    b.sort('z1:difference', { to: 'needs' }, '2026-10-07');
+    expect(b.pots()).toEqual({ ...START, momReserve: 0, needs: 10_000 });
+    b.sort('z1', { to: 'wants' }, '2026-10-08');
+    expect(b.pots()).toEqual({ ...START, wants: -20_000 });
+    expect(b.momSentInMonth('2026-10').sent).toBe(0);
+    expect(b.reviewItems()).toEqual([]);
+    // And back to mom again.
+    b.sort('z1', { to: 'mom' }, '2026-10-09');
+    expect(b.pots()).toEqual({ ...START, momReserve: 0, unsortedOut: 10_000 });
+  });
+
+  it('7.6 split across needs, wants and not mine; the parts must add up to the payment, to the cent', () => {
+    const b = book();
+    b.receive(payPerson('z1', '2026-10-06', 9_000, 'MADE UP FRIEND'));
+    b.sort('z1', { split: [{ bucket: 'needs', amount: 3_000 }, { bucket: 'wants', amount: 1 }, { bucket: 'not-mine', amount: 5_999 }] }, '2026-10-07');
+    expect(b.pots()).toEqual({ ...START, needs: 17_000, wants: 29_999, heldForOthers: -5_999 });
+    expect(codeOf(() => b.sort('z1', { split: [{ bucket: 'needs', amount: 8_999 }] }, '2026-10-07'))).toBe('split-does-not-add-up');
+    expect(codeOf(() => b.sort('z1', { split: [{ bucket: 'needs', amount: 9_001 }] }, '2026-10-07'))).toBe('split-does-not-add-up');
+    for (const bucket of ['savings', 'mom', 'momReserve', 'unsorted']) {
+      expect(codeOf(() => b.sort('z1', { split: [{ bucket, amount: 9_000 }] } as never, '2026-10-07')), bucket).toBe('bad-choice');
+    }
+    expect(b.pots()).toEqual({ ...START, needs: 17_000, wants: 29_999, heldForOthers: -5_999 });
+  });
+
+  it('7.6 a purchase still splits across needs and wants only, and cannot be for mom (4.4)', () => {
+    const b = book();
+    b.receive(purchase('e1', '2026-10-06', 9_000, 'MADE UP STORE'));
+    expect(codeOf(() => b.sort('e1', { split: [{ bucket: 'needs', amount: 5_000 }, { bucket: 'not-mine', amount: 4_000 }] }, '2026-10-07'))).toBe('bad-choice');
+    expect(codeOf(() => b.sort('e1', { to: 'mom' } as never, '2026-10-07'))).toBe('bad-choice');
+    expect(b.pots()).toEqual({ ...START, unsortedOut: 9_000 });
+  });
+
+  it('7.6 a person rule can pick mom: such a payment comes out of the reserve on its own', () => {
+    const b = book({ rules: [{ id: 'aunt', for: 'person', contains: 'AUNT', choice: { to: 'mom' } }] });
+    expect(b.receive(payPerson('z1', '2026-10-06', 2_500, 'MADE UP AUNT')).outcome).toBe('sorted');
+    expect(b.pots()).toEqual({ ...START, momReserve: 37_500 });
+    expect(b.momSentInMonth('2026-10').sent).toBe(2_500);
+    // Like anything a rule sorted, it can be re-sorted by hand.
+    b.sort('z1', { to: 'needs' }, '2026-10-07');
+    expect(b.pots()).toEqual({ ...START, needs: 17_500 });
+  });
+
+  it('7.6 "always do this" with for mom makes a person rule that picks mom (13.6)', () => {
+    const b = book();
+    b.receive(payPerson('z1', '2026-10-06', 2_500, 'MADE UP AUNT'));
+    b.sortAlways('z1', { to: 'mom' }, { id: 'aunt', contains: 'AUNT' }, '2026-10-07');
+    expect(b.rules()).toMatchObject([{ id: 'aunt', for: 'person', choice: { to: 'mom' } }]);
+    b.receive(payPerson('z2', '2026-10-08', 1_000, 'MADE UP AUNT'));
+    expect(b.pots()).toEqual({ ...START, momReserve: 36_500 });
   });
 });
 

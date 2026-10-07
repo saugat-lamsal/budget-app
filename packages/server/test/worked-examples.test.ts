@@ -16,7 +16,7 @@ import { setUpTracking, setupPreview } from '../src/setup-day.js';
 import { bankStatus } from '../src/status.js';
 import { syncBank } from '../src/sync/sync.js';
 import { ACCOUNT_IDS, FakePlaid } from './fake-plaid.js';
-import { TOKEN_KEY } from './harness.js';
+import { TOKEN_KEY, book, tracking } from './harness.js';
 import { REPLAY_KEYS, Replay, loadRecording } from './replay.js';
 
 const text = readFileSync(new URL('../worked-examples.txt', import.meta.url), 'utf8');
@@ -125,5 +125,31 @@ describe('worked examples: reading the bank', () => {
     expect(bankSide({ ...preview.posted, checking: preview.posted.checking - 3_000 })).toBe(checks.get('bank side'));
     const available = readAccounts(db).find((a) => a.role === 'checking')?.raw.balances.available;
     expect(available === undefined || available === null ? null : parseDollars(available.toFixed(2))).toBe(checks.get('available'));
+  });
+
+  it('example 3, the bank changes its mind (A13, A14, A16)', async () => {
+    // The harness's setup day: the same balances and assignment as the example.
+    const h = await tracking();
+    h.fake.addPending({ id: 'tab', account: ACCOUNT_IDS.everyday, amount: 2_000, date: '2026-10-02', description: 'COFFEE BAR' });
+    await h.sync('2026-10-02');
+    h.fake.modify('tab', { amount: 2_600 });
+    h.fake.addPosted({ id: 'coffee', account: ACCOUNT_IDS.checking, amount: 1_000, date: '2026-10-03', description: 'COFFEE' });
+    h.fake.addPosted({ id: 'coffee-copy', account: ACCOUNT_IDS.checking, amount: 1_000, date: '2026-10-03', description: 'COFFEE' });
+    await h.sync('2026-10-03');
+    h.fake.removePosted('coffee-copy', { keepBalance: false });
+    h.fake.addPosted({ id: 'bill', account: ACCOUNT_IDS.savings, amount: 7_500, date: '2026-10-04', description: 'BILL PAY MADE UP INSURANCE' });
+    await h.sync('2026-10-04');
+    const checks = checksOf(3);
+    const status = bankStatus(h.db);
+    const b = book(h);
+    expect(b.pots().wants).toBe(checks.get('wants'));
+    expect(b.pots().unsortedOut).toBe(checks.get('unsorted spending'));
+    expect(status.selfCheck?.bankSide).toBe(checks.get('bank side'));
+    expect(status.selfCheck?.difference).toBe(checks.get('difference'));
+    const balances = status.bank?.ok === true ? status.bank.view.withPending : null;
+    if (balances === null) throw new Error('no bank balances');
+    const alerts = b.takeAlerts({ bankConnection: 'ok', bankBalances: balances });
+    expect(alerts.reduce((sum, a) => sum + (a.kind === 'bank-took-back' ? a.amount : 0), 0)).toBe(checks.get('taken back'));
+    expect(status.attention).toEqual([]);
   });
 });

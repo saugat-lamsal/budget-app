@@ -114,10 +114,11 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 8. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 9. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
-  QUESTIONS.md part B now in the rules.
+  QUESTIONS.md part B now in the rules, section 20 his answers to the
+  Phase 3 questions (A12 to A16, B4, B20).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -136,7 +137,8 @@ This applies to every phase and every session, cloud or local.
     breaks the source on purpose. It first runs the tests with nothing
     broken and stops if they fail. If a run is stopped partway, the test
     suite fails until `node scripts/break-it.mjs --restore` puts the file
-    back. `--only <test file>` shows what one test file catches by itself.
+    back. `--only <test file>` shows what one test file catches by itself,
+    and `--match <pattern>` runs only the breaks whose reason matches.
 - CI: GitHub Actions runs `npm test` on Linux and Windows for every pull
   request (.github/workflows/test.yml).
 - Phase 2 (stress testing), part one, the simulated you: built Oct 6, 2026
@@ -193,7 +195,26 @@ This applies to every phase and every session, cloud or local.
     after test-bank activity the self-check shows the activity as the gap.
     He accepted this as Phase 3's finish line (QUESTIONS.md A11, Oct 7);
     balances that really move get checked in Phase 7.
-- Next: the Phase 3 pull request, then his answers to QUESTIONS.md A12 to
-  A16, then Phase 4 when he says go.
+- Phase 3 merged as PR #5 (Oct 7, 2026).
+- His answers to QUESTIONS.md A12 to A16, B4 and B20: built Oct 7, 2026 on
+  branch answers-a12-to-a16, PR #6. All 384 breaks caught; 2,000 simulated
+  years with every check passing, and 20 more through the bank connection.
+  - Money math: a pending charge's new amount (4.6), the bank taking
+    something back (4.10, with a log entry and alert 10.6), money leaving
+    savings (4.9), "transfer between my accounts" in review (5.6), payments
+    to people from either account (7.4, 8.1), "for mom" and three-way
+    splits for payments to people (7.6), and late spending lowering the
+    open leftover question (3.4).
+  - Money leaving savings is its own kind of bank activity,
+    'savings-withdrawal', not a purchase: the second-opinion helpers' types
+    say a purchase is never on savings, and they must not be edited.
+  - The bank connection sends a pending amount change, a removal, and a
+    posted amount change to the book instead of waiting for his decision,
+    and reads money leaving savings that no rule names as a withdrawal.
+  - The simulator now also pays mom and bills from savings, adds tips while
+    charges are pending, charges a purchase twice and takes the copy back,
+    shows transfers as spending and a deposit for him to mark, and pays
+    people "for mom" or split three ways.
+- Next: Phase 4 when he says go.
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.

@@ -84,7 +84,7 @@ A10. ANSWERED Oct 6. Charges still pending on setup day (14.2 with 4.6).
      waits in review. Rulebook 14.2 and 18o. Worked example 13.
 
 
-## Part A, added with Phase 3, the bank connection (Oct 7). Waiting on your answer.
+## Part A, added with Phase 3, the bank connection (Oct 7). All answered.
 
 A11. ANSWERED Oct 7. Phase 3's finish line and the test bank.
      Your answer: option 1, the recommendation. Also added, at your
@@ -110,65 +110,43 @@ A11. ANSWERED Oct 7. Phase 3's finish line and the test bank.
      Option 2: something else you have in mind.
      Recommendation: option 1.
 
-A12. How the app tells your transfers, payments to people, and card fees
-     from purchases.
-     Each bank item comes with its account and which way the money went.
-     That says most of it: money out of checking or a card is a purchase,
-     money into checking or savings is a deposit, money back on a card is
-     a refund. It cannot say which items are transfers between your own
-     accounts (checking to savings, a card payment), which are payments to
-     people (Zelle), and which are card fees or interest. For those the app
-     has bank rules: text the description contains, on one account, like
-     your paycheck and mom rules. Built and tested with made-up
-     descriptions; the real ones get set after your first real sync
-     (Phase 7).
-     Option 1 (built): you set the rules from what your statements say.
-     Anything they miss shows up as a purchase or a deposit to sort.
-     Option 2: the setup screen (Phase 4) also suggests rules from Plaid's
-     own labels for each item, for you to confirm.
-     Recommendation: option 2, on top of option 1. Either way the bank
-     rules join the settings in rulebook section 2, which needs your OK.
+A12. ANSWERED Oct 7, built. How the app tells your transfers, payments to
+     people, and card fees from purchases.
+     Your answer: option 2 on top of option 1. Bank rules (text the
+     description contains, on one account) join the settings in rulebook
+     section 2, and the setup screen in Phase 4 will also suggest rules from
+     Plaid's own labels, for you to confirm. Also, at your request, review
+     offers "transfer between my accounts" for anything the rules miss.
+     Rulebook section 2, 5.6 and 20a. Worked example 22. The readings I had
+     to pick while building it are B74 and B79.
 
-A13. A pending charge whose amount changes while it is still pending (a
-     hold the bank updates, a tip added early).
-     4.6 covers a new amount when the charge posts. Plaid can also change
-     a pending charge's amount before then.
-     Option 1 (built for now): the first amount stays until it posts.
-     Meanwhile the self-check shows the difference, and the item says why.
-     Option 2: take the new amount right away, keeping its bucket, the way
-     posting does.
-     Recommendation: option 2, so a mismatch warning always means
-     something. It needs a small change to the money math.
+A13. ANSWERED Oct 7, built. A pending charge whose amount changes while it
+     is still pending.
+     Your answer: option 2. The new amount counts right away, in the same
+     bucket. Rulebook 4.6 and 20b. Worked example 19, and example 3 for the
+     bank.
 
-A14. The bank removing or changing a transaction the app already counted
-     (a posted one, not a pending one).
-     Plaid says posted transactions can change or go (a duplicate taken
-     out, a correction). The money math has no way to take one back.
-     Option 1 (built for now): it waits for your decision, and the
-     self-check shows the difference until then.
-     Option 2: follow the bank. Take it back out of the book, give the
-     money back to the bucket it came from, and tell you.
-     Recommendation: option 2, since the bank's balance already shows it.
-     It needs a new rule and a change to the money math.
+A14. ANSWERED Oct 7, built. The bank removing or changing a transaction the
+     app already counted.
+     Your answer: option 2, with a change log entry, and you are told when
+     it happens. The app takes it back, and its money goes back where it
+     came from. Rulebook 4.10, 10.6 and 20c. Worked example 21, and example
+     3 for the bank. The readings I had to pick while building it are B71,
+     B72, B75 to B77.
 
-A15. Which purchase a refund belongs to (4.5).
-     The bank does not say. For now every refund waits in review, and you
-     put it back in a bucket as a payback: 4.5's fallback for a refund it
-     cannot match.
-     Option 1 (built): always ask.
-     Option 2: match a refund on its own only when exactly one purchase
-     fits (same account, same store, at least as much, not refunded yet);
-     otherwise ask.
-     Recommendation: option 1 until Phase 7 shows how your bank describes
-     refunds; then decide.
+A15. ANSWERED Oct 7. Which purchase a refund belongs to (4.5).
+     Your answer: option 1, always ask. In Phase 4, review lists the
+     purchases a refund likely belongs to (added to the roadmap). Rulebook
+     20d.
 
-A16. Money leaving savings that is not a transfer to one of your accounts
-     (a withdrawal, a payment straight out of savings).
-     Spending only comes out of needs or wants (A3), and the money math
-     has no way to take spending from savings. Such an item waits for your
-     decision, and the self-check shows it meanwhile.
-     Recommendation: keep it that way. It should be rare, and you decide
-     each one by hand.
+A16. ANSWERED Oct 7, built. Money leaving savings that is not a transfer to
+     one of your accounts.
+     Your answer: change it. A payment to a person is handled the same
+     whichever of your accounts it leaves: a payment to mom from savings
+     comes out of the mom reserve like any mom payment. Other money leaving
+     savings goes to review with the normal choices. Rulebook 4.9, 7.4,
+     8.1 and 20e. Worked example 20. The reading I had to pick while
+     building it is B78.
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
@@ -181,25 +159,20 @@ B1. Paycheck smaller than the mom reserve (3.2).
 B2. Leftover amount is fixed at payday (3.4).
     The question "roll over or move?" is about what was left in the bucket
     when the paycheck arrived. If you answer a few days later, that same
-    amount moves, even if you have spent from the bucket since.
+    amount moves, even if you have spent from the bucket since. Since your
+    B4 answer, spending made before payday that shows up later does change
+    it (B4, B70).
 
 B3. A second payday before you answer the first leftover question (3.4).
     The old question is replaced by a new one covering everything now in
     the bucket (the old leftover plus anything unspent since). Answering
     both would otherwise move the same money twice.
 
-B4. A purchase that shows up after payday but was made before it (3.4
-    with 4.1).
-    Rule 4.1 says a purchase comes out of a bucket on the day you made it.
-    If Friday's dinner only appears on Saturday, after Friday's paycheck,
-    it still comes out of the same bucket, but the leftover question was
-    already worked out without it. Right now the question keeps the amount
-    from payday (B2).
-    Option 1 (now): leave the question as it is.
-    Option 2: if the question is still open, lower its amount by the late
-    purchase (not below zero).
-    Recommendation: option 2, since it follows 4.1 more closely. Small
-    change; say the word.
+B4. ANSWERED Oct 7, built. A purchase that shows up after payday but was
+    made before it (3.4 with 4.1).
+    Your answer: option 2. While the question is still open, it goes down
+    by the late purchase, never below zero. Rulebook 3.4 and 20f. Worked
+    example 24. The reading I had to pick while building it is B70.
 
 B5. "Less than 10 days" (3.7) counts calendar days between the two dates.
     Exactly 10 days splits normally. A paycheck dated on or before the last
@@ -257,8 +230,11 @@ B18. Updated after your A5 answer. "Other income" takes nothing for the
 B19. Updated after your A5 answer. A 3.7 early paycheck in review gets the
      same four choices as any other deposit. Rulebook 6.1 now says so.
 
-B20. A payment to a person can be sorted to needs, wants, or not mine. It
-     cannot be split: 4.4 talks about purchases only (7.4).
+B20. ANSWERED Oct 7, built. Your answer: "for mom" is also a review choice
+     for payments to people (out of the mom reserve, counted toward the
+     month), and a payment to a person can be split across needs, wants,
+     and not mine. Rulebook 7.6 and 20g. Worked example 23. The reading I
+     had to pick while building it is B73.
 
 B21. A person rule matches the payee as the bank shows it, for example
      "ZELLE TO <name>" (7.4).
@@ -282,7 +258,8 @@ B25. Same-day order. Things are applied in the order the bank sends them.
      changes how much of the reserve overflows to savings.
 
 B26. Only payments to people (Zelle and the like) are checked against the
-     mom rule (8.1).
+     mom rule (8.1). Since your B20 answer, any other payment to a person
+     can be marked "for mom" in review (7.6).
 
 B27. Updated after your A5 answer. Re-sorting money in can no longer pull
      the mom reserve below zero: other income never fills the reserve,
@@ -540,3 +517,68 @@ B68. Amounts that are not whole cents, and amounts not in dollars, wait for
 
 B69. Accounts in the connection that are not one of your four are left out
      of everything.
+
+
+## Part B, added with your Phase 3 answers (Oct 7). Tell me if any is wrong.
+
+B70. With B4, the leftover question changes by however much spending made
+     before payday takes from that bucket changes between payday and your
+     answer: a late purchase, a pending charge posting at a new amount (a
+     tip), a re-sort, a refund, or one the bank takes back. Money coming
+     back can raise it again, but never above what it asked at payday, and
+     it never goes below zero. A purchase still waiting in review counts
+     once you sort it into the bucket.
+
+B71. A paycheck the bank takes back (4.10) keeps the pay period it started,
+     since its days have passed: only its money comes back out of the
+     buckets, the way the paycheck put it in. Leftover answers already
+     given stay as they are.
+
+B72. A posted transaction whose amount the bank changes is taken back, and
+     the new version counts as new: sorted by your rules, or waiting in
+     review. It does not keep the bucket you gave the old version. (A
+     pending charge's new amount does keep its bucket, A13.)
+
+B73. A payment marked "for mom" by hand, or by a rule for that person, can
+     be sorted again later. It then stops counting toward the month (8.2),
+     and the reserve gets back what it gave. One the mom rule matched
+     cannot be sorted another way (8.1). A payment partly refunded cannot
+     be marked for mom. The difference on a payment for mom (8.3) still
+     goes to one bucket, as before (B23).
+
+B74. "Transfer between my accounts" (5.6) works for money out of checking
+     or savings (a purchase, a payment to a person, a withdrawal) and for
+     money in (a deposit, or a refund on a card, which becomes a card
+     payment's arriving half). It works only once a charge has posted, and
+     not on one partly refunded or counted on setup day. The app keeps what
+     the bank sent: sorting it any other way later makes it that again
+     first, and the bank sending it again is still a duplicate. "Always do
+     this" cannot make a transfer rule; that is what the bank rules are for
+     (section 2).
+
+B75. The take-back alert (10.6) comes once, the next time the alerts are
+     taken: one for each transaction taken back, in the order it happened.
+     Getting it to your phone at the right time is Phase 5.
+
+B76. A charge pending on setup day, which later posts and is then taken
+     back by the bank: its money comes back and waits in review as a
+     difference, the same as when such a charge is dropped (A10).
+
+B77. If the bank takes back the half of a transfer that left, and the half
+     that arrived names it, the arriving half pairs like one the bank did
+     not link: with the oldest unpaired half that left between the same
+     accounts for the same amount, or else it shows in transit as arrived
+     (12.5).
+
+B78. The bank connection sends money leaving savings that no bank rule
+     names as a withdrawal, a kind of its own, never as a purchase. No
+     sorting rule sorts it, and "always do this" cannot make one for it
+     (4.9). A pending one counts while pending, like a pending purchase
+     (4.6, 12.1).
+
+B79. The bank connection now follows the bank when a pending charge's
+     amount changes (A13) and when a posted transaction is removed or its
+     amount changes (A14), so these no longer wait for your decision or
+     show as a self-check difference. A change it still cannot follow (a
+     pending charge moved to another account, or a posted one shown as
+     pending again) waits for you, as before.

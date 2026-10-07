@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Book } from '../src/index.js';
-import { appSide, deposit, openTestBook, paycheck, purchase, type TestBookOptions } from './helpers.js';
+import { appSide, deposit, openTestBook, paycheck, purchase, takenBack, type TestBookOptions } from './helpers.js';
 
 // 10.4 (totals do not match the bank) is tested with the self-check in
 // 12-self-check.test.ts.
@@ -320,5 +320,25 @@ describe('10.5 the bank connection needs you to log in again', () => {
   it('10.5 no alert while the connection is fine', () => {
     const b = book();
     expect(b.takeAlerts(fine(b))).toEqual([]);
+  });
+});
+
+describe('10.6 the bank took back a transaction the app had counted: once, when it happens (A14)', () => {
+  it('10.6 the alert says what it was and how much, and comes once', () => {
+    const b = book();
+    b.receive(purchase('e1', '2026-10-10', 2_500, 'MADE UP STORE'));
+    b.receive(takenBack('k1', 'e1', '2026-10-11'));
+    const tookBack = (alerts: ReturnType<Book['takeAlerts']>) => alerts.filter((a) => a.kind === 'bank-took-back');
+    expect(tookBack(b.takeAlerts(fine(b)))).toEqual([{ kind: 'bank-took-back', id: 'e1', date: '2026-10-11', description: 'MADE UP STORE', amount: 2_500 }]);
+    expect(tookBack(b.takeAlerts(fine(b)))).toEqual([]);
+  });
+
+  it('10.6 two taken back, two alerts, in the order they happened', () => {
+    const b = book();
+    b.receive(purchase('e1', '2026-10-10', 2_500, 'MADE UP STORE'));
+    b.receive(deposit('d1', '2026-10-10', 1, 'MADE UP REFUND'));
+    b.receive(takenBack('k1', 'd1', '2026-10-11'));
+    b.receive(takenBack('k2', 'e1', '2026-10-12'));
+    expect(b.takeAlerts(fine(b)).filter((a) => a.kind === 'bank-took-back').map((a) => ('id' in a ? a.id : ''))).toEqual(['d1', 'e1']);
   });
 });

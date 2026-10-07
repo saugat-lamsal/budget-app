@@ -31,6 +31,21 @@ export interface Purchase {
   readonly pendingId?: string;
 }
 
+// Other money leaving savings: not a transfer to one of your accounts and
+// not a payment to a person, such as a withdrawal or a bill paid straight
+// from savings (rule 4.9, QUESTIONS.md A16). Like a purchase, it can show
+// pending first, and its posted version replaces the pending one (4.6).
+export interface SavingsWithdrawal {
+  readonly kind: 'savings-withdrawal';
+  readonly id: string;
+  readonly account: 'savings';
+  readonly date: IsoDate;
+  readonly amount: Cents;
+  readonly description: string;
+  readonly pending: boolean;
+  readonly pendingId?: string;
+}
+
 // Money back from a store. refundOf names the purchase, when the bank
 // connection could tell which one it was.
 export interface Refund {
@@ -54,11 +69,11 @@ export interface CardCharge {
   readonly charge: 'fee' | 'interest';
 }
 
-// Money sent to a person from checking, such as Zelle (7.4, 8.1).
+// Money sent to a person from checking or savings, such as Zelle (7.4, 8.1).
 export interface PersonPayment {
   readonly kind: 'payment-to-person';
   readonly id: string;
-  readonly account: 'checking';
+  readonly account: 'checking' | 'savings';
   readonly date: IsoDate;
   readonly amount: Cents;
   // Who it went to, as the bank shows it.
@@ -113,18 +128,58 @@ export interface PendingDropped {
   readonly description: string;
 }
 
-export type BankTransaction = Deposit | Purchase | Refund | CardCharge | PersonPayment | Transfer | TransferSent | TransferArrived | PendingDropped;
+// A pending charge whose amount the bank changed before it posted
+// (QUESTIONS.md A13). pendingId names the charge.
+export interface PendingChanged {
+  readonly kind: 'pending-changed';
+  readonly id: string;
+  readonly pendingId: string;
+  readonly date: IsoDate;
+  readonly amount: Cents;
+  readonly description: string;
+}
+
+// The bank taking back a transaction it had shown, such as one shown twice
+// or a correction (QUESTIONS.md A14). takenId names the transaction.
+export interface TakenBack {
+  readonly kind: 'taken-back';
+  readonly id: string;
+  readonly takenId: string;
+  readonly date: IsoDate;
+  readonly description: string;
+}
+
+export type BankTransaction =
+  | Deposit
+  | Purchase
+  | SavingsWithdrawal
+  | Refund
+  | CardCharge
+  | PersonPayment
+  | Transfer
+  | TransferSent
+  | TransferArrived
+  | PendingDropped
+  | PendingChanged
+  | TakenBack;
 
 type BetweenAccounts = 'transfer' | 'transfer-sent' | 'transfer-arrived';
 
 const BETWEEN_ACCOUNTS: readonly string[] = ['transfer', 'transfer-sent', 'transfer-arrived'];
 
-const ACCOUNTS_FOR: Record<Exclude<BankTransaction['kind'], BetweenAccounts | 'pending-dropped'>, readonly string[]> = {
+// What the bank says about a transaction it showed before. These have no
+// account of their own.
+type AboutAnother = 'pending-dropped' | 'pending-changed' | 'taken-back';
+
+const ABOUT_ANOTHER: readonly string[] = ['pending-dropped', 'pending-changed', 'taken-back'];
+
+const ACCOUNTS_FOR: Record<Exclude<BankTransaction['kind'], BetweenAccounts | AboutAnother>, readonly string[]> = {
   deposit: ['checking', 'savings'],
   purchase: ['checking', 'everyday-card', 'old-card'],
+  'savings-withdrawal': ['savings'],
   refund: ['checking', 'everyday-card', 'old-card'],
   'card-charge': ['everyday-card', 'old-card'],
-  'payment-to-person': ['checking'],
+  'payment-to-person': ['checking', 'savings'],
 };
 
 // Refuses anything malformed before the book changes at all. Bank ids may
@@ -135,13 +190,14 @@ export function checkTransaction(txn: BankTransaction): void {
   };
   const isId = (id: unknown): boolean => typeof id === 'string' && id !== '' && !id.includes(':');
   if (typeof txn !== 'object' || txn === null) bad('not a transaction');
-  if (!(txn.kind in ACCOUNTS_FOR) && !BETWEEN_ACCOUNTS.includes(txn.kind) && txn.kind !== 'pending-dropped') bad('unknown kind');
+  if (!(txn.kind in ACCOUNTS_FOR) && !BETWEEN_ACCOUNTS.includes(txn.kind) && !ABOUT_ANOTHER.includes(txn.kind)) bad('unknown kind');
   if (!isId(txn.id)) bad('id must be non-empty text without ":"');
   if (typeof txn.description !== 'string') bad('description must be text');
-  if (txn.kind === 'pending-dropped') {
-    // No account or amount of its own: they are the pending charge's.
-    if (!isId(txn.pendingId)) bad('pendingId must be a transaction id');
+  if (txn.kind === 'pending-dropped' || txn.kind === 'pending-changed' || txn.kind === 'taken-back') {
+    // No account of their own: they are the other transaction's.
+    if (!isId(txn.kind === 'taken-back' ? txn.takenId : txn.pendingId)) bad('it must name a transaction id');
     assertIsoDate(txn.date, 'transaction date');
+    if (txn.kind === 'pending-changed') assertPositiveCents(txn.amount, 'new amount');
     return;
   }
   if (txn.kind === 'transfer' || txn.kind === 'transfer-sent' || txn.kind === 'transfer-arrived') {
@@ -152,8 +208,9 @@ export function checkTransaction(txn: BankTransaction): void {
   }
   switch (txn.kind) {
     case 'purchase':
+    case 'savings-withdrawal':
       if (typeof txn.pending !== 'boolean') bad('pending must be true or false');
-      if (txn.pendingId !== undefined && (txn.pending || !isId(txn.pendingId))) bad('only a posted purchase can replace a pending one');
+      if (txn.pendingId !== undefined && (txn.pending || !isId(txn.pendingId))) bad('only a posted charge can replace a pending one');
       break;
     case 'refund':
       if (txn.refundOf !== undefined && !isId(txn.refundOf)) bad('refundOf must be a transaction id');

@@ -19,6 +19,7 @@ const rules: readonly BankRule[] = checkBankRules([
   { id: 'everyday-paid', account: 'everyday-card', contains: 'PAYMENT - THANK YOU', means: 'transfer', other: 'checking' },
   { id: 'old-paid', account: 'old-card', contains: 'PAYMENT - THANK YOU', means: 'transfer', other: 'checking' },
   { id: 'zelle', account: 'checking', contains: 'Zelle payment to', means: 'payment-to-person' },
+  { id: 'zelle-savings', account: 'savings', contains: 'Zelle payment to', means: 'payment-to-person' },
   { id: 'interest', account: 'everyday-card', contains: 'INTEREST CHARGE', means: 'card-interest' },
   { id: 'old-interest', account: 'old-card', contains: 'INTEREST CHARGE', means: 'card-interest' },
   { id: 'late-fee', account: 'everyday-card', contains: 'LATE FEE', means: 'card-fee' },
@@ -82,8 +83,16 @@ describe('reading bank activity', () => {
     expect(readBankItem('old-card', 2900, 'LATE FEE', rules)).toEqual({ kind: 'purchase' });
   });
 
-  it('money leaving savings with no rule saying where it went is not understood', () => {
-    expect(readBankItem('savings', 7500, 'WITHDRAWAL', rules)).toMatchObject({ kind: 'not-understood' });
+  it('4.9 money leaving savings that no rule names is spending, to sort in review (A16)', () => {
+    expect(readBankItem('savings', 7500, 'WITHDRAWAL', rules)).toEqual({ kind: 'purchase' });
+    expect(readBankItem('savings', 1, 'BILL PAY MADE UP INSURANCE', rules)).toEqual({ kind: 'purchase' });
+  });
+
+  it('7.4 a payment to a person is read the same whichever account it leaves (A16)', () => {
+    expect(readBankItem('checking', 40000, 'Zelle payment to MOM MADEUP', rules)).toEqual({ kind: 'payment-to-person' });
+    expect(readBankItem('savings', 40000, 'Zelle payment to MOM MADEUP', rules)).toEqual({ kind: 'payment-to-person' });
+    // Money coming in with those words is still a deposit.
+    expect(readBankItem('savings', -40000, 'Zelle payment to MOM MADEUP', rules)).toEqual({ kind: 'deposit' });
   });
 
   it('the first matching rule wins (B9)', () => {
@@ -130,6 +139,8 @@ describe('0.2 bank rules are settings, checked when set', () => {
 
   it('0.2 a good list is kept as it is, in order', () => {
     expect(checkBankRules([ok])).toEqual([ok]);
+    // A16: a payment to a person can leave savings too.
+    expect(checkBankRules([{ ...ok, account: 'savings' }, { ...ok, id: 'r2' }])).toEqual([{ ...ok, account: 'savings' }, { ...ok, id: 'r2' }]);
     expect(checkBankRules([])).toEqual([]);
   });
 
@@ -139,7 +150,8 @@ describe('0.2 bank rules are settings, checked when set', () => {
       { ...ok, contains: '  ' },
       { ...ok, account: 'brokerage' },
       { ...ok, means: 'paycheck' },
-      { ...ok, account: 'savings' },
+      { ...ok, account: 'everyday-card' },
+      { ...ok, account: 'old-card' },
       { id: 'f', account: 'checking', contains: 'x', means: 'card-fee' },
       { id: 'i', account: 'savings', contains: 'x', means: 'card-interest' },
       { id: 't', account: 'checking', contains: 'x', means: 'transfer', other: 'checking' },

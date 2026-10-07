@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseDollars, payoffCountdown, startTracking, withPendingCharges, type Book, type Cents } from '../src/index.js';
 import text from '../worked-examples.txt?raw';
-import { MOM_NAME, TEST_SETTINGS, appSide, arrived, cardCharge, deposit, dropped, openTestBook, payPerson, paycheck, posted, purchase, refund, sent, transfer } from './helpers.js';
+import { MOM_NAME, TEST_SETTINGS, appSide, arrived, cardCharge, deposit, dropped, openTestBook, payPerson, paycheck, pendingChanged, posted, purchase, refund, sent, takenBack, transfer, withdrawal } from './helpers.js';
 
 interface Example {
   number: number;
@@ -307,6 +307,74 @@ const examples: Record<number, () => Record<string, Cents>> = {
     book.receive(dropped('drop', 'hold', '2026-10-07'));
     book.receive(purchase('gas', '2026-10-07', parseDollars('42.17'), 'MADE UP GAS'));
     return buckets(book);
+  },
+  19: () => {
+    const book = openTestBook({ pots: { wants: parseDollars('300.00') }, rules: [{ id: 'bistro', for: 'purchase', contains: 'MADE UP BISTRO', bucket: 'wants' }] });
+    book.receive(purchase('dinner', '2026-10-05', parseDollars('48.00'), 'MADE UP BISTRO', { pending: true }));
+    book.receive(pendingChanged('tip', 'dinner', '2026-10-06', parseDollars('57.60')));
+    book.receive(posted('dinner-posted', 'dinner', '2026-10-08', parseDollars('57.60'), 'MADE UP BISTRO'));
+    return buckets(book);
+  },
+  20: () => {
+    const book = openTestBook({
+      pots: { savings: parseDollars('2,000.00'), needs: parseDollars('400.00'), momReserve: parseDollars('800.00') },
+      rules: [{ id: 'utility', for: 'purchase', contains: 'MADE UP UTILITY', bucket: 'needs' }],
+    });
+    book.receive(withdrawal('bill', '2026-10-05', parseDollars('120.35'), 'MADE UP UTILITY'));
+    book.sort('bill', { to: 'needs' }, '2026-10-05');
+    book.moveMoney({ from: 'savings', to: 'needs', amount: parseDollars('120.35'), confirmed: true }, '2026-10-05');
+    book.receive(payPerson('mom', '2026-10-06', parseDollars('300.00'), MOM_NAME, 'savings'));
+    return buckets(book);
+  },
+  21: () => {
+    const book = openTestBook({ pots: { wants: parseDollars('200.00') }, rules: [{ id: 'cinema', for: 'purchase', contains: 'MADE UP CINEMA', bucket: 'wants' }] });
+    book.receive(purchase('tickets', '2026-10-05', parseDollars('31.50'), 'MADE UP CINEMA', { account: 'checking' }));
+    book.receive(purchase('copy', '2026-10-05', parseDollars('31.50'), 'MADE UP CINEMA', { account: 'checking' }));
+    book.receive(takenBack('fix', 'copy', '2026-10-07'));
+    const alerts = book.takeAlerts({ bankConnection: 'ok', bankBalances: { checking: appSide(book.pots()), savings: 0, everydayCard: 0 } });
+    const taken = alerts.reduce((sum, a) => sum + (a.kind === 'bank-took-back' ? a.amount : 0), 0);
+    return { ...buckets(book), 'taken back': taken };
+  },
+  22: () => {
+    const book = openTestBook({ pots: { needs: parseDollars('500.00') } });
+    book.receive(purchase('out', '2026-10-05', parseDollars('250.00'), 'ONLINE BANKING TRANSFER', { account: 'checking' }));
+    book.sort('out', { transfer: 'savings' }, '2026-10-05');
+    const afterFirst = book.inTransit().total;
+    book.receive(deposit('in', '2026-10-06', parseDollars('250.00'), 'ONLINE BANKING TRANSFER', 'savings'));
+    book.sort('in', { transfer: 'checking' }, '2026-10-06');
+    return { ...buckets(book), 'in transit after the first half': afterFirst, 'in transit': book.inTransit().total };
+  },
+  23: () => {
+    const book = openTestBook({ pots: { needs: parseDollars('400.00'), wants: parseDollars('150.00'), momReserve: parseDollars('250.00') } });
+    book.receive(payPerson('aunt', '2026-10-05', parseDollars('300.00'), 'MADE UP AUNT'));
+    book.sort('aunt', { to: 'mom' }, '2026-10-05');
+    book.sort('aunt:difference', { to: 'needs' }, '2026-10-05');
+    book.receive(payPerson('friend', '2026-10-06', parseDollars('90.00'), 'MADE UP FRIEND'));
+    book.sort(
+      'friend',
+      {
+        split: [
+          { bucket: 'wants', amount: parseDollars('30.00') },
+          { bucket: 'needs', amount: parseDollars('15.00') },
+          { bucket: 'not-mine', amount: parseDollars('45.00') },
+        ],
+      },
+      '2026-10-06',
+    );
+    return { ...buckets(book), 'sent to mom': book.momSentInMonth('2026-10').sent };
+  },
+  24: () => {
+    const book = openTestBook({
+      pots: { savings: parseDollars('1,000.00'), needs: parseDollars('300.00'), wants: parseDollars('120.00'), momReserve: parseDollars('3,000.00') },
+      rules: [{ id: 'cafe', for: 'purchase', contains: 'MADE UP CAFE', bucket: 'wants' }],
+      settings: { leftoverAtPayday: { needs: 'roll-over', wants: 'ask' } },
+    });
+    // Friday Oct 9 is payday; Thursday's cafe charge shows up on Saturday.
+    book.receive(paycheck('pay', '2026-10-09', parseDollars('2,000.00')));
+    book.receive(purchase('late', '2026-10-08', parseDollars('45.00'), 'MADE UP CAFE'));
+    const before = book.pots().savings;
+    book.answerLeftover('leftover:pay:wants', 'move-to-savings', '2026-10-10');
+    return { ...buckets(book), 'moved to savings': book.pots().savings - before };
   },
 };
 

@@ -30,6 +30,7 @@ export const BANK_RULES: readonly BankRule[] = checkBankRules([
   { id: 'everyday-paid', account: 'everyday-card', contains: 'PAYMENT - THANK YOU', means: 'transfer', other: 'checking' },
   { id: 'old-paid', account: 'old-card', contains: 'PAYMENT - THANK YOU', means: 'transfer', other: 'checking' },
   { id: 'zelle', account: 'checking', contains: 'Zelle payment to', means: 'payment-to-person' },
+  { id: 'zelle-from-savings', account: 'savings', contains: 'Zelle payment to', means: 'payment-to-person' },
   { id: 'everyday-interest', account: 'everyday-card', contains: 'INTEREST CHARGE', means: 'card-interest' },
   { id: 'old-interest', account: 'old-card', contains: 'INTEREST CHARGE', means: 'card-interest' },
   { id: 'everyday-fee', account: 'everyday-card', contains: 'LATE FEE', means: 'card-fee' },

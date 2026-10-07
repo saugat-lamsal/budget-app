@@ -37,6 +37,11 @@ describe('12.1 bank side: checking + savings - everyday card balance, including 
     expect(withPendingCharges(posted, [{ account: 'old-card', amount: 9_999 }])).toEqual(posted);
   });
 
+  it('12.1 money pending out of savings lowers savings (4.9, A16)', () => {
+    const posted = { checking: 100_000, savings: 50_000, everydayCard: 20_000 };
+    expect(withPendingCharges(posted, [{ account: 'savings', amount: 700 }, { account: 'savings', amount: 1 }])).toEqual({ checking: 100_000, savings: 49_299, everydayCard: 20_000 });
+  });
+
   it('12.1 pending charges must be more than zero, in whole cents', () => {
     const posted = { checking: 0, savings: 0, everydayCard: 0 };
     expect(codeOf(() => withPendingCharges(posted, [{ account: 'checking', amount: 0 }]))).toBe('not-positive');

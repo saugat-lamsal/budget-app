@@ -210,15 +210,6 @@ describe('safety: the bank key', () => {
 });
 
 describe('what the app does not apply waits for his decision, and the self-check shows it', () => {
-  it('0.5 money leaving savings with no rule saying where it went: held, and the difference shown', async () => {
-    const h = await tracking();
-    h.fake.addPosted({ id: 'odd', account: ACCOUNT_IDS.savings, amount: 7_500, date: '2026-10-02', description: 'WITHDRAWAL' });
-    await h.sync('2026-10-02');
-    expect(readItems(h.db).get('odd')?.status).toBe('held');
-    expect(status(h).attention.map((a) => a.transactionId)).toEqual(['odd']);
-    expect(status(h).selfCheck).toMatchObject({ ok: false, difference: -7_500 });
-  });
-
   it('0.1 an amount that is not whole cents is held, not rounded', async () => {
     const h = await tracking();
     h.fake.addPosted({ id: 'frac', account: C, amount: 100, date: '2026-10-02', description: 'COFFEE' });
@@ -235,29 +226,6 @@ describe('what the app does not apply waits for his decision, and the self-check
     await h.sync('2026-10-02');
     expect(readItems(h.db).get('cad')?.status).toBe('held');
     expect(status(h).attention[0]?.what).toMatch(/not in dollars/);
-  });
-
-  it('0.5 the bank taking back a transaction the app had counted needs his decision', async () => {
-    const h = await tracking();
-    h.fake.addPosted({ id: 'twice', account: C, amount: 1_000, date: '2026-10-02', description: 'COFFEE' });
-    await h.sync('2026-10-02');
-    h.fake.removePosted('twice', { keepBalance: false });
-    await h.sync('2026-10-03');
-    expect(status(h).attention.map((a) => a.what)).toEqual(['the bank removed a transaction the app had already counted']);
-    expect(status(h).selfCheck).toMatchObject({ ok: false, difference: 1_000 });
-  });
-
-  it('4.6 a pending charge whose amount changes before it posts: the change waits, and posting settles it', async () => {
-    const h = await tracking();
-    h.fake.addPending({ id: 'tab', account: E, amount: 2_000, date: '2026-10-02', description: 'COFFEE BAR' });
-    await h.sync('2026-10-02');
-    h.fake.modify('tab', { amount: 2_600 });
-    await h.sync('2026-10-03');
-    expect(status(h).attention.map((a) => a.what)).toEqual(['the bank changed a pending charge from $20.00 to $26.00; the app keeps $20.00 until it posts']);
-    expect(status(h).selfCheck).toMatchObject({ ok: false, difference: -600 });
-    h.fake.postPending('tab', { id: 'tab-posted', date: '2026-10-04' });
-    await h.sync('2026-10-04');
-    expect(status(h).selfCheck).toMatchObject({ ok: true });
   });
 
   it('a new description from the bank changes nothing in the book', async () => {
@@ -288,5 +256,141 @@ describe('what the app does not apply waits for his decision, and the self-check
     await h.sync('2026-10-02');
     expect(readItems(db).get('x')?.status).toBe('skipped');
     expect(status(h).selfCheck?.ok).toBe(true);
+  });
+});
+
+// QUESTIONS.md A13 and A14: the app follows the bank when it changes or takes
+// back something the app already counted, so a mismatch warning always means
+// something. Nothing waits for his decision, and the self-check passes.
+describe('the bank changing what the app counted', () => {
+  it('4.6 a pending charge whose amount changes before it posts: the new amount counts right away, in its bucket (A13)', async () => {
+    const h = await tracking();
+    h.fake.addPending({ id: 'tab', account: E, amount: 2_000, date: '2026-10-02', description: 'COFFEE BAR' });
+    await h.sync('2026-10-02');
+    const wants = book(h).pots().wants;
+    h.fake.modify('tab', { amount: 2_600 });
+    await h.sync('2026-10-03');
+    expect(status(h).attention).toEqual([]);
+    expect(status(h).selfCheck).toMatchObject({ ok: true, difference: 0 });
+    expect(book(h).pots().wants).toBe(wants - 600);
+    expect(book(h).purchases()).toMatchObject([{ id: 'tab', amount: 2_600, pending: true }]);
+    // Lower again, by one cent, then it posts at that amount.
+    h.fake.modify('tab', { amount: 2_599 });
+    await h.sync('2026-10-04');
+    expect(book(h).pots().wants).toBe(wants - 599);
+    h.fake.postPending('tab', { id: 'tab-posted', date: '2026-10-05' });
+    await h.sync('2026-10-05');
+    expect(status(h).selfCheck).toMatchObject({ ok: true, difference: 0 });
+    expect(book(h).pots().wants).toBe(wants - 599);
+    expect(status(h).attention).toEqual([]);
+  });
+
+  it('4.10 the bank taking back a transaction the app counted: the app takes it back too, logs it, and says so (A14)', async () => {
+    const h = await tracking();
+    const before = book(h).pots();
+    h.fake.addPosted({ id: 'twice', account: C, amount: 1_000, date: '2026-10-02', description: 'COFFEE' });
+    await h.sync('2026-10-02');
+    expect(book(h).pots().wants).toBe(before.wants - 1_000);
+    h.fake.removePosted('twice', { keepBalance: false });
+    await h.sync('2026-10-03');
+    expect(status(h).attention).toEqual([]);
+    expect(status(h).selfCheck).toMatchObject({ ok: true, difference: 0 });
+    expect(book(h).pots()).toEqual(before);
+    expect(book(h).changeLog().at(-1)).toEqual({ date: '2026-10-03', kind: 'bank-took-back', id: 'twice', description: 'COFFEE', amount: 1_000 });
+    const bank = status(h).bank;
+    if (bank?.ok !== true) throw new Error('no bank balances');
+    expect(book(h).takeAlerts({ bankConnection: 'ok', bankBalances: bank.view.withPending })).toContainEqual({
+      kind: 'bank-took-back',
+      id: 'twice',
+      date: '2026-10-03',
+      description: 'COFFEE',
+      amount: 1_000,
+    });
+    // Syncing again changes nothing.
+    const events = dump(h.db)['book_events'];
+    await h.sync('2026-10-04');
+    expect(dump(h.db)['book_events']).toEqual(events);
+  });
+
+  it('4.10 a posted transaction the bank changes: the old one is taken back and the new one counted as new (A14)', async () => {
+    const h = await tracking();
+    const before = book(h).pots();
+    h.fake.addPosted({ id: 'fix', account: C, amount: 1_000, date: '2026-10-02', description: 'COFFEE' });
+    await h.sync('2026-10-02');
+    h.fake.modify('fix', { amount: 1_250 });
+    await h.sync('2026-10-03');
+    expect(status(h).attention).toEqual([]);
+    expect(status(h).selfCheck).toMatchObject({ ok: true, difference: 0 });
+    expect(book(h).pots().wants).toBe(before.wants - 1_250);
+    expect(book(h).changeLog().at(-1)).toMatchObject({ date: '2026-10-03', kind: 'bank-took-back', id: 'fix', amount: 1_000 });
+    // Changed again, then removed: each version is taken back once.
+    h.fake.modify('fix', { amount: 900 });
+    await h.sync('2026-10-04');
+    expect(book(h).pots().wants).toBe(before.wants - 900);
+    h.fake.removePosted('fix', { keepBalance: false });
+    await h.sync('2026-10-05');
+    expect(book(h).pots()).toEqual(before);
+    expect(status(h).selfCheck).toMatchObject({ ok: true, difference: 0 });
+    expect(book(h).changeLog().flatMap((e) => (e.kind === 'bank-took-back' ? [e.amount] : []))).toEqual([1_000, 1_250, 900]);
+    expect(status(h).attention).toEqual([]);
+  });
+
+  it('4.10 a card payment landing that the bank takes back: the payment is on its way again (A14, 12.5)', async () => {
+    const h = await tracking();
+    h.fake.addPosted({ id: 'pay-out', account: C, amount: 20_000, date: '2026-10-02', description: 'Online payment to CRD 3333' });
+    h.fake.addPosted({ id: 'pay-in', account: E, amount: -20_000, date: '2026-10-03', description: 'PAYMENT - THANK YOU' });
+    await h.sync('2026-10-03');
+    expect(book(h).inTransit().total).toBe(0);
+    h.fake.removePosted('pay-in', { keepBalance: false });
+    await h.sync('2026-10-04');
+    expect(book(h).inTransit().total).toBe(20_000);
+    expect(status(h).selfCheck).toMatchObject({ ok: true, difference: 0 });
+    expect(status(h).attention).toEqual([]);
+  });
+});
+
+// QUESTIONS.md A16.
+describe('money leaving savings', () => {
+  it('4.9 money leaving savings that no rule names waits in review as spending, and the self-check passes (A16)', async () => {
+    const h = await tracking();
+    h.fake.addPosted({ id: 'odd', account: ACCOUNT_IDS.savings, amount: 7_500, date: '2026-10-02', description: 'WITHDRAWAL' });
+    await h.sync('2026-10-02');
+    expect(readItems(h.db).get('odd')?.status).toBe('sent');
+    expect(status(h).attention).toEqual([]);
+    expect(status(h).selfCheck).toMatchObject({ ok: true, difference: 0 });
+    expect(book(h).reviewItems()).toMatchObject([{ type: 'spending', id: 'odd', amount: 7_500, reason: 'from-savings' }]);
+  });
+
+  it('12.1 a charge pending on savings counts while pending, and its posting replaces it (4.6, 4.9)', async () => {
+    const h = await tracking();
+    h.fake.addPending({ id: 'sav-hold', account: ACCOUNT_IDS.savings, amount: 6_000, date: '2026-10-02', description: 'BILL PAY MADE UP INSURANCE' });
+    await h.sync('2026-10-02');
+    expect(status(h).bank).toMatchObject({ ok: true, view: { pendingCharges: [{ account: 'savings', amount: 6_000 }] } });
+    expect(status(h).selfCheck).toMatchObject({ ok: true, difference: 0 });
+    expect(book(h).reviewItems()).toMatchObject([{ type: 'spending', id: 'sav-hold', amount: 6_000, reason: 'from-savings' }]);
+    h.fake.postPending('sav-hold', { id: 'sav-posted', date: '2026-10-03', amount: 6_001 });
+    await h.sync('2026-10-03');
+    expect(status(h).selfCheck).toMatchObject({ ok: true, difference: 0 });
+    expect(book(h).reviewItems()).toMatchObject([{ type: 'spending', id: 'sav-hold', amount: 6_001, reason: 'from-savings' }]);
+    expect(status(h).attention).toEqual([]);
+  });
+
+  it('7.4 and 8.1 a payment to mom from savings comes out of the mom reserve, like one from checking (A16)', async () => {
+    const h = await tracking();
+    const reserve = book(h).pots().momReserve;
+    h.fake.addPosted({ id: 'mom-sav', account: ACCOUNT_IDS.savings, amount: 30_000, date: '2026-10-02', description: 'Zelle payment to MOM MADEUP' });
+    await h.sync('2026-10-02');
+    expect(book(h).pots().momReserve).toBe(reserve - 30_000);
+    expect(book(h).momSentInMonth('2026-10').sent).toBe(30_000);
+    expect(status(h).selfCheck).toMatchObject({ ok: true, difference: 0 });
+    expect(status(h).attention).toEqual([]);
+  });
+
+  it('7.4 a payment to a friend from savings waits in review as a payment to a person (A16)', async () => {
+    const h = await tracking();
+    h.fake.addPosted({ id: 'pal', account: ACCOUNT_IDS.savings, amount: 4_000, date: '2026-10-02', description: 'Zelle payment to FRIEND MADEUP' });
+    await h.sync('2026-10-02');
+    expect(book(h).reviewItems()).toMatchObject([{ type: 'spending', id: 'pal', amount: 4_000, reason: 'person-payment' }]);
+    expect(status(h).selfCheck).toMatchObject({ ok: true, difference: 0 });
   });
 });

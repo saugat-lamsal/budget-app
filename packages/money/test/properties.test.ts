@@ -5,17 +5,22 @@ import { describe, expect, it } from 'vitest';
 import {
   BUCKETS,
   DEFAULT_SETTINGS,
+  MoneyError,
   addDays,
   changeSettings,
   daysBetween,
+  monthOf,
   payoffCountdown,
   splitPaycheck,
   startTracking,
   startingMoney,
+  type AccountId,
   type BankTransaction,
   type Book,
+  type Cents,
   type IsoDate,
   type Purchase,
+  type SavingsWithdrawal,
   type LeftoverChoice,
   type MoneyInChoice,
   type Pot,
@@ -34,11 +39,14 @@ import {
   openTestBook,
   payPerson,
   paycheck,
+  pendingChanged,
   posted,
   purchase,
   refund,
   sent,
+  takenBack,
   transfer,
+  withdrawal,
   START_DATE,
 } from './helpers.js';
 
@@ -92,9 +100,13 @@ type Step =
   | { type: 'deposit'; gap: number; amount: number; description: string; account: 'checking' | 'savings' }
   | { type: 'answer-leftover'; pick: number; choice: 'roll-over' | 'move-to-savings' }
   | { type: 'repeat'; pick: number }
-  | { type: 'purchase'; gap: number; amount: number; account: 'checking' | 'everyday-card' | 'old-card'; pending: boolean; description: string }
+  | { type: 'purchase'; gap: number; amount: number; account: 'checking' | 'savings' | 'everyday-card' | 'old-card'; pending: boolean; description: string }
   | { type: 'post'; pick: number; change: number }
   | { type: 'drop'; pick: number }
+  | { type: 'change-pending'; pick: number; change: number }
+  | { type: 'take-back'; pick: number }
+  | { type: 'mark-transfer'; pick: number; other: AccountId }
+  | { type: 'not-for-mom'; pick: number; seed: number }
   | { type: 'refund'; pick: number; amount: number; linked: boolean; account: 'checking' | 'everyday-card' }
   | { type: 'card-charge'; amount: number; charge: 'fee' | 'interest' }
   | { type: 'sort'; pick: number; seed: number }
@@ -103,8 +115,8 @@ type Step =
   | { type: 'old-card'; amount: number; what: 'purchase' | 'pending' | 'fee' | 'interest' | 'refund' }
   | { type: 'acknowledge'; pick: number }
   | { type: 'resort-money-in'; pick: number; seed: number }
-  | { type: 'pay-person'; amount: number; payee: string }
-  | { type: 'pay-mom'; amount: number }
+  | { type: 'pay-person'; amount: number; payee: string; account: 'checking' | 'savings' }
+  | { type: 'pay-mom'; amount: number; account: 'checking' | 'savings' }
   | { type: 'move'; from: Pot; to: Pot; amount: number }
   | { type: 'change-split'; split: { savings: number; needs: number; wants: number }; reserve: number }
   | { type: 'add-rule'; rule: number }
@@ -146,12 +158,20 @@ const stepArb: fc.Arbitrary<Step> = fc.oneof(
     type: fc.constant('purchase' as const),
     gap: fc.integer({ min: 0, max: 3 }),
     amount: smallAmountArb,
-    account: fc.constantFrom('checking' as const, 'everyday-card' as const, 'old-card' as const),
+    account: fc.constantFrom('checking' as const, 'savings' as const, 'everyday-card' as const, 'old-card' as const),
     pending: fc.boolean(),
     description: fc.constantFrom('MADE UP GROCER', 'MADE UP CAFE', 'MADE UP HARDWARE'),
   }),
   fc.record({ type: fc.constant('post' as const), pick: fc.nat(), change: fc.integer({ min: -5_000, max: 5_000 }) }),
   fc.record({ type: fc.constant('drop' as const), pick: fc.nat() }),
+  fc.record({ type: fc.constant('change-pending' as const), pick: fc.nat(), change: fc.integer({ min: -5_000, max: 5_000 }) }),
+  fc.record({ type: fc.constant('take-back' as const), pick: fc.nat() }),
+  fc.record({
+    type: fc.constant('mark-transfer' as const),
+    pick: fc.nat(),
+    other: fc.constantFrom<AccountId>('checking', 'savings', 'savings', 'everyday-card', 'old-card'),
+  }),
+  fc.record({ type: fc.constant('not-for-mom' as const), pick: fc.nat(), seed: fc.nat() }),
   fc.record({
     type: fc.constant('refund' as const),
     pick: fc.nat(),
@@ -171,8 +191,17 @@ const stepArb: fc.Arbitrary<Step> = fc.oneof(
   fc.record({ type: fc.constant('old-card' as const), amount: smallAmountArb, what: fc.constantFrom('purchase' as const, 'pending' as const, 'fee' as const, 'interest' as const, 'refund' as const) }),
   fc.record({ type: fc.constant('acknowledge' as const), pick: fc.nat() }),
   resortMoneyInStepArb,
-  fc.record({ type: fc.constant('pay-person' as const), amount: smallAmountArb, payee: fc.constantFrom('MADE UP FRIEND', 'MADE UP LANDLORD', 'MADE UP ROOMMATE') }),
-  fc.record({ type: fc.constant('pay-mom' as const), amount: fc.oneof(smallAmountArb, fc.integer({ min: 100_000, max: 400_000 })) }),
+  fc.record({
+    type: fc.constant('pay-person' as const),
+    amount: smallAmountArb,
+    payee: fc.constantFrom('MADE UP FRIEND', 'MADE UP LANDLORD', 'MADE UP ROOMMATE', 'MADE UP AUNT'),
+    account: fc.constantFrom('checking' as const, 'checking' as const, 'savings' as const),
+  }),
+  fc.record({
+    type: fc.constant('pay-mom' as const),
+    amount: fc.oneof(smallAmountArb, fc.integer({ min: 100_000, max: 400_000 })),
+    account: fc.constantFrom('checking' as const, 'checking' as const, 'savings' as const),
+  }),
   fc.record({ type: fc.constant('move' as const), from: potNameArb, to: potNameArb, amount: smallAmountArb }),
   fc.record({ type: fc.constant('change-split' as const), split: splitArb, reserve: fc.integer({ min: 0, max: 300_000 }) }),
   fc.record({ type: fc.constant('add-rule' as const), rule: fc.nat() }),
@@ -232,10 +261,25 @@ function pick<T>(list: readonly T[], index: number): T | undefined {
 }
 
 // A valid way to sort spending of this amount, chosen by the seed. A
-// payment to a person can also be not mine; it and the difference on a mom
-// payment cannot be split.
-function spendingChoice(amount: number, seed: number, kind: string): SortChoice {
-  if (kind === 'person-payment') return { to: (['needs', 'wants', 'not-mine'] as const)[seed % 3] ?? 'needs' };
+// payment to a person can also be not mine, for mom (unless part of it was
+// refunded), or split across needs, wants, and not mine (7.6). The
+// difference on a mom payment cannot be split.
+function spendingChoice(amount: number, seed: number, kind: string, canBeMom = false): SortChoice {
+  if (kind === 'person-payment') {
+    if (seed % 6 === 3 && canBeMom) return { to: 'mom' };
+    if (seed % 6 >= 4 && amount >= 3) {
+      const needs = 1 + (seed % (amount - 2));
+      const wants = 1 + (seed % (amount - needs - 1));
+      return {
+        split: [
+          { bucket: 'needs', amount: needs },
+          { bucket: 'wants', amount: wants },
+          { bucket: 'not-mine', amount: amount - needs - wants },
+        ],
+      };
+    }
+    return { to: (['needs', 'wants', 'not-mine'] as const)[seed % 3] ?? 'needs' };
+  }
   // A payment to the old card from savings: savings once confirmed, or needs (QUESTIONS.md A4).
   if (kind === 'old-card-from-savings') return { to: seed % 2 === 0 ? 'savings' : 'needs' };
   if (seed % 3 === 2 && amount >= 2 && kind !== 'mom-difference') {
@@ -254,36 +298,90 @@ function moneyInChoice(seed: number, isRefund: boolean, canBePaycheck: boolean):
   return { to: choices[seed % choices.length] ?? 'savings' };
 }
 
-type HalfDone = { id: string; first: 'left' | 'arrived'; from: 'checking' | 'savings'; to: 'checking' | 'savings' | 'everyday-card' | 'old-card'; amount: number };
+type HalfDone = { id: string; first: 'left' | 'arrived'; from: 'checking' | 'savings'; to: AccountId; amount: number };
 
-function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: readonly Purchase[] = [], inTransitAtSetup: readonly HalfDone[] = []): void {
+// What the bank can take back (4.10): anything it sent that the app counted,
+// except a charge still pending (that is dropped instead) and the bank's own
+// notes about other transactions.
+function takeable(txn: BankTransaction): boolean {
+  switch (txn.kind) {
+    case 'purchase':
+    case 'savings-withdrawal':
+      return !txn.pending;
+    case 'deposit':
+    case 'refund':
+    case 'card-charge':
+    case 'payment-to-person':
+    case 'transfer':
+    case 'transfer-sent':
+    case 'transfer-arrived':
+      return true;
+    case 'pending-dropped':
+    case 'pending-changed':
+    case 'taken-back':
+      return false;
+  }
+}
+
+// A charge that can be pending first: a purchase, or money leaving savings (4.9).
+type Charge = Purchase | SavingsWithdrawal;
+
+// The posted version of a pending charge, at a new amount maybe (4.6).
+function postedOf(id: string, target: Charge, date: IsoDate, amount: number): Charge {
+  return target.kind === 'savings-withdrawal'
+    ? withdrawal(id, date, amount, target.description, { pendingId: target.id })
+    : posted(id, target.id, date, amount, target.description, target.account);
+}
+
+function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: readonly Charge[] = [], inTransitAtSetup: readonly HalfDone[] = []): void {
   let date = START_DATE;
   let n = 0;
   const received: BankTransaction[] = [];
   // Pending purchases the bank has not posted yet, on any account.
-  const pending: Purchase[] = [...pendingAtSetup];
+  const pending: Charge[] = [...pendingAtSetup];
   // Transfers with one half sent so far, waiting for the other (12.5).
   const halfDone: HalfDone[] = [...inTransitAtSetup];
   // The low and empty alerts given, as "period bucket kind" (10.1, 10.2).
   const given = new Set<string>();
   // Money in that can be sorted and re-sorted (not paychecks or matched refunds).
   const moneyIn: { id: string; date: IsoDate; isRefund: boolean }[] = [];
+  // Payments marked for mom by hand (7.6), and ones the mom rule matched (8.1).
+  const forMom: string[] = [];
+  const momRule: string[] = [];
+  // What the bank took back (4.10), by the transaction's id and the book's.
+  const gone = new Set<string>();
+  // Things marked as a transfer's half by hand (5.6), by the book's id: what
+  // each adds to the money in transit, worked out here (12.5).
+  const marked = new Map<string, { contribution: Cents; amount: Cents }>();
+  // What each leftover question asked about at payday (3.4, B4).
+  const leftoverAtPayday = new Map<string, Cents>();
+  // Marked by hand and then made money in again (5.6): the transfer's half is gone.
+  const unmark = (id: string): void => {
+    const mark = marked.get(id);
+    if (mark === undefined) return;
+    bank.inTransit -= mark.contribution;
+    marked.delete(id);
+    const at = halfDone.findIndex((h) => h.id === id);
+    if (at >= 0) halfDone.splice(at, 1);
+  };
   // Sorts money in. Once it is your paycheck it is final (6.1).
   const sortMoneyIn = (id: string, txnDate: IsoDate, isRefund: boolean, seed: number | 'paycheck'): void => {
     const choice = seed === 'paycheck' ? { to: 'paycheck' as const } : moneyInChoice(seed, isRefund, daysBetween(book.lastPaycheckDate(), txnDate) >= 0);
     const paychecksBefore = book.paychecks().length;
     book.sort(id, choice, date);
+    unmark(id);
     if (choice.to === 'paycheck') {
       expect(book.paychecks().length).toBe(paychecksBefore + 1);
       expect(book.lastPaycheckDate()).toBe(txnDate);
       moneyIn.splice(moneyIn.findIndex((m) => m.id === id), 1);
     }
   };
+  const canBeMom = (id: string): boolean => (book.purchases().find((p) => p.id === id)?.refunded ?? 0) === 0;
   const send = (txn: BankTransaction): void => {
     const { outcome } = book.receive(txn);
     bank.apply(txn);
     received.push(txn);
-    if (txn.kind === 'purchase' && txn.pending) pending.push(txn);
+    if ((txn.kind === 'purchase' || txn.kind === 'savings-withdrawal') && txn.pending) pending.push(txn);
     if ((txn.kind === 'deposit' && outcome !== 'paycheck') || (txn.kind === 'refund' && outcome === 'review')) {
       moneyIn.push({ id: txn.id, date: txn.date, isRefund: txn.kind === 'refund' });
     }
@@ -299,7 +397,17 @@ function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: read
       }
       case 'answer-leftover': {
         const item = pick(book.reviewItems().filter((i) => i.type === 'leftover'), step.pick);
-        if (item) book.answerLeftover(item.id, step.choice, date);
+        if (item?.type !== 'leftover') break;
+        // B4: it moves what the question asks about now, which late spending
+        // from before payday has lowered: never below zero, never above what
+        // it asked at payday.
+        expect(item.amount).toBeGreaterThanOrEqual(0);
+        expect(item.amount).toBeLessThanOrEqual(leftoverAtPayday.get(item.id) ?? Number.MAX_SAFE_INTEGER);
+        const before = book.pots();
+        book.answerLeftover(item.id, step.choice, date);
+        const moved = step.choice === 'move-to-savings' ? item.amount : 0;
+        expect(book.pots()[item.bucket]).toBe(before[item.bucket] - moved);
+        expect(book.pots().savings).toBe(before.savings + moved);
         break;
       }
       case 'repeat': {
@@ -310,18 +418,106 @@ function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: read
       }
       case 'purchase':
         date = addDays(date, step.gap);
-        send(purchase(`t${n++}`, date, step.amount, step.description, { account: step.account, pending: step.pending }));
+        send(
+          step.account === 'savings'
+            ? withdrawal(`t${n++}`, date, step.amount, step.description, { pending: step.pending })
+            : purchase(`t${n++}`, date, step.amount, step.description, { account: step.account, pending: step.pending }),
+        );
         break;
       case 'post': {
         const index = step.pick % Math.max(1, pending.length);
         const [target] = pending.splice(index, 1);
-        if (target) send(posted(`t${n++}`, target.id, date, Math.max(1, target.amount + step.change), target.description, target.account));
+        if (target) send(postedOf(`t${n++}`, target, date, Math.max(1, target.amount + step.change)));
         break;
       }
       case 'drop': {
         // QUESTIONS.md A2: the bank drops a pending charge without posting it.
         const [target] = pending.splice(step.pick % Math.max(1, pending.length), 1);
         if (target) send(dropped(`t${n++}`, target.id, date));
+        break;
+      }
+      case 'change-pending': {
+        // QUESTIONS.md A13: the bank changes a pending charge's amount before it posts.
+        const index = step.pick % Math.max(1, pending.length);
+        const target = pending[index];
+        if (!target) break;
+        const amount = Math.max(1, target.amount + step.change);
+        send(pendingChanged(`t${n++}`, target.id, date, amount));
+        pending[index] = { ...target, amount };
+        break;
+      }
+      case 'take-back': {
+        // 4.10 (A14): the bank takes back something it sent, and the app
+        // takes it back too, logging it (13.5).
+        const target = pick(received.filter((t) => takeable(t) && !gone.has(t.id)), step.pick);
+        if (!target) break;
+        const logBefore = book.changeLog().length;
+        send(takenBack(`t${n++}`, target.id, date));
+        const entryId = (target.kind === 'purchase' || target.kind === 'savings-withdrawal') && target.pendingId !== undefined ? target.pendingId : target.id;
+        gone.add(target.id);
+        gone.add(entryId);
+        // A mom payment's difference goes with it (8.3).
+        gone.add(`${entryId}:difference`);
+        const mark = marked.get(entryId);
+        if (mark !== undefined) {
+          bank.inTransit -= mark.contribution;
+          marked.delete(entryId);
+        }
+        const waiting = moneyIn.findIndex((m) => m.id === target.id);
+        if (waiting >= 0) moneyIn.splice(waiting, 1);
+        expect(book.changeLog().length).toBe(logBefore + 1);
+        expect(book.changeLog().at(-1)).toMatchObject({ kind: 'bank-took-back', date, id: entryId });
+        break;
+      }
+      case 'mark-transfer': {
+        // 5.6 (A12): spending or money in that was really a transfer between
+        // your accounts becomes that transfer's half. Refused, it changes nothing.
+        const waiting = book.reviewItems().flatMap((i) => (i.type === 'spending' || i.type === 'money-in' ? [{ id: i.id, amount: i.amount }] : []));
+        const again = [...marked.entries()].map(([id, m]) => ({ id, amount: m.amount }));
+        const target = pick([...waiting, ...again], step.pick);
+        const original = received.find((t) => t.id === target?.id);
+        if (!target || !original) break;
+        if (original.kind !== 'purchase' && original.kind !== 'savings-withdrawal' && original.kind !== 'payment-to-person' && original.kind !== 'deposit' && original.kind !== 'refund') break;
+        const before = { pots: book.pots(), inTransit: book.inTransit().total, debt: book.oldCardDebt() };
+        try {
+          book.sort(target.id, { transfer: step.other }, date);
+        } catch (error) {
+          if (!(error instanceof MoneyError)) throw error;
+          expect({ pots: book.pots(), inTransit: book.inTransit().total, debt: book.oldCardDebt() }).toEqual(before);
+          break;
+        }
+        const leaving = original.kind === 'purchase' || original.kind === 'savings-withdrawal' || original.kind === 'payment-to-person';
+        const from = leaving ? original.account : step.other;
+        const to = leaving ? step.other : original.account;
+        const contribution = to === 'old-card' ? 0 : leaving ? target.amount : -target.amount;
+        bank.inTransit += contribution - (marked.get(target.id)?.contribution ?? 0);
+        marked.set(target.id, { contribution, amount: target.amount });
+        // Its other half shows up later, like any transfer's (12.5).
+        const at = halfDone.findIndex((h) => h.id === target.id);
+        if (at >= 0) halfDone.splice(at, 1);
+        if (from === 'checking' || from === 'savings') halfDone.push({ id: target.id, first: leaving ? 'left' : 'arrived', from, to, amount: target.amount });
+        break;
+      }
+      case 'not-for-mom': {
+        // 7.6: a payment marked for mom, sorted another way. It no longer
+        // counts toward the month (8.2). One the mom rule matched cannot be (8.1).
+        if (step.seed % 4 === 0) {
+          const id = pick(momRule, step.pick);
+          if (id === undefined) break;
+          const before = book.pots();
+          expect(() => book.sort(id, { to: 'needs' }, date)).toThrow(MoneyError);
+          expect(book.pots()).toEqual(before);
+          break;
+        }
+        const index = step.pick % Math.max(1, forMom.length);
+        const id = forMom[index];
+        const txn = received.find((t) => t.id === id);
+        if (id === undefined || gone.has(id) || txn?.kind !== 'payment-to-person') break;
+        forMom.splice(index, 1);
+        const month = monthOf(txn.date);
+        const sentBefore = book.momSentInMonth(month).sent;
+        book.sort(id, spendingChoice(txn.amount, step.seed, 'person-payment'), date);
+        expect(book.momSentInMonth(month).sent).toBe(sentBefore - txn.amount);
         break;
       }
       case 'refund': {
@@ -335,13 +531,20 @@ function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: read
         break;
       case 'sort': {
         const item = pick(book.reviewItems().filter((i) => i.type !== 'leftover'), step.pick);
-        if (item?.type === 'spending') book.sort(item.id, spendingChoice(item.amount, step.seed, item.reason), date);
+        if (item?.type === 'spending') {
+          const choice = spendingChoice(item.amount, step.seed, item.reason, canBeMom(item.id));
+          book.sort(item.id, choice, date);
+          if ('to' in choice && choice.to === 'mom') forMom.push(item.id);
+        }
         if (item?.type === 'money-in') sortMoneyIn(item.id, item.date, item.reason === 'refund', step.seed);
         break;
       }
       case 'resort': {
-        const target = pick(book.purchases().filter((p) => p.kind !== 'debt-payoff'), step.pick);
-        if (target) book.sort(target.id, spendingChoice(target.amount - target.refunded - target.countedAtSetup, step.seed, target.kind), date);
+        const target = pick(book.purchases().filter((p) => p.kind !== 'debt-payoff' && !gone.has(p.id)), step.pick);
+        if (!target) break;
+        const choice = spendingChoice(target.amount - target.refunded - target.countedAtSetup, step.seed, target.kind, target.refunded === 0);
+        book.sort(target.id, choice, date);
+        if ('to' in choice && choice.to === 'mom') forMom.push(target.id);
         break;
       }
       case 'transfer': {
@@ -376,11 +579,14 @@ function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: read
         break;
       }
       case 'pay-person':
-        send(payPerson(`t${n++}`, date, step.amount, step.payee));
+        send(payPerson(`t${n++}`, date, step.amount, step.payee, step.account));
         break;
-      case 'pay-mom':
-        send(payPerson(`t${n++}`, date, step.amount, MOM_NAME));
+      case 'pay-mom': {
+        const id = `t${n++}`;
+        send(payPerson(id, date, step.amount, MOM_NAME, step.account));
+        momRule.push(id);
         break;
+      }
       case 'move':
         if (step.from !== step.to) book.moveMoney({ from: step.from, to: step.to, amount: step.amount, confirmed: true }, date);
         break;
@@ -412,15 +618,33 @@ function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: read
       case 'always': {
         // 13.6: correct a purchase or payment and "always do this". The fix
         // must stick: the next one with the same description lands there too.
-        const target = pick(book.purchases().filter((p) => p.kind === 'purchase' || p.kind === 'person-payment'), step.seed);
+        const target = pick(book.purchases().filter((p) => (p.kind === 'purchase' || p.kind === 'person-payment') && !gone.has(p.id)), step.seed);
         const original = received.find((t) => t.id === target?.id);
-        if (!target || !original || (original.kind !== 'purchase' && original.kind !== 'payment-to-person')) break;
+        if (!target || !original || (original.kind !== 'purchase' && original.kind !== 'savings-withdrawal' && original.kind !== 'payment-to-person')) break;
+        // 4.9: no rule sorts money leaving savings, so "always" is refused.
+        if (original.kind === 'savings-withdrawal') {
+          const before = book.pots();
+          expect(() => book.sortAlways(target.id, { to: 'needs' }, { id: `fix${n++}`, contains: target.description }, date)).toThrow(MoneyError);
+          expect(book.pots()).toEqual(before);
+          break;
+        }
         const toPerson = target.kind === 'person-payment';
-        const to = toPerson ? ((['needs', 'wants', 'not-mine'] as const)[step.pick % 3] ?? 'needs') : ((['needs', 'wants'] as const)[step.pick % 2] ?? 'needs');
+        // A person rule can say for mom (7.6), unless part of this one was refunded.
+        const personChoices = target.refunded === 0 ? (['needs', 'wants', 'not-mine', 'mom'] as const) : (['needs', 'wants', 'not-mine'] as const);
+        const to = toPerson ? (personChoices[step.pick % personChoices.length] ?? 'needs') : ((['needs', 'wants'] as const)[step.pick % 2] ?? 'needs');
         book.sortAlways(target.id, { to }, { id: `fix${n++}`, contains: target.description }, date);
+        if (to === 'mom') forMom.push(target.id);
         const probeId = `t${n++}`;
+        const month = monthOf(date);
+        const sentBefore = book.momSentInMonth(month).sent;
         send(toPerson ? payPerson(probeId, date, 100, target.description.replace(/^ZELLE TO /, '')) : purchase(probeId, date, 100, target.description, { account: 'checking' }));
-        expect(book.purchases().find((p) => p.id === probeId)?.sortedTo).toEqual({ to });
+        if (to === 'mom') {
+          // For mom: out of the reserve, and counted toward the month (8.2).
+          expect(book.purchases().some((p) => p.id === probeId)).toBe(false);
+          expect(book.momSentInMonth(month).sent).toBe(sentBefore + 100);
+        } else {
+          expect(book.purchases().find((p) => p.id === probeId)?.sortedTo).toEqual({ to });
+        }
         break;
       }
       case 'add-rule': {
@@ -434,6 +658,7 @@ function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: read
         break;
       }
     }
+    for (const item of book.reviewItems()) if (item.type === 'leftover' && !leftoverAtPayday.has(item.id)) leftoverAtPayday.set(item.id, item.amount);
     // No cent is created or lost: the buckets always match the bank, with
     // money in transit counted (12.5), and the daily self-check agrees.
     expect(appSide(book.pots())).toBe(bank.side() + bank.inTransit);
@@ -526,7 +751,7 @@ describe('random scenarios: setup day (section 14)', () => {
   const pendingArb = fc.array(
     fc.record({
       amount: fc.integer({ min: 1, max: 50_000 }),
-      account: fc.constantFrom('checking' as const, 'everyday-card' as const, 'old-card' as const),
+      account: fc.constantFrom('checking' as const, 'savings' as const, 'everyday-card' as const, 'old-card' as const),
     }),
     { maxLength: 4 },
   );
@@ -548,7 +773,11 @@ describe('random scenarios: setup day (section 14)', () => {
         ),
         fc.array(stepArb, { maxLength: 40 }),
         (posted, charges, parts, travelling, steps) => {
-          const pendingCharges = charges.map((c, i) => purchase(`setup${i}`, '2026-09-30', c.amount, 'MADE UP CAFE', { account: c.account, pending: true }));
+          const pendingCharges = charges.map((c, i) =>
+            c.account === 'savings'
+              ? withdrawal(`setup${i}`, '2026-09-30', c.amount, 'MADE UP BILL PAY', { pending: true })
+              : purchase(`setup${i}`, '2026-09-30', c.amount, 'MADE UP CAFE', { account: c.account, pending: true }),
+          );
           // Transfers with one half showing on setup day (12.5): left and not
           // landed, or landed before it shows leaving.
           const transfersInTransit = travelling

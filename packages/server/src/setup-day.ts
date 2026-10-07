@@ -7,6 +7,7 @@ import {
   type Cents,
   type IsoDate,
   type Purchase,
+  type SavingsWithdrawal,
   type Settings,
   type SetupInput,
   type SortingRule,
@@ -35,7 +36,7 @@ interface History {
   readonly roles: Map<string, AccountId>;
   readonly posted: BankBalances;
   readonly oldCardBalance: Cents;
-  readonly pendingCharges: Purchase[];
+  readonly pendingCharges: (Purchase | SavingsWithdrawal)[];
   // Each history item read again with today's bank rules.
   readonly reread: Map<string, StoredItem>;
 }
@@ -61,12 +62,13 @@ function readHistory(db: Db): History {
   }
   const view = bankView(accounts, reread);
   if (!view.ok) throw new Error(view.why);
-  const pendingCharges: Purchase[] = [];
+  const pendingCharges: (Purchase | SavingsWithdrawal)[] = [];
   for (const item of reread.values()) {
     const role = roles.get(item.accountId);
     const read = readPlaidItem(item.raw);
-    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || role === 'savings' || !read.ok || read.item.amount <= 0) continue;
-    pendingCharges.push({ kind: 'purchase', id: item.transactionId, account: role, date: read.item.day, amount: read.item.amount, description: read.item.description, pending: true });
+    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || !read.ok || read.item.amount <= 0) continue;
+    const charge = { id: item.transactionId, date: read.item.day, amount: read.item.amount, description: read.item.description, pending: true };
+    pendingCharges.push(role === 'savings' ? { ...charge, kind: 'savings-withdrawal', account: role } : { ...charge, kind: 'purchase', account: role });
   }
   return { items, roles, posted: view.view.posted, oldCardBalance: view.view.oldCardPosted, pendingCharges, reread };
 }
@@ -108,7 +110,7 @@ export interface SetupPreview {
   // 14.2: checking + savings - everyday card, with pending charges and money in transit.
   readonly startingMoney: Cents;
   readonly posted: BankBalances;
-  readonly pendingCharges: readonly Purchase[];
+  readonly pendingCharges: readonly (Purchase | SavingsWithdrawal)[];
   readonly inTransit: readonly HalfInTransit[];
   readonly oldCardBalance: Cents;
 }

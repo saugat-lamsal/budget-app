@@ -20,7 +20,9 @@ import { connected } from './harness.js';
 // - the second book has the same money as the simulator's book: the same
 //   app side, money in transit, and old card debt (his answers only move
 //   money between buckets, so they do not change these, and only the
-//   simulator's book gets them);
+//   simulator's book gets them; the transfers his bank shows as spending
+//   and a deposit, which he marks as transfers in review (5.6), are read
+//   here by bank rules, the way he would set them up, A12);
 // - the money in transit is the same list the simulator's bank shows;
 // - nothing waits for a decision.
 // SIM_BANK_SEEDS, SIM_BANK_FIRST_SEED and SIM_BANK_YEARS run more of it.
@@ -46,7 +48,16 @@ const SIM_BANK_RULES: readonly BankRule[] = checkBankRules([
       { id: `in-${from}-${to}`, account: to, contains: `SIM TRANSFER FROM ${from}`, means: 'transfer', other: from },
     ]),
   ),
-  { id: 'zelle', account: 'checking', contains: 'ZELLE TO ', means: 'payment-to-person' },
+  // The transfers the simulator's bank shows as spending and a deposit (5.6).
+  ...OWN.flatMap((from) => {
+    const to = from === 'checking' ? 'savings' : 'checking';
+    return [
+      { id: `online-out-${from}`, account: from, contains: `ONLINE BANKING TRANSFER TO ${to.toUpperCase()}`, means: 'transfer', other: to },
+      { id: `online-in-${to}`, account: to, contains: `ONLINE BANKING TRANSFER FROM ${from.toUpperCase()}`, means: 'transfer', other: from },
+    ];
+  }),
+  // Payments to people leave checking or savings (A16).
+  ...OWN.map((account) => ({ id: `zelle-${account}`, account, contains: 'ZELLE TO ', means: 'payment-to-person' })),
   ...CARDS.flatMap((card) => [
     { id: `${card}-fee`, account: card, contains: 'LATE FEE', means: 'card-fee' },
     { id: `${card}-interest`, account: card, contains: 'INTEREST CHARGE', means: 'card-interest' },
@@ -55,11 +66,14 @@ const SIM_BANK_RULES: readonly BankRule[] = checkBankRules([
 
 // One of the simulator's bank transactions, as Plaid would show it: signed
 // amounts (positive is money out), a pending charge posting as the pending
-// one removed and the posted one added and linked, and a transfer as two
-// separate transactions, one on each account.
+// one removed and the posted one added and linked, a pending charge's new
+// amount as the pending one modified (A13), a transaction taken back as the
+// posted one removed (A14), and a transfer as two separate transactions, one
+// on each account.
 function inPlaidFormat(fake: FakePlaid, txn: BankTransaction): void {
   switch (txn.kind) {
     case 'purchase':
+    case 'savings-withdrawal':
       if (txn.pending) fake.addPending({ id: txn.id, account: ACCOUNT[txn.account], amount: txn.amount, date: txn.date, description: txn.description });
       else if (txn.pendingId !== undefined) fake.postPending(txn.pendingId, { id: txn.id, date: txn.date, amount: txn.amount });
       else fake.addPosted({ id: txn.id, account: ACCOUNT[txn.account], amount: txn.amount, date: txn.date, description: txn.description });
@@ -74,7 +88,7 @@ function inPlaidFormat(fake: FakePlaid, txn: BankTransaction): void {
       fake.addPosted({ id: txn.id, account: ACCOUNT[txn.account], amount: txn.amount, date: txn.date, description: txn.description });
       return;
     case 'payment-to-person':
-      fake.addPosted({ id: txn.id, account: ACCOUNT.checking, amount: txn.amount, date: txn.date, description: txn.description });
+      fake.addPosted({ id: txn.id, account: ACCOUNT[txn.account], amount: txn.amount, date: txn.date, description: txn.description });
       return;
     case 'transfer':
       fake.addPosted({ id: `${txn.id}-out`, account: ACCOUNT[txn.from], amount: txn.amount, date: txn.date, description: `SIM TRANSFER TO ${txn.to}` });
@@ -88,6 +102,12 @@ function inPlaidFormat(fake: FakePlaid, txn: BankTransaction): void {
       return;
     case 'pending-dropped':
       fake.dropPending(txn.pendingId);
+      return;
+    case 'pending-changed':
+      fake.modify(txn.pendingId, { amount: txn.amount });
+      return;
+    case 'taken-back':
+      fake.removePosted(txn.takenId, { keepBalance: false });
       return;
   }
 }

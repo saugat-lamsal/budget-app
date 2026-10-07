@@ -5,7 +5,7 @@ import { MoneyError } from './errors.js';
 import type { SortingRule } from './rules.js';
 import { bankSide, withPendingCharges, type BankBalances } from './self-check.js';
 import type { Settings } from './settings.js';
-import { checkTransaction, type Purchase, type TransferArrived, type TransferSent } from './transactions.js';
+import { checkTransaction, type Purchase, type SavingsWithdrawal, type TransferArrived, type TransferSent } from './transactions.js';
 
 // Rulebook section 14: setup day.
 
@@ -14,7 +14,7 @@ export interface SetupInput {
   // 14.1: the balances as the bank reports them today (posted), and the
   // charges still pending.
   readonly bankBalances: BankBalances;
-  readonly pendingCharges: readonly Purchase[];
+  readonly pendingCharges: readonly (Purchase | SavingsWithdrawal)[];
   // Transfers with only one half showing (12.5): money that has left one of
   // your accounts and not arrived yet, such as a card payment made
   // yesterday, or one that has arrived but does not show leaving yet.
@@ -43,7 +43,7 @@ export type SetupResult =
 // from the old card do not count: it is outside the starting money.
 export function startingMoney(
   posted: BankBalances,
-  pendingCharges: readonly Purchase[],
+  pendingCharges: readonly (Purchase | SavingsWithdrawal)[],
   inTransit: readonly (TransferSent | TransferArrived)[] = [],
 ): Cents {
   const travelling = inTransit.map((transfer) => {
@@ -70,7 +70,7 @@ export function startTracking(input: SetupInput): SetupResult {
   }
   for (const charge of input.pendingCharges) {
     checkTransaction(charge);
-    if (charge.kind !== 'purchase' || !charge.pending) throw new MoneyError('bad-transaction', `${charge.id} is not a pending charge`);
+    if ((charge.kind !== 'purchase' && charge.kind !== 'savings-withdrawal') || !charge.pending) throw new MoneyError('bad-transaction', `${charge.id} is not a pending charge`);
     if (ids.has(charge.id)) throw new MoneyError('conflicting-id', `two pending charges have the id ${charge.id}`);
     ids.add(charge.id);
   }

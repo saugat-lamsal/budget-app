@@ -569,3 +569,157 @@ Step 2. Two days later the bank drops the hold without posting it, and
         Needs 500.00 - 42.17 = 457.83
 
 Check: needs 457.83 | unsorted spending 0.00
+
+
+========================================================================
+EXAMPLE 19. A tip that shows while the charge is still pending (rule 4.6; A13)
+========================================================================
+
+Before: Wants 300.00. A rule sends "MADE UP BISTRO" to wants.
+
+Step 1. Dinner, 48.00, shows as pending on the everyday card. It comes out
+        of wants on the day (4.1, 4.6).
+        Wants 300.00 - 48.00 = 252.00
+
+Step 2. The next day, still pending, the bank changes it to 57.60: the
+        9.60 tip was added. The new amount counts right away, still in
+        wants:
+        Wants 252.00 - 9.60 = 242.40
+
+Step 3. Two days later it posts at 57.60. That is the amount already
+        counted, so nothing changes.
+        Wants 242.40
+
+Check: wants 242.40 | unsorted spending 0.00
+
+
+========================================================================
+EXAMPLE 20. Money leaving the savings account (rules 4.9, 4.2, 13.3, 8.1; A16)
+========================================================================
+
+Before: Savings 2,000.00, needs 400.00, mom reserve 800.00. A rule sends
+        "MADE UP UTILITY" to needs.
+
+Step 1. A utility bill of 120.35 is paid straight out of the savings
+        account. Money leaving savings always waits in review, even when
+        a rule matches it (4.9):
+        Unsorted spending 0.00 + 120.35 = 120.35
+
+Step 2. You sort it to needs, like any spending:
+        Needs 400.00 - 120.35 = 279.65
+        Unsorted spending 0.00
+
+Step 3. It really came out of savings, so you move 120.35 from savings to
+        needs by hand (4.2, 13.3; it asks you to confirm first, 13.4):
+        Savings 2,000.00 - 120.35 = 1,879.65
+        Needs 279.65 + 120.35 = 400.00
+
+Step 4. You send mom 300.00 from the savings account. It is a payment to
+        mom like any other, whichever account it leaves (8.1):
+        Mom reserve 800.00 - 300.00 = 500.00
+
+Check: savings 1,879.65 | needs 400.00 | mom reserve 500.00 | unsorted spending 0.00
+
+
+========================================================================
+EXAMPLE 21. A charge shown twice, then taken back (rules 4.10, 13.5, 10.6; A14)
+========================================================================
+
+Before: Wants 200.00. A rule sends "MADE UP CINEMA" to wants.
+
+Step 1. Movie tickets, 31.50, post on checking:
+        Wants 200.00 - 31.50 = 168.50
+
+Step 2. The bank shows the same tickets a second time, as a new charge:
+        Wants 168.50 - 31.50 = 137.00
+
+Step 3. Two days later the bank takes the copy back. The app takes it back
+        too, and its 31.50 goes back to wants. The change log records it,
+        and an alert tells you what was taken back:
+        Wants 137.00 + 31.50 = 168.50
+
+Check: wants 168.50 | unsorted spending 0.00 | taken back 31.50
+
+
+========================================================================
+EXAMPLE 22. A transfer the bank shows as something else (rules 5.6, 5.3, 12.5; A12)
+========================================================================
+
+Before: Needs 500.00.
+
+Step 1. You move 250.00 from checking to savings, but the bank shows the
+        money leaving checking as a 250.00 charge, and no rule knows it:
+        Unsorted spending 0.00 + 250.00 = 250.00
+
+Step 2. You mark it as a transfer to savings. No bucket changes (5.3), and
+        it is on its way until the bank shows it arriving (12.5):
+        Unsorted spending 250.00 - 250.00 = 0.00
+        In transit 250.00
+
+Step 3. The next day savings shows a 250.00 deposit. You mark it as a
+        transfer from checking, and the two halves pair up:
+        Unsorted money in 250.00 - 250.00 = 0.00
+        In transit 250.00 - 250.00 = 0.00
+        Needs is 500.00 the whole time.
+
+Check: needs 500.00 | unsorted spending 0.00 | unsorted money in 0.00 | in transit after the first half 250.00 | in transit 0.00
+
+
+========================================================================
+EXAMPLE 23. A payment for mom, and one split three ways (rules 7.6, 8.2, 8.3, 7.3; B20)
+========================================================================
+
+Before: Needs 400.00, wants 150.00, mom reserve 250.00, held for others
+        0.00.
+
+Step 1. You send 300.00 to your aunt, for mom. No rule knows your aunt, so
+        it waits in review, and you sort it "for mom". It comes out of the
+        mom reserve as far as the reserve goes, and counts toward this
+        month's money to mom (8.2):
+        From the reserve: 250.00 of the 300.00
+        Mom reserve 250.00 - 250.00 = 0.00
+        Sent to mom this month: 300.00
+        The other 50.00 waits for you to pick a bucket (8.3).
+
+Step 2. You put the 50.00 in needs:
+        Needs 400.00 - 50.00 = 350.00
+
+Step 3. You pay a friend 90.00 for a dinner and groceries. You split it:
+        30.00 was your dinner (wants), 15.00 your share of the groceries
+        (needs), and 45.00 your roommate owes you back (not mine, 7.6):
+        Wants 150.00 - 30.00 = 120.00
+        Needs 350.00 - 15.00 = 335.00
+        Held for others 0.00 - 45.00 = -45.00, which means someone owes
+        you 45.00 (7.3).
+
+Check: needs 335.00 | wants 120.00 | mom reserve 0.00 | held for others -45.00 | sent to mom 300.00 | unsorted spending 0.00
+
+
+========================================================================
+EXAMPLE 24. A purchase from before payday that shows up after it (rules 3.4, 4.1; B4)
+========================================================================
+
+Before: Savings 1,000.00, needs 300.00, wants 120.00, mom reserve
+        3,000.00 (at its cap). Needs rolls over at payday; for wants the
+        app asks. A rule sends "MADE UP CAFE" to wants.
+
+Step 1. Friday Oct 9 is payday: 2,000.00. The reserve is at its cap, so
+        its 1,500.00 goes to savings (3.2). The other 500.00 is split:
+        Needs 30% = 150.00, wants 20% = 100.00, savings 50% = 250.00
+        Savings 1,000.00 + 1,500.00 + 250.00 = 2,750.00
+        Needs 300.00 + 150.00 = 450.00
+        Wants 120.00 + 100.00 = 220.00
+        The question: wants had 120.00 left at payday. Roll it over, or
+        move it to savings?
+
+Step 2. On Saturday, a 45.00 cafe charge from Thursday, before payday,
+        shows up. It comes out of wants on the day it was made (4.1), so
+        the question was asking about too much. It now asks about
+        120.00 - 45.00 = 75.00 (never below zero):
+        Wants 220.00 - 45.00 = 175.00
+
+Step 3. You answer "move to savings". 75.00 moves:
+        Wants 175.00 - 75.00 = 100.00
+        Savings 2,750.00 + 75.00 = 2,825.00
+
+Check: savings 2,825.00 | needs 450.00 | wants 100.00 | moved to savings 75.00

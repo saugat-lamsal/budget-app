@@ -11,6 +11,8 @@
 //   node scripts/break-it.mjs --restore          only put back files a stopped run left broken
 //   node scripts/break-it.mjs --only <test file> judge every break by that one test file,
 //                                                to see what it catches on its own
+//   node scripts/break-it.mjs --match <pattern>  only breaks whose reason matches the pattern
+//                                                (a regular expression), such as "A14"
 //
 // Exits non-zero if any break survives (no test failed) or cannot be applied,
 // or if the tests fail before anything is broken.
@@ -24,8 +26,11 @@ const breaks = lists.filter((list) => existsSync(new URL(list, root))).flatMap((
 const args = process.argv.slice(2);
 const onlyAt = args.indexOf('--only');
 const only = onlyAt === -1 ? undefined : args[onlyAt + 1];
-const sections = args.filter((arg, i) => arg !== '--restore' && (onlyAt === -1 || (i !== onlyAt && i !== onlyAt + 1)));
-const chosen = sections.length === 0 ? breaks : breaks.filter((b) => sections.includes(String(b.section)));
+const matchAt = args.indexOf('--match');
+const match = matchAt === -1 ? undefined : new RegExp(args[matchAt + 1] ?? '');
+const sections = args.filter((arg, i) => arg !== '--restore' && !(onlyAt !== -1 && (i === onlyAt || i === onlyAt + 1)) && !(matchAt !== -1 && (i === matchAt || i === matchAt + 1)));
+const bySection = sections.length === 0 ? breaks : breaks.filter((b) => sections.includes(String(b.section)));
+const chosen = match === undefined ? bySection : bySection.filter((b) => match.test(b.why));
 
 // While a break is applied, the untouched file is also kept next to it as
 // <file>.break-it-backup. If a run is killed before it can restore the file,

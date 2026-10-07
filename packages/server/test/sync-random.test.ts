@@ -14,7 +14,9 @@ import { SETTINGS, SETUP_DAY, SORTING_RULES, book, connected, status, type Harne
 //   worked out here from the made-up bank and not from the app;
 // - every bucket adds up again from scratch, and the old card debt matches
 //   the old card;
-// - nothing the bank sent waits for a decision (every item is understood);
+// - nothing the bank sent waits for a decision (every item is understood,
+//   and the app follows the bank when it changes or takes back something
+//   already counted: A13, A14);
 // - a transfer between his own accounts never changes a bucket;
 // - however the syncs fell, both copies end with the same money.
 // A failure names its seed: SEED=n replays one.
@@ -88,6 +90,10 @@ function scenario(seed: number, activeDays: number, quietDays: number): Scenario
           pendingPurchases.add(tx);
           at(day, (f) => f.addPending({ id: tx, account, amount: cents, date, description }));
           const later = day + 1 + Math.floor(r() * 3);
+          // A13: now and then the amount changes while it is still pending,
+          // the day before it posts or drops (maybe the day it showed up).
+          const changed = chance(0.2) ? 1 + Math.floor(r() * 20_000) : null;
+          if (changed !== null) at(later - 1, (f) => f.modify(tx, { amount: changed }));
           const end = r();
           const final = chance(0.3) ? cents + 1 + Math.floor(r() * 2_000) : cents;
           const inPlace = chance(0.5) ? { amount: cents + 100 } : {};
@@ -98,6 +104,13 @@ function scenario(seed: number, activeDays: number, quietDays: number): Scenario
         } else {
           const authorizedDate = chance(0.3) ? addDays(date, -1) : date;
           at(day, (f) => f.addPosted({ id: tx, account, amount: cents, date, description, authorizedDate }));
+          // A14: now and then the bank takes it back (a copy shown twice, say),
+          // or corrects its amount.
+          const fate = r();
+          const when = day + 1 + Math.floor(r() * 3);
+          const fixed = 1 + Math.floor(r() * 20_000);
+          if (fate < 0.08) at(when, (f) => f.removePosted(tx, { keepBalance: false }));
+          else if (fate < 0.16) at(when, (f) => f.modify(tx, { amount: fixed }));
         }
       } else if (roll < 0.47) {
         // Something on the old card: a purchase (5.4) or interest (5.5).
@@ -109,6 +122,7 @@ function scenario(seed: number, activeDays: number, quietDays: number): Scenario
         const tx = id('ref');
         const cents = amount();
         at(day, (f) => f.addPosted({ id: tx, account: E, amount: -cents, date, description: 'STORE RETURN' }));
+        if (chance(0.1)) at(day + 1 + Math.floor(r() * 2), (f) => f.removePosted(tx, { keepBalance: false }));
       } else if (roll < 0.55) {
         const tx = id('int');
         const cents = amount();
@@ -125,15 +139,17 @@ function scenario(seed: number, activeDays: number, quietDays: number): Scenario
           at(day, (f) => f.addPosted({ id: tx, account, amount: -cents, date, description: 'MOBILE DEPOSIT' }));
         }
       } else if (roll < 0.7) {
-        // A payment to mom or a friend, sometimes pending first.
+        // A payment to mom or a friend, sometimes pending first, now and then
+        // from savings (A16).
         const tx = id('zel');
         const description = chance(0.5) ? 'Zelle payment to MOM MADEUP' : 'Zelle payment to FRIEND MADEUP';
+        const account = chance(0.2) ? S : C;
         const cents = amount();
         if (chance(0.3)) {
-          at(day, (f) => f.addPending({ id: tx, account: C, amount: cents, date, description }));
+          at(day, (f) => f.addPending({ id: tx, account, amount: cents, date, description }));
           at(day + 1, (f) => f.postInPlace(tx, { date: dateOf(day + 1) }));
         } else {
-          at(day, (f) => f.addPosted({ id: tx, account: C, amount: cents, date, description }));
+          at(day, (f) => f.addPosted({ id: tx, account, amount: cents, date, description }));
         }
       } else if (roll < 0.92) {
         // A transfer between his accounts, as two halves, the landing up to
@@ -155,6 +171,11 @@ function scenario(seed: number, activeDays: number, quietDays: number): Scenario
         const landDay = lag < 0 ? day : day + lag;
         at(leaveDay, (f) => f.addPosted({ id: out, account: from, amount: cents, date: dateOf(leaveDay), description: leaves }));
         at(landDay, (f) => f.addPosted({ id: into, account: to, amount: -cents, date: dateOf(landDay), description: lands }));
+      } else if (roll < 0.95) {
+        // A bill paid straight from savings: spending to sort (4.9, A16).
+        const tx = id('bill');
+        const cents = amount();
+        at(day, (f) => f.addPosted({ id: tx, account: S, amount: cents, date, description: 'BILL PAY MADE UP INSURANCE' }));
       } else {
         // The bank tidies up a description: nothing changes in the book.
         const tx = id('tidy');
