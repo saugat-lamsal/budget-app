@@ -1,5 +1,6 @@
-# TEMPORARY: finds out why WebKit on Linux sometimes leaves Home loading
-# (scripts/webkit-probe.mjs). Removed once it has answered.
+# TEMPORARY: checks the fix for Home staying in loading on WebKit on Linux
+# by running the browser tests five times over. Removed once it has
+# answered.
 name: WebKit probe
 
 on:
@@ -21,11 +22,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps webkit
-      - run: node scripts/demo.mjs --build-only
-      - run: node scripts/webkit-probe.mjs 60
-      # The real browser tests, three times over, to see how often they stall.
+      - run: npx playwright install --with-deps chromium webkit
       - run: |
-          for run in 1 2 3; do
-            npx vitest run --project web-browser --reporter=dot || echo "run $run FAILED"
+          failed=0
+          for run in 1 2 3 4 5; do
+            npx vitest run --project web-browser --reporter=dot || { echo "run $run FAILED"; failed=$((failed + 1)); }
           done
+          echo "$failed of 5 runs failed"
+          test "$failed" -eq 0
