@@ -20,3 +20,6 @@ data/
 
 # Left by scripts/break-it.mjs while a break is applied.
 *.break-it-backup
+
+# Pictures of the screens (npm run screenshots); they go in pull requests, not in git.
+screenshots/

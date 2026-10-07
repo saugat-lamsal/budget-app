@@ -10,14 +10,18 @@
     "test": "npm run typecheck && vitest run",
     "test:watch": "vitest",
     "test:sandbox": "vitest run --config packages/server/vitest.live.config.ts --silent=false",
-    "typecheck": "tsc -p tsconfig.json && npm run typecheck --workspaces --if-present"
+    "typecheck": "tsc -p tsconfig.json && npm run typecheck --workspaces --if-present",
+    "demo": "node scripts/demo.mjs",
+    "screenshots": "node scripts/screenshots.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
   },
   "devDependencies": {
     "@types/node": "22.20.5",
+    "axe-core": "4.14.0",
     "fast-check": "4.10.2",
+    "playwright": "1.63.0",
     "typescript": "7.0.2",
     "vite": "8.3.3",
     "vitest": "5.0.3"

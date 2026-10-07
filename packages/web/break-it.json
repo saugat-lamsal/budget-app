@@ -1,0 +1,555 @@
+[
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/money-format.ts",
+    "find": "return cents < 0 ? `${MINUS}${plain}` : plain;",
+    "replace": "return plain;",
+    "why": "0.1 drop the minus sign from negative amounts"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/money-format.ts",
+    "find": "return cents < 0 ? `${MINUS}${plain}` : plain;",
+    "replace": "return cents < 0 ? `-${plain}` : plain;",
+    "why": "0.1 write negatives with a hyphen, not a real minus sign"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/money-format.ts",
+    "find": "return cents < 0 ? `minus ${plain}` : plain;",
+    "replace": "return plain;",
+    "why": "0.1 a screen reader does not hear minus"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": ".money {\n  font-variant-numeric: tabular-nums;",
+    "replace": ".money {\n  font-variant-numeric: normal;",
+    "why": "design: digits no longer line up"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "      aria-label={negative ? moneyWords(cents) : undefined}\n",
+    "replace": "",
+    "why": "0.1 negative amounts lose their spoken minus"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/bar-fill.ts",
+    "find": "if (left <= 0) return 0;",
+    "replace": "if (left < 0) return 0;",
+    "why": "10.2 an empty bucket that started at zero shows a full bar"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/bar-fill.ts",
+    "find": "return left / startedWith;",
+    "replace": "return startedWith / left;",
+    "why": "10.1 the bar fills the wrong way"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "{level !== 'ok' && <StatusLabel status={level} />}",
+    "replace": "{level === 'empty' && <StatusLabel status={level} />}",
+    "why": "10.1 a low bucket no longer says Low"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "{level !== 'ok' && <StatusLabel status={level} />}",
+    "replace": "",
+    "why": "10.1 10.2 low and empty shown by color only"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "level: bucketLevel(left, startedWith, settings.lowBucketAlertPercent)",
+    "replace": "level: bucketLevel(left, startedWith, 20)",
+    "why": "10.1 the bars ignore the alert percent setting"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "wants: bar(pots.wants, started.wants)",
+    "replace": "wants: bar(pots.wants, started.needs)",
+    "why": "10.1 wants measured against what needs started with"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "safeToSpend = checked.ok ? { shown: true, amount: checked.safeToSpend.amount } : { shown: false, why: 'totals-do-not-match', check: book.selfCheck(bank) };",
+    "replace": "safeToSpend = { shown: true, amount: plain.amount };",
+    "why": "0.5 show safe to spend even when the totals do not match"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "if (bank === null) safeToSpend = { shown: false, why: 'bank-not-read', lastChecked: checkedLastChecked(input.lastChecked) };",
+    "replace": "if (bank === null) safeToSpend = { shown: true, amount: plain.amount };",
+    "why": "0.5 show safe to spend when the bank cannot be read"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "why: 'bank-not-read', lastChecked: checkedLastChecked(input.lastChecked) };",
+    "replace": "why: 'bank-not-read', lastChecked: null };",
+    "why": "0.5 forget the last checked safe to spend (B82)"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "if (!ISO_TIME.test(last.at) || Number.isNaN(Date.parse(last.at)))",
+    "replace": "if (Number.isNaN(Date.parse(last.at)))",
+    "why": "0.5 take a last-checked time with no time of day or offset"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "<Money cents={safeToSpend.lastChecked.amount} hero stale testId=\"safe-to-spend-stale\" />",
+    "replace": "<Money cents={safeToSpend.lastChecked.amount} hero testId=\"safe-to-spend-stale\" />",
+    "why": "0.5 the last checked number is not greyed (B82)"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": ".money.money--stale {\n  color: var(--text-2);",
+    "replace": ".money.money--stale {\n  color: inherit;",
+    "why": "0.5 greyed numbers are not grey"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/dates.ts",
+    "find": "...(timeZone === undefined ? {} : { timeZone })",
+    "replace": "timeZone: 'UTC'",
+    "why": "0.5 as of in UTC, not the phone's time zone"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "Off by <Money cents={Math.abs(safeToSpend.check.difference)} testId=\"mismatch-amount\" />",
+    "replace": "Off by <Money cents={safeToSpend.check.difference} testId=\"mismatch-amount\" />",
+    "why": "12.3 \"off by\" shows a minus sign"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "{safeToSpend.check.difference > 0 ? 'more' : 'less'}",
+    "replace": "{safeToSpend.check.difference < 0 ? 'more' : 'less'}",
+    "why": "12.3 say more when the bank shows less"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "<Money cents={check.inTransit} testId=\"check-transit\" />",
+    "replace": "<Money cents={check.bankSide} testId=\"check-transit\" />",
+    "why": "12.5 the sheet shows the bank side as money in transit"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": ".banner {\n  display: flex;",
+    "replace": ".banner {\n  display: none;",
+    "why": "0.5 the mismatch banner is hidden"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "payday: { next: plain.nextPayday, days: plain.daysToPayday },",
+    "replace": "payday: { next: plain.nextPayday, days: Math.max(0, plain.daysToPayday) },",
+    "why": "11.2 a late paycheck shows as payday today (B35)"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/home-text.ts",
+    "find": "if (days === 0) return 'Payday is today';",
+    "replace": "",
+    "why": "11.2 payday says 0 days to payday"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/home-text.ts",
+    "find": "return `${days} ${days === 1 ? 'day' : 'days'} to payday`;",
+    "replace": "return `${days + 1} ${days === 1 ? 'day' : 'days'} to payday`;",
+    "why": "11.2 one day off"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "if (waitingInReview > 0) attention.push",
+    "replace": "if (waitingInReview > 1) attention.push",
+    "why": "10.3 one item waiting is not shown"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "waiting: waitingInReview, heldBack: pots.unsortedOut });",
+    "replace": "waiting: waitingInReview, heldBack: pots.unsortedIn });",
+    "why": "4.3 held back shows money in, not spending"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "if (move.stillToMove > 0) {",
+    "replace": "if (move.stillToMove >= 0) {",
+    "why": "3.8 show $0.00 to move"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "if (input.needsLogin) attention.push({ kind: 'bank-login' });",
+    "replace": "",
+    "why": "10.5 bank login never shown"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "daysLeft: c.daysLeft, statementBalance: c.statementBalance,",
+    "replace": "daysLeft: c.daysLeft, statementBalance: c.minimumPayment,",
+    "why": "9.1 the statement balance shows the minimum"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "if (c.kind === 'overdue') attention.push",
+    "replace": "if (c.kind === 'due') attention.push",
+    "why": "9.4 overdue cards not shown"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "if (entry.kind === 'bank-took-back' && !input.seenTakeBacks.has(entry.id)) {",
+    "replace": "if (entry.kind === 'bank-took-back') {",
+    "why": "10.6 a take-back stays after he has seen it (B84)"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/views/home.ts",
+    "find": "if (entry.kind === 'bank-took-back' && !input.seenTakeBacks.has(entry.id)) {",
+    "replace": "if (entry.kind === 'bank-took-back' && input.seenTakeBacks.size === 0) {",
+    "why": "10.6 seeing one take-back hides them all"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "              close();\n              onChanged();",
+    "replace": "              close();",
+    "why": "10.6 Got it does not refresh Home"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/api.ts",
+    "find": "if (!response.ok) throw new Error(`marking it seen answered ${response.status}`);",
+    "replace": "",
+    "why": "10.6 a failed Got it looks saved"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "left of <Money cents={startedWith}",
+    "replace": "<Money cents={startedWith}",
+    "why": "10.1 the bar no longer says left of"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "left of <Money cents={startedWith}",
+    "replace": "left of <Money cents={left}",
+    "why": "10.1 left of shows what is left, not the start"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/http/server.ts",
+    "find": "if (type !== 'application/json') {",
+    "replace": "if (false) {",
+    "why": "safety: seen takes a form post from another site"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/http/server.ts",
+    "find": "if ((site !== undefined && site !== 'same-origin') || (origin !== undefined && origin !== `http://${host}` && origin !== `https://${host}`)) {",
+    "replace": "if (false) {",
+    "why": "safety: seen takes a request from another site"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/http/server.ts",
+    "find": "const SEEN_LIMIT = 1024;",
+    "replace": "const SEEN_LIMIT = 1_000_000;",
+    "why": "safety: seen reads a body of any size"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/http/server.ts",
+    "find": "return keys.join() === 'id,kind' && kind === 'bank-took-back'",
+    "replace": "return kind === 'bank-took-back'",
+    "why": "safety: seen takes extra fields"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/http/server.ts",
+    "find": "  if (!(await seen(request, what))) {",
+    "replace": "  if (!(await seen(request, what)) && false) {",
+    "why": "10.6 an unknown take-back looks marked seen"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/demo/demo-server.ts",
+    "find": "      seenIn.delete(picked);\n",
+    "replace": "",
+    "why": "demo: picking a life again keeps what was seen"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/demo/demo-server.ts",
+    "find": "      if (known) seenOf(scenario).add(what.id);\n      return known;",
+    "replace": "      seenOf(scenario).add(what.id);\n      return true;",
+    "why": "demo: marks any id seen"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/home-text.ts",
+    "find": "if (daysLeft === 0) return 'due today';",
+    "replace": "",
+    "why": "9.1 a reminder on the due date says due in 0 days"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/TabBar.tsx",
+    "find": "tab === 'review' && waitingInReview > 0 ? waitingInReview : null",
+    "replace": "tab === 'review' && waitingInReview > 1 ? waitingInReview : null",
+    "why": "10.3 no badge for one item"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/routes.ts",
+    "find": "const name = pathname.replace(/\\/$/, '').slice(1);",
+    "replace": "const name = pathname.slice(1);",
+    "why": "an address with a slash at the end is not its tab"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/App.tsx",
+    "find": "window.history.pushState(null, '', pathOf(next));",
+    "replace": "window.history.replaceState(null, '', pathOf(next));",
+    "why": "Back no longer goes to the last tab"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/App.tsx",
+    "find": "window.history.pushState(null, '', pathOf(next));",
+    "replace": "",
+    "why": "changing tabs does not change the address"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/main.tsx",
+    "find": "if (tabOf(window.location.pathname) === null) window.history.replaceState(null, '', pathOf('home'));",
+    "replace": "",
+    "why": "the bare address does not say /home"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/http/server.ts",
+    "find": "['/', '/home', '/buckets', '/review', '/settings']",
+    "replace": "['/', '/home', '/buckets', '/settings']",
+    "why": "a refresh on Review is not found"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/tokens.css",
+    "find": "  --text-2: #5c5c63;",
+    "replace": "  --text-2: #a3a3aa;",
+    "why": "design: grey text too faint to read in light mode"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/tokens.css",
+    "find": "    --text-2: #a3a3aa;",
+    "replace": "    --text-2: #4a4a50;",
+    "why": "design: grey text too faint to read in dark mode"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/tokens.css",
+    "find": "    --bg: #000000;",
+    "replace": "    --bg: #f2f2f7;",
+    "why": "design: dark mode ignored"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": "  gap: var(--space-2);\n  min-height: var(--tap);\n  min-width: var(--tap);",
+    "replace": "  gap: var(--space-2);\n  min-height: 32px;\n  min-width: 32px;",
+    "why": "design: buttons smaller than 44 points"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": "  width: 100%;\n  min-height: var(--tap);\n  padding: var(--space-3) var(--space-4);",
+    "replace": "  width: 100%;\n  min-height: 20px;\n  padding: 2px var(--space-4);",
+    "why": "design: list rows smaller than 44 points"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": "calc(var(--safe-top) + var(--space-3))",
+    "replace": "var(--space-3)",
+    "why": "design: the screen starts under the notch"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": "padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);",
+    "replace": "padding: 0 var(--safe-right) 0 var(--safe-left);",
+    "why": "design: the tab bar sits on the home bar"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": "  height: var(--safe-top);\n  background: var(--bg);",
+    "replace": "  height: var(--safe-top);\n  background: transparent;",
+    "why": "design: the screen scrolls into the clock and battery"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/tokens.css",
+    "find": "  --tabbar-bg: #f9f9fb;",
+    "replace": "  --tabbar-bg: rgb(249 249 251 / 0.5);",
+    "why": "design: the screen shows through the tab bar"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/base.css",
+    "find": "    animation: none !important;\n",
+    "replace": "",
+    "why": "design: the sheet still slides with reduced motion on"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": "font-size: min(var(--text-hero), calc((100vw - 2 * var(--gutter) - var(--safe-left) - var(--safe-right)) / (var(--chars, 9) * 0.62)));",
+    "replace": "font-size: var(--text-hero);",
+    "why": "design: a big number runs off the screen at a large text size"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/base.css",
+    "find": "  font-size: 106.25%;",
+    "replace": "  font-size: 17px;",
+    "why": "design: text ignores the phone's text size"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/TabBar.tsx",
+    "find": "{badge !== null && <span className=\"sr-only\">, {badge} waiting</span>}",
+    "replace": "",
+    "why": "design: a screen reader does not hear how many wait"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/api.ts",
+    "find": "    if (inFlight.current) return;\n",
+    "replace": "",
+    "why": "loading: a second request while one is on its way"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/api.ts",
+    "find": "      else if (wasHidden) {",
+    "replace": "      else {",
+    "why": "loading: the page saying it is visible as it opens loads again"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/api.ts",
+    "find": "export const TIME_LIMIT_MS = 15_000;",
+    "replace": "export const TIME_LIMIT_MS = 150_000;",
+    "why": "loading: no answer keeps Home loading far too long"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/api.ts",
+    "find": "      if (settled) return;\n",
+    "replace": "",
+    "why": "loading: a late answer replaces the error"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/api.ts",
+    "find": "    setLoad((current) => (current.status === 'ready' ? current : { status: 'loading' }));",
+    "replace": "    setLoad({ status: 'loading' });",
+    "why": "loading: the numbers disappear while they are fetched again"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/api.ts",
+    "find": "if (!response.ok) throw new Error(`Home answered ${response.status}`);",
+    "replace": "",
+    "why": "an error from the server is shown as numbers"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "aria-busy={load.status === 'loading'}",
+    "replace": "aria-busy={false}",
+    "why": "loading is not announced"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/http/server.ts",
+    "find": "if (!file.startsWith(webRoot + sep) || path.includes('\\0')) {",
+    "replace": "if (path.includes('\\0')) {",
+    "why": "safety: serve files outside the app folder"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/http/server.ts",
+    "find": "if (request.method !== 'GET' && request.method !== 'HEAD') {",
+    "replace": "if (request.method === 'DELETE') {",
+    "why": "0.4 the server accepts writes"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/http/server.ts",
+    "find": "JSON.stringify({ error: 'home-unavailable' })",
+    "replace": "JSON.stringify({ error: String(error) })",
+    "why": "safety: error details reach the phone"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/http/server.ts",
+    "find": "script-src 'self'; style-src 'self';",
+    "replace": "script-src 'self' 'unsafe-inline'; style-src 'self';",
+    "why": "safety: inline scripts allowed"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/http/server.ts",
+    "find": "JSON.stringify(view), 'no-store');",
+    "replace": "JSON.stringify(view), 'public, max-age=3600');",
+    "why": "safety: the numbers are kept by the browser"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/demo/demo-server.ts",
+    "find": "return { host: wifi ? '0.0.0.0' : '127.0.0.1', port, wifi };",
+    "replace": "return { host: '0.0.0.0', port, wifi };",
+    "why": "safety: the demo is open to the wifi without asking"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/demo/scenarios.ts",
+    "find": "subtractCents(shouldBeInSavings, x(135_000))",
+    "replace": "subtractCents(shouldBeInSavings, x(135_001))",
+    "why": "3.8 the made-up savings account is a cent off the worked example"
+  },
+  {
+    "section": "home",
+    "file": "packages/server/src/demo/scenarios.ts",
+    "find": "    madeUpData: true,\n    seenTakeBacks: new Set(),\n    lastChecked: s.bankNotRead",
+    "replace": "    madeUpData: false,\n    seenTakeBacks: new Set(),\n    lastChecked: s.bankNotRead",
+    "why": "safety: made-up numbers do not say so"
+  }
+]

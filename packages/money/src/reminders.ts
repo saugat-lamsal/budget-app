@@ -48,26 +48,8 @@ export type CardNotice =
     };
 
 export function cardNotices(today: IsoDate, statement: CardStatement, payments: readonly CardPayment[], settings: Settings): CardNotice[] {
-  assertIsoDate(today, 'today');
-  checkStatement(statement);
-  const { card, closingDate, dueDate, statementBalance, minimumPayment } = statement;
-  // 9.3: what has to be paid for the reminders to stop. On the everyday card
-  // that is the full statement balance (paying less means interest on the
-  // rest); on the old card it is the minimum.
-  const toPay = card === 'everyday-card' ? statementBalance : minimumPayment;
-  // Payments the app has seen for this statement. A payment belongs to the
-  // statement whose date it reached the card after, the way the card applies
-  // it; one still on its way will land after it. It counts as seen from the
-  // day it left (12.5).
-  const seen = payments.filter((p) => {
-    assertIsoDate(p.date, 'payment date');
-    assertCents(p.amount, 'payment amount');
-    const landed = p.landedOn === undefined ? p.date : p.landedOn;
-    if (landed !== null) assertIsoDate(landed, 'landing date');
-    const forThisStatement = landed === null || daysBetween(closingDate, landed) > 0;
-    return forThisStatement && daysBetween(p.date, today) >= 0;
-  });
-  const paid = addCents(0, ...seen.map((p) => p.amount));
+  const { card, dueDate, statementBalance, minimumPayment } = statement;
+  const { paid, toPay } = paidAgainst(today, statement, payments);
   const daysLeft = daysBetween(today, dueDate);
   if (daysLeft < 0) {
     // 9.4: the due date passed and the payments since the statement add up
@@ -82,6 +64,57 @@ export function cardNotices(today: IsoDate, statement: CardStatement, payments: 
   return card === 'everyday-card'
     ? [{ kind: 'reminder', card, daysBefore: daysLeft, dueDate, statementBalance, minimumPayment }]
     : [{ kind: 'reminder', card, daysBefore: daysLeft, dueDate, minimumPayment }];
+}
+
+// What the app has seen paid toward a statement, and what has to be paid
+// for the reminders to stop (9.3). On the everyday card that is the full
+// statement balance (paying less means interest on the rest); on the old
+// card it is the minimum.
+function paidAgainst(today: IsoDate, statement: CardStatement, payments: readonly CardPayment[]): { readonly paid: Cents; readonly toPay: Cents } {
+  assertIsoDate(today, 'today');
+  checkStatement(statement);
+  const { card, closingDate, statementBalance, minimumPayment } = statement;
+  // Payments the app has seen for this statement. A payment belongs to the
+  // statement whose date it reached the card after, the way the card applies
+  // it; one still on its way will land after it. It counts as seen from the
+  // day it left (12.5).
+  const seen = payments.filter((p) => {
+    assertIsoDate(p.date, 'payment date');
+    assertCents(p.amount, 'payment amount');
+    const landed = p.landedOn === undefined ? p.date : p.landedOn;
+    if (landed !== null) assertIsoDate(landed, 'landing date');
+    const forThisStatement = landed === null || daysBetween(closingDate, landed) > 0;
+    return forThisStatement && daysBetween(p.date, today) >= 0;
+  });
+  return { paid: addCents(0, ...seen.map((p) => p.amount)), toPay: card === 'everyday-card' ? statementBalance : minimumPayment };
+}
+
+// Rule 9.6 (QUESTIONS.md A17): what Home shows about a card payment. Due on
+// every day from the first reminder day through the due date, until the
+// payments seen add up to what 9.3 asks for; past the due date, overdue as
+// in 9.4. The phone reminders still come only on the reminder days.
+export type CardDue =
+  | {
+      readonly kind: 'due';
+      readonly card: 'everyday-card';
+      readonly daysLeft: number;
+      readonly dueDate: IsoDate;
+      readonly statementBalance: Cents;
+      readonly minimumPayment: Cents;
+    }
+  | { readonly kind: 'due'; readonly card: 'old-card'; readonly daysLeft: number; readonly dueDate: IsoDate; readonly minimumPayment: Cents }
+  | { readonly kind: 'overdue'; readonly card: 'everyday-card' | 'old-card'; readonly dueDate: IsoDate; readonly minimumPayment: Cents };
+
+export function cardDue(today: IsoDate, statement: CardStatement, payments: readonly CardPayment[], settings: Settings): CardDue | null {
+  const { card, dueDate, statementBalance, minimumPayment } = statement;
+  const { paid, toPay } = paidAgainst(today, statement, payments);
+  const daysLeft = daysBetween(today, dueDate);
+  if (daysLeft < 0) return paid < minimumPayment ? { kind: 'overdue', card, dueDate, minimumPayment } : null;
+  const firstReminder = Math.max(-1, ...settings.cardReminderDaysBefore);
+  if (daysLeft > firstReminder || paid >= toPay) return null;
+  return card === 'everyday-card'
+    ? { kind: 'due', card, daysLeft, dueDate, statementBalance, minimumPayment }
+    : { kind: 'due', card, daysLeft, dueDate, minimumPayment };
 }
 
 function checkStatement(statement: CardStatement): void {

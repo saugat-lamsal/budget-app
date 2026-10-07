@@ -72,13 +72,15 @@ export {
   type StartingPots,
 } from './book.js';
 export {
+  cardDue,
   cardNotices,
   payoffCountdown,
+  type CardDue,
   type CardNotice,
   type CardPayment,
   type CardStatement,
   type PayoffCountdown,
 } from './reminders.js';
-export type { Alert, AlertInput } from './alerts.js';
+export { bucketLevel, type Alert, type AlertInput, type BucketLevel } from './alerts.js';
 export { bankSide, withPendingCharges, type BankBalances, type PendingCharge } from './self-check.js';
 export { startTracking, startingMoney, type SetupInput, type SetupResult } from './setup.js';

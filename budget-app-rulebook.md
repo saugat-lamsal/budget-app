@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 9)
+# Budget App Rulebook (draft 10)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -12,7 +12,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
 0.3  Changing a setting never rewrites a past pay period.
 0.4  The app is read-only. It never moves money.
 0.5  If the app's totals do not match the bank, it says so instead of showing
-     a number it cannot back up.
+     a number it cannot back up. If the bank cannot be read, Home shows the
+     last safe to spend that the bank backed up, greyed, with the day and
+     time it was checked.
 
 
 ## 1. Accounts (all Bank of America, one connection)
@@ -207,6 +209,10 @@ number so a test can point at it. Nothing gets coded until you approve this.
      paydays after today and before the end date, not on it. Each share is
      rounded up to the cent. With no paydays left, all of it is due now.
      With nothing owed, $0.
+9.6  Home shows a card payment as due every day from the first reminder day
+     until the payments the app sees add up to what 9.3 asks for. After the
+     due date, it shows overdue as in 9.4. The reminders on your phone still
+     come only on the reminder days.
 
 
 ## 10. Alerts
@@ -226,7 +232,8 @@ number so a test can point at it. Nothing gets coded until you approve this.
 10.4  Totals do not match the bank (section 12).
 10.5  Bank connection needs you to log in again.
 10.6  The bank took back a transaction the app had counted (4.10). Once,
-      when it happens.
+      when it happens. On Home it stays in Needs attention until you mark it
+      seen.
 
 
 ## 11. Safe to spend
@@ -407,3 +414,15 @@ f.  A purchase from before payday that shows up after it lowers the open
 g.  "For mom" is a review choice for payments to people, and a payment to
     a person can be split across needs, wants, and not mine (7.6,
     QUESTIONS.md B20 and B26).
+
+
+## 21. Answers to the Phase 4 questions (Oct 7, 2026)
+
+a.  Home shows a card payment as due every day from the first reminder
+    day until it is paid, not only on the reminder days (9.6,
+    QUESTIONS.md A17).
+b.  A transaction the bank took back stays in Needs attention on Home
+    until you mark it seen (10.6, QUESTIONS.md B84).
+c.  When the bank cannot be read, Home shows the last checked safe to
+    spend, greyed, with the day and time it was checked (0.5,
+    QUESTIONS.md B82).

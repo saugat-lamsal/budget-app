@@ -112,13 +112,37 @@ This applies to every phase and every session, cloud or local.
 - When something needs a decision, give the options and a recommendation.
 
 
+## Design rules (Phase 4 onward)
+
+- Built for an iPhone first. Respect the notch and the home bar. Tap
+  targets are at least 44 points. Bottom tab bar: Home, Buckets, Review,
+  Settings.
+- Clean and modern, not flashy. System font, plenty of spacing, one accent
+  color, subtle motion only. No charts yet.
+- Light and dark mode, following the phone's setting.
+- One main number per screen. On Home it is safe to spend.
+- Money is always formatted the same way, digits aligned, negatives
+  obvious.
+- Color is never the only signal. Low, empty, overdue, and mismatch states
+  also use words or an icon.
+- Every screen has a loading state, an empty state, and an error state. The
+  "totals do not match the bank" state is impossible to miss.
+- Anything final or hard to undo asks first, such as "this is my paycheck".
+- Readable contrast. The screens respect the phone's text size and
+  reduced-motion settings.
+- One shared set of building blocks (colors, type, spacing, card, list row,
+  button, bucket bar, bottom sheet) is used on every screen. No screen
+  makes up its own.
+
+
 ## Status
 
-- Rulebook: draft 9. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 10. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
-  Phase 3 questions (A12 to A16, B4, B20).
+  Phase 3 questions (A12 to A16, B4, B20), section 21 his answers to the
+  Phase 4 questions (A17, B82, B84: rules 0.5, 9.6, 10.6).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -215,6 +239,45 @@ This applies to every phase and every session, cloud or local.
     charges are pending, charges a purchase twice and takes the copy back,
     shows transfers as spending and a deposit for him to mark, and pays
     people "for mom" or split three ways.
-- Next: Phase 4 when he says go.
+- PR #6 merged (Oct 7, 2026).
+- Phase 4 (the screens), started Oct 7, 2026 on branch
+  phase-4-design-and-home. Design rules above (his list). Framework (his
+  OK, with his changes): React + Vite in packages/web, plain CSS from one
+  set of tokens, Playwright browser tests in Chromium and WebKit, the
+  current tab in the address.
+  - Step 3, the shared building blocks and Home on made-up data: built.
+    He OK'd the look (Oct 7) and asked for: "left of $X" under each bucket
+    amount; A17 option 2 (rule 9.6); a take-back on Home until seen (10.6,
+    the screens' one request that sends anything, POST /api/seen); and the
+    last checked safe to spend, greyed, "as of", when the bank cannot be
+    read (0.5). All built. Then stop, before he merges.
+  - packages/web/src/ui: tokens.css (colors, type, spacing, motion, safe
+    areas), blocks.tsx (Money, Card, ListRow, Button, StatusLabel,
+    BucketBar, Banner, BottomSheet, StateMessage), TabBar. Screens use
+    only these.
+  - The screens never work money out. packages/server/src/views/home.ts
+    builds Home from the book (the money math); the web server
+    (src/http/server.ts) is read-only and serves the app and /api/home.
+  - npm run demo: made-up lives only (src/demo), no bank, no database
+    (a test follows its imports). This computer only, unless --wifi.
+    /demo picks a life. npm run screenshots: iPhone-size pictures, light
+    and dark, into screenshots/ (not in git).
+  - Browser tests (packages/web/test/browser, run by npm test): every
+    number on Home against the money math, the tabs in the address,
+    contrast (axe), 44-point tap targets, the notch and home bar, text
+    size, reduced motion, random lives from the simulator (WEB_LIVES,
+    WEB_FIRST_SEED), and the worked examples
+    (packages/web/worked-examples.txt). SKIP_BROWSER_TESTS=1 leaves them
+    out. Browsers: npx playwright install chromium webkit.
+  - Break-it: packages/web/break-it.json, section "home". The browser
+    tests run only for that section.
+  - Found on Linux CI (Oct 7): WebKit there loses the answer to a request
+    sent right after one it cancelled. The screens never cancel a request,
+    send one at a time, refresh only after the app was really in the
+    background, and give up after 15 seconds with Try again
+    (packages/web/src/app/api.ts, test/browser/loading.test.ts). Keep it
+    that way. A failing browser test reports what the page, the browser,
+    and the test server were doing (harness.ts, waitOrReport).
+  - Waiting on: his merge of PR #7, and B80, B81, B83, B85 to B87 to check.
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.

@@ -1,0 +1,174 @@
+WORKED EXAMPLES: THE HOME SCREEN
+
+Made-up numbers, worked out step by step, so you can check by hand what
+Home shows. These are the demo's made-up lives (npm run demo, then /demo).
+Every amount is in dollars and cents.
+
+Each example is also a test. packages/web/test/worked-examples.test.ts
+reads the "Check:" lines straight from this file and compares them with
+what the server sends to the phone, and the browser tests
+(packages/web/test/browser/worked-examples.test.ts) compare them with what
+the screen shows, in Chromium and WebKit.
+
+Settings: the starting values in rulebook section 2 (split 50/30/20, mom
+reserve 1,500.00 per paycheck up to 3,000.00, low alert at 20%, paydays
+every 14 days). Rules: GROCERY and GAS STATION are needs; COFFEE,
+RESTAURANT, and STREAMING are wants.
+
+
+========================================================================
+EXAMPLE 1. A normal Wednesday (demo life "normal"; rules 3.2, 3.3, 3.4,
+           4.1 to 4.3, 4.6, 8.1, 11.1, 11.2, 3.8, 9.1, 10.3, 12.3)
+========================================================================
+
+Setup day, Sat Sep 19. The last paycheck was Fri Sep 18. He assigns:
+savings 8,200.00, needs 312.50, wants 184.00, mom reserve 1,200.00,
+held for others 0.00.
+
+Sep 22  GROCERY OUTLET, 64.12 on the debit card. Needs (4.1, 4.2):
+        needs 312.50 - 64.12 = 248.38
+Sep 26  BLUE DOOR COFFEE, 5.75 on the everyday card. Wants:
+        wants 184.00 - 5.75 = 178.25
+
+Fri Oct 2, payday: 4,200.00, 14 days after the last one, so it splits
+automatically (3.7).
+  Step 1. The mom reserve comes off first (3.2): 1,500.00.
+          Reserve 1,200.00 + 1,500.00 = 2,700.00, under the 3,000.00 cap.
+  Step 2. The rest, 4,200.00 - 1,500.00 = 2,700.00, is split (3.3):
+          needs 30% = 810.00, wants 20% = 540.00,
+          savings gets the rest, 2,700.00 - 810.00 - 540.00 = 1,350.00.
+  Step 3. Leftover (3.4): he picks roll over for both.
+          Needs 248.38 + 810.00 = 1,058.38. This is what needs started
+          the pay period with (10.1).
+          Wants 178.25 + 540.00 = 718.25, what wants started with.
+          Savings 8,200.00 + 1,350.00 = 9,550.00.
+
+Oct 3  ZELLE TO MADE UP MOM, 500.00. The mom rule matches (8.1):
+       mom reserve 2,700.00 - 500.00 = 2,200.00
+Oct 3  GROCERY OUTLET, 86.43: needs 1,058.38 - 86.43 = 971.95
+Oct 4  CORNER GAS STATION, 41.20: needs 971.95 - 41.20 = 930.75
+Oct 5  MAIN ST RESTAURANT, 38.90: wants 718.25 - 38.90 = 679.35
+Oct 5  STREAMING SERVICE, 15.99: wants 679.35 - 15.99 = 663.36
+Oct 6  ONLINE MARKETPLACE, 23.17, and CORNER STORE, 11.50. No rule
+       matches either, so both wait in review (4.2, 4.3):
+       unsorted spending 23.17 + 11.50 = 34.67
+Oct 7  BLUE DOOR COFFEE, 6.25, still pending. It counts now (4.6):
+       wants 663.36 - 6.25 = 657.11
+
+Today, Wed Oct 7:
+  Safe to spend (11.1): wants left minus unsorted spending.
+          657.11 - 34.67 = 622.44
+  Days to payday (11.2): Oct 2 + 14 days = Fri Oct 16, 9 days away.
+  Waiting in review (10.3): the 2 purchases with no rule.
+  Savings (3.8): savings 9,550.00 + mom reserve 2,200.00 = 11,750.00
+          should be in the savings account. It holds 10,400.00 (this
+          paycheck's 1,350.00 has not been moved yet), so
+          11,750.00 - 10,400.00 = 1,350.00 is still to move.
+  Neither bucket is low (10.1): needs' level is 20% of 1,058.38 = 211.676,
+          and 930.75 is above it; wants' level is 20% of 718.25 = 143.65,
+          and 657.11 is above it.
+  The everyday card's statement, 612.48 with a 35.00 minimum, is due Wed
+  Oct 14. Today is 7 days before, a reminder day (9.1).
+
+  The self-check (12.1 to 12.3). The bank shows:
+          checking 3,658.43, savings 10,400.00, everyday card owes 755.24
+          (the statement's 612.48 plus every card purchase since,
+          the pending coffee included:
+          612.48 + 5.75 + 41.20 + 38.90 + 15.99 + 23.17 + 11.50 + 6.25).
+          Bank side: 3,658.43 + 10,400.00 - 755.24 = 13,303.19
+          App side: savings 9,550.00 + needs 930.75 + wants 657.11
+                    + mom reserve 2,200.00 + held for others 0.00
+                    - unsorted spending 34.67 = 13,303.19
+          Difference: 13,303.19 - 13,303.19 = 0.00, so safe to spend shows.
+
+Check: safe to spend 622.44 | needs 930.75 | wants 657.11 | held back 34.67
+Check: still to move 1,350.00 | difference 0.00 | days to payday 9 | waiting 2
+Check: needs started with 1,058.38 | wants started with 718.25
+
+
+========================================================================
+EXAMPLE 2. Totals that do not match the bank (demo life "mismatch";
+           rules 0.5, 12.3, B37)
+========================================================================
+
+The same life as example 1, but the bank shows checking at 3,646.09:
+12.34 less than in example 1.
+
+  Bank side: 3,646.09 + 10,400.00 - 755.24 = 13,290.85
+  App side, the same as example 1: 13,303.19
+  Difference (12.3): bank side + in transit - app side
+          = 13,290.85 + 0.00 - 13,303.19 = -12.34
+  The bank shows less than the buckets add up to. Home hides safe to
+  spend (0.5) and shows "Off by $12.34" instead. The days to payday
+  still show (B37).
+
+Check: difference -12.34 | bank side 13,290.85 | app side 13,303.19 | days to payday 9
+
+
+========================================================================
+EXAMPLE 3. Wants is low (demo life "low"; rules 10.1, 11.1)
+========================================================================
+
+The same life as example 1, plus HARBOR RESTAURANT, 520.00 on Oct 6.
+
+  Wants: 657.11 - 520.00 = 137.11
+  The level is 20% of what wants started with: 20% of 718.25 = 143.65.
+  137.11 is below 143.65, so wants is low. Home says "Low".
+  Safe to spend: 137.11 - 34.67 = 102.44
+
+Check: wants 137.11 | wants started with 718.25 | safe to spend 102.44
+
+
+========================================================================
+EXAMPLE 4. Wants is overspent (demo life "overspent"; rules 3.5, 10.2,
+           11.1, B34)
+========================================================================
+
+The same life as example 1, plus HARBOR RESTAURANT, 700.00 on Oct 6.
+
+  Wants: 657.11 - 700.00 = -42.89, below zero, so wants is empty (10.2).
+  Home says "Empty" and shows the amount with a minus sign.
+  Safe to spend: -42.89 - 34.67 = -77.56, shown as the negative number
+  (B34).
+
+Check: wants -42.89 | safe to spend -77.56
+
+
+========================================================================
+EXAMPLE 5. The bank takes back a charge it showed twice (demo life
+           "took-back"; rules 4.10, 10.6, QUESTIONS.md B84)
+========================================================================
+
+The same life as example 1, but on Oct 5 the bank shows MAIN ST
+RESTAURANT, 38.90, twice. On Oct 6 it takes the copy back.
+
+Oct 5  Both charges count, wants by his rule:
+       wants 718.25 - 38.90 - 38.90 = 640.45
+       then STREAMING SERVICE, 15.99: 640.45 - 15.99 = 624.46
+Oct 6  The bank takes the copy back. The app takes it back too (4.10): its
+       38.90 goes back to wants. 624.46 + 38.90 = 663.36
+Oct 7  The pending coffee, 6.25: 663.36 - 6.25 = 657.11, as in example 1.
+
+  Safe to spend: 657.11 - 34.67 = 622.44, as in example 1.
+  Needs attention shows "The bank took back a transaction: MAIN ST
+  RESTAURANT, $38.90, on Tue, Oct 6." It stays there until he taps it and
+  says he has seen it (B84).
+
+Check: wants 657.11 | safe to spend 622.44 | taken back 38.90
+
+
+========================================================================
+EXAMPLE 6. The bank cannot be read (demo life "bank-not-read"; rule 0.5,
+           QUESTIONS.md B82)
+========================================================================
+
+The same life as example 1, but today the bank cannot be read. The last
+time it was read and the totals matched was 7:15 this morning, before the
+coffee.
+
+  Safe to spend then: wants 663.36 (no coffee yet) - 34.67 = 628.69
+  Home shows 628.69 greyed, "As of Wed, Oct 7, 7:15 AM", and says it
+  cannot reach the bank to check it now. It does not show today's 622.44,
+  which the bank has not backed up (0.5).
+
+Check: last checked 628.69 | days to payday 9

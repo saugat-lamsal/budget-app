@@ -148,6 +148,25 @@ A16. ANSWERED Oct 7, built. Money leaving savings that is not a transfer to
      8.1 and 20e. Worked example 20. The reading I had to pick while
      building it is B78.
 
+## Part A, added with the Home screen (Phase 4, Oct 7). Waiting on your answer.
+
+A17. ANSWERED Oct 7, built. When Home shows a card payment that is due.
+     Your answer: option 2. Home shows it every day from the first
+     reminder day until it is paid; the phone reminders still come only on
+     the reminder days. Rulebook 9.6 and 21a.
+     The question was: Home showed exactly what the reminders say. "Everyday card
+     due in 7 days" shows on the reminder days only (7 and 2 days before
+     the due date), and "Overdue" every day after the due date until the
+     minimum is paid. On the days in between, Home says nothing about the
+     card.
+     Option 1: keep it as built.
+     Option 2: from the first reminder day until it is paid, Home shows
+     "due in N days" every day. The phone reminders (Phase 5) still come
+     only on the reminder days.
+     Recommendation: option 2. Home is where you look for what needs you,
+     and a bill due in 5 days still does.
+
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 B1. Paycheck smaller than the mom reserve (3.2).
@@ -582,3 +601,47 @@ B79. The bank connection now follows the bank when a pending charge's
      show as a self-check difference. A change it still cannot follow (a
      pending charge moved to another account, or a posted one shown as
      pending again) waits for you, as before.
+
+
+## Part B, added with the Home screen (Phase 4, Oct 7). Tell me if any is wrong.
+
+B80. Home shows "Move $X to savings" (3.8) whenever there is money still
+     to move, not only on payday. It stays until the money is moved (or
+     is on its way, B46). Tapping it shows what should be in the savings
+     account and what is there.
+
+B81. When the totals do not match (0.5), Home holds back safe to spend and
+     shows the difference instead (B37). The bucket bars and the other
+     items on Home still show.
+
+B82. ANSWERED Oct 7, built, changed. When the bank cannot be read, Home
+     shows the last safe to spend the bank backed up, greyed, with "As of"
+     and the day and time it was checked, in the phone's time zone. It is
+     the number from that moment, not one worked out now. If there has
+     never been one, Home says "Can't check against the bank" as before.
+     Rulebook 0.5 and 21c. Worked example 6. The reading I had to pick
+     while building it is B86.
+
+B83. The bucket bars say "Low" or "Empty" whenever the bucket is below
+     its level right now (10.1, 10.2). The once-per-pay-period limit is
+     for the alerts on your phone (Phase 5); looking at Home never uses
+     an alert up.
+
+B84. ANSWERED Oct 7, built, changed. The bank taking something back
+     (10.6) shows in Needs attention until you have seen it. Rulebook 10.6
+     and 21b. Worked example 5. The reading I had to pick while building
+     it is B87.
+
+B86. With B82: "last checked" means the last time the bank was read and
+     the totals matched, and the number Home showed then. The server
+     remembers it each time that happens (saving it is wired up with the
+     rest of the server in a later step; the demo makes one up).
+
+B87. With B84: "seen" means you tapped the take-back and pressed "Got it"
+     on the sheet that shows what, how much, and when. Just opening Home
+     does not count, and neither does the phone alert (Phase 5). Each
+     take-back is its own row, oldest first. Marking one seen is the only
+     thing the screens ever send to the server, and it changes no money.
+
+B85. A late paycheck (B35) shows "Paycheck is 2 days late" with the date
+     it was expected.

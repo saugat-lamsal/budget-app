@@ -1317,23 +1317,23 @@
   },
   {
     "section": "10",
-    "file": "packages/money/src/book.ts",
-    "find": "if (amount <= 0 && this.#emptyAlerted[bucket] !== this.#period.number) {",
-    "replace": "if (amount < 0 && this.#emptyAlerted[bucket] !== this.#period.number) {",
+    "file": "packages/money/src/alerts.ts",
+    "find": "if (amount <= 0) return 'empty';",
+    "replace": "if (amount < 0) return 'empty';",
     "why": "10.2 do not call exactly zero empty"
   },
   {
     "section": "10",
-    "file": "packages/money/src/book.ts",
-    "find": "if (amount <= 0 && this.#emptyAlerted[bucket] !== this.#period.number) {",
-    "replace": "if (amount <= 1 && this.#emptyAlerted[bucket] !== this.#period.number) {",
+    "file": "packages/money/src/alerts.ts",
+    "find": "if (amount <= 0) return 'empty';",
+    "replace": "if (amount <= 1) return 'empty';",
     "why": "10.2 call one cent empty"
   },
   {
     "section": "10",
     "file": "packages/money/src/book.ts",
-    "find": "if (amount <= 0 && this.#emptyAlerted[bucket] !== this.#period.number) {",
-    "replace": "if (amount <= 0) {",
+    "find": "if (bucketLevel(amount, this.#periodStart[bucket], percent) === 'empty' && this.#emptyAlerted[bucket] !== this.#period.number) {",
+    "replace": "if (bucketLevel(amount, this.#periodStart[bucket], percent) === 'empty') {",
     "why": "10.2 repeat the empty alert every time"
   },
   {
@@ -1346,8 +1346,8 @@
   {
     "section": "10",
     "file": "packages/money/src/book.ts",
-    "find": "    for (const bucket of ['needs', 'wants'] as const) {\n      const amount = this.#totals[bucket];\n      if (amount <= 0",
-    "replace": "    for (const bucket of ['needs'] as const) {\n      const amount = this.#totals[bucket];\n      if (amount <= 0",
+    "find": "    for (const bucket of ['needs', 'wants'] as const) {\n      const amount = this.#totals[bucket];\n      if (bucketLevel",
+    "replace": "    for (const bucket of ['needs'] as const) {\n      const amount = this.#totals[bucket];\n      if (bucketLevel",
     "why": "10.2 forget wants"
   },
   {
@@ -1394,37 +1394,37 @@
   },
   {
     "section": "10",
-    "file": "packages/money/src/book.ts",
-    "find": "BigInt(amount) * 100n < BigInt(startedWith) * percent",
-    "replace": "BigInt(amount) * 100n <= BigInt(startedWith) * percent",
+    "file": "packages/money/src/alerts.ts",
+    "find": "BigInt(amount) * 100n < BigInt(startedWith) * BigInt(percent)",
+    "replace": "BigInt(amount) * 100n <= BigInt(startedWith) * BigInt(percent)",
     "why": "10.1 alert at exactly the level, not only below it"
   },
   {
     "section": "10",
-    "file": "packages/money/src/book.ts",
-    "find": "BigInt(amount) * 100n < BigInt(startedWith) * percent",
-    "replace": "amount * 100 < startedWith * this.#settings.lowBucketAlertPercent",
+    "file": "packages/money/src/alerts.ts",
+    "find": "BigInt(amount) * 100n < BigInt(startedWith) * BigInt(percent)",
+    "replace": "amount * 100 < startedWith * percent",
     "why": "10.1 compare with ordinary numbers, which lose cents on huge amounts"
   },
   {
     "section": "10",
-    "file": "packages/money/src/book.ts",
-    "find": "BigInt(amount) * 100n < BigInt(startedWith) * percent",
-    "replace": "BigInt(amount) < (BigInt(startedWith) * percent) / 100n",
+    "file": "packages/money/src/alerts.ts",
+    "find": "BigInt(amount) * 100n < BigInt(startedWith) * BigInt(percent)",
+    "replace": "BigInt(amount) < (BigInt(startedWith) * BigInt(percent)) / 100n",
     "why": "10.1 round the alert level down to a cent before comparing"
   },
   {
     "section": "10",
     "file": "packages/money/src/book.ts",
-    "find": "const low = amount > 0 && ",
-    "replace": "const low = amount >= 0 && ",
+    "find": "const low = bucketLevel(amount, startedWith, percent) === 'low';",
+    "replace": "const low = bucketLevel(amount, startedWith, percent) === 'low' || (amount === 0 && startedWith > 0);",
     "why": "10.1 give the low alert at zero too, beside the empty one"
   },
   {
     "section": "10",
     "file": "packages/money/src/book.ts",
-    "find": "BigInt(amount) * 100n < BigInt(startedWith) * percent",
-    "replace": "BigInt(amount) * 100n < BigInt(this.#opening[bucket]) * percent",
+    "find": "const startedWith = this.#periodStart[bucket];",
+    "replace": "const startedWith = this.#opening[bucket];",
     "why": "10.1 measure against setup day instead of this pay period's start"
   },
   {
@@ -1542,8 +1542,8 @@
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "const toPay = card === 'everyday-card' ? statementBalance : minimumPayment;",
-    "replace": "const toPay = minimumPayment;",
+    "find": "toPay: card === 'everyday-card' ? statementBalance : minimumPayment",
+    "replace": "toPay: minimumPayment",
     "why": "9.3 stop everyday card reminders at the minimum again"
   },
   {
@@ -1563,8 +1563,8 @@
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "const paid = addCents(0, ...seen.map((p) => p.amount));",
-    "replace": "const paid = Math.max(0, ...seen.map((p) => p.amount));",
+    "find": "return { paid: addCents(0, ...seen.map((p) => p.amount)),",
+    "replace": "return { paid: Math.max(0, ...seen.map((p) => p.amount)),",
     "why": "9.3 count only the largest payment instead of adding them up"
   },
   {
@@ -2315,5 +2315,54 @@
     "find": "    if (typeof other !== 'string' || !(ACCOUNTS as readonly string[]).includes(other)) {",
     "replace": "    if (typeof other !== 'string') {",
     "why": "5.6 let a transfer be with an account that is not one of his four (A12)"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/alerts.ts",
+    "find": "BigInt(startedWith) * BigInt(percent) ? 'low' : 'ok'",
+    "replace": "BigInt(startedWith) * 20n ? 'low' : 'ok'",
+    "why": "10.1 ignore the alert percent setting and always use 20"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/alerts.ts",
+    "find": "BigInt(startedWith) * BigInt(percent) ? 'low' : 'ok'",
+    "replace": "BigInt(startedWith) * BigInt(percent) ? 'ok' : 'low'",
+    "why": "10.1 call a full bucket low and a low one fine"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "const firstReminder = Math.max(-1, ...settings.cardReminderDaysBefore);",
+    "replace": "const firstReminder = Math.min(...settings.cardReminderDaysBefore);",
+    "why": "9.6 start from the last reminder day instead of the first"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "const firstReminder = Math.max(-1, ...settings.cardReminderDaysBefore);",
+    "replace": "const firstReminder = 7;",
+    "why": "9.6 ignore the reminder days setting"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "if (daysLeft > firstReminder || paid >= toPay) return null;",
+    "replace": "if (daysLeft >= firstReminder || paid >= toPay) return null;",
+    "why": "9.6 skip the first reminder day itself"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "if (daysLeft > firstReminder || paid >= toPay) return null;",
+    "replace": "if (daysLeft > firstReminder || paid > toPay) return null;",
+    "why": "9.6 keep showing it when exactly enough is paid"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "if (daysLeft < 0) return paid < minimumPayment ? { kind: 'overdue', card, dueDate, minimumPayment } : null;",
+    "replace": "if (daysLeft <= 0) return paid < minimumPayment ? { kind: 'overdue', card, dueDate, minimumPayment } : null;",
+    "why": "9.6 call it overdue on the due date itself"
   }
 ]

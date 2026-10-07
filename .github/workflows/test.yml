@@ -33,4 +33,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # The browser tests use the screens in Chromium and in WebKit (iPhone
+      # Safari's engine). Playwright's own copies, at the version in
+      # package-lock.json.
+      - run: npx playwright install --with-deps chromium webkit
       - run: npm test

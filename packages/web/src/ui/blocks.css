@@ -1,0 +1,625 @@
+/* The shared building blocks. Every screen is made of these. */
+
+/* ----- Screen ----- */
+
+.app {
+  min-height: 100dvh;
+}
+
+/* Behind the iPhone's status bar: the screen scrolls under it, not into the
+   clock and battery. */
+.app::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 10;
+  height: var(--safe-top);
+  background: var(--bg);
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: calc(var(--safe-top) + var(--space-3)) calc(var(--safe-right) + var(--gutter))
+    calc(var(--safe-bottom) + var(--tabbar-height) + var(--space-6)) calc(var(--safe-left) + var(--gutter));
+}
+
+.screen-title {
+  font-size: var(--text-title);
+  font-weight: var(--weight-bold);
+  line-height: 1.15;
+  padding-top: var(--space-2);
+}
+
+.eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  font-size: var(--text-sub);
+  font-weight: var(--weight-medium);
+  color: var(--text-2);
+}
+
+.section-title {
+  font-size: var(--text-headline);
+  font-weight: var(--weight-bold);
+  margin: 0 0 var(--space-2) var(--space-1);
+}
+
+/* ----- Money ----- */
+
+.money {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.money.is-negative {
+  color: var(--danger);
+}
+
+/* Not checked against the bank today: greyed, negative or not. */
+.money.money--stale {
+  color: var(--text-2);
+}
+
+.money--hero {
+  display: block;
+  /* As big as the text size asks, but never wider than the screen. */
+  font-size: min(var(--text-hero), calc((100vw - 2 * var(--gutter) - var(--safe-left) - var(--safe-right)) / (var(--chars, 9) * 0.62)));
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+/* ----- Card ----- */
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.card--padded {
+  padding: var(--space-4);
+}
+
+/* ----- Hero: the one main number ----- */
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1) 0;
+}
+
+.hero__label {
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  color: var(--text-2);
+}
+
+.hero__sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  font-size: var(--text-body);
+  color: var(--text-2);
+}
+
+/* ----- List row ----- */
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-3) var(--space-4);
+  background: none;
+  border: 0;
+  text-align: left;
+  position: relative;
+}
+
+.row + .row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: calc(var(--space-4) + 28px + var(--space-3));
+  right: 0;
+  border-top: 1px solid var(--separator);
+}
+
+.row--plain + .row::before,
+.row--plain::before {
+  left: var(--space-4);
+}
+
+a.row,
+button.row {
+  cursor: pointer;
+  transition: background-color var(--duration) var(--ease);
+}
+
+a.row:active,
+button.row:active {
+  background: var(--surface-2);
+}
+
+.row__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.row__icon--danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.row__icon--warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.row__icon--ok {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+.row__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.row__title {
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+}
+
+.row__detail {
+  font-size: var(--text-sub);
+  color: var(--text-2);
+}
+
+.row__trailing {
+  flex: none;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.row__chevron {
+  flex: none;
+  color: var(--text-2);
+  opacity: 0.7;
+}
+
+/* ----- Button ----- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  min-width: var(--tap);
+  padding: var(--space-2) var(--space-5);
+  border-radius: 12px;
+  border: 0;
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  transition: opacity var(--duration) var(--ease), transform var(--duration) var(--ease);
+}
+
+.button:active {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+.button--primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.button--secondary {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.button--plain {
+  background: none;
+  color: var(--accent);
+  padding: var(--space-2);
+}
+
+.button--wide {
+  width: 100%;
+}
+
+/* ----- Status label: a word and an icon, never color alone ----- */
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px 1px 5px;
+  border-radius: 999px;
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.status--warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.status--danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.status--info {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ----- Bucket bar ----- */
+
+.bucket {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.bucket + .bucket {
+  border-top: 1px solid var(--separator);
+}
+
+.bucket__line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+}
+
+.bucket__name {
+  font-weight: var(--weight-medium);
+}
+
+.bucket__left {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-weight: var(--weight-medium);
+  text-align: right;
+}
+
+.bucket__of {
+  font-size: var(--text-sub);
+  font-weight: var(--weight-regular);
+  color: var(--text-2);
+}
+
+/* ----- Stale safe to spend: as of the last check ----- */
+
+.hero__stale {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--warning);
+  font-weight: var(--weight-medium);
+}
+
+.hero__stale .icon {
+  flex: none;
+  margin-top: 0.15em;
+}
+
+.bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.bar__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transform-origin: left center;
+  transition: width var(--duration-sheet) var(--ease);
+}
+
+.bar__fill--low {
+  background: var(--warning-fill);
+}
+
+.bar__fill--empty {
+  background: var(--danger-fill);
+}
+
+/* ----- Banner: a state that must not be missed ----- */
+
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  border: 2px solid currentColor;
+}
+
+.banner--danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.banner--warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.banner__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 1.25rem;
+  line-height: 1.2;
+  font-weight: var(--weight-bold);
+}
+
+.banner__body {
+  color: var(--text);
+}
+
+.banner__big {
+  font-size: var(--text-title);
+  font-weight: var(--weight-bold);
+  line-height: 1.15;
+  color: var(--text);
+}
+
+/* ----- Pill (made-up data) ----- */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--warning-bg);
+  color: var(--warning);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+}
+
+/* ----- Empty, loading, and error states ----- */
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
+}
+
+.state__icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.state__icon--danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.state__title {
+  font-size: var(--text-headline);
+  font-weight: var(--weight-bold);
+}
+
+.state__detail {
+  color: var(--text-2);
+  max-width: 22rem;
+}
+
+.skeleton {
+  border-radius: 8px;
+  background: var(--surface-2);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* ----- Bottom sheet ----- */
+
+.sheet {
+  position: fixed;
+  inset: auto 0 0;
+  width: 100%;
+  max-width: 40rem;
+  max-height: calc(100dvh - var(--safe-top) - var(--space-5));
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 18px 18px 0 0;
+  background: var(--bg);
+  color: var(--text);
+  overflow: auto;
+}
+
+.sheet[open] {
+  animation: sheet-in var(--duration-sheet) var(--ease);
+}
+
+.sheet::backdrop {
+  background: var(--backdrop);
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+.sheet__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-2) calc(var(--safe-right) + var(--gutter)) calc(var(--safe-bottom) + var(--space-5)) calc(var(--safe-left) + var(--gutter));
+}
+
+.sheet__grabber {
+  width: 36px;
+  height: 5px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: var(--separator);
+}
+
+.sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.sheet__title {
+  font-size: var(--text-headline);
+  font-weight: var(--weight-bold);
+}
+
+.sheet__title:focus {
+  outline: none;
+}
+
+.sheet__note {
+  font-size: var(--text-sub);
+  color: var(--text-2);
+}
+
+/* ----- Tab bar ----- */
+
+.tabbar {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
+  background: var(--tabbar-bg);
+  border-top: 1px solid var(--separator);
+}
+
+.tabbar__list {
+  display: flex;
+  width: 100%;
+  max-width: 40rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tabbar__item {
+  flex: 1;
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: var(--tabbar-height);
+  padding: var(--space-1) 0;
+  color: var(--text-2);
+  /* iOS keeps tab bar labels small at large text sizes too. */
+  font-size: min(var(--text-caption), 13px);
+  font-weight: var(--weight-medium);
+}
+
+.tab[aria-current='page'] {
+  color: var(--accent);
+}
+
+.tab__icon {
+  position: relative;
+}
+
+.badge {
+  position: absolute;
+  top: -4px;
+  left: calc(100% - 8px);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--badge-bg);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----- Figures in a sheet: label and amount, aligned ----- */
+
+.figures {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  row-gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-4);
+}
+
+.figures dt {
+  color: var(--text-2);
+}
+
+.figures dd {
+  margin: 0;
+  padding-left: var(--space-4);
+  text-align: right;
+}
+
+.figures__total {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--separator);
+  font-weight: var(--weight-bold);
+}
+
+.figures dt.figures__total {
+  color: var(--text);
+}

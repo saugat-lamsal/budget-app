@@ -1,0 +1,8 @@
+{
+  // Tests for the screens: unit tests, and browser tests run from Node.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["**/*.ts", "../src", "../vite.config.ts"]
+}
