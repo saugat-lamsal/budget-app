@@ -6,7 +6,7 @@ import { liveALife, type RecordedBankDay } from '../../../money/test/sim/life.js
 import { Random } from '../../../money/test/sim/random.js';
 import { createAppServer } from '../../../server/src/http/server.js';
 import { homeView, type HomeInput } from '../../../server/src/views/home.js';
-import { ENGINES, WEB_ROOT, centsAt, close, listen, phone } from './harness.js';
+import { ENGINES, WEB_ROOT, centsAt, close, listen, phone, waitOrReport, watchPage } from './harness.js';
 
 // Random made-up lives (the Phase 2 simulator), each stopped on a random day
 // and shown on Home. Whatever the day looks like, every number on the
@@ -85,8 +85,9 @@ describe.each(ENGINES)('random lives on Home in %s', (_name, engine) => {
     // A stuck wait names what it waited for, well inside the test's own limit.
     page.setDefaultTimeout(15_000);
     try {
+      watchPage(page);
       await page.goto(`${base}/home?life=${seed}`);
-      await page.locator('[data-testid="safe-to-spend"], [data-testid="mismatch"], [data-testid="home-error"]').first().waitFor();
+      await waitOrReport(page, base, '[data-testid="safe-to-spend"], [data-testid="mismatch"], [data-testid="home-error"]');
       expect(await page.getByTestId('home-error').count(), `${where}: Home could not load`).toBe(0);
 
       // The simulator's bank always agrees with the book (section 12).

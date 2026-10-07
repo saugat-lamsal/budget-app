@@ -17,7 +17,7 @@ describe.each(ENGINES)('tabs in %s', (_name, engine) => {
     expect(new URL(page.url()).pathname).toBe('/review');
     expect(await currentTab(page)).toBe('tab-review');
     expect(await page.getByRole('heading', { level: 1 }).innerText()).toBe('Review');
-    expect(await page.title()).toBe('Review · Budget');
+    await expect.poll(() => page.title()).toBe('Review · Budget');
     await page.context().close();
   });
 
