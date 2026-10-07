@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, changeSettings, splitPaycheck } from '../src/index.js';
-import { codeOf, deposit, openTestBook, paycheck, sent, LAST_PAYCHECK } from './helpers.js';
+import { codeOf, deposit, openTestBook, paycheck, posted, purchase, sent, LAST_PAYCHECK } from './helpers.js';
 
 const RULES = DEFAULT_SETTINGS; // 50/30/20, $1,500 reserve, $3,000 cap
 
@@ -292,6 +292,81 @@ describe('3.4 unspent needs and wants: roll over or move to savings, your choice
     expect(codeOf(() => book.answerLeftover('leftover:p1:wants', 'roll-over', '2026-10-09'))).toBe('unknown-item');
     expect(codeOf(() => book.answerLeftover('nope', 'roll-over', '2026-10-09'))).toBe('unknown-item');
     expect(book.pots()).toMatchObject({ wants: 50_000, savings: 126_000 });
+  });
+});
+
+describe('3.4 a purchase made before payday that shows up after it lowers the open leftover question (B4)', () => {
+  const CAFE = { id: 'cafe', for: 'purchase', contains: 'CAFE', bucket: 'wants' } as const;
+  function paid(pots: { needs?: number; wants?: number }) {
+    const book = openTestBook({ pots, rules: [CAFE] });
+    book.receive(paycheck('p1', '2026-10-09', 400_000));
+    return book;
+  }
+  const asked = (book: ReturnType<typeof paid>, bucket: 'needs' | 'wants'): number | undefined => {
+    const item = book.reviewItems().find((i) => i.type === 'leftover' && i.bucket === bucket);
+    return item?.type === 'leftover' ? item.amount : undefined;
+  };
+
+  it('3.4 the question goes down by the late purchase, and moving it to savings moves only what is left', () => {
+    const book = paid({ wants: 10_000 });
+    book.receive(purchase('e1', '2026-10-08', 3_000, 'MADE UP CAFE'));
+    expect(asked(book, 'wants')).toBe(7_000);
+    book.answerLeftover('leftover:p1:wants', 'move-to-savings', '2026-10-10');
+    expect(book.pots()).toMatchObject({ wants: 50_000, savings: 132_000 });
+  });
+
+  it('3.4 never below zero, and one cent counts', () => {
+    const book = paid({ wants: 10_000 });
+    book.receive(purchase('e1', '2026-10-08', 9_999, 'MADE UP CAFE'));
+    expect(asked(book, 'wants')).toBe(1);
+    book.receive(purchase('e2', '2026-10-07', 5_000, 'MADE UP CAFE'));
+    expect(asked(book, 'wants')).toBe(0);
+    book.answerLeftover('leftover:p1:wants', 'move-to-savings', '2026-10-10');
+    expect(book.pots()).toMatchObject({ wants: 10_000 + 50_000 - 14_999, savings: 125_000 });
+  });
+
+  it('3.4 a purchase made on payday or after does not change it', () => {
+    const book = paid({ wants: 10_000 });
+    book.receive(purchase('e1', '2026-10-09', 3_000, 'MADE UP CAFE'));
+    book.receive(purchase('e2', '2026-10-10', 1_000, 'MADE UP CAFE'));
+    expect(asked(book, 'wants')).toBe(10_000);
+  });
+
+  it('3.4 once answered, a late purchase changes nothing more', () => {
+    const book = paid({ wants: 10_000 });
+    book.answerLeftover('leftover:p1:wants', 'move-to-savings', '2026-10-09');
+    book.receive(purchase('e1', '2026-10-08', 3_000, 'MADE UP CAFE'));
+    expect(book.pots()).toMatchObject({ wants: 47_000, savings: 135_000 });
+  });
+
+  it('3.4 a late purchase counts in the bucket it is sorted to, and follows a re-sort', () => {
+    const book = paid({ needs: 20_000, wants: 10_000 });
+    book.receive(purchase('e1', '2026-10-08', 3_000, 'MADE UP SHOP'));
+    expect([asked(book, 'needs'), asked(book, 'wants')]).toEqual([20_000, 10_000]);
+    book.sort('e1', { to: 'wants' }, '2026-10-10');
+    expect([asked(book, 'needs'), asked(book, 'wants')]).toEqual([20_000, 7_000]);
+    book.sort('e1', { split: [{ bucket: 'needs', amount: 1_000 }, { bucket: 'wants', amount: 2_000 }] }, '2026-10-10');
+    expect([asked(book, 'needs'), asked(book, 'wants')]).toEqual([19_000, 8_000]);
+  });
+
+  it('3.4 a charge pending before payday is in the question already; when it posts, only a new amount counts (a tip)', () => {
+    const book = openTestBook({ pots: { wants: 10_000 }, rules: [CAFE] });
+    book.receive(purchase('e1', '2026-10-08', 3_000, 'MADE UP CAFE', { pending: true }));
+    book.receive(paycheck('p1', '2026-10-09', 400_000));
+    expect(asked(book, 'wants')).toBe(7_000);
+    book.receive(posted('e2', 'e1', '2026-10-10', 3_500, 'MADE UP CAFE'));
+    expect(asked(book, 'wants')).toBe(6_500);
+  });
+
+  it('3.4 money coming back to a purchase made before payday never raises the question above what was asked', () => {
+    const book = openTestBook({ pots: { wants: 10_000 }, rules: [CAFE] });
+    book.receive(purchase('e1', '2026-10-08', 3_000, 'MADE UP CAFE'));
+    book.receive(paycheck('p1', '2026-10-09', 400_000));
+    expect(asked(book, 'wants')).toBe(7_000);
+    book.receive(purchase('e2', '2026-10-08', 1_000, 'MADE UP CAFE'));
+    expect(asked(book, 'wants')).toBe(6_000);
+    book.sort('e1', { to: 'needs' }, '2026-10-10');
+    expect(asked(book, 'wants')).toBe(7_000);
   });
 });
 

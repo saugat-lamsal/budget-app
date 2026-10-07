@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SortingRule } from '../src/index.js';
-import { TestBank, appSide, cardCharge, codeOf, deposit, dropped, openTestBook, paycheck, posted, purchase, refund, type TestBookOptions } from './helpers.js';
+import { TestBank, appSide, cardCharge, codeOf, deposit, dropped, openTestBook, paycheck, posted, purchase, refund, withdrawal, type TestBookOptions } from './helpers.js';
 
 const RULES: SortingRule[] = [
   { id: 'grocer', for: 'purchase', contains: 'GROCER', bucket: 'needs' },
@@ -51,7 +51,7 @@ describe('4.1 a purchase comes out of a bucket on the day of the purchase', () =
     expect(codeOf(() => b.receive(purchase('e1', '2026-10-03', 0)))).toBe('not-positive');
     expect(codeOf(() => b.receive(purchase('e1', '2026-10-03', -5)))).toBe('not-positive');
     expect(codeOf(() => b.receive(purchase('e1', '2026-10-03', 9.99)))).toBe('not-cents');
-    expect(codeOf(() => b.receive({ ...purchase('e1', '2026-10-03', 100), account: 'savings' } as never))).toBe('bad-transaction');
+    expect(codeOf(() => b.receive({ ...purchase('e1', '2026-10-03', 100), account: 'brokerage' } as never))).toBe('bad-transaction');
     expect(b.pots()).toMatchObject({ needs: 100_000, wants: 50_000, unsortedOut: 0 });
     expect(b.purchases()).toEqual([]);
   });
@@ -488,5 +488,64 @@ describe('4.8 fees and interest on the everyday card go to review, suggested buc
     b.sort('f1', { to: 'needs' }, '2026-10-04');
     b.receive(refund('r1', '2026-10-06', 2_900, 'f1'));
     expect(b.pots()).toMatchObject({ needs: 100_000, unsortedIn: 0 });
+  });
+});
+
+describe('4.9 money leaving savings that is not a transfer or a payment to a person waits in review (A16)', () => {
+  it('4.9 it waits in review, even when a purchase rule matches it, and sorts like any spending', () => {
+    const b = book();
+    expect(b.receive(withdrawal('s1', '2026-10-03', 12_000, 'MADE UP GROCER')).outcome).toBe('review');
+    expect(b.reviewItems()).toMatchObject([{ type: 'spending', id: 's1', reason: 'from-savings', amount: 12_000, suggestion: null }]);
+    expect(b.pots()).toMatchObject({ needs: 100_000, wants: 50_000, unsortedOut: 12_000 });
+    b.sort('s1', { split: [{ bucket: 'needs', amount: 7_000 }, { bucket: 'wants', amount: 5_000 }] }, '2026-10-04');
+    expect(b.pots()).toMatchObject({ needs: 93_000, wants: 45_000, unsortedOut: 0 });
+    b.sort('s1', { to: 'wants' }, '2026-10-05');
+    expect(b.pots()).toMatchObject({ needs: 100_000, wants: 38_000 });
+  });
+
+  it('4.9 one cent, and the bank side goes down in savings (12.1)', () => {
+    const b = book();
+    const bank = new TestBank({ checking: appSide(b.pots()) });
+    const txn = withdrawal('s1', '2026-10-03', 1, 'MADE UP WITHDRAWAL');
+    b.receive(txn);
+    bank.apply(txn);
+    expect(bank.savings).toBe(-1);
+    expect(b.selfCheck({ checking: bank.checking, savings: bank.savings, everydayCard: bank.everydayCard }).ok).toBe(true);
+  });
+
+  it('4.9 pending, it counts once, and its posting replaces it (4.6)', () => {
+    const b = book();
+    b.receive(withdrawal('s1', '2026-10-03', 5_000, 'MADE UP BILL', { pending: true }));
+    expect(b.pots().unsortedOut).toBe(5_000);
+    b.receive(withdrawal('s2', '2026-10-05', 5_200, 'MADE UP BILL', { pendingId: 's1' }));
+    expect(b.pots().unsortedOut).toBe(5_200);
+    expect(b.purchases()).toHaveLength(1);
+  });
+
+  it('4.9 "always do this" cannot make a rule for it, since it always waits (13.6)', () => {
+    const b = book();
+    b.receive(withdrawal('s1', '2026-10-03', 5_000, 'MADE UP BILL'));
+    expect(codeOf(() => b.sortAlways('s1', { to: 'needs' }, { id: 'bill', contains: 'BILL' }, '2026-10-04'))).toBe('no-rule-for-this');
+    expect(b.rules()).toEqual(RULES);
+    expect(b.pots().unsortedOut).toBe(5_000);
+  });
+
+  it('4.9 a new or changed rule that matches it does not sort it while it waits (13.2)', () => {
+    const b = book();
+    b.receive(withdrawal('s1', '2026-10-03', 5_000, 'MADE UP BILL'));
+    b.addRule({ id: 'bill', for: 'purchase', contains: 'BILL', bucket: 'needs' }, '2026-10-04');
+    b.changeRule({ id: 'bill', for: 'purchase', contains: 'MADE UP BILL', bucket: 'wants' }, '2026-10-05');
+    expect(b.reviewItems()).toMatchObject([{ id: 's1', reason: 'from-savings' }]);
+    expect(b.pots()).toMatchObject({ needs: 100_000, wants: 50_000, unsortedOut: 5_000 });
+  });
+
+  it('4.9 money leaving savings comes as a withdrawal, never as a purchase, and a withdrawal is only ever from savings', () => {
+    const b = book();
+    expect(codeOf(() => b.receive({ ...purchase('p1', '2026-10-03', 5_000), account: 'savings' as never }))).toBe('bad-transaction');
+    expect(codeOf(() => b.receive({ ...withdrawal('w1', '2026-10-03', 5_000), account: 'checking' as never }))).toBe('bad-transaction');
+    // A pending purchase is not replaced by a withdrawal, or the other way round.
+    b.receive(purchase('p2', '2026-10-03', 5_000, 'MADE UP SHOP', { pending: true }));
+    expect(codeOf(() => b.receive(withdrawal('w2', '2026-10-04', 5_000, 'MADE UP SHOP', { pendingId: 'p2' })))).toBe('bad-transaction');
+    expect(b.pots().unsortedOut).toBe(5_000);
   });
 });

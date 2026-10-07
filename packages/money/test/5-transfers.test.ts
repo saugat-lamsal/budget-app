@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TestBank, appSide, cardCharge, codeOf, dropped, openTestBook, posted, purchase, refund, transfer } from './helpers.js';
+import { TestBank, appSide, arrived, cardCharge, codeOf, deposit, dropped, openTestBook, payPerson, posted, purchase, refund, sent, transfer, withdrawal } from './helpers.js';
 
 function book() {
   return openTestBook({
@@ -260,5 +260,153 @@ describe('the old card outside the rulebook (see QUESTIONS.md)', () => {
     b.receive(transfer('t1', '2026-10-05', 20_000, 'savings', 'old-card'));
     b.sort('t1', { to: 'savings' }, '2026-10-06');
     expect(b.savingsTransfer(630_000)).toEqual({ shouldBeInSavings: 630_000, savingsAccountBalance: 630_000, stillToMove: 0 });
+  });
+});
+
+describe('5.6 in review, spending or money in can be marked as a transfer between your accounts (A12)', () => {
+  it('5.6 money that left checking, read as a purchase, becomes the leaving half: no bucket changes, in transit until it lands', () => {
+    const b = book();
+    const bank = new TestBank({ checking: appSide(b.pots()) });
+    const out = purchase('x1', '2026-10-03', 30_000, 'MADE UP ONLINE TRANSFER', { account: 'checking' });
+    b.receive(out);
+    bank.apply(out);
+    expect(b.pots()).toEqual({ ...START, unsortedOut: 30_000 });
+    b.sort('x1', { transfer: 'savings' }, '2026-10-03');
+    expect(b.pots()).toEqual(START);
+    expect(b.reviewItems()).toEqual([]);
+    expect(b.inTransit()).toMatchObject({ total: 30_000, items: [{ id: 'x1', from: 'checking', to: 'savings', amount: 30_000, seen: 'left' }] });
+    // The money left checking and has not landed: bank side plus in transit is the app side.
+    expect(b.selfCheck({ checking: bank.checking, savings: bank.savings, everydayCard: bank.everydayCard }).ok).toBe(true);
+    b.receive(arrived('x2', '2026-10-04', 30_000, 'checking', 'savings'));
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
+    expect(b.pots()).toEqual(START);
+  });
+
+  it('5.6 money that came into savings, read as a deposit, becomes the arriving half and pairs with the half that left', () => {
+    const b = book();
+    const bank = new TestBank({ checking: appSide(b.pots()) });
+    for (const txn of [sent('t1', '2026-10-03', 20_000, 'checking', 'savings'), deposit('d1', '2026-10-03', 20_000, 'MADE UP INCOMING', 'savings')]) {
+      b.receive(txn);
+      bank.apply(txn);
+    }
+    expect(b.pots()).toEqual({ ...START, unsortedIn: 20_000 });
+    b.sort('d1', { transfer: 'checking' }, '2026-10-04');
+    expect(b.pots()).toEqual(START);
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
+  });
+
+  it('5.6 a card payment read as a refund on the everyday card becomes its arriving half (5.1)', () => {
+    const b = book();
+    b.receive(sent('t1', '2026-10-03', 45_000, 'checking', 'everyday-card'));
+    b.receive(refund('r1', '2026-10-04', 45_000, undefined, 'everyday-card'));
+    b.sort('r1', { transfer: 'checking' }, '2026-10-04');
+    expect(b.pots()).toEqual(START);
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
+    expect(b.cardPayments('everyday-card')).toEqual([{ date: '2026-10-03', amount: 45_000, landedOn: '2026-10-04' }]);
+  });
+
+  it('5.6 marked as a payment to the old card from checking, it comes out of needs (5.2)', () => {
+    const b = book();
+    b.receive(purchase('x1', '2026-10-03', 10_000, 'MADE UP BILL PAY', { account: 'checking' }));
+    b.sort('x1', { transfer: 'old-card' }, '2026-10-03');
+    expect(b.pots()).toEqual({ ...START, needs: 90_000 });
+    expect(b.oldCardDebt()).toBe(300_000);
+    // The payment landing on the old card, read as a refund there, is its arriving half.
+    b.receive(refund('r1', '2026-10-04', 10_000, undefined, 'old-card'));
+    expect(b.oldCardDebt()).toBe(290_000);
+    b.sort('r1', { transfer: 'checking' }, '2026-10-04');
+    expect(b.oldCardDebt()).toBe(290_000);
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
+    expect(b.pots()).toEqual({ ...START, needs: 90_000 });
+  });
+
+  it('5.6 from savings to the old card, it waits for savings or needs, like any payment from savings (5.2, A4)', () => {
+    const b = book();
+    b.receive(withdrawal('s1', '2026-10-03', 10_000, 'MADE UP BILL PAY'));
+    b.sort('s1', { transfer: 'old-card' }, '2026-10-03');
+    expect(b.reviewItems()).toMatchObject([{ id: 's1', reason: 'old-card-from-savings', suggestion: 'savings' }]);
+    b.sort('s1', { to: 'savings' }, '2026-10-04');
+    expect(b.pots()).toEqual({ ...START, savings: 490_000 });
+  });
+
+  it('5.6 a payment to a person can be one too', () => {
+    const b = book();
+    b.receive(payPerson('z1', '2026-10-03', 7_000, 'MADE UP ME AT ANOTHER BANK'));
+    b.sort('z1', { transfer: 'savings' }, '2026-10-03');
+    expect(b.pots()).toEqual(START);
+    expect(b.inTransit().total).toBe(7_000);
+  });
+
+  it('5.6 it can be sorted back, and is then spending or money in again', () => {
+    const b = book();
+    b.receive(purchase('x1', '2026-10-03', 30_000, 'MADE UP CAFE', { account: 'checking' }));
+    expect(b.pots()).toEqual({ ...START, wants: 20_000 });
+    b.sort('x1', { transfer: 'savings' }, '2026-10-03');
+    expect(b.pots()).toEqual(START);
+    b.sort('x1', { to: 'needs' }, '2026-10-04');
+    expect(b.pots()).toEqual({ ...START, needs: 70_000 });
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
+    b.receive(deposit('d1', '2026-10-03', 5_000, 'MADE UP INCOMING', 'savings'));
+    b.sort('d1', { transfer: 'checking' }, '2026-10-04');
+    b.sort('d1', { to: 'wants' }, '2026-10-04');
+    expect(b.pots()).toEqual({ ...START, needs: 70_000, wants: 55_000 });
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
+  });
+
+  it('5.6 the bank sending the original again is still a duplicate, and nothing is counted twice', () => {
+    const b = book();
+    const out = purchase('x1', '2026-10-03', 30_000, 'MADE UP TRANSFER', { account: 'checking' });
+    b.receive(out);
+    b.sort('x1', { transfer: 'savings' }, '2026-10-03');
+    expect(b.receive(out).outcome).toBe('duplicate');
+    expect(b.inTransit().total).toBe(30_000);
+  });
+
+  it('5.6 a charge that posted at a new amount is marked as posted; sorted back, it is the posted charge again, and both versions sent again are duplicates', () => {
+    const b = book();
+    b.receive(purchase('p1', '2026-10-03', 5_000, 'ONLINE TRANSFER', { account: 'checking', pending: true }));
+    b.receive(posted('p2', 'p1', '2026-10-04', 5_200, 'ONLINE TRANSFER', 'checking'));
+    b.sort('p1', { transfer: 'savings' }, '2026-10-05');
+    expect(b.inTransit()).toMatchObject({ total: 5_200, items: [{ id: 'p1', amount: 5_200, seen: 'left' }] });
+    expect(b.receive(purchase('p1', '2026-10-03', 5_000, 'ONLINE TRANSFER', { account: 'checking', pending: true })).outcome).toBe('duplicate');
+    expect(b.receive(posted('p2', 'p1', '2026-10-04', 5_200, 'ONLINE TRANSFER', 'checking')).outcome).toBe('duplicate');
+    b.sort('p1', { to: 'needs' }, '2026-10-06');
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
+    expect(b.pots()).toEqual({ ...START, needs: 94_800 });
+    expect(b.purchases()).toMatchObject([{ id: 'p1', amount: 5_200, pending: false }]);
+  });
+
+  it('5.6 a purchase partly refunded, or one counted on setup day, cannot be marked as a transfer, and nothing changes', () => {
+    const b = openTestBook({
+      pots: { savings: 500_000, needs: 100_000, wants: 50_000, momReserve: 150_000 },
+      countedAtSetup: [purchase('s1', '2026-09-30', 3_000, 'MADE UP SHOP', { account: 'checking', pending: true })],
+    });
+    b.receive(posted('s2', 's1', '2026-10-02', 3_000, 'MADE UP SHOP', 'checking'));
+    b.receive(purchase('x1', '2026-10-03', 8_000, 'MADE UP SHOP', { account: 'checking' }));
+    b.receive(refund('r1', '2026-10-04', 1_000, 'x1', 'checking'));
+    const before = b.pots();
+    expect(codeOf(() => b.sort('x1', { transfer: 'savings' }, '2026-10-05'))).toBe('bad-choice');
+    expect(codeOf(() => b.sort('s1', { transfer: 'savings' }, '2026-10-05'))).toBe('bad-choice');
+    expect(b.pots()).toEqual(before);
+    expect(b.inTransit()).toEqual({ total: 0, items: [] });
+  });
+
+  it('5.6 only money out of checking or savings, or money in, can be a transfer, to another account, once it has posted', () => {
+    const b = book();
+    b.receive(purchase('c1', '2026-10-03', 1_000, 'MADE UP CAFE'));
+    b.receive(purchase('p1', '2026-10-03', 1_000, 'MADE UP STORE', { account: 'checking', pending: true }));
+    b.receive(purchase('x1', '2026-10-03', 1_000, 'MADE UP STORE', { account: 'checking' }));
+    b.receive(deposit('d1', '2026-10-03', 1_000, 'MADE UP INCOMING', 'savings'));
+    b.receive(cardCharge('f1', '2026-10-03', 1_000));
+    // A card purchase is money leaving a card: never a transfer.
+    expect(codeOf(() => b.sort('c1', { transfer: 'checking' }, '2026-10-04'))).toBe('bad-choice');
+    expect(codeOf(() => b.sort('p1', { transfer: 'savings' }, '2026-10-04'))).toBe('still-pending');
+    expect(codeOf(() => b.sort('x1', { transfer: 'checking' }, '2026-10-04'))).toBe('bad-choice');
+    expect(codeOf(() => b.sort('x1', { transfer: 'brokerage' } as never, '2026-10-04'))).toBe('bad-choice');
+    // Money cannot arrive from a card, or from the account it landed in.
+    expect(codeOf(() => b.sort('d1', { transfer: 'everyday-card' }, '2026-10-04'))).toBe('bad-choice');
+    expect(codeOf(() => b.sort('d1', { transfer: 'savings' }, '2026-10-04'))).toBe('bad-choice');
+    expect(codeOf(() => b.sort('f1', { transfer: 'checking' }, '2026-10-04'))).toBe('bad-choice');
+    expect(b.pots()).toEqual({ ...START, wants: 49_000, unsortedOut: 3_000, unsortedIn: 1_000 });
   });
 });

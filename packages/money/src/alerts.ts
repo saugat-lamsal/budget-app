@@ -1,4 +1,5 @@
 import type { Cents } from './cents.js';
+import type { IsoDate } from './dates.js';
 import type { BankBalances } from './self-check.js';
 
 // Rulebook section 10: the alerts due right now (Book.takeAlerts). Sending
@@ -11,7 +12,10 @@ export type Alert =
   | { readonly kind: 'empty-bucket'; readonly bucket: 'needs' | 'wants'; readonly amount: Cents }
   | { readonly kind: 'daily-review'; readonly at: string; readonly waiting: number }
   | { readonly kind: 'totals-mismatch'; readonly difference: Cents }
-  | { readonly kind: 'bank-login' };
+  | { readonly kind: 'bank-login' }
+  // 10.6: the bank took back a transaction the app had counted (4.10).
+  // Once, when it happens.
+  | { readonly kind: 'bank-took-back'; readonly id: string; readonly date: IsoDate; readonly description: string; readonly amount: Cents };
 
 export interface AlertInput {
   // Whether the bank connection needs you to log in again (10.5).

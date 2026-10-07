@@ -106,3 +106,42 @@ Bank side (12.1): pending charges count, pending money in does not until it
 posts: 1,000.00 - 30.00 + 0.00 - 0.00 = 970.00
 
 Check: bank side 970.00 | available 1,170.00
+
+
+========================================================================
+EXAMPLE 3. The bank changes its mind (rules 4.6, 4.9, 4.10, 12.1; A13,
+           A14, A16)
+========================================================================
+
+Setup day, Oct 1: checking 3,000.00, savings 5,000.00, everyday card owes
+450.00, nothing pending. Starting money 3,000.00 + 5,000.00 - 450.00 =
+7,550.00. He assigns savings 4,000.00, mom reserve 1,000.00, wants 200.00,
+and needs the rest, 2,350.00. A sorting rule sends "COFFEE" to wants.
+
+Step 1. Oct 2: a coffee bar tab, 20.00, shows pending on the everyday card.
+        Wants 200.00 - 20.00 = 180.00
+
+Step 2. Oct 3: still pending, the bank changes the tab to 26.00 (a tip).
+        The new amount counts right away (A13):
+        Wants 180.00 - 6.00 = 174.00
+        The same day a 10.00 coffee posts on checking, and the bank shows
+        it twice:
+        Wants 174.00 - 10.00 - 10.00 = 154.00
+
+Step 3. Oct 4: the bank takes the copy back. The app takes it back too
+        (4.10), logs it, and tells him:
+        Wants 154.00 + 10.00 = 164.00
+        A 75.00 bill is paid straight from savings. Nothing names it, so
+        it waits in review to be sorted (4.9):
+        Unsorted spending 75.00
+
+Where the bank stands (12.1):
+        Checking       3,000.00 - 10.00 = 2,990.00
+        Savings        5,000.00 - 75.00 = 4,925.00
+        Everyday card  450.00 + 26.00 pending = 476.00
+        Bank side      2,990.00 + 4,925.00 - 476.00 = 7,439.00
+Where the app stands (12.2):
+        4,000.00 + 2,350.00 + 164.00 + 1,000.00 - 75.00 = 7,439.00
+        The difference is 0.00.
+
+Check: wants 164.00 | unsorted spending 75.00 | bank side 7,439.00 | difference 0.00 | taken back 10.00

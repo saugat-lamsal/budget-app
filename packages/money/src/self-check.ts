@@ -11,21 +11,22 @@ export interface BankBalances {
 }
 
 export interface PendingCharge {
-  readonly account: 'checking' | 'everyday-card' | 'old-card';
+  readonly account: 'checking' | 'savings' | 'everyday-card' | 'old-card';
   readonly amount: Cents;
 }
 
 // 12.1: posted balances plus the bank's pending charges. A pending debit
-// lowers checking; a pending card charge raises what you owe. The old card
-// is left out (12.4).
+// lowers checking, money pending out of savings lowers savings (4.9), and a
+// pending card charge raises what you owe. The old card is left out (12.4).
 export function withPendingCharges(posted: BankBalances, pending: readonly PendingCharge[]): BankBalances {
-  let { checking, everydayCard } = posted;
+  let { checking, savings, everydayCard } = posted;
   for (const charge of pending) {
     assertPositiveCents(charge.amount, 'pending charge');
     if (charge.account === 'checking') checking = subtractCents(checking, charge.amount);
+    if (charge.account === 'savings') savings = subtractCents(savings, charge.amount);
     if (charge.account === 'everyday-card') everydayCard = addCents(everydayCard, charge.amount);
   }
-  return { checking, savings: posted.savings, everydayCard };
+  return { checking, savings, everydayCard };
 }
 
 // 12.1: checking + savings - everyday card balance.

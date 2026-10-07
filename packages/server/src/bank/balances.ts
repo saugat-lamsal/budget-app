@@ -11,7 +11,8 @@ import { centsFromPlaid } from './amounts.js';
 // what a card owes, before anything pending (B36; checked against the test
 // bank by the live tests). Pending charges are added from the bank's own list
 // of pending transactions, at the bank's latest amounts. Only pending
-// purchases count: they are the only pending items the book counts (4.6).
+// purchases count, savings ones included (4.9): they are the only pending
+// items the book counts (4.6).
 // Pending money in, and pending transfers and payments, count once they post.
 export interface BankView {
   // The posted balances of checking, savings and the everyday card.
@@ -42,7 +43,7 @@ export function bankView(accounts: readonly StoredAccount[], items: ReadonlyMap<
     const pendingCharges: PendingCharge[] = [];
     for (const item of items.values()) {
       const role = roles.get(item.accountId);
-      if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined || role === 'savings') continue;
+      if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined) continue;
       if (item.amountCents === null || item.amountCents <= 0) continue;
       pendingCharges.push({ account: role, amount: item.amountCents });
     }

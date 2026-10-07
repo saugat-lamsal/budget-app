@@ -43,6 +43,20 @@ describe('14 setup day from the test bank', () => {
     expect(preview.oldCardBalance).toBe(300_000);
   });
 
+  it('14.2 a charge pending on savings on setup day is in the starting money too (4.9, A16)', async () => {
+    const h = await connected({
+      history: (fake) => {
+        fake.addPending({ id: 'p-sav', account: ACCOUNT_IDS.savings, amount: 4_000, date: '2026-09-30', description: 'BILL PAY MADE UP INSURANCE' });
+      },
+    });
+    const preview = setupPreview(h.db, []);
+    expect(preview.pendingCharges.map((c) => [c.id, c.account, c.amount])).toEqual([['p-sav', 'savings', 4_000]]);
+    // 3,000.00 + (5,000.00 - 40.00) - 450.00 = 7,510.00
+    expect(preview.startingMoney).toBe(751_000);
+    expect(setUp(h).ok).toBe(true);
+    expect(status(h).selfCheck).toMatchObject({ ok: true, difference: 0 });
+  });
+
   it('14.3 tracking starts only when the assignment adds up exactly, to the cent', async () => {
     const h = await connected();
     const choices = { today: SETUP_DAY, lastPaycheckDate: '2026-09-25', settings: SETTINGS, rules: SORTING_RULES, inTransit: [] };

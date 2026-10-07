@@ -7,7 +7,10 @@ import {
   type Book,
   type Cents,
   type IsoDate,
+  type PendingChanged,
   type Purchase,
+  type SavingsWithdrawal,
+  type TakenBack,
 } from '@budget-app/money';
 import { readPlaidItem, type PlaidItem } from '../bank/plaid-item.js';
 import { readBankItem, type BankRule, type Reading } from '../bank/reading.js';
@@ -25,7 +28,11 @@ import { readBankItem, type BankRule, type Reading } from '../bank/reading.js';
 // - Plaid shows a pending charge posting as the pending one removed and the
 //   posted one added with pending_transaction_id. The posted one replaces the
 //   pending one in the book (4.6), even at a new amount. A pending charge
-//   removed with nothing posted in its place was dropped (A2).
+//   removed with nothing posted in its place was dropped (A2). A pending
+//   charge's new amount counts right away, in the same bucket (A13).
+// - A posted transaction the bank removes is taken back out of the book
+//   (4.10, A14). One whose money the bank changes is taken back, and its new
+//   version counted as new.
 // - A change the money math cannot follow is not applied: the item waits for
 //   his decision, and the self-check shows the difference until then (0.5).
 
@@ -223,7 +230,7 @@ class Planner {
     const sameMoney = known.accountId === item.accountId && known.pending === item.pending && known.amountCents === item.amount;
     // Sent again exactly as before: nothing to do, nothing to save.
     if (sameMoney && JSON.stringify(known.raw) === JSON.stringify(raw)) return;
-    const before = { pending: known.pending, amount: known.amountCents };
+    const before = { accountId: known.accountId, pending: known.pending, amount: known.amountCents };
     known.raw = raw;
     known.accountId = item.accountId;
     known.pending = item.pending;
@@ -253,29 +260,47 @@ class Planner {
   }
 
   // A transaction the book already has, changed by the bank.
-  #changedInBook(known: StoredItem, item: PlaidItem, before: { pending: boolean; amount: Cents | null }): void {
+  #changedInBook(known: StoredItem, item: PlaidItem, before: { accountId: string; pending: boolean; amount: Cents | null }): void {
     const role = this.#in.roles.get(item.accountId);
     if (known.kind === 'purchase' && before.pending && !item.pending && known.replacedBy === null && role !== undefined && item.amount > 0) {
       // 4.6: it posted under its own id. The posted charge replaces the pending one.
-      const posted: Purchase = {
-        kind: 'purchase',
-        id: `${item.id}-posted`,
-        account: purchaseAccount(role),
-        date: item.day,
+      this.#give({ ...this.#purchase(item, role), id: `${item.id}-posted`, pendingId: known.bookId ?? item.id }, known);
+      return;
+    }
+    if (known.kind === 'purchase' && before.pending && item.pending && known.replacedBy === null && before.accountId === item.accountId && item.amount > 0) {
+      // A13: a pending charge's new amount counts right away, in its bucket.
+      const change: PendingChanged = {
+        kind: 'pending-changed',
+        id: `${item.id}-changed-${this.#in.sync}`,
+        pendingId: known.bookId ?? item.id,
+        date: this.#in.today,
         amount: item.amount,
         description: item.description,
-        pending: false,
-        pendingId: known.bookId ?? item.id,
       };
-      this.#give(posted, known);
+      this.#give(change, known);
+      return;
+    }
+    if (!before.pending && !item.pending && role !== undefined) {
+      // 4.10 (A14): a posted transaction the bank changed. The old version
+      // is taken back, and the new one counted as new.
+      if (!this.#takeBack(known)) return;
+      const reading = readBankItem(role, item.amount, item.description, this.#in.rules);
+      known.kind = reading.kind;
+      if (reading.kind === 'nothing') {
+        known.status = 'skipped';
+        return;
+      }
+      const fresh = this.#transaction({ ...item, id: `${item.id}-${this.#in.sync}` }, role, reading);
+      if (fresh === null) {
+        known.status = 'held';
+        this.#notice(known, 'the money math has no place for it');
+        return;
+      }
+      if (this.#give(fresh, known)) known.bookId = fresh.id;
       return;
     }
     const was = before.amount === null ? 'an amount the app could not read' : formatDollars(Math.abs(before.amount));
-    if (before.pending && item.pending) {
-      this.#notice(known, `the bank changed a pending charge from ${was} to ${formatDollars(Math.abs(item.amount))}; the app keeps ${was} until it posts`);
-    } else {
-      this.#notice(known, `the bank changed a transaction the app had already counted (it was ${was}, now ${formatDollars(Math.abs(item.amount))})`);
-    }
+    this.#notice(known, `the bank changed a transaction the app had already counted in a way the app cannot follow (it was ${was}, now ${formatDollars(Math.abs(item.amount))})`);
   }
 
   // A transaction seen for the first time, or for the first time as
@@ -322,14 +347,17 @@ class Planner {
     const txn = this.#transaction(item, role, reading);
     if (txn === null) {
       stored.status = 'held';
-      this.#notice(stored, reading.kind === 'not-understood' ? reading.why : 'the money math has no place for it');
+      this.#notice(stored, 'the money math has no place for it');
       return;
     }
     this.#give(txn, stored);
   }
 
-  #purchase(item: PlaidItem, role: AccountId): Purchase {
-    return { kind: 'purchase', id: item.id, account: purchaseAccount(role), date: item.day, amount: Math.abs(item.amount), description: item.description, pending: false };
+  // Money out that is not a transfer or a payment to a person: a purchase,
+  // or out of savings a withdrawal, which always waits in review (4.9).
+  #purchase(item: PlaidItem, role: AccountId): Purchase | SavingsWithdrawal {
+    const base = { id: item.id, date: item.day, amount: Math.abs(item.amount), description: item.description, pending: false };
+    return role === 'savings' ? { ...base, kind: 'savings-withdrawal', account: role } : { ...base, kind: 'purchase', account: role };
   }
 
   #transaction(item: PlaidItem, role: AccountId, reading: Reading): BankTransaction | null {
@@ -345,14 +373,13 @@ class Planner {
       case 'card-charge':
         return role === 'everyday-card' || role === 'old-card' ? { ...base, kind: 'card-charge', account: role, date: item.date, charge: reading.charge } : null;
       case 'payment-to-person':
-        return role === 'checking' ? { ...base, kind: 'payment-to-person', account: 'checking', date: item.day } : null;
+        return role === 'checking' || role === 'savings' ? { ...base, kind: 'payment-to-person', account: role, date: item.day } : null;
       case 'transfer-sent':
         return role === 'checking' || role === 'savings' ? { ...base, kind: 'transfer-sent', from: role, to: reading.to, date: item.date } : null;
       case 'transfer-arrived': {
         const pair = this.#leavingHalfFor(role, amount, reading.from);
         return { ...base, kind: 'transfer-arrived', from: pair.from, to: role, date: item.date, ...(pair.sentId === undefined ? {} : { sentId: pair.sentId }) };
       }
-      case 'not-understood':
       case 'nothing':
         return null;
     }
@@ -375,15 +402,17 @@ class Planner {
   }
 
   // Gives the book one transaction. If the money math refuses it, the item
-  // waits for his decision instead, and nothing else changes.
-  #give(txn: BankTransaction, stored: StoredItem): void {
+  // waits for his decision instead, and nothing else changes. Says whether
+  // the book took it.
+  #give(txn: BankTransaction, stored: StoredItem): boolean {
     const book = this.#in.book;
     if (book === null) throw new Error('nothing goes to the book before setup day');
     try {
       book.receive(txn);
     } catch (error) {
       if (!(error instanceof MoneyError)) throw error;
-      if (txn.kind === 'pending-dropped' || ('pendingId' in txn && txn.pendingId !== undefined && txn.id !== stored.transactionId)) {
+      const aboutIt = txn.kind === 'pending-dropped' || txn.kind === 'pending-changed' || txn.kind === 'taken-back';
+      if (aboutIt || ('pendingId' in txn && txn.pendingId !== undefined && txn.id !== stored.transactionId)) {
         // The item itself is still in the book; only this change is not.
         this.#notice(stored, `the money math refused a change to it: ${error.message}`);
       } else {
@@ -391,7 +420,7 @@ class Planner {
         this.#notice(stored, `the money math refused it: ${error.message}`);
       }
       this.#touch(stored);
-      return;
+      return false;
     }
     this.#events.push(txn);
     if (stored.status !== 'sent') {
@@ -399,6 +428,20 @@ class Planner {
       stored.bookId = txn.id;
     }
     this.#touch(stored);
+    return true;
+  }
+
+  // 4.10 (A14): takes a transaction the book counted back out of it. Says
+  // whether the book took it back.
+  #takeBack(known: StoredItem): boolean {
+    const takenBack: TakenBack = {
+      kind: 'taken-back',
+      id: `${known.transactionId}-taken-back-${this.#in.sync}`,
+      takenId: known.bookId ?? known.transactionId,
+      date: this.#in.today,
+      description: describe(known),
+    };
+    return this.#give(takenBack, known);
   }
 
   // ----- Removed transactions -----
@@ -415,13 +458,10 @@ class Planner {
       this.#give({ kind: 'pending-dropped', id: `${id}-dropped`, pendingId: known.bookId ?? id, date: this.#in.today, description: describe(known) }, known);
       return;
     }
-    this.#notice(known, 'the bank removed a transaction the app had already counted');
+    // 4.10 (A14): the bank took back a transaction the app had counted. Its
+    // money goes back where it came from.
+    this.#takeBack(known);
   }
-}
-
-function purchaseAccount(role: AccountId): 'checking' | 'everyday-card' | 'old-card' {
-  if (role === 'savings') throw new Error('a purchase is never on savings');
-  return role;
 }
 
 function describe(item: StoredItem): string {
