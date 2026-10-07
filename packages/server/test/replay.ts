@@ -54,8 +54,10 @@ export class Replay {
     if (endpoint === '/accounts/get') return reply(200, stage.accounts);
     if (endpoint === '/liabilities/get') return reply(200, stage.liabilities);
     if (endpoint === '/transactions/sync') {
-      const cursor = typeof body['cursor'] === 'string' ? body['cursor'] : 'null';
-      const page = stage.sync[cursor];
+      // No cursor yet: saved as "null", or as "" when the bank first answered
+      // that it was not ready (Plaid then hands out an empty cursor).
+      const cursor = typeof body['cursor'] === 'string' ? body['cursor'] : null;
+      const page = cursor === null || cursor === '' ? (stage.sync['null'] ?? stage.sync['']) : stage.sync[cursor];
       if (page === undefined) return reply(400, { error_type: 'INVALID_INPUT', error_code: 'INVALID_CURSOR', request_id: 'req-replay' });
       return reply(200, page);
     }
