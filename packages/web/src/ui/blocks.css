@@ -204,6 +204,21 @@ button.row:active {
   font-variant-numeric: tabular-nums;
 }
 
+/* A row with an amount on its right: when the text is so large (or the
+   amount so long) that both do not fit, the amount goes on a line of its
+   own, on the right, instead of off the screen. */
+.row--trailing {
+  flex-wrap: wrap;
+}
+
+.row--trailing .row__text {
+  flex: 1 1 8rem;
+}
+
+.row--trailing .row__trailing {
+  margin-left: auto;
+}
+
 .row__chevron {
   flex: none;
   color: var(--text-2);

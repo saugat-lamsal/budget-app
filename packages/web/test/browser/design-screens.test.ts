@@ -179,6 +179,36 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
     await context.close();
   });
 
+  it("the text still fits when the font is wider than this computer's, at the largest text size", async () => {
+    // Windows' font is narrower than Linux's (found on CI), so the test makes every letter wider.
+    const context = await browser().newContext(phone({ bypassCSP: true }));
+    for (const [life, path] of [
+      ['big', '/buckets'],
+      ['normal', '/buckets'],
+      ['mismatch', '/buckets'],
+      ['buckets-busy', '/buckets'],
+      ['bank-not-read', '/buckets'],
+      ['big', '/review'],
+      ['review-busy', '/review'],
+    ] as const) {
+      const page = await openScenario(context, base(), life, path);
+      await addStyle(page, 'html { font-size: 36px !important; } * { letter-spacing: 0.07em !important; }');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth), `${path} ${life}`).toBeLessThanOrEqual(IPHONE.width);
+      const boxes = await page.locator('[data-money]').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right));
+      for (const right of boxes) expect(right, `${path} ${life}`).toBeLessThanOrEqual(IPHONE.width + 0.5);
+      // A row's title is not squeezed to a sliver to keep its amount on the same line: the amount goes below it instead.
+      const squeezed = await page.locator('.row--trailing .row__title').evaluateAll((els) =>
+        els.flatMap((e) => {
+          const lines = e.getBoundingClientRect().height / Number.parseFloat(getComputedStyle(e).lineHeight);
+          return lines > 2.5 ? [`"${e.textContent ?? ''}" takes ${lines.toFixed(1)} lines`] : [];
+        }),
+      );
+      expect(squeezed, `${path} ${life}`).toEqual([]);
+      await page.close();
+    }
+    await context.close();
+  });
+
   it('money is written the same way everywhere on the new screens, with digits that line up', async () => {
     const context = await browser().newContext(phone());
     for (const [life, path] of [
@@ -240,6 +270,9 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
     });
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(`${base()}/demo/review-busy`);
+    // Home has finished loading before the page goes on: leaving a request unfinished is not an error of the app,
+    // but WebKit reports it in the console.
+    await page.getByTestId('safe-to-spend').waitFor();
     await page.goto(`${base()}/review`);
     await page.getByTestId('review-count').waitFor();
     const store = idOf('review-busy', 'CORNER STORE');

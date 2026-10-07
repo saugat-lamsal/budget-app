@@ -80,7 +80,7 @@ export function ListRow({ title, detail, icon, tone = 'info', trailing, href, on
       )}
     </>
   );
-  const className = `row${icon === undefined ? ' row--plain' : ''}`;
+  const className = `row${icon === undefined ? ' row--plain' : ''}${trailing === undefined ? '' : ' row--trailing'}`;
   if (href !== undefined) {
     return (
       <a className={className} href={href} data-testid={testId}>

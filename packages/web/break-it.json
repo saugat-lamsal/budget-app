@@ -852,5 +852,19 @@
     "find": ".notice--sticky {\n  position: sticky;",
     "replace": ".notice--sticky {\n  position: static;",
     "why": "[review] the message about what was just done scrolls out of view"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": ".row--trailing {\n  flex-wrap: wrap;\n}",
+    "replace": ".row--trailing {\n  flex-wrap: nowrap;\n}",
+    "why": "[review] an amount on the right of a row goes off the screen at the largest text size"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": ".row--trailing .row__text {\n  flex: 1 1 8rem;\n}",
+    "replace": ".row--trailing .row__text {\n  flex: 1;\n}",
+    "why": "[review] a row never gives its amount a line of its own"
   }
 ]
