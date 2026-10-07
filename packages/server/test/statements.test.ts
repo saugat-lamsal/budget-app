@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { cardStatement } from '../src/bank/statements.js';
 import type { PlaidCreditCard } from '../src/plaid/types.js';
 import { ACCOUNT_IDS } from './fake-plaid.js';
-import { SETTINGS, book, status, tracking } from './harness.js';
+import { SETTINGS, book, connected, status, tracking } from './harness.js';
 
 // Section 9: what the card reminders need, from Plaid's Liabilities answer.
 // Every number is made up.
@@ -34,6 +34,20 @@ describe('9 card statements from the bank', () => {
     expect(cardStatement('old-card', { ...card, next_payment_due_date: '2026-09-01' })).toMatchObject({ ok: false, why: /before the statement date/ });
     expect(cardStatement('old-card', { ...card, minimum_payment_amount: -1 })).toMatchObject({ ok: false, why: /below zero/ });
     expect(cardStatement('old-card', { ...card, minimum_payment_amount: 0.001 })).toMatchObject({ ok: false, why: /whole number of cents/ });
+  });
+
+  it('9.1 statements that came before his accounts were set are there once they are set (found in the live test)', async () => {
+    const h = await connected({
+      history: (fake) => {
+        fake.setStatement(ACCOUNT_IDS.everyday, { ...card });
+        fake.setStatement(ACCOUNT_IDS.old, { ...card, minimum_payment_amount: 60 });
+      },
+    });
+    // connected() synced once before setting his accounts, and not since.
+    expect(status(h).statements.map((s) => [s.card, s.result.ok])).toEqual([
+      ['everyday-card', true],
+      ['old-card', true],
+    ]);
   });
 
   it('9.3 the statements come in with each sync, and a payment since the statement stops the reminders', async () => {

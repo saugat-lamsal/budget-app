@@ -31,7 +31,11 @@ export function bankStatus(db: Db): BankStatus {
   const book = loadBook(db);
   const accounts = readAccounts(db);
   const bank = connection === null || accounts.length === 0 ? null : bankView(accounts, readItems(db));
-  const statements = [...readStatements(db)].map(([card, { raw }]) => ({ card, result: cardStatement(card, raw) }));
+  const stored = readStatements(db);
+  const statements = accounts.flatMap((a) => {
+    const raw = stored.get(a.plaidAccountId)?.raw;
+    return (a.role === 'everyday-card' || a.role === 'old-card') && raw !== undefined ? [{ card: a.role, result: cardStatement(a.role, raw) }] : [];
+  });
   const selfCheck = book !== null && bank !== null && bank.ok ? book.selfCheck(bank.view.withPending) : null;
   const oldCard =
     book !== null && bank !== null && bank.ok

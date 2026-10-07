@@ -65,9 +65,10 @@ const STEPS: readonly string[] = [
     payload TEXT NOT NULL
   );
 
-  -- The latest statement details for each card (section 9).
+  -- The latest statement details for each card account (section 9), kept
+  -- whether or not the account is set as one of his cards yet.
   CREATE TABLE statements (
-    role TEXT PRIMARY KEY CHECK (role IN ('everyday-card', 'old-card')),
+    plaid_account_id TEXT PRIMARY KEY,
     raw TEXT NOT NULL,
     updated_by_sync INTEGER NOT NULL
   );

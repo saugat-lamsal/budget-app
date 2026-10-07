@@ -175,15 +175,16 @@ export function bookEvents(db: Db): { readonly kind: string; readonly payload: u
 
 // ----- Statements, attention, syncs, settings -----
 
-export function readStatements(db: Db): Map<'everyday-card' | 'old-card', { raw: PlaidCreditCard; rawText: string }> {
-  const rows = db.prepare('SELECT role, raw FROM statements').all() as { role: 'everyday-card' | 'old-card'; raw: string }[];
-  return new Map(rows.map((row) => [row.role, { raw: JSON.parse(row.raw) as PlaidCreditCard, rawText: row.raw }]));
+// By Plaid account id.
+export function readStatements(db: Db): Map<string, { raw: PlaidCreditCard; rawText: string }> {
+  const rows = db.prepare('SELECT plaid_account_id, raw FROM statements').all() as { plaid_account_id: string; raw: string }[];
+  return new Map(rows.map((row) => [row.plaid_account_id, { raw: JSON.parse(row.raw) as PlaidCreditCard, rawText: row.raw }]));
 }
 
-export function saveStatement(db: Db, role: 'everyday-card' | 'old-card', rawText: string, sync: number): void {
+export function saveStatement(db: Db, plaidAccountId: string, rawText: string, sync: number): void {
   db.prepare(
-    'INSERT INTO statements (role, raw, updated_by_sync) VALUES (?, ?, ?) ON CONFLICT (role) DO UPDATE SET raw = excluded.raw, updated_by_sync = excluded.updated_by_sync',
-  ).run(role, rawText, sync);
+    'INSERT INTO statements (plaid_account_id, raw, updated_by_sync) VALUES (?, ?, ?) ON CONFLICT (plaid_account_id) DO UPDATE SET raw = excluded.raw, updated_by_sync = excluded.updated_by_sync',
+  ).run(plaidAccountId, rawText, sync);
 }
 
 export function addAttention(db: Db, sync: number, attention: Attention): void {

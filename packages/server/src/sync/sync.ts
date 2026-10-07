@@ -180,11 +180,9 @@ function save(input: SyncInput, startCursor: string | null, fetched: Fetched): S
   // Roles are kept; a new Plaid account has none until one is set.
   const roles = rolesOf(storedAccounts);
   const storedCards = readStatements(db);
-  const cardRoles = new Map([...roles].filter(([, role]) => role === 'everyday-card' || role === 'old-card')) as Map<string, 'everyday-card' | 'old-card'>;
-  const changedCards = (fetched.cards ?? []).flatMap((card) => {
-    const role = card.account_id === null ? undefined : cardRoles.get(card.account_id);
-    return role !== undefined && storedCards.get(role)?.rawText !== JSON.stringify(card) ? [{ role, card }] : [];
-  });
+  const changedCards = (fetched.cards ?? []).flatMap((card) =>
+    card.account_id !== null && storedCards.get(card.account_id)?.rawText !== JSON.stringify(card) ? [{ accountId: card.account_id, card }] : [],
+  );
 
   const book = loadBook(db);
   const plan = planSync({
@@ -222,7 +220,7 @@ function save(input: SyncInput, startCursor: string | null, fetched: Fetched): S
   if (!changed) return result;
 
   for (const account of changedAccounts) saveAccount(db, account, JSON.stringify(account), sync);
-  for (const { role, card } of changedCards) saveStatement(db, role, JSON.stringify(card), sync);
+  for (const { accountId, card } of changedCards) saveStatement(db, accountId, JSON.stringify(card), sync);
   for (const item of plan.items) saveItem(db, item);
   for (const txn of plan.events) appendBookEvent(db, sync, { kind: 'receive', txn });
   for (const attention of plan.attention) addAttention(db, sync, attention);
