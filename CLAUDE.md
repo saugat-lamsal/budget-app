@@ -282,8 +282,8 @@ This applies to every phase and every session, cloud or local.
     and the test server were doing (harness.ts, waitOrReport).
   - PR #7 merged (Oct 7, 2026). Still to check: B80, B81, B83, B85 to B87.
 - Phase 4, step 4, the Buckets and Review screens: built Oct 7, 2026 on
-  branch phase-4-buckets-and-review, on made-up data only. Then stop, for
-  his feedback.
+  branch phase-4-buckets-and-review (PR #8), on made-up data only. Then
+  stop, for his feedback.
   - Buckets (packages/web/src/screens/Buckets.tsx, packages/server/src/views/buckets.ts):
     everything in the buckets as the one main number (12.2), needs and
     wants bars, savings, the mom reserve with this month against the target
@@ -317,7 +317,8 @@ This applies to every phase and every session, cloud or local.
     with a twin of the book. Break-it: the new breaks are tagged "[review]"
     (node scripts/break-it.mjs --match "\[review\]"; the screens' ones are
     section "home" and run the browser tests; use --only to judge them by
-    one test file).
+    one test file, --file to take only the breaks in some files, and the
+    environment variable BROWSER_ENGINE=chromium to judge by one engine).
   - Waiting on: his feedback on the look, A18 and A19, and B88 to B96 to
     check.
 - Waiting on: the promo end date for the old card. Only the payoff countdown
