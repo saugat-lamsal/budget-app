@@ -1,0 +1,102 @@
+/* The design tokens (CLAUDE.md design rules). Every screen takes its colors,
+   type, spacing, and motion from here; nothing else defines its own.
+
+   One accent color. The status colors (low, empty, overdue, mismatch) always
+   come with a word or an icon, never on their own. Text colors meet WCAG AA
+   contrast on every surface they sit on, in light and dark (a test checks). */
+
+:root {
+  color-scheme: light dark;
+
+  /* Light (the phone's light mode) */
+  --bg: #f2f2f7;
+  --surface: #ffffff;
+  --surface-2: #e8e8ee;
+  --text: #111114;
+  --text-2: #5c5c63;
+  --separator: #d8d8de;
+  --accent: #2459d6;
+  --on-accent: #ffffff;
+  --accent-soft: #e6edfc;
+  --danger: #c4281c;
+  --danger-bg: #fdeceb;
+  --danger-fill: #d93a2b;
+  --warning: #8a5300;
+  --warning-bg: #fff3dc;
+  --warning-fill: #c77700;
+  --ok: #1d7a39;
+  --ok-bg: #e6f4ea;
+  --backdrop: rgb(0 0 0 / 0.35);
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+  --tabbar-bg: #f9f9fb;
+  /* The same in light and dark: white text on it stays readable in both. */
+  --badge-bg: #d02c1f;
+
+  /* Type: sizes are rem, so they follow the phone's text size (base.css). */
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --text-hero: 3.25rem;
+  --text-title: 2rem;
+  --text-headline: 1.0625rem;
+  --text-body: 1rem;
+  --text-sub: 0.875rem;
+  --text-caption: 0.75rem;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 700;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --gutter: 16px;
+  --radius: 14px;
+  --radius-sm: 10px;
+  --tap: 44px;
+  --tabbar-height: 50px;
+
+  /* The notch and the home bar. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  /* Motion: short and quiet, and none at all with reduced motion. */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration: 180ms;
+  --duration-sheet: 260ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --surface-2: #323236;
+    --text: #f5f5f7;
+    --text-2: #a3a3aa;
+    --separator: #38383c;
+    --accent: #6f9dff;
+    --on-accent: #0a1430;
+    --accent-soft: #1a2747;
+    --danger: #ff7a6e;
+    --danger-bg: #3b1613;
+    --danger-fill: #ff5e50;
+    --warning: #ffb84d;
+    --warning-bg: #33250d;
+    --warning-fill: #f2a23a;
+    --ok: #5ad48a;
+    --ok-bg: #11301d;
+    --backdrop: rgb(0 0 0 / 0.6);
+    --shadow: none;
+    --tabbar-bg: #161618;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration: 0ms;
+    --duration-sheet: 0ms;
+  }
+}

@@ -1,0 +1,13 @@
+{
+  // The screens: browser code, built by Vite. Same strict settings as the
+  // rest, with the browser's DOM and React's JSX.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": [],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx"
+  },
+  "include": ["src"]
+}

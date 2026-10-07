@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./views": "./src/views/home.ts"
+  },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json && tsc -p test/tsconfig.json"
   },

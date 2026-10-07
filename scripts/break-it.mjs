@@ -2,12 +2,18 @@
 //
 // Breaks the code on purpose, one way at a time, and runs every test. Some
 // test must fail each time. Each break is a find-and-replace listed in
-// packages/money/break-it.json (the money math) or packages/server/break-it.json
-// (the bank connection, section "bank"). The file is always restored afterward.
+// packages/money/break-it.json (the money math), packages/server/break-it.json
+// (the bank connection, section "bank"), or packages/web/break-it.json (the
+// screens, section "home"). The file is always restored afterward.
+//
+// The browser tests run only for the screens' breaks (section "home"); every
+// other break is judged by the rest of the tests, which run in seconds. That
+// can only make a break look less caught, never more.
 //
 //   node scripts/break-it.mjs                    every break
 //   node scripts/break-it.mjs 3 4                only breaks for rulebook sections 3 and 4
 //   node scripts/break-it.mjs bank               only breaks for the bank connection
+//   node scripts/break-it.mjs home               only breaks for the screens
 //   node scripts/break-it.mjs --restore          only put back files a stopped run left broken
 //   node scripts/break-it.mjs --only <test file> judge every break by that one test file,
 //                                                to see what it catches on its own
@@ -21,7 +27,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const root = new URL('../', import.meta.url);
-const lists = ['packages/money/break-it.json', 'packages/server/break-it.json'];
+const lists = ['packages/money/break-it.json', 'packages/server/break-it.json', 'packages/web/break-it.json'];
 const breaks = lists.filter((list) => existsSync(new URL(list, root))).flatMap((list) => JSON.parse(readFileSync(new URL(list, root), 'utf8')));
 const args = process.argv.slice(2);
 const onlyAt = args.indexOf('--only');
@@ -65,13 +71,14 @@ for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
 // Windows). The break being tested has its backup in place, so the run is told
 // which backup is expected (BREAK_IT_BACKUP); the guard still fails on any other.
 const vitest = fileURLToPath(new URL('node_modules/vitest/vitest.mjs', root));
-function runTests(file) {
+function runTests(file, withBrowsers) {
   return spawnSync(process.execPath, [vitest, 'run', ...(only === undefined ? [] : [only])], {
     cwd: root,
     encoding: 'utf8',
-    env: { ...process.env, BREAK_IT_BACKUP: backupName(file) },
+    env: { ...process.env, BREAK_IT_BACKUP: backupName(file), SKIP_BROWSER_TESTS: withBrowsers ? '0' : '1' },
   });
 }
+const needsBrowsers = (b) => b.section === 'home';
 
 // Control run: with a backup in place and nothing broken, every test must
 // pass. If one fails anyway, every break below would look caught.
@@ -81,7 +88,7 @@ if (chosen.length > 0) {
   writeFileSync(backupOf(file), originals.get(file));
   let control;
   try {
-    control = runTests(file);
+    control = runTests(file, chosen.some(needsBrowsers));
   } finally {
     rmSync(backupOf(file), { force: true });
     originals.delete(file);
@@ -106,7 +113,7 @@ for (const b of chosen) {
   writeFileSync(backupOf(b.file), original);
   try {
     writeFileSync(url, original.replace(b.find, () => b.replace));
-    const run = runTests(b.file);
+    const run = runTests(b.file, needsBrowsers(b));
     const output = `${run.stdout}${run.stderr}`;
     const failed = /Tests\s+(\d+) failed/.exec(output)?.[1];
     // A break that stops the tests from loading proves nothing, so it counts
