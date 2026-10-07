@@ -30,6 +30,7 @@ import {
   arrived,
   cardCharge,
   deposit,
+  dropped,
   openTestBook,
   payPerson,
   paycheck,
@@ -93,6 +94,7 @@ type Step =
   | { type: 'repeat'; pick: number }
   | { type: 'purchase'; gap: number; amount: number; account: 'checking' | 'everyday-card' | 'old-card'; pending: boolean; description: string }
   | { type: 'post'; pick: number; change: number }
+  | { type: 'drop'; pick: number }
   | { type: 'refund'; pick: number; amount: number; linked: boolean; account: 'checking' | 'everyday-card' }
   | { type: 'card-charge'; amount: number; charge: 'fee' | 'interest' }
   | { type: 'sort'; pick: number; seed: number }
@@ -149,6 +151,7 @@ const stepArb: fc.Arbitrary<Step> = fc.oneof(
     description: fc.constantFrom('MADE UP GROCER', 'MADE UP CAFE', 'MADE UP HARDWARE'),
   }),
   fc.record({ type: fc.constant('post' as const), pick: fc.nat(), change: fc.integer({ min: -5_000, max: 5_000 }) }),
+  fc.record({ type: fc.constant('drop' as const), pick: fc.nat() }),
   fc.record({
     type: fc.constant('refund' as const),
     pick: fc.nat(),
@@ -233,6 +236,8 @@ function pick<T>(list: readonly T[], index: number): T | undefined {
 // payment cannot be split.
 function spendingChoice(amount: number, seed: number, kind: string): SortChoice {
   if (kind === 'person-payment') return { to: (['needs', 'wants', 'not-mine'] as const)[seed % 3] ?? 'needs' };
+  // A payment to the old card from savings: savings once confirmed, or needs (QUESTIONS.md A4).
+  if (kind === 'old-card-from-savings') return { to: seed % 2 === 0 ? 'savings' : 'needs' };
   if (seed % 3 === 2 && amount >= 2 && kind !== 'mom-difference') {
     const needs = 1 + (seed % (amount - 1));
     return { split: [{ bucket: 'needs', amount: needs }, { bucket: 'wants', amount: amount - needs }] };
@@ -311,6 +316,12 @@ function runLife(book: Book, bank: TestBank, steps: Step[], pendingAtSetup: read
         const index = step.pick % Math.max(1, pending.length);
         const [target] = pending.splice(index, 1);
         if (target) send(posted(`t${n++}`, target.id, date, Math.max(1, target.amount + step.change), target.description, target.account));
+        break;
+      }
+      case 'drop': {
+        // QUESTIONS.md A2: the bank drops a pending charge without posting it.
+        const [target] = pending.splice(step.pick % Math.max(1, pending.length), 1);
+        if (target) send(dropped(`t${n++}`, target.id, date));
         break;
       }
       case 'refund': {

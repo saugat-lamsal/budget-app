@@ -1,0 +1,1304 @@
+{
+ "about": "What Plaid's test bank (sandbox) really sent on Oct 7, 2026, for its test user user_transactions_dynamic, saved as it came (API version 2020-09-14), cut down to its checking account and its card: the charges pending in the history, then what the refreshes brought, where pending charges posted. The keys were never saved. The ids are the test bank's own; every name and number is made up.",
+ "accounts": [
+  {
+   "account_id": "eA6DdGAG7PiJE6XJn84Atw6KvzZPnburQ3lZP",
+   "apy": null,
+   "balances": {
+    "available": 442,
+    "current": 500,
+    "iso_currency_code": "USD",
+    "limit": null,
+    "unofficial_currency_code": null
+   },
+   "holder_category": "personal",
+   "mask": "1000",
+   "name": "Checking",
+   "official_name": "Plaid checking",
+   "subtype": "checking",
+   "type": "depository"
+  },
+  {
+   "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+   "apy": null,
+   "balances": {
+    "available": 13589.69,
+    "current": 500,
+    "iso_currency_code": "USD",
+    "limit": 14300,
+    "unofficial_currency_code": null
+   },
+   "holder_category": "personal",
+   "mask": "2000",
+   "name": "Credit card",
+   "official_name": "Plaid credit card",
+   "subtype": "credit card",
+   "type": "credit"
+  }
+ ],
+ "history": [
+  {
+   "account_id": "eA6DdGAG7PiJE6XJn84Atw6KvzZPnburQ3lZP",
+   "account_owner": null,
+   "amount": 58,
+   "authorized_date": "2026-10-07",
+   "authorized_datetime": null,
+   "category": [
+    "Service",
+    "Financial"
+   ],
+   "category_id": "18020000",
+   "check_number": null,
+   "counterparties": [
+    {
+     "confidence_level": "VERY_HIGH",
+     "entity_id": "1eDor7br409n5WmJm8YQ2B9oD6bgQ2230zvdo",
+     "logo_url": "https://plaid-counterparty-logos.plaid.com/earnin_42.png",
+     "name": "Earnin",
+     "phone_number": null,
+     "type": "financial_institution",
+     "website": "earnin.com"
+    }
+   ],
+   "date": "2026-10-07",
+   "datetime": null,
+   "iso_currency_code": "USD",
+   "location": {
+    "address": null,
+    "city": null,
+    "country": null,
+    "lat": null,
+    "lon": null,
+    "postal_code": null,
+    "region": null,
+    "store_number": null
+   },
+   "logo_url": null,
+   "merchant_category_code": null,
+   "merchant_entity_id": null,
+   "merchant_name": "Earnin",
+   "name": "72116609 POS PURCHASE EARNIN RE SC 6 721582259",
+   "original_description": "72116609 POS PURCHASE EARNIN RE 314-685-1848 SC 6 721582259",
+   "payment_channel": "other",
+   "payment_meta": {
+    "by_order_of": null,
+    "payee": null,
+    "payer": null,
+    "payment_method": null,
+    "payment_processor": null,
+    "ppd_id": null,
+    "reason": null,
+    "reference_number": null
+   },
+   "pending": true,
+   "pending_transaction_id": null,
+   "personal_finance_category": {
+    "confidence_level": "VERY_HIGH",
+    "detailed": "LOAN_PAYMENTS_EWA",
+    "primary": "LOAN_PAYMENTS",
+    "version": "v2"
+   },
+   "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_LOAN_PAYMENTS.png",
+   "transaction_code": null,
+   "transaction_id": "AA1WaZAZMxiJBvbJED9mtpdlNwNbn4i4zJWNn",
+   "transaction_type": "place",
+   "unofficial_currency_code": null,
+   "website": null
+  },
+  {
+   "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+   "account_owner": null,
+   "amount": 16.99,
+   "authorized_date": "2026-10-07",
+   "authorized_datetime": null,
+   "category": [
+    "Shops",
+    "Digital Purchase"
+   ],
+   "category_id": "19019000",
+   "check_number": null,
+   "counterparties": [
+    {
+     "confidence_level": "VERY_HIGH",
+     "entity_id": "zbzNyw83zkVDdrdpRo5y1yE67V7vbMWY4LNne",
+     "logo_url": "https://plaid-merchant-logos.plaid.com/apple_63.png",
+     "name": "Apple",
+     "phone_number": null,
+     "type": "merchant",
+     "website": "apple.com"
+    }
+   ],
+   "date": "2026-10-07",
+   "datetime": null,
+   "iso_currency_code": "USD",
+   "location": {
+    "address": null,
+    "city": null,
+    "country": null,
+    "lat": null,
+    "lon": null,
+    "postal_code": null,
+    "region": null,
+    "store_number": null
+   },
+   "logo_url": "https://plaid-merchant-logos.plaid.com/apple_63.png",
+   "merchant_category_code": null,
+   "merchant_entity_id": "zbzNyw83zkVDdrdpRo5y1yE67V7vbMWY4LNne",
+   "merchant_name": "Apple",
+   "name": "APPLE.COM/BILL",
+   "original_description": "APPLE.COM/BILL",
+   "payment_channel": "online",
+   "payment_meta": {
+    "by_order_of": null,
+    "payee": null,
+    "payer": null,
+    "payment_method": null,
+    "payment_processor": null,
+    "ppd_id": null,
+    "reason": null,
+    "reference_number": null
+   },
+   "pending": true,
+   "pending_transaction_id": null,
+   "personal_finance_category": {
+    "confidence_level": "HIGH",
+    "detailed": "ENTERTAINMENT_OTHER_ENTERTAINMENT",
+    "primary": "ENTERTAINMENT",
+    "version": "v2"
+   },
+   "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_ENTERTAINMENT.png",
+   "transaction_code": null,
+   "transaction_id": "MrlVpzrzbju38dK3kbmZHWjJKxKelDI4qpDoE",
+   "transaction_type": "digital",
+   "unofficial_currency_code": null,
+   "website": "apple.com"
+  },
+  {
+   "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+   "account_owner": null,
+   "amount": 9.93,
+   "authorized_date": "2026-10-07",
+   "authorized_datetime": null,
+   "category": [
+    "Travel",
+    "Gas Stations"
+   ],
+   "category_id": "22009000",
+   "check_number": null,
+   "counterparties": [
+    {
+     "confidence_level": "VERY_HIGH",
+     "entity_id": "dMqwOD5qKvJz2bqay2bXjOmg8dQDN9BVz8VNz",
+     "logo_url": "https://plaid-merchant-logos.plaid.com/exxonmobil_341.png",
+     "name": "ExxonMobil",
+     "phone_number": null,
+     "type": "merchant",
+     "website": "exxonmobil.com"
+    }
+   ],
+   "date": "2026-10-07",
+   "datetime": null,
+   "iso_currency_code": "USD",
+   "location": {
+    "address": null,
+    "city": null,
+    "country": null,
+    "lat": null,
+    "lon": null,
+    "postal_code": null,
+    "region": null,
+    "store_number": null
+   },
+   "logo_url": "https://plaid-merchant-logos.plaid.com/exxonmobil_341.png",
+   "merchant_category_code": null,
+   "merchant_entity_id": "dMqwOD5qKvJz2bqay2bXjOmg8dQDN9BVz8VNz",
+   "merchant_name": "ExxonMobil",
+   "name": "ExxonMobil",
+   "original_description": "EXXON VILLAGE SHOP STO",
+   "payment_channel": "in store",
+   "payment_meta": {
+    "by_order_of": null,
+    "payee": null,
+    "payer": null,
+    "payment_method": null,
+    "payment_processor": null,
+    "ppd_id": null,
+    "reason": null,
+    "reference_number": null
+   },
+   "pending": true,
+   "pending_transaction_id": null,
+   "personal_finance_category": {
+    "confidence_level": "VERY_HIGH",
+    "detailed": "TRANSPORTATION_GAS",
+    "primary": "TRANSPORTATION",
+    "version": "v2"
+   },
+   "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_TRANSPORTATION.png",
+   "transaction_code": null,
+   "transaction_id": "1NJBbqNqK4cLx3VLl49vIoEmdjd9J1uqBXQwG",
+   "transaction_type": "place",
+   "unofficial_currency_code": null,
+   "website": "exxonmobil.com"
+  },
+  {
+   "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+   "account_owner": null,
+   "amount": 41.98,
+   "authorized_date": "2026-10-07",
+   "authorized_datetime": null,
+   "category": [
+    "Shops",
+    "Food and Beverage Store"
+   ],
+   "category_id": "19025000",
+   "check_number": null,
+   "counterparties": [
+    {
+     "confidence_level": "HIGH",
+     "entity_id": null,
+     "logo_url": null,
+     "name": "Virginia ABC",
+     "phone_number": null,
+     "type": "merchant",
+     "website": null
+    }
+   ],
+   "date": "2026-10-07",
+   "datetime": null,
+   "iso_currency_code": "USD",
+   "location": {
+    "address": null,
+    "city": null,
+    "country": null,
+    "lat": null,
+    "lon": null,
+    "postal_code": null,
+    "region": null,
+    "store_number": null
+   },
+   "logo_url": null,
+   "merchant_category_code": null,
+   "merchant_entity_id": null,
+   "merchant_name": "Virginia ABC",
+   "name": "VA ABC STORE XXX",
+   "original_description": "VA ABC STORE XXX",
+   "payment_channel": "in store",
+   "payment_meta": {
+    "by_order_of": null,
+    "payee": null,
+    "payer": null,
+    "payment_method": null,
+    "payment_processor": null,
+    "ppd_id": null,
+    "reason": null,
+    "reference_number": null
+   },
+   "pending": true,
+   "pending_transaction_id": null,
+   "personal_finance_category": {
+    "confidence_level": "HIGH",
+    "detailed": "FOOD_AND_DRINK_BEER_WINE_AND_LIQUOR",
+    "primary": "FOOD_AND_DRINK",
+    "version": "v2"
+   },
+   "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_FOOD_AND_DRINK.png",
+   "transaction_code": null,
+   "transaction_id": "LKMwLrKrn4UB7aABZ8ewToRAy8yWQ9uewKLJG",
+   "transaction_type": "place",
+   "unofficial_currency_code": null,
+   "website": null
+  },
+  {
+   "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+   "account_owner": null,
+   "amount": 121.41,
+   "authorized_date": "2026-10-07",
+   "authorized_datetime": null,
+   "category": [
+    "Food and Drink",
+    "Restaurants"
+   ],
+   "category_id": "13005000",
+   "check_number": null,
+   "counterparties": [
+    {
+     "confidence_level": "VERY_HIGH",
+     "entity_id": "jBdgR49b48OQQo7gL171XNdOd73zwBbJXeO3A",
+     "logo_url": "https://plaid-merchant-logos.plaid.com/olive_garden_699.png",
+     "name": "Olive Garden",
+     "phone_number": null,
+     "type": "merchant",
+     "website": "olivegarden.com"
+    }
+   ],
+   "date": "2026-10-07",
+   "datetime": null,
+   "iso_currency_code": "USD",
+   "location": {
+    "address": null,
+    "city": null,
+    "country": null,
+    "lat": null,
+    "lon": null,
+    "postal_code": null,
+    "region": null,
+    "store_number": null
+   },
+   "logo_url": "https://plaid-merchant-logos.plaid.com/olive_garden_699.png",
+   "merchant_category_code": null,
+   "merchant_entity_id": "jBdgR49b48OQQo7gL171XNdOd73zwBbJXeO3A",
+   "merchant_name": "Olive Garden",
+   "name": "Olive Garden",
+   "original_description": "OLIVE GARDEN ZK XXXXXXX",
+   "payment_channel": "in store",
+   "payment_meta": {
+    "by_order_of": null,
+    "payee": null,
+    "payer": null,
+    "payment_method": null,
+    "payment_processor": null,
+    "ppd_id": null,
+    "reason": null,
+    "reference_number": null
+   },
+   "pending": true,
+   "pending_transaction_id": null,
+   "personal_finance_category": {
+    "confidence_level": "VERY_HIGH",
+    "detailed": "FOOD_AND_DRINK_RESTAURANT",
+    "primary": "FOOD_AND_DRINK",
+    "version": "v2"
+   },
+   "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_FOOD_AND_DRINK.png",
+   "transaction_code": null,
+   "transaction_id": "pKgm1yKyEPUA51vAbZj4swBrEZEoM9uJajDxV",
+   "transaction_type": "place",
+   "unofficial_currency_code": null,
+   "website": "olivegarden.com"
+  },
+  {
+   "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+   "account_owner": null,
+   "amount": 20,
+   "authorized_date": "2026-10-07",
+   "authorized_datetime": null,
+   "category": [
+    "Food and Drink",
+    "Restaurants"
+   ],
+   "category_id": "13005000",
+   "check_number": null,
+   "counterparties": [
+    {
+     "confidence_level": "LOW",
+     "entity_id": null,
+     "logo_url": null,
+     "name": "Food S",
+     "phone_number": null,
+     "type": "merchant",
+     "website": null
+    }
+   ],
+   "date": "2026-10-07",
+   "datetime": null,
+   "iso_currency_code": "USD",
+   "location": {
+    "address": null,
+    "city": null,
+    "country": null,
+    "lat": null,
+    "lon": null,
+    "postal_code": null,
+    "region": null,
+    "store_number": null
+   },
+   "logo_url": null,
+   "merchant_category_code": null,
+   "merchant_entity_id": null,
+   "merchant_name": "Food S",
+   "name": "FCPS MYSCHOOLBUCKS FOOD S",
+   "original_description": "FCPS MYSCHOOLBUCKS FOOD S",
+   "payment_channel": "in store",
+   "payment_meta": {
+    "by_order_of": null,
+    "payee": null,
+    "payer": null,
+    "payment_method": null,
+    "payment_processor": null,
+    "ppd_id": null,
+    "reason": null,
+    "reference_number": null
+   },
+   "pending": true,
+   "pending_transaction_id": null,
+   "personal_finance_category": {
+    "confidence_level": "LOW",
+    "detailed": "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+    "primary": "GOVERNMENT_AND_NON_PROFIT",
+    "version": "v2"
+   },
+   "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_GOVERNMENT_AND_NON_PROFIT.png",
+   "transaction_code": null,
+   "transaction_id": "oqboMGqG8JSmNyamLne4sQVMkdkGeJfpE5X3y",
+   "transaction_type": "place",
+   "unofficial_currency_code": null,
+   "website": null
+  }
+ ],
+ "update": {
+  "added": [
+   {
+    "account_id": "eA6DdGAG7PiJE6XJn84Atw6KvzZPnburQ3lZP",
+    "account_owner": null,
+    "amount": 58,
+    "authorized_date": "2026-10-07",
+    "authorized_datetime": null,
+    "category": [
+     "Service",
+     "Financial"
+    ],
+    "category_id": "18020000",
+    "check_number": null,
+    "counterparties": [
+     {
+      "confidence_level": "VERY_HIGH",
+      "entity_id": "1eDor7br409n5WmJm8YQ2B9oD6bgQ2230zvdo",
+      "logo_url": "https://plaid-counterparty-logos.plaid.com/earnin_42.png",
+      "name": "Earnin",
+      "phone_number": null,
+      "type": "financial_institution",
+      "website": "earnin.com"
+     }
+    ],
+    "date": "2026-10-07",
+    "datetime": null,
+    "iso_currency_code": "USD",
+    "location": {
+     "address": null,
+     "city": null,
+     "country": null,
+     "lat": null,
+     "lon": null,
+     "postal_code": null,
+     "region": null,
+     "store_number": null
+    },
+    "logo_url": null,
+    "merchant_category_code": null,
+    "merchant_entity_id": null,
+    "merchant_name": "Earnin",
+    "name": "72116609 POS PURCHASE EARNIN RE SC 6 721582259",
+    "original_description": "72116609 POS PURCHASE EARNIN RE 314-685-1848 SC 6 721582259",
+    "payment_channel": "other",
+    "payment_meta": {
+     "by_order_of": null,
+     "payee": null,
+     "payer": null,
+     "payment_method": null,
+     "payment_processor": null,
+     "ppd_id": null,
+     "reason": null,
+     "reference_number": null
+    },
+    "pending": false,
+    "pending_transaction_id": "AA1WaZAZMxiJBvbJED9mtpdlNwNbn4i4zJWNn",
+    "personal_finance_category": {
+     "confidence_level": "VERY_HIGH",
+     "detailed": "LOAN_PAYMENTS_EWA",
+     "primary": "LOAN_PAYMENTS",
+     "version": "v2"
+    },
+    "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_LOAN_PAYMENTS.png",
+    "running_balance": null,
+    "transaction_code": null,
+    "transaction_id": "Em7WjpmpowSA6EvAJ39LszzAAkqABwi9L9GNA",
+    "transaction_type": "place",
+    "unofficial_currency_code": null,
+    "website": null
+   },
+   {
+    "account_id": "eA6DdGAG7PiJE6XJn84Atw6KvzZPnburQ3lZP",
+    "account_owner": null,
+    "amount": 38.38955,
+    "authorized_date": "2026-10-07",
+    "authorized_datetime": null,
+    "category": [
+     "Food and Drink",
+     "Restaurants"
+    ],
+    "category_id": "13005000",
+    "check_number": null,
+    "counterparties": [
+     {
+      "confidence_level": "VERY_HIGH",
+      "entity_id": "5B10W0429bM0nAE0XNWD3nOqo9KvRMo2mBVXD",
+      "logo_url": "https://plaid-merchant-logos.plaid.com/godaddy_438.png",
+      "name": "GoDaddy",
+      "phone_number": null,
+      "type": "merchant",
+      "website": "godaddy.com"
+     }
+    ],
+    "date": "2026-10-07",
+    "datetime": null,
+    "iso_currency_code": "USD",
+    "location": {
+     "address": null,
+     "city": null,
+     "country": null,
+     "lat": null,
+     "lon": null,
+     "postal_code": null,
+     "region": "AZ",
+     "store_number": null
+    },
+    "logo_url": "https://plaid-merchant-logos.plaid.com/godaddy_438.png",
+    "merchant_category_code": null,
+    "merchant_entity_id": "5B10W0429bM0nAE0XNWD3nOqo9KvRMo2mBVXD",
+    "merchant_name": "GoDaddy",
+    "name": "RECURRING DEBIT CARD 970481896 DNHGODADDYCOM 881670390",
+    "original_description": "RECURRING DEBIT CARD 970481896 DNHGODADDYCOM 881670390 AZ",
+    "payment_channel": "online",
+    "payment_meta": {
+     "by_order_of": null,
+     "payee": null,
+     "payer": null,
+     "payment_method": null,
+     "payment_processor": null,
+     "ppd_id": null,
+     "reason": null,
+     "reference_number": null
+    },
+    "pending": true,
+    "pending_transaction_id": null,
+    "personal_finance_category": {
+     "confidence_level": "HIGH",
+     "detailed": "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+     "primary": "GENERAL_SERVICES",
+     "version": "v2"
+    },
+    "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_GENERAL_SERVICES.png",
+    "transaction_code": null,
+    "transaction_id": "G9w6eg9g8yulAGwlavq8cpp667r6aqfA4Amd1",
+    "transaction_type": "place",
+    "unofficial_currency_code": null,
+    "website": "godaddy.com"
+   },
+   {
+    "account_id": "eA6DdGAG7PiJE6XJn84Atw6KvzZPnburQ3lZP",
+    "account_owner": null,
+    "amount": 51,
+    "authorized_date": "2026-10-07",
+    "authorized_datetime": null,
+    "category": [
+     "Transfer",
+     "Debit"
+    ],
+    "category_id": "21006000",
+    "check_number": null,
+    "counterparties": [
+     {
+      "confidence_level": "VERY_HIGH",
+      "entity_id": "OvBoa85QgvVmr6441J3Op9XqV4wX0rBOM5B3g",
+      "logo_url": "https://plaid-counterparty-logos.plaid.com/stash_64.png",
+      "name": "Stash",
+      "phone_number": null,
+      "type": "financial_institution",
+      "website": "stash.com"
+     }
+    ],
+    "date": "2026-10-07",
+    "datetime": null,
+    "iso_currency_code": "USD",
+    "location": {
+     "address": null,
+     "city": null,
+     "country": null,
+     "lat": null,
+     "lon": null,
+     "postal_code": null,
+     "region": null,
+     "store_number": null
+    },
+    "logo_url": null,
+    "merchant_category_code": null,
+    "merchant_entity_id": null,
+    "merchant_name": "Stash",
+    "name": "STASH TRANSFER",
+    "original_description": "STASH TRANSFER",
+    "payment_channel": "other",
+    "payment_meta": {
+     "by_order_of": null,
+     "payee": null,
+     "payer": null,
+     "payment_method": null,
+     "payment_processor": null,
+     "ppd_id": null,
+     "reason": null,
+     "reference_number": null
+    },
+    "pending": true,
+    "pending_transaction_id": null,
+    "personal_finance_category": {
+     "confidence_level": "MEDIUM",
+     "detailed": "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS",
+     "primary": "TRANSFER_OUT",
+     "version": "v2"
+    },
+    "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_TRANSFER_OUT.png",
+    "transaction_code": null,
+    "transaction_id": "nl49ZGlGgMi4pjE4WeZQInnvvbpvjDfKBKr4A",
+    "transaction_type": "special",
+    "unofficial_currency_code": null,
+    "website": null
+   },
+   {
+    "account_id": "eA6DdGAG7PiJE6XJn84Atw6KvzZPnburQ3lZP",
+    "account_owner": null,
+    "amount": 306,
+    "authorized_date": "2026-10-07",
+    "authorized_datetime": null,
+    "category": [
+     "Payment",
+     "Credit Card"
+    ],
+    "category_id": "16001000",
+    "check_number": null,
+    "counterparties": [
+     {
+      "confidence_level": "VERY_HIGH",
+      "entity_id": "mOKJyRdX17mm9yoZJQ028eRMA2ewkjE64v60R",
+      "logo_url": "https://plaid-counterparty-logos.plaid.com/lead_bank_255.png",
+      "name": "Lead Bank",
+      "phone_number": null,
+      "type": "financial_institution",
+      "website": "lead.bank"
+     }
+    ],
+    "date": "2026-10-07",
+    "datetime": null,
+    "iso_currency_code": "USD",
+    "location": {
+     "address": null,
+     "city": null,
+     "country": null,
+     "lat": null,
+     "lon": null,
+     "postal_code": null,
+     "region": null,
+     "store_number": null
+    },
+    "logo_url": null,
+    "merchant_category_code": null,
+    "merchant_entity_id": null,
+    "merchant_name": "Lead Bank",
+    "name": "ACH HOLD LEADBANKSELFLEND CC PMT ON XX/XX",
+    "original_description": "ACH HOLD LEADBANKSELFLEND CC PMT ON XX/XX",
+    "payment_channel": "other",
+    "payment_meta": {
+     "by_order_of": null,
+     "payee": null,
+     "payer": null,
+     "payment_method": "ACH",
+     "payment_processor": null,
+     "ppd_id": null,
+     "reason": null,
+     "reference_number": null
+    },
+    "pending": true,
+    "pending_transaction_id": null,
+    "personal_finance_category": {
+     "confidence_level": "MEDIUM",
+     "detailed": "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+     "primary": "LOAN_PAYMENTS",
+     "version": "v2"
+    },
+    "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_LOAN_PAYMENTS.png",
+    "transaction_code": null,
+    "transaction_id": "bkpoBGkGN6TAq9zAWXprsww667z6ZVsNwNaeo",
+    "transaction_type": "special",
+    "unofficial_currency_code": null,
+    "website": null
+   },
+   {
+    "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+    "account_owner": null,
+    "amount": 16.99,
+    "authorized_date": "2026-10-07",
+    "authorized_datetime": null,
+    "category": [
+     "Shops",
+     "Digital Purchase"
+    ],
+    "category_id": "19019000",
+    "check_number": null,
+    "counterparties": [
+     {
+      "confidence_level": "VERY_HIGH",
+      "entity_id": "zbzNyw83zkVDdrdpRo5y1yE67V7vbMWY4LNne",
+      "logo_url": "https://plaid-merchant-logos.plaid.com/apple_63.png",
+      "name": "Apple",
+      "phone_number": null,
+      "type": "merchant",
+      "website": "apple.com"
+     }
+    ],
+    "date": "2026-10-07",
+    "datetime": null,
+    "iso_currency_code": "USD",
+    "location": {
+     "address": null,
+     "city": null,
+     "country": null,
+     "lat": null,
+     "lon": null,
+     "postal_code": null,
+     "region": null,
+     "store_number": null
+    },
+    "logo_url": "https://plaid-merchant-logos.plaid.com/apple_63.png",
+    "merchant_category_code": null,
+    "merchant_entity_id": "zbzNyw83zkVDdrdpRo5y1yE67V7vbMWY4LNne",
+    "merchant_name": "Apple",
+    "name": "APPLE.COM/BILL",
+    "original_description": "APPLE.COM/BILL",
+    "payment_channel": "online",
+    "payment_meta": {
+     "by_order_of": null,
+     "payee": null,
+     "payer": null,
+     "payment_method": null,
+     "payment_processor": null,
+     "ppd_id": null,
+     "reason": null,
+     "reference_number": null
+    },
+    "pending": false,
+    "pending_transaction_id": "MrlVpzrzbju38dK3kbmZHWjJKxKelDI4qpDoE",
+    "personal_finance_category": {
+     "confidence_level": "HIGH",
+     "detailed": "ENTERTAINMENT_OTHER_ENTERTAINMENT",
+     "primary": "ENTERTAINMENT",
+     "version": "v2"
+    },
+    "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_ENTERTAINMENT.png",
+    "running_balance": null,
+    "transaction_code": null,
+    "transaction_id": "NzqyoBzBm7ixdG3xnkrVtllRR94RZxin1nEzp",
+    "transaction_type": "digital",
+    "unofficial_currency_code": null,
+    "website": "apple.com"
+   },
+   {
+    "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+    "account_owner": null,
+    "amount": 9.93,
+    "authorized_date": "2026-10-07",
+    "authorized_datetime": null,
+    "category": [
+     "Travel",
+     "Gas Stations"
+    ],
+    "category_id": "22009000",
+    "check_number": null,
+    "counterparties": [
+     {
+      "confidence_level": "VERY_HIGH",
+      "entity_id": "dMqwOD5qKvJz2bqay2bXjOmg8dQDN9BVz8VNz",
+      "logo_url": "https://plaid-merchant-logos.plaid.com/exxonmobil_341.png",
+      "name": "ExxonMobil",
+      "phone_number": null,
+      "type": "merchant",
+      "website": "exxonmobil.com"
+     }
+    ],
+    "date": "2026-10-07",
+    "datetime": null,
+    "iso_currency_code": "USD",
+    "location": {
+     "address": null,
+     "city": null,
+     "country": null,
+     "lat": null,
+     "lon": null,
+     "postal_code": null,
+     "region": null,
+     "store_number": null
+    },
+    "logo_url": "https://plaid-merchant-logos.plaid.com/exxonmobil_341.png",
+    "merchant_category_code": null,
+    "merchant_entity_id": "dMqwOD5qKvJz2bqay2bXjOmg8dQDN9BVz8VNz",
+    "merchant_name": "ExxonMobil",
+    "name": "ExxonMobil",
+    "original_description": "EXXON VILLAGE SHOP STO",
+    "payment_channel": "in store",
+    "payment_meta": {
+     "by_order_of": null,
+     "payee": null,
+     "payer": null,
+     "payment_method": null,
+     "payment_processor": null,
+     "ppd_id": null,
+     "reason": null,
+     "reference_number": null
+    },
+    "pending": false,
+    "pending_transaction_id": "1NJBbqNqK4cLx3VLl49vIoEmdjd9J1uqBXQwG",
+    "personal_finance_category": {
+     "confidence_level": "VERY_HIGH",
+     "detailed": "TRANSPORTATION_GAS",
+     "primary": "TRANSPORTATION",
+     "version": "v2"
+    },
+    "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_TRANSPORTATION.png",
+    "running_balance": null,
+    "transaction_code": null,
+    "transaction_id": "P3rA8x3x9QTaR1AaexGXI33QQePQdwFQ4QGn6",
+    "transaction_type": "place",
+    "unofficial_currency_code": null,
+    "website": "exxonmobil.com"
+   },
+   {
+    "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+    "account_owner": null,
+    "amount": 41.98,
+    "authorized_date": "2026-10-07",
+    "authorized_datetime": null,
+    "category": [
+     "Shops",
+     "Food and Beverage Store"
+    ],
+    "category_id": "19025000",
+    "check_number": null,
+    "counterparties": [
+     {
+      "confidence_level": "HIGH",
+      "entity_id": null,
+      "logo_url": null,
+      "name": "Virginia ABC",
+      "phone_number": null,
+      "type": "merchant",
+      "website": null
+     }
+    ],
+    "date": "2026-10-07",
+    "datetime": null,
+    "iso_currency_code": "USD",
+    "location": {
+     "address": null,
+     "city": null,
+     "country": null,
+     "lat": null,
+     "lon": null,
+     "postal_code": null,
+     "region": null,
+     "store_number": null
+    },
+    "logo_url": null,
+    "merchant_category_code": null,
+    "merchant_entity_id": null,
+    "merchant_name": "Virginia ABC",
+    "name": "VA ABC STORE XXX",
+    "original_description": "VA ABC STORE XXX",
+    "payment_channel": "in store",
+    "payment_meta": {
+     "by_order_of": null,
+     "payee": null,
+     "payer": null,
+     "payment_method": null,
+     "payment_processor": null,
+     "ppd_id": null,
+     "reason": null,
+     "reference_number": null
+    },
+    "pending": false,
+    "pending_transaction_id": "LKMwLrKrn4UB7aABZ8ewToRAy8yWQ9uewKLJG",
+    "personal_finance_category": {
+     "confidence_level": "HIGH",
+     "detailed": "FOOD_AND_DRINK_BEER_WINE_AND_LIQUOR",
+     "primary": "FOOD_AND_DRINK",
+     "version": "v2"
+    },
+    "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_FOOD_AND_DRINK.png",
+    "running_balance": null,
+    "transaction_code": null,
+    "transaction_id": "jyp6j9y91JueWr6edz8NTKKRRpWREbfZ3ZPjg",
+    "transaction_type": "place",
+    "unofficial_currency_code": null,
+    "website": null
+   },
+   {
+    "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+    "account_owner": null,
+    "amount": 121.41,
+    "authorized_date": "2026-10-07",
+    "authorized_datetime": null,
+    "category": [
+     "Food and Drink",
+     "Restaurants"
+    ],
+    "category_id": "13005000",
+    "check_number": null,
+    "counterparties": [
+     {
+      "confidence_level": "VERY_HIGH",
+      "entity_id": "jBdgR49b48OQQo7gL171XNdOd73zwBbJXeO3A",
+      "logo_url": "https://plaid-merchant-logos.plaid.com/olive_garden_699.png",
+      "name": "Olive Garden",
+      "phone_number": null,
+      "type": "merchant",
+      "website": "olivegarden.com"
+     }
+    ],
+    "date": "2026-10-07",
+    "datetime": null,
+    "iso_currency_code": "USD",
+    "location": {
+     "address": null,
+     "city": null,
+     "country": null,
+     "lat": null,
+     "lon": null,
+     "postal_code": null,
+     "region": null,
+     "store_number": null
+    },
+    "logo_url": "https://plaid-merchant-logos.plaid.com/olive_garden_699.png",
+    "merchant_category_code": null,
+    "merchant_entity_id": "jBdgR49b48OQQo7gL171XNdOd73zwBbJXeO3A",
+    "merchant_name": "Olive Garden",
+    "name": "Olive Garden",
+    "original_description": "OLIVE GARDEN ZK XXXXXXX",
+    "payment_channel": "in store",
+    "payment_meta": {
+     "by_order_of": null,
+     "payee": null,
+     "payer": null,
+     "payment_method": null,
+     "payment_processor": null,
+     "ppd_id": null,
+     "reason": null,
+     "reference_number": null
+    },
+    "pending": false,
+    "pending_transaction_id": "pKgm1yKyEPUA51vAbZj4swBrEZEoM9uJajDxV",
+    "personal_finance_category": {
+     "confidence_level": "VERY_HIGH",
+     "detailed": "FOOD_AND_DRINK_RESTAURANT",
+     "primary": "FOOD_AND_DRINK",
+     "version": "v2"
+    },
+    "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_FOOD_AND_DRINK.png",
+    "running_balance": null,
+    "transaction_code": null,
+    "transaction_id": "7ZPN6xZxdafgJzeg5MwRHQQKKDxKrpIMGMRao",
+    "transaction_type": "place",
+    "unofficial_currency_code": null,
+    "website": "olivegarden.com"
+   },
+   {
+    "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+    "account_owner": null,
+    "amount": 20,
+    "authorized_date": "2026-10-07",
+    "authorized_datetime": null,
+    "category": [
+     "Food and Drink",
+     "Restaurants"
+    ],
+    "category_id": "13005000",
+    "check_number": null,
+    "counterparties": [
+     {
+      "confidence_level": "LOW",
+      "entity_id": null,
+      "logo_url": null,
+      "name": "Food S",
+      "phone_number": null,
+      "type": "merchant",
+      "website": null
+     }
+    ],
+    "date": "2026-10-07",
+    "datetime": null,
+    "iso_currency_code": "USD",
+    "location": {
+     "address": null,
+     "city": null,
+     "country": null,
+     "lat": null,
+     "lon": null,
+     "postal_code": null,
+     "region": null,
+     "store_number": null
+    },
+    "logo_url": null,
+    "merchant_category_code": null,
+    "merchant_entity_id": null,
+    "merchant_name": "Food S",
+    "name": "FCPS MYSCHOOLBUCKS FOOD S",
+    "original_description": "FCPS MYSCHOOLBUCKS FOOD S",
+    "payment_channel": "in store",
+    "payment_meta": {
+     "by_order_of": null,
+     "payee": null,
+     "payer": null,
+     "payment_method": null,
+     "payment_processor": null,
+     "ppd_id": null,
+     "reason": null,
+     "reference_number": null
+    },
+    "pending": false,
+    "pending_transaction_id": "oqboMGqG8JSmNyamLne4sQVMkdkGeJfpE5X3y",
+    "personal_finance_category": {
+     "confidence_level": "LOW",
+     "detailed": "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+     "primary": "GOVERNMENT_AND_NON_PROFIT",
+     "version": "v2"
+    },
+    "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_GOVERNMENT_AND_NON_PROFIT.png",
+    "running_balance": null,
+    "transaction_code": null,
+    "transaction_id": "eA6DdGAG7PiJE6XJn84AtwwMMBXM3as7w78Xw",
+    "transaction_type": "place",
+    "unofficial_currency_code": null,
+    "website": null
+   },
+   {
+    "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+    "account_owner": null,
+    "amount": 16.96,
+    "authorized_date": "2026-10-07",
+    "authorized_datetime": null,
+    "category": [
+     "Food and Drink",
+     "Restaurants",
+     "Fast Food"
+    ],
+    "category_id": "13005032",
+    "check_number": null,
+    "counterparties": [
+     {
+      "confidence_level": "VERY_HIGH",
+      "entity_id": "9dgV151n418qNVjVLer6JQVrj5YnwgQ7dqVbM",
+      "logo_url": "https://plaid-merchant-logos.plaid.com/pizza_hut_758.png",
+      "name": "Pizza Hut",
+      "phone_number": null,
+      "type": "merchant",
+      "website": "pizzahut.com"
+     }
+    ],
+    "date": "2026-10-07",
+    "datetime": null,
+    "iso_currency_code": "USD",
+    "location": {
+     "address": null,
+     "city": null,
+     "country": null,
+     "lat": null,
+     "lon": null,
+     "postal_code": null,
+     "region": null,
+     "store_number": null
+    },
+    "logo_url": "https://plaid-merchant-logos.plaid.com/pizza_hut_758.png",
+    "merchant_category_code": null,
+    "merchant_entity_id": "9dgV151n418qNVjVLer6JQVrj5YnwgQ7dqVbM",
+    "merchant_name": "Pizza Hut",
+    "name": "Pizza Hut",
+    "original_description": "PIZZA HUT XXXXX",
+    "payment_channel": "in store",
+    "payment_meta": {
+     "by_order_of": null,
+     "payee": null,
+     "payer": null,
+     "payment_method": null,
+     "payment_processor": null,
+     "ppd_id": null,
+     "reason": null,
+     "reference_number": null
+    },
+    "pending": true,
+    "pending_transaction_id": null,
+    "personal_finance_category": {
+     "confidence_level": "VERY_HIGH",
+     "detailed": "FOOD_AND_DRINK_FAST_FOOD",
+     "primary": "FOOD_AND_DRINK",
+     "version": "v2"
+    },
+    "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_FOOD_AND_DRINK.png",
+    "transaction_code": null,
+    "transaction_id": "MrlVpzrzbju38dK3kbmZHWWGG3aGxRteoe35K",
+    "transaction_type": "place",
+    "unofficial_currency_code": null,
+    "website": "pizzahut.com"
+   },
+   {
+    "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+    "account_owner": null,
+    "amount": 13.77,
+    "authorized_date": "2026-10-07",
+    "authorized_datetime": null,
+    "category": [
+     "Shops",
+     "Beauty Products"
+    ],
+    "category_id": "19006000",
+    "check_number": null,
+    "counterparties": [
+     {
+      "confidence_level": "VERY_HIGH",
+      "entity_id": "54BEBKODKVz74OKna46dv2ZQDWnNRb1572Lp9",
+      "logo_url": "https://plaid-merchant-logos.plaid.com/ulta_beauty_1062.png",
+      "name": "Ulta Beauty",
+      "phone_number": null,
+      "type": "merchant",
+      "website": "ulta.com"
+     }
+    ],
+    "date": "2026-10-07",
+    "datetime": null,
+    "iso_currency_code": "USD",
+    "location": {
+     "address": null,
+     "city": null,
+     "country": null,
+     "lat": null,
+     "lon": null,
+     "postal_code": null,
+     "region": null,
+     "store_number": null
+    },
+    "logo_url": "https://plaid-merchant-logos.plaid.com/ulta_beauty_1062.png",
+    "merchant_category_code": null,
+    "merchant_entity_id": "54BEBKODKVz74OKna46dv2ZQDWnNRb1572Lp9",
+    "merchant_name": "Ulta Beauty",
+    "name": "ULTA.COM",
+    "original_description": "ULTA.COM",
+    "payment_channel": "online",
+    "payment_meta": {
+     "by_order_of": null,
+     "payee": null,
+     "payer": null,
+     "payment_method": null,
+     "payment_processor": null,
+     "ppd_id": null,
+     "reason": null,
+     "reference_number": null
+    },
+    "pending": true,
+    "pending_transaction_id": null,
+    "personal_finance_category": {
+     "confidence_level": "HIGH",
+     "detailed": "PERSONAL_CARE_HAIR_AND_BEAUTY",
+     "primary": "PERSONAL_CARE",
+     "version": "v2"
+    },
+    "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_PERSONAL_CARE.png",
+    "transaction_code": null,
+    "transaction_id": "1NJBbqNqK4cLx3VLl49vIooZZ4rZjGuZwZ4ak",
+    "transaction_type": "place",
+    "unofficial_currency_code": null,
+    "website": "ulta.com"
+   },
+   {
+    "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+    "account_owner": null,
+    "amount": 238.5,
+    "authorized_date": "2026-10-07",
+    "authorized_datetime": null,
+    "category": [
+     "Food and Drink",
+     "Restaurants",
+     "Fast Food"
+    ],
+    "category_id": "13005032",
+    "check_number": null,
+    "counterparties": [
+     {
+      "confidence_level": "VERY_HIGH",
+      "entity_id": "Mjqdpqn3ZgOdrAYpkAKMkArEON7avQ8jV9BX1",
+      "logo_url": "https://plaid-merchant-logos.plaid.com/chipotle_mexican_grill_202.png",
+      "name": "Chipotle Mexican Grill",
+      "phone_number": null,
+      "type": "merchant",
+      "website": "chipotle.com"
+     }
+    ],
+    "date": "2026-10-07",
+    "datetime": null,
+    "iso_currency_code": "USD",
+    "location": {
+     "address": null,
+     "city": null,
+     "country": null,
+     "lat": null,
+     "lon": null,
+     "postal_code": null,
+     "region": null,
+     "store_number": null
+    },
+    "logo_url": "https://plaid-merchant-logos.plaid.com/chipotle_mexican_grill_202.png",
+    "merchant_category_code": null,
+    "merchant_entity_id": "Mjqdpqn3ZgOdrAYpkAKMkArEON7avQ8jV9BX1",
+    "merchant_name": "Chipotle Mexican Grill",
+    "name": "Chipotle Mexican Grill",
+    "original_description": "CHIPOTLE ONLINE",
+    "payment_channel": "online",
+    "payment_meta": {
+     "by_order_of": null,
+     "payee": null,
+     "payer": null,
+     "payment_method": null,
+     "payment_processor": null,
+     "ppd_id": null,
+     "reason": null,
+     "reference_number": null
+    },
+    "pending": true,
+    "pending_transaction_id": null,
+    "personal_finance_category": {
+     "confidence_level": "VERY_HIGH",
+     "detailed": "FOOD_AND_DRINK_FAST_FOOD",
+     "primary": "FOOD_AND_DRINK",
+     "version": "v2"
+    },
+    "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_FOOD_AND_DRINK.png",
+    "transaction_code": null,
+    "transaction_id": "LKMwLrKrn4UB7aABZ8ewToojj7dj8MulJl1mQ",
+    "transaction_type": "place",
+    "unofficial_currency_code": null,
+    "website": "chipotle.com"
+   }
+  ],
+  "modified": [],
+  "removed": [
+   {
+    "account_id": "eA6DdGAG7PiJE6XJn84Atw6KvzZPnburQ3lZP",
+    "transaction_id": "AA1WaZAZMxiJBvbJED9mtpdlNwNbn4i4zJWNn"
+   },
+   {
+    "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+    "transaction_id": "MrlVpzrzbju38dK3kbmZHWjJKxKelDI4qpDoE"
+   },
+   {
+    "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+    "transaction_id": "1NJBbqNqK4cLx3VLl49vIoEmdjd9J1uqBXQwG"
+   },
+   {
+    "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+    "transaction_id": "LKMwLrKrn4UB7aABZ8ewToRAy8yWQ9uewKLJG"
+   },
+   {
+    "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+    "transaction_id": "pKgm1yKyEPUA51vAbZj4swBrEZEoM9uJajDxV"
+   },
+   {
+    "account_id": "QxzAEdxdvXfvVbkvga3Jte4PBZ71AluwXlWQR",
+    "transaction_id": "oqboMGqG8JSmNyamLne4sQVMkdkGeJfpE5X3y"
+   }
+  ]
+ }
+}

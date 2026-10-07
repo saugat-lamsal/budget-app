@@ -1,0 +1,1783 @@
+{
+ "about": "What Plaid's test bank (sandbox) really sent on Oct 7, 2026, for a test user with made-up accounts shaped like his, saved as it came (API version 2020-09-14): the first sync with the history, then a sync after ten test transactions were added. The keys that open the connection were never saved. The ids are the test bank's own; every name and number is made up. The test bank does not move balances when transactions are added (Plaid: Sandbox transaction history may show income and outflow inconsistent with the balance shown on the account).",
+ "stages": [
+  {
+   "name": "the first sync, with the history",
+   "sync": {
+    "": {
+     "accounts": [
+      {
+       "account_id": "qPrK994oW6F9ZqBzERoeTk7pd31ZwBiVDXeqL",
+       "apy": null,
+       "balances": {
+        "available": 2974.5,
+        "current": 3000,
+        "iso_currency_code": "USD",
+        "limit": null,
+        "unofficial_currency_code": null
+       },
+       "holder_category": "personal",
+       "mask": "1111",
+       "name": "Made-up Checking",
+       "official_name": "Plaid checking",
+       "subtype": "checking",
+       "type": "depository"
+      },
+      {
+       "account_id": "KvqbZZ3WGLixEnXGBZqaC9n5bqD3wxFmB3lv5",
+       "apy": 4.82,
+       "balances": {
+        "available": 5000,
+        "current": 5000,
+        "iso_currency_code": "USD",
+        "limit": null,
+        "unofficial_currency_code": null
+       },
+       "holder_category": "personal",
+       "mask": "2222",
+       "name": "Made-up Savings",
+       "official_name": "Plaid savings",
+       "subtype": "savings",
+       "type": "depository"
+      },
+      {
+       "account_id": "rkzr99NoA6FKeqkMxLZQHvDJ8dEnNgFD5Brvm",
+       "apy": null,
+       "balances": {
+        "available": 4490,
+        "current": 450,
+        "iso_currency_code": "USD",
+        "limit": 5000,
+        "unofficial_currency_code": null
+       },
+       "holder_category": "personal",
+       "mask": "3333",
+       "name": "Made-up Everyday Card",
+       "official_name": "Plaid credit card",
+       "subtype": "credit card",
+       "type": "credit"
+      }
+     ],
+     "added": [
+      {
+       "account_id": "qPrK994oW6F9ZqBzERoeTk7pd31ZwBiVDXeqL",
+       "account_owner": null,
+       "amount": -2500,
+       "authorized_date": "2026-09-25",
+       "authorized_datetime": null,
+       "category": [
+        "Transfer",
+        "Payroll"
+       ],
+       "category_id": "21009000",
+       "check_number": null,
+       "counterparties": [],
+       "date": "2026-09-25",
+       "datetime": null,
+       "iso_currency_code": "USD",
+       "location": {
+        "address": null,
+        "city": null,
+        "country": null,
+        "lat": null,
+        "lon": null,
+        "postal_code": null,
+        "region": null,
+        "store_number": null
+       },
+       "logo_url": null,
+       "merchant_category_code": null,
+       "merchant_entity_id": null,
+       "merchant_name": null,
+       "name": "MADEUP CORP PAYROLL",
+       "original_description": "MADEUP CORP PAYROLL",
+       "payment_channel": "other",
+       "payment_meta": {
+        "by_order_of": null,
+        "payee": null,
+        "payer": null,
+        "payment_method": null,
+        "payment_processor": null,
+        "ppd_id": null,
+        "reason": null,
+        "reference_number": null
+       },
+       "pending": false,
+       "pending_transaction_id": null,
+       "personal_finance_category": {
+        "confidence_level": "VERY_HIGH",
+        "detailed": "INCOME_SALARY",
+        "primary": "INCOME",
+        "version": "v2"
+       },
+       "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_INCOME.png",
+       "running_balance": null,
+       "transaction_code": null,
+       "transaction_id": "x14a55km96u6wQrAaKzoi1pEjdmrkXI6bJqlP",
+       "transaction_type": "special",
+       "unofficial_currency_code": null,
+       "website": null
+      },
+      {
+       "account_id": "qPrK994oW6F9ZqBzERoeTk7pd31ZwBiVDXeqL",
+       "account_owner": null,
+       "amount": 45.67,
+       "authorized_date": "2026-10-01",
+       "authorized_datetime": null,
+       "category": [
+        "Shops",
+        "Supermarkets and Groceries"
+       ],
+       "category_id": "19047000",
+       "check_number": null,
+       "counterparties": [
+        {
+         "confidence_level": "VERY_HIGH",
+         "entity_id": "ogkKoeAV88o41No654n4XE2zvpndwrXKg8aen",
+         "logo_url": "https://plaid-merchant-logos.plaid.com/grocery_outlet_458.png",
+         "name": "Grocery Outlet",
+         "phone_number": null,
+         "type": "merchant",
+         "website": "groceryoutlet.com"
+        }
+       ],
+       "date": "2026-10-02",
+       "datetime": null,
+       "iso_currency_code": "USD",
+       "location": {
+        "address": "2066 Hywy 101",
+        "city": "Florence",
+        "country": null,
+        "lat": 43.984627,
+        "lon": -124.09922,
+        "postal_code": "97439",
+        "region": "OR",
+        "store_number": null
+       },
+       "logo_url": "https://plaid-merchant-logos.plaid.com/grocery_outlet_458.png",
+       "merchant_category_code": null,
+       "merchant_entity_id": "ogkKoeAV88o41No654n4XE2zvpndwrXKg8aen",
+       "merchant_name": "Grocery Outlet",
+       "name": "Grocery Outlet",
+       "original_description": "GROCERY OUTLET 12",
+       "payment_channel": "in store",
+       "payment_meta": {
+        "by_order_of": null,
+        "payee": null,
+        "payer": null,
+        "payment_method": null,
+        "payment_processor": null,
+        "ppd_id": null,
+        "reason": null,
+        "reference_number": null
+       },
+       "pending": false,
+       "pending_transaction_id": null,
+       "personal_finance_category": {
+        "confidence_level": "VERY_HIGH",
+        "detailed": "FOOD_AND_DRINK_GROCERIES",
+        "primary": "FOOD_AND_DRINK",
+        "version": "v2"
+       },
+       "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_FOOD_AND_DRINK.png",
+       "running_balance": null,
+       "transaction_code": null,
+       "transaction_id": "dvWo8879jRiyjpAqXQlGh3p6eRyJ4gFJpDmgE",
+       "transaction_type": "place",
+       "unofficial_currency_code": null,
+       "website": "groceryoutlet.com"
+      },
+      {
+       "account_id": "qPrK994oW6F9ZqBzERoeTk7pd31ZwBiVDXeqL",
+       "account_owner": null,
+       "amount": 300,
+       "authorized_date": "2026-10-03",
+       "authorized_datetime": null,
+       "category": [
+        "Transfer",
+        "Debit"
+       ],
+       "category_id": "21006000",
+       "check_number": null,
+       "counterparties": [
+        {
+         "confidence_level": "VERY_HIGH",
+         "entity_id": "zQ64DmD0mdD4r6QrYndzZWLwJn7DyJEYdwLYp",
+         "logo_url": "https://plaid-counterparty-logos.plaid.com/zelle_73.png",
+         "name": "Zelle",
+         "phone_number": null,
+         "type": "payment_app",
+         "website": "zellepay.com"
+        }
+       ],
+       "date": "2026-10-03",
+       "datetime": null,
+       "iso_currency_code": "USD",
+       "location": {
+        "address": null,
+        "city": null,
+        "country": null,
+        "lat": null,
+        "lon": null,
+        "postal_code": null,
+        "region": null,
+        "store_number": null
+       },
+       "logo_url": null,
+       "merchant_category_code": null,
+       "merchant_entity_id": null,
+       "merchant_name": null,
+       "name": "Zelle payment to MOM MADEUP",
+       "original_description": "Zelle payment to MOM MADEUP",
+       "payment_channel": "other",
+       "payment_meta": {
+        "by_order_of": null,
+        "payee": null,
+        "payer": null,
+        "payment_method": null,
+        "payment_processor": null,
+        "ppd_id": null,
+        "reason": null,
+        "reference_number": null
+       },
+       "pending": false,
+       "pending_transaction_id": null,
+       "personal_finance_category": {
+        "confidence_level": "HIGH",
+        "detailed": "TRANSFER_OUT_TRANSFER_OUT_FROM_APPS",
+        "primary": "TRANSFER_OUT",
+        "version": "v2"
+       },
+       "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_TRANSFER_OUT.png",
+       "running_balance": null,
+       "transaction_code": null,
+       "transaction_id": "avg199NG4RinmaXjrMdQf9avEq8wxNhZM1zdm",
+       "transaction_type": "special",
+       "unofficial_currency_code": null,
+       "website": null
+      },
+      {
+       "account_id": "qPrK994oW6F9ZqBzERoeTk7pd31ZwBiVDXeqL",
+       "account_owner": null,
+       "amount": 25.5,
+       "authorized_date": "2026-10-06",
+       "authorized_datetime": null,
+       "category": [
+        "Travel",
+        "Gas Stations"
+       ],
+       "category_id": "22009000",
+       "check_number": null,
+       "counterparties": [
+        {
+         "confidence_level": "VERY_HIGH",
+         "entity_id": "mKdeEvq5409dpyR7dyYB1RR0YRMmqW3DR4BVo",
+         "logo_url": "https://plaid-merchant-logos.plaid.com/76_gas_stations_1184.png",
+         "name": "76 Gas Stations",
+         "phone_number": null,
+         "type": "merchant",
+         "website": "76.com"
+        }
+       ],
+       "date": "2026-10-06",
+       "datetime": null,
+       "iso_currency_code": "USD",
+       "location": {
+        "address": null,
+        "city": null,
+        "country": null,
+        "lat": null,
+        "lon": null,
+        "postal_code": null,
+        "region": null,
+        "store_number": null
+       },
+       "logo_url": "https://plaid-merchant-logos.plaid.com/76_gas_stations_1184.png",
+       "merchant_category_code": null,
+       "merchant_entity_id": "mKdeEvq5409dpyR7dyYB1RR0YRMmqW3DR4BVo",
+       "merchant_name": "76 Gas Stations",
+       "name": "GAS STATION 77",
+       "original_description": "GAS STATION 77",
+       "payment_channel": "in store",
+       "payment_meta": {
+        "by_order_of": null,
+        "payee": null,
+        "payer": null,
+        "payment_method": null,
+        "payment_processor": null,
+        "ppd_id": null,
+        "reason": null,
+        "reference_number": null
+       },
+       "pending": true,
+       "pending_transaction_id": null,
+       "personal_finance_category": {
+        "confidence_level": "HIGH",
+        "detailed": "TRANSPORTATION_GAS",
+        "primary": "TRANSPORTATION",
+        "version": "v2"
+       },
+       "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_TRANSPORTATION.png",
+       "transaction_code": null,
+       "transaction_id": "4N7xGGydBACLjJVq3zorsPy83l7L9MfJPnZDQ",
+       "transaction_type": "place",
+       "unofficial_currency_code": null,
+       "website": "76.com"
+      },
+      {
+       "account_id": "KvqbZZ3WGLixEnXGBZqaC9n5bqD3wxFmB3lv5",
+       "account_owner": null,
+       "amount": -1.23,
+       "authorized_date": "2026-09-27",
+       "authorized_datetime": null,
+       "category": [
+        "Interest",
+        "Interest Earned"
+       ],
+       "category_id": "15001000",
+       "check_number": null,
+       "counterparties": [],
+       "date": "2026-09-27",
+       "datetime": null,
+       "iso_currency_code": "USD",
+       "location": {
+        "address": null,
+        "city": null,
+        "country": null,
+        "lat": null,
+        "lon": null,
+        "postal_code": null,
+        "region": null,
+        "store_number": null
+       },
+       "logo_url": null,
+       "merchant_category_code": null,
+       "merchant_entity_id": null,
+       "merchant_name": null,
+       "name": "INTEREST EARNED",
+       "original_description": "INTEREST EARNED",
+       "payment_channel": "other",
+       "payment_meta": {
+        "by_order_of": null,
+        "payee": null,
+        "payer": null,
+        "payment_method": null,
+        "payment_processor": null,
+        "ppd_id": null,
+        "reason": null,
+        "reference_number": null
+       },
+       "pending": false,
+       "pending_transaction_id": null,
+       "personal_finance_category": {
+        "confidence_level": "HIGH",
+        "detailed": "INCOME_INTEREST_EARNED",
+        "primary": "INCOME",
+        "version": "v2"
+       },
+       "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_INCOME.png",
+       "running_balance": null,
+       "transaction_code": null,
+       "transaction_id": "NvzlggaymLi4ZgQm1jzeFlgLxJDRmyFywnge1",
+       "transaction_type": "special",
+       "unofficial_currency_code": null,
+       "website": null
+      },
+      {
+       "account_id": "rkzr99NoA6FKeqkMxLZQHvDJ8dEnNgFD5Brvm",
+       "account_owner": null,
+       "amount": 12.34,
+       "authorized_date": "2026-09-29",
+       "authorized_datetime": null,
+       "category": [
+        "Food and Drink",
+        "Restaurants",
+        "Coffee Shop"
+       ],
+       "category_id": "13005043",
+       "check_number": null,
+       "counterparties": [
+        {
+         "confidence_level": "HIGH",
+         "entity_id": null,
+         "logo_url": null,
+         "name": "Coffee Shop",
+         "phone_number": null,
+         "type": "merchant",
+         "website": null
+        }
+       ],
+       "date": "2026-09-30",
+       "datetime": null,
+       "iso_currency_code": "USD",
+       "location": {
+        "address": null,
+        "city": null,
+        "country": null,
+        "lat": null,
+        "lon": null,
+        "postal_code": null,
+        "region": null,
+        "store_number": null
+       },
+       "logo_url": null,
+       "merchant_category_code": null,
+       "merchant_entity_id": null,
+       "merchant_name": "Coffee Shop",
+       "name": "COFFEE SHOP 5",
+       "original_description": "COFFEE SHOP 5",
+       "payment_channel": "in store",
+       "payment_meta": {
+        "by_order_of": null,
+        "payee": null,
+        "payer": null,
+        "payment_method": null,
+        "payment_processor": null,
+        "ppd_id": null,
+        "reason": null,
+        "reference_number": null
+       },
+       "pending": false,
+       "pending_transaction_id": null,
+       "personal_finance_category": {
+        "confidence_level": "LOW",
+        "detailed": "FOOD_AND_DRINK_COFFEE",
+        "primary": "FOOD_AND_DRINK",
+        "version": "v2"
+       },
+       "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_FOOD_AND_DRINK.png",
+       "running_balance": null,
+       "transaction_code": null,
+       "transaction_id": "Pv3KooNA9LiPvr48Kk3oH3rWwDjQGNFoRQ93M",
+       "transaction_type": "place",
+       "unofficial_currency_code": null,
+       "website": null
+      },
+      {
+       "account_id": "rkzr99NoA6FKeqkMxLZQHvDJ8dEnNgFD5Brvm",
+       "account_owner": null,
+       "amount": 60,
+       "authorized_date": "2026-10-06",
+       "authorized_datetime": null,
+       "category": [
+        "Shops",
+        "Supermarkets and Groceries"
+       ],
+       "category_id": "19047000",
+       "check_number": null,
+       "counterparties": [
+        {
+         "confidence_level": "VERY_HIGH",
+         "entity_id": "ogkKoeAV88o41No654n4XE2zvpndwrXKg8aen",
+         "logo_url": "https://plaid-merchant-logos.plaid.com/grocery_outlet_458.png",
+         "name": "Grocery Outlet",
+         "phone_number": null,
+         "type": "merchant",
+         "website": "groceryoutlet.com"
+        }
+       ],
+       "date": "2026-10-06",
+       "datetime": null,
+       "iso_currency_code": "USD",
+       "location": {
+        "address": "2066 Hywy 101",
+        "city": "Florence",
+        "country": null,
+        "lat": 43.984627,
+        "lon": -124.09922,
+        "postal_code": "97439",
+        "region": "OR",
+        "store_number": null
+       },
+       "logo_url": "https://plaid-merchant-logos.plaid.com/grocery_outlet_458.png",
+       "merchant_category_code": null,
+       "merchant_entity_id": "ogkKoeAV88o41No654n4XE2zvpndwrXKg8aen",
+       "merchant_name": "Grocery Outlet",
+       "name": "Grocery Outlet",
+       "original_description": "GROCERY OUTLET 12",
+       "payment_channel": "in store",
+       "payment_meta": {
+        "by_order_of": null,
+        "payee": null,
+        "payer": null,
+        "payment_method": null,
+        "payment_processor": null,
+        "ppd_id": null,
+        "reason": null,
+        "reference_number": null
+       },
+       "pending": true,
+       "pending_transaction_id": null,
+       "personal_finance_category": {
+        "confidence_level": "VERY_HIGH",
+        "detailed": "FOOD_AND_DRINK_GROCERIES",
+        "primary": "FOOD_AND_DRINK",
+        "version": "v2"
+       },
+       "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_FOOD_AND_DRINK.png",
+       "transaction_code": null,
+       "transaction_id": "jByGPPr61RigB3EJal7GIK8zb4PRqwF6eZBp5",
+       "transaction_type": "place",
+       "unofficial_currency_code": null,
+       "website": "groceryoutlet.com"
+      }
+     ],
+     "has_more": false,
+     "modified": [],
+     "next_cursor": "CAESJWpCeUdQUHI2MVJpZ0IzRUphbDdHSUs4emI0UFJxd0Y2ZVpCcDUaDAjnqZbWBhDgotv7AiIMCOepltYGEOCi2/sCKgwI56mW1gYQ4KLb+wI=",
+     "removed": [],
+     "request_id": "79811d199c18503",
+     "transactions_update_status": "HISTORICAL_UPDATE_COMPLETE"
+    },
+    "CAESJWpCeUdQUHI2MVJpZ0IzRUphbDdHSUs4emI0UFJxd0Y2ZVpCcDUaDAjnqZbWBhDgotv7AiIMCOepltYGEOCi2/sCKgwI56mW1gYQ4KLb+wI=": {
+     "accounts": [],
+     "added": [],
+     "has_more": false,
+     "modified": [],
+     "next_cursor": "CAESJWpCeUdQUHI2MVJpZ0IzRUphbDdHSUs4emI0UFJxd0Y2ZVpCcDUaDAjnqZbWBhDgotv7AiIMCOepltYGEOCi2/sCKgwI56mW1gYQ4KLb+wI=",
+     "removed": [],
+     "request_id": "1d6e13c54654795",
+     "transactions_update_status": "HISTORICAL_UPDATE_COMPLETE"
+    }
+   },
+   "accounts": {
+    "accounts": [
+     {
+      "account_id": "qPrK994oW6F9ZqBzERoeTk7pd31ZwBiVDXeqL",
+      "apy": null,
+      "balances": {
+       "available": 2974.5,
+       "current": 3000,
+       "iso_currency_code": "USD",
+       "limit": null,
+       "unofficial_currency_code": null
+      },
+      "holder_category": "personal",
+      "mask": "1111",
+      "name": "Made-up Checking",
+      "official_name": "Plaid checking",
+      "subtype": "checking",
+      "type": "depository"
+     },
+     {
+      "account_id": "KvqbZZ3WGLixEnXGBZqaC9n5bqD3wxFmB3lv5",
+      "apy": 4.82,
+      "balances": {
+       "available": 5000,
+       "current": 5000,
+       "iso_currency_code": "USD",
+       "limit": null,
+       "unofficial_currency_code": null
+      },
+      "holder_category": "personal",
+      "mask": "2222",
+      "name": "Made-up Savings",
+      "official_name": "Plaid savings",
+      "subtype": "savings",
+      "type": "depository"
+     },
+     {
+      "account_id": "rkzr99NoA6FKeqkMxLZQHvDJ8dEnNgFD5Brvm",
+      "apy": null,
+      "balances": {
+       "available": 4490,
+       "current": 450,
+       "iso_currency_code": "USD",
+       "limit": 5000,
+       "unofficial_currency_code": null
+      },
+      "holder_category": "personal",
+      "mask": "3333",
+      "name": "Made-up Everyday Card",
+      "official_name": "Plaid credit card",
+      "subtype": "credit card",
+      "type": "credit"
+     },
+     {
+      "account_id": "zpPN99o1R6uEqoa4Wry8s1ylE6Ax3nFgv8AG6",
+      "apy": null,
+      "balances": {
+       "available": 1000,
+       "current": 3000,
+       "iso_currency_code": "USD",
+       "limit": 4000,
+       "unofficial_currency_code": null
+      },
+      "holder_category": "personal",
+      "mask": "4444",
+      "name": "Made-up Old Card",
+      "official_name": "Plaid credit card",
+      "subtype": "credit card",
+      "type": "credit"
+     }
+    ],
+    "item": {
+     "available_products": [
+      "assets",
+      "auth",
+      "balance",
+      "identity",
+      "identity_match",
+      "income_verification",
+      "investments",
+      "investments_auth",
+      "recurring_transactions",
+      "signal",
+      "statements",
+      "transactions_refresh",
+      "transfer"
+     ],
+     "billed_products": [
+      "liabilities",
+      "transactions"
+     ],
+     "consent_expiration_time": null,
+     "error": null,
+     "institution_id": "ins_109508",
+     "institution_name": "First Platypus Bank",
+     "item_id": "77Z4llyNdghxmN3WLjAlCQkg1Jod3AFNr4RE7",
+     "products": [
+      "liabilities",
+      "transactions"
+     ],
+     "update_type": "background",
+     "webhook": ""
+    },
+    "request_id": "09bfb9d8da13084"
+   },
+   "liabilities": {
+    "accounts": [
+     {
+      "account_id": "qPrK994oW6F9ZqBzERoeTk7pd31ZwBiVDXeqL",
+      "apy": null,
+      "balances": {
+       "available": 2974.5,
+       "current": 3000,
+       "iso_currency_code": "USD",
+       "limit": null,
+       "unofficial_currency_code": null
+      },
+      "holder_category": "personal",
+      "mask": "1111",
+      "name": "Made-up Checking",
+      "official_name": "Plaid checking",
+      "subtype": "checking",
+      "type": "depository"
+     },
+     {
+      "account_id": "KvqbZZ3WGLixEnXGBZqaC9n5bqD3wxFmB3lv5",
+      "apy": 4.82,
+      "balances": {
+       "available": 5000,
+       "current": 5000,
+       "iso_currency_code": "USD",
+       "limit": null,
+       "unofficial_currency_code": null
+      },
+      "holder_category": "personal",
+      "mask": "2222",
+      "name": "Made-up Savings",
+      "official_name": "Plaid savings",
+      "subtype": "savings",
+      "type": "depository"
+     },
+     {
+      "account_id": "rkzr99NoA6FKeqkMxLZQHvDJ8dEnNgFD5Brvm",
+      "apy": null,
+      "balances": {
+       "available": 4490,
+       "current": 450,
+       "iso_currency_code": "USD",
+       "limit": 5000,
+       "unofficial_currency_code": null
+      },
+      "holder_category": "personal",
+      "mask": "3333",
+      "name": "Made-up Everyday Card",
+      "official_name": "Plaid credit card",
+      "subtype": "credit card",
+      "type": "credit"
+     },
+     {
+      "account_id": "zpPN99o1R6uEqoa4Wry8s1ylE6Ax3nFgv8AG6",
+      "apy": null,
+      "balances": {
+       "available": 1000,
+       "current": 3000,
+       "iso_currency_code": "USD",
+       "limit": 4000,
+       "unofficial_currency_code": null
+      },
+      "holder_category": "personal",
+      "mask": "4444",
+      "name": "Made-up Old Card",
+      "official_name": "Plaid credit card",
+      "subtype": "credit card",
+      "type": "credit"
+     }
+    ],
+    "item": {
+     "available_products": [
+      "assets",
+      "auth",
+      "balance",
+      "identity",
+      "identity_match",
+      "income_verification",
+      "investments",
+      "investments_auth",
+      "recurring_transactions",
+      "signal",
+      "statements",
+      "transactions_refresh",
+      "transfer"
+     ],
+     "billed_products": [
+      "liabilities",
+      "transactions"
+     ],
+     "consent_expiration_time": null,
+     "error": null,
+     "institution_id": "ins_109508",
+     "institution_name": "First Platypus Bank",
+     "item_id": "77Z4llyNdghxmN3WLjAlCQkg1Jod3AFNr4RE7",
+     "products": [
+      "liabilities",
+      "transactions"
+     ],
+     "update_type": "background",
+     "webhook": ""
+    },
+    "liabilities": {
+     "credit": [
+      {
+       "account_id": "rkzr99NoA6FKeqkMxLZQHvDJ8dEnNgFD5Brvm",
+       "aprs": [
+        {
+         "apr_percentage": 22.99,
+         "apr_type": "purchase_apr",
+         "balance_subject_to_apr": null,
+         "interest_charge_amount": null
+        },
+        {
+         "apr_percentage": 27.95,
+         "apr_type": "cash_apr",
+         "balance_subject_to_apr": null,
+         "interest_charge_amount": null
+        }
+       ],
+       "cash_advance_limit": null,
+       "is_overdue": false,
+       "last_payment_amount": 100,
+       "last_payment_date": null,
+       "last_statement_balance": null,
+       "last_statement_issue_date": null,
+       "minimum_payment_amount": 35,
+       "next_payment_due_date": null
+      },
+      {
+       "account_id": "zpPN99o1R6uEqoa4Wry8s1ylE6Ax3nFgv8AG6",
+       "aprs": [
+        {
+         "apr_percentage": 0,
+         "apr_type": "purchase_apr",
+         "balance_subject_to_apr": null,
+         "interest_charge_amount": null
+        },
+        {
+         "apr_percentage": 27.95,
+         "apr_type": "cash_apr",
+         "balance_subject_to_apr": null,
+         "interest_charge_amount": null
+        }
+       ],
+       "cash_advance_limit": null,
+       "is_overdue": false,
+       "last_payment_amount": 150,
+       "last_payment_date": null,
+       "last_statement_balance": null,
+       "last_statement_issue_date": null,
+       "minimum_payment_amount": 60,
+       "next_payment_due_date": null
+      }
+     ],
+     "mortgage": null,
+     "student": null
+    },
+    "request_id": "7936cc85c052615"
+   }
+  },
+  {
+   "name": "after ten new test transactions",
+   "sync": {
+    "CAESJWpCeUdQUHI2MVJpZ0IzRUphbDdHSUs4emI0UFJxd0Y2ZVpCcDUaDAjnqZbWBhDgotv7AiIMCOepltYGEOCi2/sCKgwI56mW1gYQ4KLb+wI=": {
+     "accounts": [
+      {
+       "account_id": "qPrK994oW6F9ZqBzERoeTk7pd31ZwBiVDXeqL",
+       "apy": null,
+       "balances": {
+        "available": 2974.5,
+        "current": 3000,
+        "iso_currency_code": "USD",
+        "limit": null,
+        "unofficial_currency_code": null
+       },
+       "holder_category": "personal",
+       "mask": "1111",
+       "name": "Made-up Checking",
+       "official_name": "Plaid checking",
+       "subtype": "checking",
+       "type": "depository"
+      },
+      {
+       "account_id": "KvqbZZ3WGLixEnXGBZqaC9n5bqD3wxFmB3lv5",
+       "apy": 4.82,
+       "balances": {
+        "available": 5000,
+        "current": 5000,
+        "iso_currency_code": "USD",
+        "limit": null,
+        "unofficial_currency_code": null
+       },
+       "holder_category": "personal",
+       "mask": "2222",
+       "name": "Made-up Savings",
+       "official_name": "Plaid savings",
+       "subtype": "savings",
+       "type": "depository"
+      },
+      {
+       "account_id": "rkzr99NoA6FKeqkMxLZQHvDJ8dEnNgFD5Brvm",
+       "apy": null,
+       "balances": {
+        "available": 4490,
+        "current": 450,
+        "iso_currency_code": "USD",
+        "limit": 5000,
+        "unofficial_currency_code": null
+       },
+       "holder_category": "personal",
+       "mask": "3333",
+       "name": "Made-up Everyday Card",
+       "official_name": "Plaid credit card",
+       "subtype": "credit card",
+       "type": "credit"
+      },
+      {
+       "account_id": "zpPN99o1R6uEqoa4Wry8s1ylE6Ax3nFgv8AG6",
+       "apy": null,
+       "balances": {
+        "available": 1000,
+        "current": 3000,
+        "iso_currency_code": "USD",
+        "limit": 4000,
+        "unofficial_currency_code": null
+       },
+       "holder_category": "personal",
+       "mask": "4444",
+       "name": "Made-up Old Card",
+       "official_name": "Plaid credit card",
+       "subtype": "credit card",
+       "type": "credit"
+      }
+     ],
+     "added": [
+      {
+       "account_id": "qPrK994oW6F9ZqBzERoeTk7pd31ZwBiVDXeqL",
+       "account_owner": null,
+       "amount": 4.5,
+       "authorized_date": "2026-10-07",
+       "authorized_datetime": null,
+       "category": [
+        "Food and Drink",
+        "Restaurants",
+        "Coffee Shop"
+       ],
+       "category_id": "13005043",
+       "check_number": null,
+       "counterparties": [
+        {
+         "confidence_level": "HIGH",
+         "entity_id": null,
+         "logo_url": null,
+         "name": "Coffee Shop",
+         "phone_number": null,
+         "type": "merchant",
+         "website": null
+        }
+       ],
+       "date": "2026-10-07",
+       "datetime": null,
+       "iso_currency_code": "USD",
+       "location": {
+        "address": null,
+        "city": null,
+        "country": null,
+        "lat": null,
+        "lon": null,
+        "postal_code": null,
+        "region": null,
+        "store_number": null
+       },
+       "logo_url": null,
+       "merchant_category_code": null,
+       "merchant_entity_id": null,
+       "merchant_name": "Coffee Shop",
+       "name": "COFFEE SHOP 5",
+       "original_description": "COFFEE SHOP 5",
+       "payment_channel": "in store",
+       "payment_meta": {
+        "by_order_of": null,
+        "payee": null,
+        "payer": null,
+        "payment_method": null,
+        "payment_processor": null,
+        "ppd_id": null,
+        "reason": null,
+        "reference_number": null
+       },
+       "pending": false,
+       "pending_transaction_id": null,
+       "personal_finance_category": {
+        "confidence_level": "HIGH",
+        "detailed": "FOOD_AND_DRINK_COFFEE",
+        "primary": "FOOD_AND_DRINK",
+        "version": "v2"
+       },
+       "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_FOOD_AND_DRINK.png",
+       "running_balance": null,
+       "transaction_code": null,
+       "transaction_id": "RvdzoojAkli7qGvERldBsrGVWmyPe7iPamerB",
+       "transaction_type": "place",
+       "unofficial_currency_code": null,
+       "website": null
+      },
+      {
+       "account_id": "qPrK994oW6F9ZqBzERoeTk7pd31ZwBiVDXeqL",
+       "account_owner": null,
+       "amount": -2500,
+       "authorized_date": "2026-10-07",
+       "authorized_datetime": null,
+       "category": [
+        "Transfer",
+        "Payroll"
+       ],
+       "category_id": "21009000",
+       "check_number": null,
+       "counterparties": [],
+       "date": "2026-10-07",
+       "datetime": null,
+       "iso_currency_code": "USD",
+       "location": {
+        "address": null,
+        "city": null,
+        "country": null,
+        "lat": null,
+        "lon": null,
+        "postal_code": null,
+        "region": null,
+        "store_number": null
+       },
+       "logo_url": null,
+       "merchant_category_code": null,
+       "merchant_entity_id": null,
+       "merchant_name": null,
+       "name": "MADEUP CORP PAYROLL",
+       "original_description": "MADEUP CORP PAYROLL",
+       "payment_channel": "other",
+       "payment_meta": {
+        "by_order_of": null,
+        "payee": null,
+        "payer": null,
+        "payment_method": null,
+        "payment_processor": null,
+        "ppd_id": null,
+        "reason": null,
+        "reference_number": null
+       },
+       "pending": false,
+       "pending_transaction_id": null,
+       "personal_finance_category": {
+        "confidence_level": "VERY_HIGH",
+        "detailed": "INCOME_SALARY",
+        "primary": "INCOME",
+        "version": "v2"
+       },
+       "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_INCOME.png",
+       "running_balance": null,
+       "transaction_code": null,
+       "transaction_id": "6jQaddy4xkupDymvdqAef4QjAlaK9ef18VvMp",
+       "transaction_type": "special",
+       "unofficial_currency_code": null,
+       "website": null
+      },
+      {
+       "account_id": "qPrK994oW6F9ZqBzERoeTk7pd31ZwBiVDXeqL",
+       "account_owner": null,
+       "amount": 200,
+       "authorized_date": "2026-10-07",
+       "authorized_datetime": null,
+       "category": [
+        "Transfer",
+        "Debit"
+       ],
+       "category_id": "21006000",
+       "check_number": null,
+       "counterparties": [
+        {
+         "confidence_level": "VERY_HIGH",
+         "entity_id": "zQ64DmD0mdD4r6QrYndzZWLwJn7DyJEYdwLYp",
+         "logo_url": "https://plaid-counterparty-logos.plaid.com/zelle_73.png",
+         "name": "Zelle",
+         "phone_number": null,
+         "type": "payment_app",
+         "website": "zellepay.com"
+        }
+       ],
+       "date": "2026-10-07",
+       "datetime": null,
+       "iso_currency_code": "USD",
+       "location": {
+        "address": null,
+        "city": null,
+        "country": null,
+        "lat": null,
+        "lon": null,
+        "postal_code": null,
+        "region": null,
+        "store_number": null
+       },
+       "logo_url": null,
+       "merchant_category_code": null,
+       "merchant_entity_id": null,
+       "merchant_name": null,
+       "name": "Zelle payment to MOM MADEUP",
+       "original_description": "Zelle payment to MOM MADEUP",
+       "payment_channel": "other",
+       "payment_meta": {
+        "by_order_of": null,
+        "payee": null,
+        "payer": null,
+        "payment_method": null,
+        "payment_processor": null,
+        "ppd_id": null,
+        "reason": null,
+        "reference_number": null
+       },
+       "pending": false,
+       "pending_transaction_id": null,
+       "personal_finance_category": {
+        "confidence_level": "HIGH",
+        "detailed": "TRANSFER_OUT_TRANSFER_OUT_FROM_APPS",
+        "primary": "TRANSFER_OUT",
+        "version": "v2"
+       },
+       "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_TRANSFER_OUT.png",
+       "running_balance": null,
+       "transaction_code": null,
+       "transaction_id": "Xv74BBKRq3iLxKzqpW7jsoKdNJm1Gwh1bwozq",
+       "transaction_type": "special",
+       "unofficial_currency_code": null,
+       "website": null
+      },
+      {
+       "account_id": "qPrK994oW6F9ZqBzERoeTk7pd31ZwBiVDXeqL",
+       "account_owner": null,
+       "amount": 100,
+       "authorized_date": "2026-10-07",
+       "authorized_datetime": null,
+       "category": [
+        "Transfer",
+        "Internal Account Transfer"
+       ],
+       "category_id": "21001000",
+       "check_number": null,
+       "counterparties": [],
+       "date": "2026-10-07",
+       "datetime": null,
+       "iso_currency_code": "USD",
+       "location": {
+        "address": null,
+        "city": null,
+        "country": null,
+        "lat": null,
+        "lon": null,
+        "postal_code": null,
+        "region": null,
+        "store_number": null
+       },
+       "logo_url": null,
+       "merchant_category_code": null,
+       "merchant_entity_id": null,
+       "merchant_name": null,
+       "name": "Online Banking transfer to SAV 2222",
+       "original_description": "Online Banking transfer to SAV 2222",
+       "payment_channel": "other",
+       "payment_meta": {
+        "by_order_of": null,
+        "payee": null,
+        "payer": null,
+        "payment_method": null,
+        "payment_processor": null,
+        "ppd_id": null,
+        "reason": null,
+        "reference_number": null
+       },
+       "pending": false,
+       "pending_transaction_id": null,
+       "personal_finance_category": {
+        "confidence_level": "HIGH",
+        "detailed": "TRANSFER_OUT_SAVINGS",
+        "primary": "TRANSFER_OUT",
+        "version": "v2"
+       },
+       "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_TRANSFER_OUT.png",
+       "running_balance": null,
+       "transaction_code": null,
+       "transaction_id": "DAbgVVyGpEflJa9R6wbDs7d3BDmo5ls43Kj9a",
+       "transaction_type": "special",
+       "unofficial_currency_code": null,
+       "website": null
+      },
+      {
+       "account_id": "qPrK994oW6F9ZqBzERoeTk7pd31ZwBiVDXeqL",
+       "account_owner": null,
+       "amount": 150,
+       "authorized_date": "2026-10-07",
+       "authorized_datetime": null,
+       "category": [
+        "Transfer",
+        "Debit"
+       ],
+       "category_id": "21006000",
+       "check_number": null,
+       "counterparties": [],
+       "date": "2026-10-07",
+       "datetime": null,
+       "iso_currency_code": "USD",
+       "location": {
+        "address": null,
+        "city": null,
+        "country": null,
+        "lat": null,
+        "lon": null,
+        "postal_code": null,
+        "region": null,
+        "store_number": null
+       },
+       "logo_url": null,
+       "merchant_category_code": null,
+       "merchant_entity_id": null,
+       "merchant_name": null,
+       "name": "Online payment to CRD 3333",
+       "original_description": "Online payment to CRD 3333",
+       "payment_channel": "online",
+       "payment_meta": {
+        "by_order_of": null,
+        "payee": null,
+        "payer": null,
+        "payment_method": null,
+        "payment_processor": null,
+        "ppd_id": null,
+        "reason": null,
+        "reference_number": null
+       },
+       "pending": false,
+       "pending_transaction_id": null,
+       "personal_finance_category": {
+        "confidence_level": "HIGH",
+        "detailed": "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+        "primary": "LOAN_PAYMENTS",
+        "version": "v2"
+       },
+       "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_LOAN_PAYMENTS.png",
+       "running_balance": null,
+       "transaction_code": null,
+       "transaction_id": "VvPdrrkmVziM8N19RmPLSaN3b86qDMuq93GLd",
+       "transaction_type": "special",
+       "unofficial_currency_code": null,
+       "website": null
+      },
+      {
+       "account_id": "qPrK994oW6F9ZqBzERoeTk7pd31ZwBiVDXeqL",
+       "account_owner": null,
+       "amount": 75,
+       "authorized_date": "2026-10-07",
+       "authorized_datetime": null,
+       "category": [
+        "Transfer",
+        "Debit"
+       ],
+       "category_id": "21006000",
+       "check_number": null,
+       "counterparties": [],
+       "date": "2026-10-07",
+       "datetime": null,
+       "iso_currency_code": "USD",
+       "location": {
+        "address": null,
+        "city": null,
+        "country": null,
+        "lat": null,
+        "lon": null,
+        "postal_code": null,
+        "region": null,
+        "store_number": null
+       },
+       "logo_url": null,
+       "merchant_category_code": null,
+       "merchant_entity_id": null,
+       "merchant_name": null,
+       "name": "Online payment to CRD 4444",
+       "original_description": "Online payment to CRD 4444",
+       "payment_channel": "online",
+       "payment_meta": {
+        "by_order_of": null,
+        "payee": null,
+        "payer": null,
+        "payment_method": null,
+        "payment_processor": null,
+        "ppd_id": null,
+        "reason": null,
+        "reference_number": null
+       },
+       "pending": false,
+       "pending_transaction_id": null,
+       "personal_finance_category": {
+        "confidence_level": "HIGH",
+        "detailed": "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+        "primary": "LOAN_PAYMENTS",
+        "version": "v2"
+       },
+       "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_LOAN_PAYMENTS.png",
+       "running_balance": null,
+       "transaction_code": null,
+       "transaction_id": "wMadJJQ1y6ulA694rXypsNoE631awnCEPBnDm",
+       "transaction_type": "special",
+       "unofficial_currency_code": null,
+       "website": null
+      },
+      {
+       "account_id": "KvqbZZ3WGLixEnXGBZqaC9n5bqD3wxFmB3lv5",
+       "account_owner": null,
+       "amount": -100,
+       "authorized_date": "2026-10-07",
+       "authorized_datetime": null,
+       "category": [
+        "Transfer",
+        "Internal Account Transfer"
+       ],
+       "category_id": "21001000",
+       "check_number": null,
+       "counterparties": [],
+       "date": "2026-10-07",
+       "datetime": null,
+       "iso_currency_code": "USD",
+       "location": {
+        "address": null,
+        "city": null,
+        "country": null,
+        "lat": null,
+        "lon": null,
+        "postal_code": null,
+        "region": null,
+        "store_number": null
+       },
+       "logo_url": null,
+       "merchant_category_code": null,
+       "merchant_entity_id": null,
+       "merchant_name": null,
+       "name": "Online Banking transfer from CHK 1111",
+       "original_description": "Online Banking transfer from CHK 1111",
+       "payment_channel": "other",
+       "payment_meta": {
+        "by_order_of": null,
+        "payee": null,
+        "payer": null,
+        "payment_method": null,
+        "payment_processor": null,
+        "ppd_id": null,
+        "reason": null,
+        "reference_number": null
+       },
+       "pending": false,
+       "pending_transaction_id": null,
+       "personal_finance_category": {
+        "confidence_level": "HIGH",
+        "detailed": "TRANSFER_IN_ACCOUNT_TRANSFER",
+        "primary": "TRANSFER_IN",
+        "version": "v2"
+       },
+       "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_TRANSFER_IN.png",
+       "running_balance": null,
+       "transaction_code": null,
+       "transaction_id": "Jvln99BWAyi3qRLQp4ldUyRwBLVQv3cQBVzWX",
+       "transaction_type": "special",
+       "unofficial_currency_code": null,
+       "website": null
+      },
+      {
+       "account_id": "rkzr99NoA6FKeqkMxLZQHvDJ8dEnNgFD5Brvm",
+       "account_owner": null,
+       "amount": -150,
+       "authorized_date": "2026-10-07",
+       "authorized_datetime": null,
+       "category": [
+        "Payment",
+        "Credit Card"
+       ],
+       "category_id": "16001000",
+       "check_number": null,
+       "counterparties": [],
+       "date": "2026-10-07",
+       "datetime": null,
+       "iso_currency_code": "USD",
+       "location": {
+        "address": null,
+        "city": null,
+        "country": null,
+        "lat": null,
+        "lon": null,
+        "postal_code": null,
+        "region": null,
+        "store_number": null
+       },
+       "logo_url": null,
+       "merchant_category_code": null,
+       "merchant_entity_id": null,
+       "merchant_name": null,
+       "name": "PAYMENT - THANK YOU",
+       "original_description": "PAYMENT - THANK YOU",
+       "payment_channel": "other",
+       "payment_meta": {
+        "by_order_of": null,
+        "payee": null,
+        "payer": null,
+        "payment_method": null,
+        "payment_processor": null,
+        "ppd_id": null,
+        "reason": null,
+        "reference_number": null
+       },
+       "pending": false,
+       "pending_transaction_id": null,
+       "personal_finance_category": {
+        "confidence_level": "LOW",
+        "detailed": "TRANSFER_IN_OTHER_TRANSFER_IN",
+        "primary": "TRANSFER_IN",
+        "version": "v2"
+       },
+       "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_TRANSFER_IN.png",
+       "running_balance": null,
+       "transaction_code": null,
+       "transaction_id": "qPrK994oW6F9ZqBzERoeTk7WqpJ58BT6g4pAK",
+       "transaction_type": "special",
+       "unofficial_currency_code": null,
+       "website": null
+      },
+      {
+       "account_id": "rkzr99NoA6FKeqkMxLZQHvDJ8dEnNgFD5Brvm",
+       "account_owner": null,
+       "amount": -9.99,
+       "authorized_date": "2026-10-07",
+       "authorized_datetime": null,
+       "category": [
+        "Transfer",
+        "Credit"
+       ],
+       "category_id": "21005000",
+       "check_number": null,
+       "counterparties": [],
+       "date": "2026-10-07",
+       "datetime": null,
+       "iso_currency_code": "USD",
+       "location": {
+        "address": null,
+        "city": null,
+        "country": null,
+        "lat": null,
+        "lon": null,
+        "postal_code": null,
+        "region": null,
+        "store_number": null
+       },
+       "logo_url": null,
+       "merchant_category_code": null,
+       "merchant_entity_id": null,
+       "merchant_name": null,
+       "name": "STORE RETURN",
+       "original_description": "STORE RETURN",
+       "payment_channel": "in store",
+       "payment_meta": {
+        "by_order_of": null,
+        "payee": null,
+        "payer": null,
+        "payment_method": null,
+        "payment_processor": null,
+        "ppd_id": null,
+        "reason": null,
+        "reference_number": null
+       },
+       "pending": false,
+       "pending_transaction_id": null,
+       "personal_finance_category": {
+        "confidence_level": "LOW",
+        "detailed": "GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE",
+        "primary": "GENERAL_MERCHANDISE",
+        "version": "v2"
+       },
+       "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_GENERAL_MERCHANDISE.png",
+       "running_balance": null,
+       "transaction_code": null,
+       "transaction_id": "KvqbZZ3WGLixEnXGBZqaC9ndW5PERxsER4dWx",
+       "transaction_type": "special",
+       "unofficial_currency_code": null,
+       "website": null
+      },
+      {
+       "account_id": "zpPN99o1R6uEqoa4Wry8s1ylE6Ax3nFgv8AG6",
+       "account_owner": null,
+       "amount": -75,
+       "authorized_date": "2026-10-07",
+       "authorized_datetime": null,
+       "category": [
+        "Payment",
+        "Credit Card"
+       ],
+       "category_id": "16001000",
+       "check_number": null,
+       "counterparties": [],
+       "date": "2026-10-07",
+       "datetime": null,
+       "iso_currency_code": "USD",
+       "location": {
+        "address": null,
+        "city": null,
+        "country": null,
+        "lat": null,
+        "lon": null,
+        "postal_code": null,
+        "region": null,
+        "store_number": null
+       },
+       "logo_url": null,
+       "merchant_category_code": null,
+       "merchant_entity_id": null,
+       "merchant_name": null,
+       "name": "PAYMENT - THANK YOU",
+       "original_description": "PAYMENT - THANK YOU",
+       "payment_channel": "other",
+       "payment_meta": {
+        "by_order_of": null,
+        "payee": null,
+        "payer": null,
+        "payment_method": null,
+        "payment_processor": null,
+        "ppd_id": null,
+        "reason": null,
+        "reference_number": null
+       },
+       "pending": false,
+       "pending_transaction_id": null,
+       "personal_finance_category": {
+        "confidence_level": "LOW",
+        "detailed": "TRANSFER_IN_OTHER_TRANSFER_IN",
+        "primary": "TRANSFER_IN",
+        "version": "v2"
+       },
+       "personal_finance_category_icon_url": "https://plaid-category-icons.plaid.com/PFC_TRANSFER_IN.png",
+       "running_balance": null,
+       "transaction_code": null,
+       "transaction_id": "rkzr99NoA6FKeqkMxLZQHvDGqJ7X4gCd738qv",
+       "transaction_type": "special",
+       "unofficial_currency_code": null,
+       "website": null
+      }
+     ],
+     "has_more": false,
+     "modified": [],
+     "next_cursor": "CAESJXJrenI5OU5vQTZGS2Vxa014TFpRSHZER3FKN1g0Z0NkNzM4cXYaDAjsqZbWBhDgrMz0ASIMCOypltYGEOCszPQBKgwI7KmW1gYQ4KzM9AE=",
+     "removed": [],
+     "request_id": "f198ad66973807c",
+     "transactions_update_status": "HISTORICAL_UPDATE_COMPLETE"
+    },
+    "CAESJXJrenI5OU5vQTZGS2Vxa014TFpRSHZER3FKN1g0Z0NkNzM4cXYaDAjsqZbWBhDgrMz0ASIMCOypltYGEOCszPQBKgwI7KmW1gYQ4KzM9AE=": {
+     "accounts": [],
+     "added": [],
+     "has_more": false,
+     "modified": [],
+     "next_cursor": "CAESJXJrenI5OU5vQTZGS2Vxa014TFpRSHZER3FKN1g0Z0NkNzM4cXYaDAjsqZbWBhDgrMz0ASIMCOypltYGEOCszPQBKgwI7KmW1gYQ4KzM9AE=",
+     "removed": [],
+     "request_id": "5a38f99371d34f5",
+     "transactions_update_status": "HISTORICAL_UPDATE_COMPLETE"
+    }
+   },
+   "accounts": {
+    "accounts": [
+     {
+      "account_id": "qPrK994oW6F9ZqBzERoeTk7pd31ZwBiVDXeqL",
+      "apy": null,
+      "balances": {
+       "available": 2974.5,
+       "current": 3000,
+       "iso_currency_code": "USD",
+       "limit": null,
+       "unofficial_currency_code": null
+      },
+      "holder_category": "personal",
+      "mask": "1111",
+      "name": "Made-up Checking",
+      "official_name": "Plaid checking",
+      "subtype": "checking",
+      "type": "depository"
+     },
+     {
+      "account_id": "KvqbZZ3WGLixEnXGBZqaC9n5bqD3wxFmB3lv5",
+      "apy": 4.82,
+      "balances": {
+       "available": 5000,
+       "current": 5000,
+       "iso_currency_code": "USD",
+       "limit": null,
+       "unofficial_currency_code": null
+      },
+      "holder_category": "personal",
+      "mask": "2222",
+      "name": "Made-up Savings",
+      "official_name": "Plaid savings",
+      "subtype": "savings",
+      "type": "depository"
+     },
+     {
+      "account_id": "rkzr99NoA6FKeqkMxLZQHvDJ8dEnNgFD5Brvm",
+      "apy": null,
+      "balances": {
+       "available": 4490,
+       "current": 450,
+       "iso_currency_code": "USD",
+       "limit": 5000,
+       "unofficial_currency_code": null
+      },
+      "holder_category": "personal",
+      "mask": "3333",
+      "name": "Made-up Everyday Card",
+      "official_name": "Plaid credit card",
+      "subtype": "credit card",
+      "type": "credit"
+     },
+     {
+      "account_id": "zpPN99o1R6uEqoa4Wry8s1ylE6Ax3nFgv8AG6",
+      "apy": null,
+      "balances": {
+       "available": 1000,
+       "current": 3000,
+       "iso_currency_code": "USD",
+       "limit": 4000,
+       "unofficial_currency_code": null
+      },
+      "holder_category": "personal",
+      "mask": "4444",
+      "name": "Made-up Old Card",
+      "official_name": "Plaid credit card",
+      "subtype": "credit card",
+      "type": "credit"
+     }
+    ],
+    "item": {
+     "available_products": [
+      "assets",
+      "auth",
+      "balance",
+      "identity",
+      "identity_match",
+      "income_verification",
+      "investments",
+      "investments_auth",
+      "recurring_transactions",
+      "signal",
+      "statements",
+      "transactions_refresh",
+      "transfer"
+     ],
+     "billed_products": [
+      "liabilities",
+      "transactions"
+     ],
+     "consent_expiration_time": null,
+     "error": null,
+     "institution_id": "ins_109508",
+     "institution_name": "First Platypus Bank",
+     "item_id": "77Z4llyNdghxmN3WLjAlCQkg1Jod3AFNr4RE7",
+     "products": [
+      "liabilities",
+      "transactions"
+     ],
+     "update_type": "background",
+     "webhook": ""
+    },
+    "request_id": "4db72dff10b5447"
+   },
+   "liabilities": {
+    "accounts": [
+     {
+      "account_id": "qPrK994oW6F9ZqBzERoeTk7pd31ZwBiVDXeqL",
+      "apy": null,
+      "balances": {
+       "available": 2974.5,
+       "current": 3000,
+       "iso_currency_code": "USD",
+       "limit": null,
+       "unofficial_currency_code": null
+      },
+      "holder_category": "personal",
+      "mask": "1111",
+      "name": "Made-up Checking",
+      "official_name": "Plaid checking",
+      "subtype": "checking",
+      "type": "depository"
+     },
+     {
+      "account_id": "KvqbZZ3WGLixEnXGBZqaC9n5bqD3wxFmB3lv5",
+      "apy": 4.82,
+      "balances": {
+       "available": 5000,
+       "current": 5000,
+       "iso_currency_code": "USD",
+       "limit": null,
+       "unofficial_currency_code": null
+      },
+      "holder_category": "personal",
+      "mask": "2222",
+      "name": "Made-up Savings",
+      "official_name": "Plaid savings",
+      "subtype": "savings",
+      "type": "depository"
+     },
+     {
+      "account_id": "rkzr99NoA6FKeqkMxLZQHvDJ8dEnNgFD5Brvm",
+      "apy": null,
+      "balances": {
+       "available": 4490,
+       "current": 450,
+       "iso_currency_code": "USD",
+       "limit": 5000,
+       "unofficial_currency_code": null
+      },
+      "holder_category": "personal",
+      "mask": "3333",
+      "name": "Made-up Everyday Card",
+      "official_name": "Plaid credit card",
+      "subtype": "credit card",
+      "type": "credit"
+     },
+     {
+      "account_id": "zpPN99o1R6uEqoa4Wry8s1ylE6Ax3nFgv8AG6",
+      "apy": null,
+      "balances": {
+       "available": 1000,
+       "current": 3000,
+       "iso_currency_code": "USD",
+       "limit": 4000,
+       "unofficial_currency_code": null
+      },
+      "holder_category": "personal",
+      "mask": "4444",
+      "name": "Made-up Old Card",
+      "official_name": "Plaid credit card",
+      "subtype": "credit card",
+      "type": "credit"
+     }
+    ],
+    "item": {
+     "available_products": [
+      "assets",
+      "auth",
+      "balance",
+      "identity",
+      "identity_match",
+      "income_verification",
+      "investments",
+      "investments_auth",
+      "recurring_transactions",
+      "signal",
+      "statements",
+      "transactions_refresh",
+      "transfer"
+     ],
+     "billed_products": [
+      "liabilities",
+      "transactions"
+     ],
+     "consent_expiration_time": null,
+     "error": null,
+     "institution_id": "ins_109508",
+     "institution_name": "First Platypus Bank",
+     "item_id": "77Z4llyNdghxmN3WLjAlCQkg1Jod3AFNr4RE7",
+     "products": [
+      "liabilities",
+      "transactions"
+     ],
+     "update_type": "background",
+     "webhook": ""
+    },
+    "liabilities": {
+     "credit": [
+      {
+       "account_id": "rkzr99NoA6FKeqkMxLZQHvDJ8dEnNgFD5Brvm",
+       "aprs": [
+        {
+         "apr_percentage": 22.99,
+         "apr_type": "purchase_apr",
+         "balance_subject_to_apr": null,
+         "interest_charge_amount": null
+        },
+        {
+         "apr_percentage": 27.95,
+         "apr_type": "cash_apr",
+         "balance_subject_to_apr": null,
+         "interest_charge_amount": null
+        }
+       ],
+       "cash_advance_limit": null,
+       "is_overdue": false,
+       "last_payment_amount": 100,
+       "last_payment_date": null,
+       "last_statement_balance": null,
+       "last_statement_issue_date": null,
+       "minimum_payment_amount": 35,
+       "next_payment_due_date": null
+      },
+      {
+       "account_id": "zpPN99o1R6uEqoa4Wry8s1ylE6Ax3nFgv8AG6",
+       "aprs": [
+        {
+         "apr_percentage": 0,
+         "apr_type": "purchase_apr",
+         "balance_subject_to_apr": null,
+         "interest_charge_amount": null
+        },
+        {
+         "apr_percentage": 27.95,
+         "apr_type": "cash_apr",
+         "balance_subject_to_apr": null,
+         "interest_charge_amount": null
+        }
+       ],
+       "cash_advance_limit": null,
+       "is_overdue": false,
+       "last_payment_amount": 150,
+       "last_payment_date": null,
+       "last_statement_balance": null,
+       "last_statement_issue_date": null,
+       "minimum_payment_amount": 60,
+       "next_payment_due_date": null
+      }
+     ],
+     "mortgage": null,
+     "student": null
+    },
+    "request_id": "a40f85bdd1873cd"
+   }
+  }
+ ]
+}

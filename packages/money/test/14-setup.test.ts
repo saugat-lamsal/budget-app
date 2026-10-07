@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { startTracking, startingMoney, type Book, type Purchase, type SetupInput } from '../src/index.js';
-import { TEST_SETTINGS, arrived, codeOf, posted, purchase, refund, sent } from './helpers.js';
+import { TEST_SETTINGS, arrived, codeOf, dropped, posted, purchase, refund, sent } from './helpers.js';
 
 // The bank on setup day (made up): checking 2,500.00, savings 4,000.00,
 // everyday card owes 300.00 posted plus a 45.00 pending charge.
@@ -129,6 +129,17 @@ describe('setup day: charges that were pending on setup day (QUESTIONS.md A10)',
     b.receive(refund('r1', '2026-10-08', 4_500, 'post1'));
     expect(b.pots()).toMatchObject({ unsortedOut: -4_500 });
     b.sort('pend1', { to: 'wants' }, '2026-10-08');
+    expect(b.pots()).toMatchObject({ wants: 54_500, unsortedOut: 0 });
+  });
+
+  it('14.2 a charge pending on setup day that the bank drops: its money comes back to the bucket you pick (A2, A10)', () => {
+    const b = started();
+    b.receive(dropped('d1', 'pend1', '2026-10-07'));
+    // It was in the starting money; now the bank has it back, so it waits
+    // in review, like any change to a charge pending on setup day.
+    expect(b.pots()).toMatchObject({ unsortedOut: -4_500 });
+    expect(b.selfCheck({ ...POSTED })).toMatchObject({ ok: true });
+    b.sort('pend1', { to: 'wants' }, '2026-10-07');
     expect(b.pots()).toMatchObject({ wants: 54_500, unsortedOut: 0 });
   });
 

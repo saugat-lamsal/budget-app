@@ -7,6 +7,7 @@ import {
   daysBetween,
   startTracking,
   withPendingCharges,
+  type BankBalances,
   type BankTransaction,
   type Book,
   type CardNotice,
@@ -17,13 +18,14 @@ import {
   type LeftoverChoice,
   type Pot,
   type Pots,
+  type Purchase,
   type ReviewItem,
   type Settings,
   type SetupInput,
   type SortingRule,
   type TransferSent,
 } from '../../src/index.js';
-import { SimBank, type Card, type ChargeAccount, type OwnAccount } from './bank.js';
+import { SimBank, type Card, type ChargeAccount, type OwnAccount, type Posted } from './bank.js';
 import { Random } from './random.js';
 
 // Phase 2, the simulated you: a made-up person with made-up numbers, lived
@@ -40,6 +42,37 @@ export interface LifeOptions {
   // For the simulator's own tests: on this day the bank changes a balance
   // without telling the book, so the self-check must fail.
   readonly sabotageOnDay?: number;
+  // For the bank connection's tests (packages/server): what the bank did on
+  // setup day and on each day after, and the book's totals at the end of
+  // each day, so the same days can be played through the bank connection in
+  // Plaid's format. Recording changes nothing about the life.
+  readonly record?: LifeRecorder;
+}
+
+// The book's totals that bank activity alone decides. The person's answers
+// only move money between buckets, so these do not depend on them.
+export interface BookTotals {
+  readonly appSide: Cents;
+  readonly inTransit: Cents;
+  readonly oldCardDebt: Cents;
+}
+
+export interface RecordedBankDay {
+  readonly date: IsoDate;
+  // What the bank sent that day, in the order it sent it.
+  readonly feed: readonly BankTransaction[];
+  readonly posted: Posted;
+  // 12.1: posted plus pending charges.
+  readonly balances: BankBalances;
+  // Transfers with only one half showing, as "from to amount left|arrived".
+  readonly halvesShowing: readonly string[];
+  readonly totals: BookTotals;
+}
+
+export interface LifeRecorder {
+  // The bank as it started, what it sent before setup day, and setup day itself.
+  setupDay(setup: { readonly start: Posted; readonly feed: readonly BankTransaction[]; readonly input: SetupInput; readonly totals: BookTotals }): void;
+  day(day: RecordedBankDay): void;
 }
 
 export type LifeResult =
@@ -69,6 +102,7 @@ export const STAT_NAMES = [
   'purchases',
   'postedFromPending',
   'postedAtNewAmount',
+  'holdsDropped',
   'refundsLinked',
   'refundsInReview',
   'splitPurchases',
@@ -206,6 +240,10 @@ class Life {
   readonly #seed: number;
   readonly #days: number;
   readonly #sabotageOnDay: number | undefined;
+  readonly #record: LifeRecorder | undefined;
+  readonly #startPosted: Posted;
+  // How much of the bank's feed has been recorded.
+  #recordedUpTo = 0;
   readonly #random: Random;
   readonly #person: Person;
   readonly #bank: SimBank;
@@ -258,6 +296,7 @@ class Life {
     this.#seed = options.seed;
     this.#days = Math.round(options.years * 365);
     this.#sabotageOnDay = options.sabotageOnDay;
+    this.#record = options.record;
     this.#random = new Random(options.seed);
     this.#stats = Object.fromEntries(STAT_NAMES.map((name) => [name, 0])) as Stats;
     const r = this.#random;
@@ -277,12 +316,13 @@ class Life {
 
     // Setup day (section 14): the bank as it stands, with a few charges still
     // pending and sometimes a card payment on its way.
-    this.#bank = new SimBank({
+    this.#startPosted = {
       checking: r.int(150_000, 600_000),
       savings: r.int(200_000, 2_000_000),
       everydayCard: r.int(0, 250_000),
       oldCard: r.int(250_000, 350_000),
-    });
+    };
+    this.#bank = new SimBank(this.#startPosted);
     for (let i = r.int(0, 3); i > 0; i--) {
       const store = r.pick(STORES.filter((s) => s.how !== 'posted'));
       const account = r.chance(store.debitOutOf10, 10) ? 'checking' : 'everyday-card';
@@ -358,12 +398,17 @@ class Life {
   live(): LifeResult {
     try {
       this.#checkSetupDay();
+      if (this.#record !== undefined) {
+        this.#recordedUpTo = this.#bank.feed.length;
+        this.#record.setupDay({ start: { ...this.#startPosted }, feed: [...this.#bank.feed], input: this.#setupInput, totals: this.#totals() });
+      }
       for (this.#day = 0; this.#day < this.#days; this.#day++) {
         this.#date = addDays(this.#start, this.#day);
         this.#bankDay();
         if (this.#day === this.#sabotageOnDay) this.#bank.changeWithoutTelling('checking', -1);
         this.#evening();
         this.#check();
+        this.#recordDay();
         this.#stats.days++;
       }
       return { ok: true, seed: this.#seed, days: this.#days, stats: this.#stats };
@@ -372,6 +417,22 @@ class Life {
       const message = error instanceof Error ? error.message : String(error);
       return { ok: false, seed: this.#seed, day: this.#day, date: this.#date, check, message, recent: [...this.#recent], stats: this.#stats };
     }
+  }
+
+  #totals(): BookTotals {
+    const check = this.#book.selfCheck(this.#bank.balances());
+    return { appSide: check.appSide, inTransit: check.inTransit, oldCardDebt: this.#book.oldCardDebt() };
+  }
+
+  #recordDay(): void {
+    if (this.#record === undefined) return;
+    const feed = this.#bank.feed.slice(this.#recordedUpTo);
+    this.#recordedUpTo = this.#bank.feed.length;
+    const halvesShowing = this.#bank
+      .halvesShowing()
+      .map((h) => `${h.from} ${h.to} ${h.amount} ${h.kind === 'transfer-sent' ? 'left' : 'arrived'}`)
+      .sort();
+    this.#record.day({ date: this.#date, feed, posted: { ...this.#bank.posted }, balances: this.#bank.balances(), halvesShowing, totals: this.#totals() });
   }
 
   // 14.3: an assignment a cent off either way is refused, saying what is left.
@@ -599,14 +660,40 @@ class Life {
     const finalAmount = amount + (store.tip ? share(amount, r.int(0, 22)) : 0);
     const id = this.#purchase(() => this.#bank.authorize(this.#date, account, hold, store.name), store);
     this.#laterOn(addDays(this.#date, r.int(1, 4)), () => {
+      // Some pumps drop the hold and post the real charge on its own (A2).
+      if (hold !== finalAmount && store.how === 'gas' && r.chance(1, 5)) {
+        this.#dropHold(id);
+        this.#purchase(() => this.#bank.purchase(this.#date, account, finalAmount, store.name), store);
+        return;
+      }
       const posted = this.#post(id, finalAmount);
       this.#maybeRefund(store, posted, finalAmount, account);
     });
   }
 
+  // QUESTIONS.md A2: the bank drops a pending charge without posting it, and
+  // its money goes back where it came from.
+  #dropHold(pendingId: string): void {
+    const first = this.#firstId.get(pendingId) ?? pendingId;
+    const standing = this.#standing.get(first);
+    const hold = this.#bank.pendingCharges().find((c) => c.id === pendingId);
+    if (hold === undefined) return;
+    const before = this.#book.pots();
+    const txn = this.#bank.drop(pendingId, this.#date);
+    const outcome = this.#receive(txn);
+    if (outcome !== 'dropped') throw new CheckFailed('4.6 a dropped pending charge (A2)', `${txn.id} came back as ${outcome}`);
+    let change: Change = {};
+    if (standing === 'needs' || standing === 'wants') change = { [standing]: hold.amount };
+    else if (standing === 'unsorted') change = { unsortedOut: -hold.amount };
+    else if (standing === 'split') change = { ...this.#splitParts.get(first) };
+    this.#expectChange(before, change, '4.6 a dropped pending charge gives its money back (A2)', txn.id);
+    this.#standing.set(first, 'unsorted');
+    this.#stats.holdsDropped++;
+  }
+
   // 4.1 to 4.3: a purchase comes out of the bucket its first matching rule
   // picks, on the day of the purchase; with no rule it waits in review.
-  #purchase(make: () => BankTransaction, store: Store | null): string {
+  #purchase(make: () => Purchase, store: Store | null): string {
     const before = this.#book.pots();
     const txn = make();
     if (store) this.#intents.set(txn.id, { type: 'store', sorting: store.sorting, store: store.name });
@@ -981,7 +1068,7 @@ class Life {
   #receive(txn: BankTransaction): string {
     const { outcome } = this.#book.receive(txn);
     this.#sent.push(txn);
-    this.#note(`receive ${txn.kind} ${txn.id} ${txn.amount}${'account' in txn ? ` ${txn.account}` : ''}${'to' in txn ? ` ${txn.from}->${txn.to}` : ''} "${txn.description}": ${outcome}`);
+    this.#note(`receive ${txn.kind} ${txn.id} ${'amount' in txn ? txn.amount : `for ${txn.pendingId}`}${'account' in txn ? ` ${txn.account}` : ''}${'to' in txn ? ` ${txn.from}->${txn.to}` : ''} "${txn.description}": ${outcome}`);
     return outcome;
   }
 
@@ -1092,7 +1179,7 @@ class Life {
       const split = (needs: Cents, wants: Cents) => () => this.#book.sort(item.id, { split: [{ bucket: 'needs', amount: needs }, { bucket: 'wants', amount: wants }] }, today);
       if (person) this.#expectRefused(split(1, item.amount - 1), before, item.id, 'splitting a payment to a person or a mom difference (B20, B23)');
       else if (r.chance(1, 2)) this.#expectRefused(split(1, item.amount - 2), before, item.id, 'a split one cent short (4.4)');
-      else this.#expectRefused(() => this.#book.sort(item.id, { to: 'savings' }, today), before, item.id, 'sorting spending to savings (4.2, QUESTIONS.md A3)');
+      else if (item.reason !== 'old-card-from-savings') this.#expectRefused(() => this.#book.sort(item.id, { to: 'savings' }, today), before, item.id, 'sorting spending to savings (4.2, QUESTIONS.md A3)');
     } else if (item.type === 'money-in' && item.reason === 'refund') {
       this.#expectRefused(() => this.#book.sort(item.id, { to: r.pick(['paycheck', 'other-income'] as const) }, today), before, item.id, 'calling a store refund income (B16)');
     }
@@ -1138,7 +1225,14 @@ class Life {
       return;
     }
     let change: Change;
-    if (item.reason === 'card-fee' || item.reason === 'card-interest' || item.reason === 'old-card-from-savings' || item.reason === 'setup-difference') {
+    if (item.reason === 'old-card-from-savings') {
+      // QUESTIONS.md A4: it suggests savings; the person mostly confirms it,
+      // and sometimes picks needs instead.
+      if (item.suggestion !== 'savings') throw new CheckFailed('5.2 an old card payment from savings suggests savings (A4)', JSON.stringify(item));
+      const to = r.chance(3, 4) ? 'savings' : 'needs';
+      this.#book.sort(item.id, { to }, today);
+      change = { [to]: -item.amount };
+    } else if (item.reason === 'card-fee' || item.reason === 'card-interest' || item.reason === 'setup-difference') {
       this.#book.sort(item.id, { to: 'needs' }, today);
       change = { needs: -item.amount };
     } else if (item.reason === 'mom-difference') {

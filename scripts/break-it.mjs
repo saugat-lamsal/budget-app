@@ -1,11 +1,13 @@
 // Break-it check (CLAUDE.md, testing bar point 3).
 //
-// Breaks the money math on purpose, one way at a time, and runs every test.
-// Some test must fail each time. Each break is a find-and-replace listed in
-// packages/money/break-it.json. The file is always restored afterward.
+// Breaks the code on purpose, one way at a time, and runs every test. Some
+// test must fail each time. Each break is a find-and-replace listed in
+// packages/money/break-it.json (the money math) or packages/server/break-it.json
+// (the bank connection, section "bank"). The file is always restored afterward.
 //
 //   node scripts/break-it.mjs                    every break
 //   node scripts/break-it.mjs 3 4                only breaks for rulebook sections 3 and 4
+//   node scripts/break-it.mjs bank               only breaks for the bank connection
 //   node scripts/break-it.mjs --restore          only put back files a stopped run left broken
 //   node scripts/break-it.mjs --only <test file> judge every break by that one test file,
 //                                                to see what it catches on its own
@@ -17,7 +19,8 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const root = new URL('../', import.meta.url);
-const breaks = JSON.parse(readFileSync(new URL('packages/money/break-it.json', root), 'utf8'));
+const lists = ['packages/money/break-it.json', 'packages/server/break-it.json'];
+const breaks = lists.filter((list) => existsSync(new URL(list, root))).flatMap((list) => JSON.parse(readFileSync(new URL(list, root), 'utf8')));
 const args = process.argv.slice(2);
 const onlyAt = args.indexOf('--only');
 const only = onlyAt === -1 ? undefined : args[onlyAt + 1];

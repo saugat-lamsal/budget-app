@@ -7,6 +7,7 @@ import {
   type CardCharge,
   type Deposit,
   type Purchase,
+  type PendingDropped,
   type PersonPayment,
   type Refund,
   type Transfer,
@@ -67,6 +68,11 @@ export function purchase(
 // The posted version of a pending purchase. The bank gives it a new id.
 export function posted(id: string, pendingId: string, date: IsoDate, amount: Cents, description = 'MADE UP STORE', account: Purchase['account'] = 'everyday-card'): Purchase {
   return { kind: 'purchase', id, account, date, amount, description, pending: false, pendingId };
+}
+
+// The bank dropping a pending charge without posting it (QUESTIONS.md A2).
+export function dropped(id: string, pendingId: string, date: IsoDate): PendingDropped {
+  return { kind: 'pending-dropped', id, pendingId, date, description: 'HOLD RELEASED' };
 }
 
 export function refund(id: string, date: IsoDate, amount: Cents, refundOf?: string, account: Refund['account'] = 'everyday-card'): Refund {
@@ -167,6 +173,14 @@ export class TestBank {
         this.#land(txn.to, txn.amount);
         if (txn.to !== 'old-card') this.inTransit -= txn.amount;
         break;
+      case 'pending-dropped': {
+        const earlier = this.#pending.get(txn.pendingId);
+        if (earlier !== undefined) {
+          this.#spend(earlier.account, -earlier.amount);
+          this.#pending.delete(txn.pendingId);
+        }
+        break;
+      }
     }
   }
 

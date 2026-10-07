@@ -1,0 +1,296 @@
+[
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/amounts.ts",
+  "find": "const cents = Number(dollars) * 100 + Number(fraction.padEnd(2, '0'));",
+  "replace": "const cents = Number(dollars) * 100 + Number(fraction);",
+  "why": "0.1 read 72.1 as 72.01"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/amounts.ts",
+  "find": "return sign === '-' && cents !== 0 ? -cents : cents;",
+  "replace": "return cents;",
+  "why": "0.1 lose the minus sign"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/amounts.ts",
+  "find": "const AMOUNT_TEXT = /^(-?)(\\d+)(?:\\.(\\d{1,2}))?$/;",
+  "replace": "const AMOUNT_TEXT = /^(-?)(\\d+)(?:\\.(\\d{1,3}))?$/;",
+  "why": "0.1 let fractions of a cent through"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/amounts.ts",
+  "find": "const LIMIT = 1e12;",
+  "replace": "const LIMIT = 1e17;",
+  "why": "0.1 accept amounts too large to keep exact"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/plaid-item.ts",
+  "find": "        day: authorized ?? date,",
+  "replace": "        day: date,",
+  "why": "4.1 date a purchase by when it posted"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/plaid-item.ts",
+  "find": "    if (currency !== 'USD' && !(currency === null && tx['unofficial_currency_code'] === null)) {",
+  "replace": "    if (currency === 'XXX') {",
+  "why": "0.5 take money in another currency as dollars"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/plaid-item.ts",
+  "find": "    const description = typeof original === 'string' && original.trim() !== '' ? original : text(tx['name'], 'description');",
+  "replace": "    const description = text(tx['name'], 'description');",
+  "why": "B9 match rules against Plaid's cleaned-up name, not the bank's own words"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/reading.ts",
+  "find": "  if (amount === 0) return { kind: 'nothing' };\n",
+  "replace": "",
+  "why": "reading: treat zero as money moving"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/reading.ts",
+  "find": "  const out = amount > 0;",
+  "replace": "  const out = amount < 0;",
+  "why": "4.1 flip which way the money went"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/reading.ts",
+  "find": "  if (isCard(account)) return out ? { kind: 'purchase' } : { kind: 'refund' };",
+  "replace": "  if (isCard(account)) return out ? { kind: 'refund' } : { kind: 'purchase' };",
+  "why": "4.5 swap card purchases and refunds"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/reading.ts",
+  "find": "    if (rule.account !== account || !matchesTextRule(rule, description)) continue;",
+  "replace": "    if (!matchesTextRule(rule, description)) continue;",
+  "why": "B9 apply a bank rule on every account"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/reading.ts",
+  "find": "      return isBankAccount(rule.other) ? { kind: 'transfer-arrived', from: rule.other } : null;",
+  "replace": "      return { kind: 'transfer-arrived', from: 'checking' };",
+  "why": "12.5 take every arriving half as from checking"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/reading.ts",
+  "find": "    case 'payment-to-person':\n      return out ? { kind: 'payment-to-person' } : null;",
+  "replace": "    case 'payment-to-person':\n      return null;",
+  "why": "7.4 and 8.1 never see a payment to a person"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/balances.ts",
+  "find": "      pendingCharges.push({ account: role, amount: item.amountCents });",
+  "replace": "      void role;",
+  "why": "12.1 leave pending charges out of the bank side"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/balances.ts",
+  "find": "if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined || role === 'savings') continue;",
+  "replace": "if (!item.pending || item.removed || item.replacedBy !== null || role === undefined || role === 'savings') continue;",
+  "why": "B36 count pending money in and pending transfers in the bank side"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/balances.ts",
+  "find": "if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase'",
+  "replace": "if (!item.pending || item.replacedBy !== null || item.kind !== 'purchase'",
+  "why": "4.6 keep counting a pending charge the bank removed"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/statements.ts",
+  "find": "    const closingDate = date(raw.last_statement_issue_date, 'statement date');",
+  "replace": "    const closingDate = date(raw.last_payment_date, 'statement date');",
+  "why": "9.3 take the last payment date as the statement date"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/bank/statements.ts",
+  "find": "    const minimumPayment = centsFromPlaid(raw.minimum_payment_amount, 'minimum payment');",
+  "replace": "    const minimumPayment = centsFromPlaid(raw.last_statement_balance, 'minimum payment');",
+  "why": "9.2 take the statement balance as the minimum"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/plan.ts",
+  "find": "      this.#give({ kind: 'pending-dropped', id: `${id}-dropped`, pendingId: known.bookId ?? id, date: this.#in.today, description: describe(known) }, known);",
+  "replace": "      void describe;",
+  "why": "A2 never tell the book a pending charge was dropped"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/plan.ts",
+  "find": "        this.#give({ ...this.#purchase(item, role), pendingId: pending.bookId ?? pending.transactionId }, stored);",
+  "replace": "        this.#give(this.#purchase(item, role), stored);",
+  "why": "4.6 count a posted charge as new, beside its pending one"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/plan.ts",
+  "find": "        pending.replacedBy = item.id;\n",
+  "replace": "",
+  "why": "4.6 forget which posted charge replaced a pending one"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/plan.ts",
+  "find": "      else stored.status = 'waiting';",
+  "replace": "      else stored.status = 'skipped';",
+  "why": "B36 never send a pending deposit or payment once it posts"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/plan.ts",
+  "find": "    const pick = candidates.find((l) => l.from === ruleFrom) ?? candidates[0];",
+  "replace": "    const pick = candidates.find((l) => l.from === ruleFrom);",
+  "why": "12.5 pair a card payment only with the account its rule names"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/plan.ts",
+  "find": "    this.#notice(known, 'the bank removed a transaction the app had already counted');",
+  "replace": "    void known;",
+  "why": "0.5 say nothing when the bank takes back a counted transaction"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/plan.ts",
+  "find": "      .filter((p) => !(removed.has(p.item.id) && !this.#in.stored.has(p.item.id)))\n",
+  "replace": "",
+  "why": "4.6 send a pending charge that was already gone"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/plan.ts",
+  "find": "    if (known.kind === 'purchase' && before.pending && !item.pending && known.replacedBy === null && role !== undefined && item.amount > 0) {",
+  "replace": "    if (known.kind === 'purchase' && before.pending && !item.pending && known.replacedBy === null && role !== undefined && item.amount > 100_000_000) {",
+  "why": "4.6 miss a pending charge that posts under its own id"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/plan.ts",
+  "find": "    const sameMoney = known.accountId === item.accountId && known.pending === item.pending && known.amountCents === item.amount;",
+  "replace": "    const sameMoney = known.accountId === item.accountId && known.pending === item.pending;",
+  "why": "4.6 miss a pending charge whose amount changed"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/plan.ts",
+  "find": "    if (this.#in.book === null) {\n      stored.status = 'history';\n      return;\n    }",
+  "replace": "    if (this.#in.book === null) {\n      stored.status = 'waiting';\n      return;\n    }",
+  "why": "14 treat history from before setup day as still to come"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/sync.ts",
+  "find": "      if (error instanceof PlaidError && error.errorCode === 'TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION' && restart < TRIES) continue;",
+  "replace": "      if (error instanceof PlaidError && error.errorCode === 'TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION' && restart < 0) continue;",
+  "why": "sync: give up when the data changes while paging"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/sync.ts",
+  "find": "      if (error instanceof PlaidError && error.errorCode === 'ITEM_LOGIN_REQUIRED') {",
+  "replace": "      if (error instanceof PlaidError && error.errorCode === 'NO_SUCH_CODE') {",
+  "why": "10.5 miss the bank asking for a new login"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/sync.ts",
+  "find": "  const historyComplete = connection.historyComplete || statusSeen;",
+  "replace": "  const historyComplete = true;",
+  "why": "14 start setup day before all the history is in"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/sync.ts",
+  "find": "    for (const r of page.removed) removed.add(r.transaction_id);",
+  "replace": "    void page.removed;",
+  "why": "A2 ignore what Plaid removed"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/crypto/token-box.ts",
+  "find": "      decipher.setAAD(boundTo(connectionId));",
+  "replace": "      void connectionId;",
+  "why": "safety: open a sealed bank key for any connection"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/plaid/sandbox-lock.ts",
+  "find": "  if (env?.trim() !== 'sandbox') {",
+  "replace": "  if (env === undefined) {",
+  "why": "safety: accept any PLAID_ENV"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/plaid/sandbox-lock.ts",
+  "find": "  if (!token.startsWith('access-sandbox-')) throw new SandboxOnlyError('that bank key is not a test-bank key');",
+  "replace": "  if (token === '') throw new SandboxOnlyError('that bank key is not a test-bank key');",
+  "why": "safety: accept a bank key for a real bank"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/log.ts",
+  "find": "const BANK_KEY = /\\b(?:access|public)-(?:sandbox|development|production)-[A-Za-z0-9-]+/g;",
+  "replace": "const BANK_KEY = /\\b(?:access|public)-(?:sandbox)-[A-Za-z0-9-]+/g;",
+  "why": "safety: show real-bank keys in the log"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/plaid/client.ts",
+  "find": "      const kind = error instanceof Error ? hideSecrets(error.name, secrets) : 'unknown';",
+  "replace": "      const kind = error instanceof Error ? error.message : 'unknown';",
+  "why": "safety: pass on what the network layer said, which may hold the key"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/setup-day.ts",
+  "find": "    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || role === 'savings' || !read.ok || read.item.amount <= 0) continue;",
+  "replace": "    if (!item.pending || item.removed || role === undefined || role === 'savings' || !read.ok || read.item.amount === 0) continue;",
+  "why": "14.2 count pending money in as a pending charge"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/setup-day.ts",
+  "find": "    startingMoney: startingMoney(history.posted, history.pendingCharges, inTransit),",
+  "replace": "    startingMoney: startingMoney(history.posted, history.pendingCharges),",
+  "why": "B48 leave money on its way out of the starting money"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/setup-day.ts",
+  "find": "        updated.status = 'waiting';",
+  "replace": "        updated.status = 'history';",
+  "why": "B36 never send a deposit that was pending on setup day"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/sync/sync.ts",
+  "find": "card.account_id !== null && storedCards.get(card.account_id)?.rawText !== JSON.stringify(card)",
+  "replace": "card.account_id !== null && roles.has(card.account_id) && storedCards.get(card.account_id)?.rawText !== JSON.stringify(card)",
+  "why": "9.1 keep statements only for accounts already set as his cards"
+ },
+ {
+  "section": "bank",
+  "file": "packages/server/src/status.ts",
+  "find": "return (a.role === 'everyday-card' || a.role === 'old-card') && raw !== undefined ? [{ card: a.role, result: cardStatement(a.role, raw) }] : [];",
+  "replace": "return a.role === 'everyday-card' && raw !== undefined ? [{ card: a.role, result: cardStatement(a.role, raw) }] : [];",
+  "why": "9.2 leave out the old card statement"
+ }
+]

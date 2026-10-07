@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseDollars, payoffCountdown, startTracking, withPendingCharges, type Book, type Cents } from '../src/index.js';
 import text from '../worked-examples.txt?raw';
-import { MOM_NAME, TEST_SETTINGS, appSide, arrived, cardCharge, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, sent, transfer } from './helpers.js';
+import { MOM_NAME, TEST_SETTINGS, appSide, arrived, cardCharge, deposit, dropped, openTestBook, payPerson, paycheck, posted, purchase, refund, sent, transfer } from './helpers.js';
 
 interface Example {
   number: number;
@@ -300,6 +300,13 @@ const examples: Record<number, () => Record<string, Cents>> = {
       'with the end on a payday': onPayday.perPayday,
       'with no paydays left': ended.perPayday,
     };
+  },
+  18: () => {
+    const book = openTestBook({ pots: { needs: parseDollars('500.00') }, rules: [{ id: 'gas', for: 'purchase', contains: 'MADE UP GAS', bucket: 'needs' }] });
+    book.receive(purchase('hold', '2026-10-05', parseDollars('100.00'), 'MADE UP GAS', { pending: true }));
+    book.receive(dropped('drop', 'hold', '2026-10-07'));
+    book.receive(purchase('gas', '2026-10-07', parseDollars('42.17'), 'MADE UP GAS'));
+    return buckets(book);
   },
 };
 

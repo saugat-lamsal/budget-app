@@ -1,0 +1,10 @@
+{
+  // The bank connection: Plaid's test bank, the database, and the sync. It
+  // runs on the server only, in Node. Keep lib and types pinned here.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"]
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,6 @@
+{
+  // Tests for the bank connection, the offline ones (test) and the ones that
+  // call Plaid's test bank (live). Same strict settings as the source.
+  "extends": "../tsconfig.json",
+  "include": ["**/*.ts", "../live/**/*.ts", "../vitest.live.config.ts"]
+}

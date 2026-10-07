@@ -516,3 +516,92 @@ describe('13.6 a rule made from a correction beats the rule it corrects', () => 
     ]);
   });
 });
+
+describe('13.2 setting the paycheck rule or the mom rule checks what is waiting (QUESTIONS.md A9)', () => {
+  const noRules = { ...ROLL, paycheckRule: null, momRule: null };
+
+  it('13.2 a waiting deposit that matches the new paycheck rule becomes a paycheck, from its own date (3.1)', () => {
+    const b = book({ settings: noRules });
+    expect(b.receive(paycheck('p1', '2026-10-09', 400_000)).outcome).toBe('review');
+    expect(b.pots().unsortedIn).toBe(400_000);
+    const logged = b.changeLog().length;
+    b.changeSettings({ paycheckRule: { contains: 'ACME PAYROLL' } }, '2026-10-12');
+    expect(b.paychecks()).toMatchObject([{ id: 'p1', date: '2026-10-09', amount: 400_000 }]);
+    expect(b.lastPaycheckDate()).toBe('2026-10-09');
+    // Reserve 1,500.00 first, then the other 2,500.00 split 50/30/20.
+    expect(b.pots()).toMatchObject({ unsortedIn: 0, momReserve: 150_000, savings: 225_000, needs: 125_000, wants: 80_000 });
+    expect(b.reviewItems()).toEqual([]);
+    expect(b.changeLog().length).toBe(logged + 1);
+  });
+
+  it('13.2 the 10-day check still applies: a second match less than 10 days later waits as an early paycheck (3.7)', () => {
+    const b = book({ settings: noRules });
+    b.receive(paycheck('p1', '2026-10-09', 400_000));
+    b.receive(deposit('p2', '2026-10-13', 50_000, 'ACME PAYROLL BONUS'));
+    b.changeSettings({ paycheckRule: { contains: 'ACME PAYROLL' } }, '2026-10-14');
+    expect(b.paychecks().map((p) => p.id)).toEqual(['p1']);
+    expect(b.reviewItems()).toMatchObject([{ type: 'money-in', id: 'p2', reason: 'early-paycheck' }]);
+  });
+
+  it('13.2 a match older than the last paycheck stays waiting as an early paycheck (B54)', () => {
+    const b = book({ settings: noRules });
+    b.receive(paycheck('p1', '2026-10-09', 400_000));
+    b.sort('p1', { to: 'paycheck' }, '2026-10-09');
+    b.receive(deposit('x1', '2026-10-05', 12_000, 'ACME PAYROLL EXPENSES'));
+    b.changeSettings({ paycheckRule: { contains: 'ACME PAYROLL' } }, '2026-10-10');
+    expect(b.paychecks().map((p) => p.id)).toEqual(['p1']);
+    expect(b.reviewItems()).toMatchObject([{ type: 'money-in', id: 'x1', reason: 'early-paycheck' }]);
+  });
+
+  it('13.2 a deposit already sorted stays as it is', () => {
+    const b = book({ settings: noRules });
+    b.receive(paycheck('p1', '2026-10-09', 400_000));
+    b.sort('p1', { to: 'other-income' }, '2026-10-09');
+    const before = b.pots();
+    b.changeSettings({ paycheckRule: { contains: 'ACME PAYROLL' } }, '2026-10-12');
+    expect(b.paychecks()).toEqual([]);
+    expect(b.pots()).toEqual(before);
+  });
+
+  it('13.2 a waiting payment that matches the new mom rule comes out of the mom reserve (8.1)', () => {
+    const b = book({ settings: noRules, pots: { savings: 100_000, needs: 50_000, wants: 30_000, momReserve: 100_000, heldForOthers: 0 } });
+    b.receive(payPerson('m1', '2026-10-05', 60_000, 'Made Up Mom'));
+    expect(b.pots().unsortedOut).toBe(60_000);
+    b.changeSettings({ momRule: { contains: 'Made Up Mom' } }, '2026-10-06');
+    expect(b.pots()).toMatchObject({ momReserve: 40_000, unsortedOut: 0 });
+    expect(b.reviewItems()).toEqual([]);
+    expect(b.momSentInMonth('2026-10').sent).toBe(60_000);
+  });
+
+  it('13.2 when the reserve is short, the difference waits in review (8.3)', () => {
+    const b = book({ settings: noRules, pots: { savings: 100_000, needs: 50_000, wants: 30_000, momReserve: 20_000, heldForOthers: 0 } });
+    b.receive(payPerson('m1', '2026-10-05', 60_000, 'Made Up Mom'));
+    b.changeSettings({ momRule: { contains: 'Made Up Mom' } }, '2026-10-06');
+    expect(b.pots()).toMatchObject({ momReserve: 0, unsortedOut: 40_000 });
+    expect(b.reviewItems()).toMatchObject([{ type: 'spending', reason: 'mom-difference', amount: 40_000 }]);
+  });
+
+  it('13.2 a re-check that is refused changes nothing, the setting included (0.1)', () => {
+    // A savings bucket so full that the paycheck's share would not stay
+    // exact (needs and wants below zero keep the starting total exact).
+    const huge = Number.MAX_SAFE_INTEGER - 1_000;
+    const b = book({ settings: noRules, pots: { savings: huge, needs: -50_000, wants: -30_000, momReserve: 0, heldForOthers: 0 } });
+    b.receive(paycheck('p1', '2026-10-09', 400_000));
+    const before = { pots: b.pots(), log: b.changeLog().length, review: b.reviewItems() };
+    expect(codeOf(() => b.changeSettings({ paycheckRule: { contains: 'ACME PAYROLL' } }, '2026-10-12'))).toBe('not-cents');
+    expect(b.settings().paycheckRule).toBeNull();
+    expect(b.pots()).toEqual(before.pots);
+    expect(b.changeLog().length).toBe(before.log);
+    expect(b.reviewItems()).toEqual(before.review);
+    expect(b.recountPots()).toEqual(b.pots());
+  });
+
+  it('13.2 a payment already sorted stays as it is', () => {
+    const b = book({ settings: noRules, pots: { savings: 100_000, needs: 50_000, wants: 30_000, momReserve: 100_000, heldForOthers: 0 } });
+    b.receive(payPerson('m1', '2026-10-05', 60_000, 'Made Up Mom'));
+    b.sort('m1', { to: 'needs' }, '2026-10-05');
+    const before = b.pots();
+    b.changeSettings({ momRule: { contains: 'Made Up Mom' } }, '2026-10-06');
+    expect(b.pots()).toEqual(before);
+  });
+});
