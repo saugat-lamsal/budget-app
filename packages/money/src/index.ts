@@ -72,8 +72,10 @@ export {
   type StartingPots,
 } from './book.js';
 export {
+  cardDue,
   cardNotices,
   payoffCountdown,
+  type CardDue,
   type CardNotice,
   type CardPayment,
   type CardStatement,
