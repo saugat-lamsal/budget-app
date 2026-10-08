@@ -70,8 +70,8 @@ describe('6.1 deposits that are not a paycheck go to review: my paycheck, other 
     b.receive(deposit('d1', '2026-10-05', 400_000, 'MADE UP NEW JOB'));
     b.sort('d1', { to: 'paycheck' }, '2026-10-06');
     expect(b.reviewItems()).toEqual([
-      { type: 'leftover', id: 'leftover:d1:needs', date: '2026-10-05', bucket: 'needs', amount: 20_000 },
-      { type: 'leftover', id: 'leftover:d1:wants', date: '2026-10-05', bucket: 'wants', amount: 30_000 },
+      { type: 'leftover', id: 'leftover:d1:needs', date: '2026-10-05', bucket: 'needs', amount: 20_000, atPayday: 20_000, lessSincePayday: 0 },
+      { type: 'leftover', id: 'leftover:d1:wants', date: '2026-10-05', bucket: 'wants', amount: 30_000, atPayday: 30_000, lessSincePayday: 0 },
     ]);
   });
 

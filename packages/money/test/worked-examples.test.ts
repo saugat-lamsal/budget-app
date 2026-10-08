@@ -469,6 +469,44 @@ const examples: Record<number, () => Record<string, Cents>> = {
       'wants now': now.wants,
     };
   },
+  30: () => {
+    const book = openTestBook({ pots: { needs: parseDollars('650.00'), wants: parseDollars('300.00') } });
+    book.receive(purchase('landlord', '2026-10-03', parseDollars('412.50'), 'MADE UP LANDLORD', { account: 'checking' }));
+    book.sort('landlord', { transfer: 'old-card' }, '2026-10-03');
+    const marked = book.pots();
+    // The row on Needs' list offers what the purchase could be, and Wants makes it that purchase again.
+    const offered = book.resortDetail('landlord');
+    expect(offered).toMatchObject({ resortable: true, marked: 'old-card', options: { picks: [{ to: 'needs' }, { to: 'wants' }] } });
+    book.sort('landlord', { to: 'wants' }, '2026-10-06');
+    const undone = book.pots();
+    book.sort('landlord', { transfer: 'old-card' }, '2026-10-07');
+    return {
+      'needs when marked': marked.needs,
+      'wants when marked': marked.wants,
+      'needs after undoing': undone.needs,
+      'wants after undoing': undone.wants,
+      'needs when marked again': book.pots().needs,
+    };
+  },
+  31: () => {
+    const book = openTestBook({ pots: { needs: parseDollars('500.00'), wants: parseDollars('200.00') }, rules: [{ id: 'cafe', for: 'purchase', contains: 'CAFE', bucket: 'wants' }] });
+    book.receive(purchase('cafe', '2026-10-08', parseDollars('10.00'), 'MADE UP CAFE', { pending: true }));
+    book.receive(paycheck('pay', '2026-10-09', parseDollars('4,000.00')));
+    const atPayday = book.paydayReport().leftovers[1]!;
+    expect(atPayday).toMatchObject({ outcome: 'waiting', lessSincePayday: 0 });
+    book.receive(posted('cafe-posted', 'cafe', '2026-10-10', parseDollars('12.50'), 'MADE UP CAFE'));
+    const asked = book.paydayReport().leftovers[1]!;
+    book.answerLeftover('leftover:pay:wants', 'roll-over', '2026-10-11');
+    const kept = book.paydayReport().leftovers[1]!;
+    expect(kept.outcome).toBe('kept');
+    return {
+      'wants at payday': asked.leftAtPayday,
+      'wants asked': asked.amount,
+      'wants less since payday': asked.lessSincePayday,
+      'wants kept': kept.amount,
+      'wants kept less since payday': kept.lessSincePayday,
+    };
+  },
 };
 
 describe('worked examples (worked-examples.txt)', () => {

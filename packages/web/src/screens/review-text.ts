@@ -1,4 +1,4 @@
-import type { AccountId, PickTo, ReviewDetail, SortedNow, SpendingSort, TransferOutcome } from '@budget-app/money';
+import type { AccountId, Cents, PickTo, ReviewDetail, SortedNow, SpendingSort, TransferOutcome } from '@budget-app/money';
 import type { ChoiceOf, Done } from '@budget-app/server/views';
 import { moneyText } from '../ui/money-format.js';
 import { POT_NAMES } from '../ui/names.js';
@@ -97,6 +97,19 @@ export function sortedWords(sorted: SpendingSort): string {
   }
 }
 
+// A20, B110: what it means that he marked a purchase as a transfer, and what picking something else does.
+export function markedWords(account: AccountId): string {
+  return account === 'old-card'
+    ? 'You marked this as a payment to the old card, so it comes out of Needs. Pick what it was, and it counts as the purchase the bank sent instead.'
+    : `You marked this as a transfer to ${ACCOUNT_NAMES[account]}. Pick what it was, and it counts as the purchase the bank sent instead.`;
+}
+
+// B4, B109: why a payday question asks about less than the bucket held at
+// payday. The numbers come from the money math; this only says them.
+export function lessSincePaydayWords(atPayday: Cents, lessSincePayday: Cents): string {
+  return `${moneyText(atPayday)} at payday, less ${moneyText(lessSincePayday)} spent before payday and sorted since.`;
+}
+
 // Where an item is sorted now, in words (rule 4.7, B100): "in Wants", "split: ...".
 export function nowWords(now: SortedNow): string {
   if ('split' in now) return `split: ${now.split.map((p) => `${BUCKET_NAMES[p.bucket] ?? p.bucket} ${moneyText(p.amount)}`).join(', ')}`;
@@ -113,6 +126,8 @@ export function nowWords(now: SortedNow): string {
       return 'not sorted yet';
     case 'counted-at-setup':
       return 'counted on setup day';
+    case 'old-card-payment':
+      return 'marked as a payment to the old card, out of Needs';
     default:
       return `in ${BUCKET_NAMES[now.to] ?? now.to}`;
   }

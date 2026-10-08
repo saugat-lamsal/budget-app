@@ -3155,5 +3155,103 @@
     "find": "const account: AccountId = txn.kind === 'transfer' || txn.kind === 'transfer-sent' ? txn.from : txn.account;\n        return Object.freeze({\n          resortable: true,\n          id,\n          type: 'spending',",
     "replace": "const account: AccountId = txn.kind === 'transfer' || txn.kind === 'transfer-sent' ? 'checking' : txn.account;\n        return Object.freeze({\n          resortable: true,\n          id,\n          type: 'spending',",
     "why": "[activity] 5.2 a payment to the old card from savings is said to be from checking when sorting it again"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "      entry.txn.from === 'savings' &&\n      'to' in choice &&",
+    "replace": "      'to' in choice &&",
+    "why": "[activity] 5.6 A20 picking needs on a payment marked from checking is read as keeping it a payment, and refused"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "          if (entry.original !== undefined) return this.#markedPaymentDetail(id, entry, txn);\n",
+    "replace": "",
+    "why": "[activity] 5.6 A20 a payment you marked as going to the old card is not offered for sorting again"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "options: { ...options, transfer: options.transfer.filter((account) => account !== partner), transferOutcome },",
+    "replace": "options: { ...options, transfer: options.transfer, transferOutcome },",
+    "why": "[activity] 5.6 A20 the account it is already marked with is offered again"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "const transferOutcome = Object.fromEntries(Object.entries(options.transferOutcome).filter(([account]) => account !== partner));",
+    "replace": "const transferOutcome = options.transferOutcome;",
+    "why": "[activity] 5.6 A20 what marking it with the old card would do is told again"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (partner === account) throw new MoneyError('bad-choice', `${entry.id} is already marked as a transfer with ${account}`);\n",
+    "replace": "",
+    "why": "[activity] 5.6 A20 marking it again with the account it already has is accepted"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "      marked: partner,\n",
+    "replace": "      marked: null,\n",
+    "why": "[activity] 5.6 A20 a marked payment does not say it was marked"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "      canBeForMom: person,\n      net: entry.amount,",
+    "replace": "      canBeForMom: false,\n      net: entry.amount,",
+    "why": "[activity] 7.6 A20 a marked payment to a person cannot be for mom"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "      kind: original.kind === 'payment-to-person' ? 'person-payment' : 'purchase',\n      descriptions:",
+    "replace": "      kind: 'purchase',\n      descriptions:",
+    "why": "[activity] 13.6 A20 a rule from a marked payment to a person is a rule for purchases"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (entry.answer !== 'open') return entry.answeredFor ?? entry.amount;",
+    "replace": "    if (entry.answer !== 'open') return entry.amount;",
+    "why": "[activity] 3.4 B111 a kept leftover says what was held at payday, not what the question asked"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "lessSincePayday: subtractCents(entry.amount, this.#asked(entry)) };",
+    "replace": "lessSincePayday: 0 };",
+    "why": "[activity] 3.4 B109 the question never says how much late spending took off"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "      const less = subtractCents(asked.amount, now);",
+    "replace": "      const less = 0;",
+    "why": "[activity] 3.4 B109 the report never says how much late spending took off"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "      const less = subtractCents(asked.amount, now);",
+    "replace": "      const less = subtractCents(now, asked.amount);",
+    "why": "[activity] 3.4 B109 what late spending took off has the wrong sign"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (asked.answer === 'roll-over') return report('kept', now, null, less);",
+    "replace": "      if (asked.answer === 'roll-over') return report('kept', asked.amount, null, less);",
+    "why": "[activity] 3.4 B111 rolling over reports the payday amount, not what the question asked"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "    entry.answer = answer;\n    entry.answeredFor = amount;",
+    "replace": "    entry.answer = answer;",
+    "why": "[activity] 3.4 B111 an answer does not remember what the question asked"
   }
 ]

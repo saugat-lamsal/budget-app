@@ -81,6 +81,9 @@ interface Story {
   // bucket (B97 to B100): a tip after payday, a purchase counted late, a
   // split, a refund, money in, a hand move, a leftover moved to savings.
   readonly activityBusy?: boolean;
+  // A purchase he marked as a payment to the old card (5.6): it comes out of
+  // needs (5.2), and the list can undo it (A20, B110).
+  readonly markedOldCard?: boolean;
   // The second paycheck has just come in (for the Payday screen): the
   // leftover questions are open and the new paycheck's share is not in the
   // savings account yet.
@@ -167,6 +170,10 @@ function story(s: Story): HomeInput {
     book.sort('act-friend', { to: 'not-mine' }, DEMO_TODAY);
     // A hand move (13.3).
     book.moveMoney({ from: 'wants', to: 'needs', amount: x(2_500) }, '2026-10-06');
+  }
+  if (s.markedOldCard === true) {
+    book.receive({ kind: 'purchase', id: 'act-landlord', account: 'checking', date: '2026-10-06', amount: x(8_500), description: 'MADE UP LANDLORD', pending: false });
+    book.sort('act-landlord', { transfer: 'old-card' }, DEMO_TODAY);
   }
   if (s.reviewBusy === true) {
     const rid = (name: string): string => `busy-${name}`;
@@ -270,6 +277,7 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   { name: 'review-busy', title: 'Review: one of everything waiting', input: () => story({ reviewBusy: true }) },
   { name: 'buckets-busy', title: 'Buckets: money held for a roommate, mom paid in the target', input: () => story({ bucketsBusy: true }) },
   { name: 'activity-busy', title: 'Activity: every kind of row on the lists of what went in and out', input: () => story({ activityBusy: true }) },
+  { name: 'activity-marked', title: 'Activity: the same, and a purchase marked as a payment to the old card, to undo', input: () => story({ activityBusy: true, markedOldCard: true }) },
   { name: 'payday-paid', title: 'Payday: the second paycheck just came in, two leftover questions open', input: () => story({ today: '2026-10-16', secondPaycheck: true, allDone: true, statements: [] }) },
   {
     name: 'not-set-up',

@@ -43,6 +43,11 @@ export interface LeftoverReport {
   // What was kept, moved, or asked about now (which spending from before
   // payday that showed up later can lower, B4); 0 when there was nothing to ask.
   readonly amount: Cents;
+  // How much spending made before payday that showed up or changed since
+  // took off what the bucket held at payday (B4, B109): leftAtPayday = amount
+  // + lessSincePayday whenever there was something to ask; 0 when nothing
+  // was taken off, or there was nothing to ask.
+  readonly lessSincePayday: Cents;
   // The question in review while it is open.
   readonly question: string | null;
 }

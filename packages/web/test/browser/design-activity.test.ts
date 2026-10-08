@@ -18,6 +18,7 @@ const ACTIVITY: readonly (readonly [string, string])[] = [
   ['activity-busy', '/buckets/held-for-others'],
   ['normal', '/buckets/needs'],
   ['overspent', '/buckets/wants'],
+  ['activity-marked', '/buckets/needs'],
   ['big', '/buckets/needs'],
   ['not-set-up', '/buckets/needs'],
   ['error', '/buckets/needs'],
@@ -49,6 +50,10 @@ async function activitySheets(page: Page): Promise<string[]> {
   await page.getByTestId('row-demo-pay').click();
   await page.getByTestId('cannot-resort').waitFor();
   found.push('a row that cannot be sorted again');
+  await page.keyboard.press('Escape');
+  await page.getByTestId('row-act-landlord').click();
+  await page.getByTestId('marked-note').waitFor();
+  found.push('a payment marked as going to the old card');
   await page.keyboard.press('Escape');
   await page.getByTestId('move-open').click();
   await page.getByTestId('move-sheet').waitFor();
@@ -84,12 +89,12 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
         problems.push(...(await axeViolations(page)).map((p) => `${scheme} ${path} ${life}: ${p}`));
         await page.close();
       }
-      const page = await openScenario(context, base(), 'activity-busy', '/buckets/needs');
+      const page = await openScenario(context, base(), 'activity-marked', '/buckets/needs');
       const names = await activitySheets(page);
       // The checks run on each sheet as it is open: redo them one by one.
       await page.close();
       for (const name of names) {
-        const again = await openScenario(context, base(), 'activity-busy', '/buckets/needs');
+        const again = await openScenario(context, base(), 'activity-marked', '/buckets/needs');
         const opened = await activitySheetsUpTo(again, name);
         expect(opened).toBe(name);
         problems.push(...(await axeViolations(again)).map((p) => `${scheme} sheet ${name}: ${p}`));
@@ -116,9 +121,9 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
       for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`${path} ${life}: ${t.what} is ${t.width}x${t.height}`);
       await page.close();
     }
-    const names = await activitySheets(await openScenario(context, base(), 'activity-busy', '/buckets/needs'));
+    const names = await activitySheets(await openScenario(context, base(), 'activity-marked', '/buckets/needs'));
     for (const name of names) {
-      const page = await openScenario(context, base(), 'activity-busy', '/buckets/needs');
+      const page = await openScenario(context, base(), 'activity-marked', '/buckets/needs');
       await activitySheetsUpTo(page, name);
       for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`sheet ${name}: ${t.what} is ${t.width}x${t.height}`);
       await page.close();
@@ -153,7 +158,7 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
       await page.close();
     }
     // A sheet leaves room for the home bar too: its last control ends above it.
-    const page = await openScenario(context, base(), 'activity-busy', '/buckets/needs');
+    const page = await openScenario(context, base(), 'activity-marked', '/buckets/needs');
     await addStyle(page, `:root { --safe-top: ${IPHONE_INSETS.top}px !important; --safe-bottom: ${IPHONE_INSETS.bottom}px !important; }`);
     await page.getByTestId(`row-${GROCERY_OCT_1}`).click();
     const sheet = page.getByTestId('activity-sheet');
@@ -201,7 +206,7 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
       await page.close();
     }
     // And with the move sheet open at the largest size.
-    const page = await openScenario(context, base(), 'activity-busy', '/buckets/needs');
+    const page = await openScenario(context, base(), 'activity-marked', '/buckets/needs');
     await addStyle(page, 'html { font-size: 36px !important; }');
     await page.getByTestId('move-open').click();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(IPHONE.width);
@@ -228,7 +233,7 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
       await page.close();
     }
     // Money coming in is a plus and money going out is a minus: the direction is in the amount itself.
-    const page = await openScenario(context, base(), 'activity-busy', '/buckets/needs');
+    const page = await openScenario(context, base(), 'activity-marked', '/buckets/needs');
     const rows = await page.locator('[data-testid="row-amount"]').evaluateAll((els) => els.map((e) => ({ text: e.textContent ?? '', label: e.getAttribute('aria-label') })));
     expect(rows.some((r) => r.text.startsWith('+') && r.label?.startsWith('plus '))).toBe(true);
     expect(rows.some((r) => r.text.startsWith('−') && r.label?.startsWith('minus '))).toBe(true);
@@ -305,7 +310,7 @@ async function untilAskedAgain(page: Page, change: () => Promise<void>): Promise
 // Opens the sheets in order, up to and including the one with this name, and
 // returns its name (so each sheet can be checked on its own, from a fresh start).
 async function activitySheetsUpTo(page: Page, name: string): Promise<string> {
-  const order = ['row choices', 'row choices with a rule', 'a row that cannot be sorted again', 'move form', 'move form with an amount that cannot be read', 'move asking first', 'move refused'];
+  const order = ['row choices', 'row choices with a rule', 'a row that cannot be sorted again', 'a payment marked as going to the old card', 'move form', 'move form with an amount that cannot be read', 'move asking first', 'move refused'];
   const target = order.indexOf(name);
   if (target === -1) throw new Error(`no sheet called ${name}`);
   const open = async (id: string): Promise<void> => {
@@ -322,14 +327,19 @@ async function activitySheetsUpTo(page: Page, name: string): Promise<string> {
     await page.getByTestId('cannot-resort').waitFor();
     return name;
   }
+  if (target === 3) {
+    await open('act-landlord');
+    await page.getByTestId('marked-note').waitFor();
+    return name;
+  }
   await page.getByTestId('move-open').click();
   await page.getByTestId('move-sheet').waitFor();
-  if (target === 3) return name;
-  if (target === 4) {
+  if (target === 4) return name;
+  if (target === 5) {
     await page.getByTestId('move-amount').fill('abc');
     return name;
   }
-  if (target === 5) {
+  if (target === 6) {
     await page.getByTestId('move-from').selectOption('savings');
     await page.getByTestId('move-amount').fill('100.00');
     await page.getByTestId('move-submit').click();

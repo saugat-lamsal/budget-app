@@ -300,6 +300,79 @@ describe.each(ENGINES)('sorting something again from a list, in %s', (_name, eng
     await page.context().close();
   });
 
+  it('5.6 A20 B110 a purchase marked as a payment to the old card: its sheet says so, offers what the purchase could be, and picking Wants makes it that purchase', async () => {
+    const twin = life('activity-marked');
+    const id = 'act-landlord';
+    const page = await openScenario(await browser().newContext(phone()), base(), 'activity-marked', '/buckets/needs');
+    const watch = watchChoices(page);
+    // The row is there, as a payment to the old card, and the list is what the money math says.
+    expect(await textAt(page, `row-${id}`)).toContain('Payment to the old card');
+    await page.getByTestId(`row-${id}`).click();
+    const sheet = page.getByTestId('activity-sheet');
+    expect(await sheet.getByTestId('marked-note').innerText()).toBe('You marked this as a payment to the old card, so it comes out of Needs. Pick what it was, and it counts as the purchase the bank sent instead.');
+    expect(await sheet.innerText()).toContain('Now marked as a payment to the old card, out of Needs');
+    // What it could be before it was marked: Needs, Wants, a split, a transfer with another account. Never savings, and not the old card again.
+    expect(await sheet.getByTestId('choice-needs').count()).toBe(1);
+    expect(await sheet.getByTestId('choice-wants').count()).toBe(1);
+    expect(await sheet.getByTestId('choice-savings').count()).toBe(0);
+    expect(await sheet.getByTestId('choice-needs').innerText()).not.toContain('here now');
+    expect(await sheet.getByTestId('choice-transfer-old-card').count()).toBe(0);
+    expect(await sheet.getByTestId('choice-transfer-savings').count()).toBe(1);
+    await sheet.getByTestId('choice-wants').click();
+    await page.getByTestId('notice').waitFor();
+    expect(watch.posts.length).toBe(1);
+    expect(JSON.parse(watch.posts[0]?.postData() ?? '{}')).toMatchObject({ item: id, choice: { to: 'wants' }, resort: true });
+    twin.book.sort(id, { to: 'wants' }, twin.today);
+    await expect.poll(async () => numbersOf(await readActivity(page))).toEqual(numbersOf(activityOf(twin.book, 'needs')));
+    await page.goto(`${base()}/buckets/wants`);
+    await page.locator('main[aria-busy="false"]').waitFor();
+    expect(numbersOf(await readActivity(page))).toEqual(numbersOf(activityOf(twin.book, 'wants')));
+    // The row is the purchase now, and says what it was.
+    await page.getByTestId(`row-${id}`).click();
+    expect(await page.getByTestId('activity-sheet').getByTestId('marked-note').count()).toBe(0);
+    await page.context().close();
+  });
+
+  it('5.6 A20 B110 picking Needs for a marked payment keeps it in Needs, as the purchase the bank sent (it used to be refused)', async () => {
+    const twin = life('activity-marked');
+    const id = 'act-landlord';
+    const page = await openScenario(await browser().newContext(phone()), base(), 'activity-marked', '/buckets/needs');
+    const watch = watchChoices(page);
+    await page.getByTestId(`row-${id}`).click();
+    await page.getByTestId('activity-sheet').getByTestId('choice-needs').click();
+    await page.getByTestId('notice').waitFor();
+    expect(await textAt(page, 'notice')).toContain('MADE UP LANDLORD sorted to Needs.');
+    expect(watch.posts.length).toBe(1);
+    twin.book.sort(id, { to: 'needs' }, twin.today);
+    await expect.poll(async () => numbersOf(await readActivity(page))).toEqual(numbersOf(activityOf(twin.book, 'needs')));
+    // Now it is the purchase: Needs is "here now", and marking it with the old card is offered again.
+    await page.getByTestId(`row-${id}`).click();
+    const sheet = page.getByTestId('activity-sheet');
+    expect(await sheet.getByTestId('choice-needs').innerText()).toContain('here now');
+    expect(await sheet.getByTestId('choice-transfer-old-card').count()).toBe(1);
+    await page.context().close();
+  });
+
+  it('13.6 A20 B110 "always do this" from a marked payment asks first, then sorts it and makes the rule', async () => {
+    const twin = life('activity-marked');
+    const id = 'act-landlord';
+    const page = await openScenario(await browser().newContext(phone()), base(), 'activity-marked', '/buckets/needs');
+    const watch = watchChoices(page);
+    await page.getByTestId(`row-${id}`).click();
+    const sheet = page.getByTestId('activity-sheet');
+    await sheet.getByTestId('always-toggle').click();
+    expect(await sheet.getByTestId('always-text').inputValue()).toBe('MADE UP LANDLORD');
+    await sheet.getByTestId('choice-wants').click();
+    expect(await textAt(page, 'confirm-title')).toBe('Make this a rule?');
+    await page.getByTestId('confirm-yes').click();
+    await page.getByTestId('notice').waitFor();
+    expect(watch.posts.length).toBe(1);
+    const sent = JSON.parse(watch.posts[0]?.postData() ?? '{}') as { id: string };
+    twin.book.sortAlways(id, { to: 'wants' }, { id: `always-${sent.id}`, contains: 'MADE UP LANDLORD' }, twin.today);
+    await expect.poll(async () => numbersOf(await readActivity(page))).toEqual(numbersOf(activityOf(twin.book, 'needs')));
+    await page.context().close();
+  });
+
   it('B100 a paycheck, a leftover, and a hand move say why they cannot be sorted again, and offer nothing', async () => {
     const page = await openScenario(await browser().newContext(phone()), base(), 'activity-busy', '/buckets/needs');
     const watch = watchChoices(page);

@@ -143,12 +143,38 @@ describe.each(ENGINES)('Payday in %s', (_name, engine) => {
 
     const report = twin.book.paydayReport();
     expect(await textAt(page, 'leftover-needs')).toBe(`Needs: kept ${moneyText(report.leftovers[0]!.amount)} Rolled over into this pay period, by your answer.`);
-    expect(await textAt(page, 'leftover-wants')).toBe(`Wants: ${moneyText(report.leftovers[1]!.amount)} moved to Savings By your answer.`);
+    expect(await textAt(page, 'leftover-wants')).toBe(`Wants: ${moneyText(report.leftovers[1]!.amount)} moved to Savings By your answer. ${moneyText(report.leftovers[1]!.leftAtPayday)} at payday, less ${moneyText(report.leftovers[1]!.lessSincePayday)} spent before payday and sorted since.`);
     expect(await page.getByTestId(`item-${needsId}`).count()).toBe(0);
     // The same answer is gone from Review too (B107).
     await page.getByTestId('tab-review').click();
     await page.getByTestId('review-count').waitFor();
     expect(await page.getByTestId('review-count').innerText()).toBe(String(twin.book.reviewItems().length));
+    await page.context().close();
+  });
+
+  it('3.4 B4 B109 the question that late spending made smaller says why, in words, and the one it did not touch says nothing', async () => {
+    const { book } = life('payday-paid');
+    const [needs, wants] = book.paydayReport().leftovers;
+    const page = await openScenario(await browser().newContext(phone()), base(), 'payday-paid', '/payday');
+    // Worked example 14: 657.11 at payday, 34.67 of spending from before payday sorted since.
+    expect(await page.getByTestId(`item-${wants!.question}`).getByTestId('leftover-why').innerText()).toBe('$657.11 at payday, less $34.67 spent before payday and sorted since.');
+    expect(await page.getByTestId(`item-${wants!.question}`).getByTestId('item-amount').innerText()).toBe('$622.44');
+    expect(await page.getByTestId(`item-${needs!.question}`).getByTestId('leftover-why').count()).toBe(0);
+    await page.context().close();
+  });
+
+  it('3.4 B4 B109 an answered question keeps saying why, with the amount it was answered for', async () => {
+    const twin = life('payday-paid');
+    const [needsId, wantsId] = twin.book.paydayReport().leftovers.map((l) => l.question!);
+    const page = await openScenario(await browser().newContext(phone()), base(), 'payday-paid', '/payday');
+    await page.getByTestId(`item-${wantsId}`).getByTestId('answer-roll-over').click();
+    await page.getByTestId('confirm-yes').click();
+    await page.getByTestId('leftover-wants').waitFor();
+    twin.book.answerLeftover(wantsId!, 'roll-over', twin.today);
+    const wants = twin.book.paydayReport().leftovers[1]!;
+    expect(wants).toMatchObject({ outcome: 'kept', amount: 62_244, lessSincePayday: 3_467 });
+    expect(await textAt(page, 'leftover-wants')).toBe(`Wants: kept $622.44 Rolled over into this pay period, by your answer. ${moneyText(wants.leftAtPayday)} at payday, less ${moneyText(wants.lessSincePayday)} spent before payday and sorted since.`);
+    expect(await page.getByTestId(`item-${needsId}`).getByTestId('leftover-why').count()).toBe(0);
     await page.context().close();
   });
 

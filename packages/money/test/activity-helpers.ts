@@ -59,3 +59,30 @@ export function summaryProblems(book: Book, from = 0): string[] {
   }
   return problems;
 }
+
+// B4, B109: what each payday question asks about, and what was taken off it,
+// always add up to what the bucket held at payday; the question in review says
+// the same as the report; and nothing is asked or taken off below zero.
+export function leftoverProblems(book: Book): string[] {
+  const problems: string[] = [];
+  const report = book.paydayReport();
+  const asking = book.reviewItems().flatMap((item) => (item.type === 'leftover' ? [item] : []));
+  for (const l of report.leftovers) {
+    const where = `${l.bucket} leftover after payday ${report.period.number}`;
+    if (l.outcome === 'nothing-to-ask') {
+      if (l.amount !== 0 || l.lessSincePayday !== 0) problems.push(`${where}: nothing to ask, yet ${l.amount} asked and ${l.lessSincePayday} taken off`);
+      continue;
+    }
+    if (l.amount < 0 || l.lessSincePayday < 0) problems.push(`${where}: asks ${l.amount}, took off ${l.lessSincePayday}`);
+    if (l.amount + l.lessSincePayday !== l.leftAtPayday) problems.push(`${where}: ${l.amount} asked + ${l.lessSincePayday} taken off is not the ${l.leftAtPayday} held at payday`);
+    if (l.setting === 'roll-over' && l.lessSincePayday !== 0) problems.push(`${where}: rolled over by the setting, yet ${l.lessSincePayday} was taken off`);
+    const item = asking.find((i) => i.id === l.question);
+    if (l.outcome === 'waiting') {
+      if (item === undefined) problems.push(`${where}: waiting, but no question in review`);
+      else if (item.amount !== l.amount || item.lessSincePayday !== l.lessSincePayday || item.atPayday !== l.leftAtPayday) problems.push(`${where}: the question in review says ${item.amount}/${item.lessSincePayday}/${item.atPayday}, the report ${l.amount}/${l.lessSincePayday}/${l.leftAtPayday}`);
+    } else if (item !== undefined) {
+      problems.push(`${where}: answered, yet still asked in review`);
+    }
+  }
+  return problems;
+}

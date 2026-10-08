@@ -66,6 +66,16 @@ describe('B97 a bucket\'s activity is what the money math says went in and out o
     expect(activity.rows.find((r) => r.id === 'p1')?.resort).toMatchObject({ resortable: false });
   });
 
+  it('5.6 A20 B110 a payment marked as going to the old card is on needs\' list with what the purchase could be, and says it was marked', () => {
+    const book = aBook();
+    book.receive(purchase('l1', '2026-10-10', 6_000, 'MADE UP LANDLORD', { account: 'checking' }));
+    book.sort('l1', { transfer: 'old-card' }, '2026-10-11');
+    const v = tracking(activityView({ today: '2026-10-12', book, pot: 'needs', madeUpData: true }));
+    const row = v.activity.rows.find((r) => r.id === 'l1');
+    expect(row).toMatchObject({ what: 'debt-payoff', amount: -6_000, resort: { resortable: true, marked: 'old-card', now: { to: 'old-card-payment' }, options: { picks: [{ to: 'needs' }, { to: 'wants' }] } } });
+    expect(JSON.parse(JSON.stringify(v))).toEqual(v);
+  });
+
   it('asking changes nothing in the book', () => {
     const book = aBook();
     const before = JSON.stringify([book.pots(), book.reviewItems(), book.changeLog(), ...MOVABLE_POTS.map((p) => book.activity(p))]);

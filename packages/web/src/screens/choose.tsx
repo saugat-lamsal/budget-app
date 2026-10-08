@@ -5,7 +5,7 @@ import { newDecisionId, sendChoice, type Reload } from '../app/api.js';
 import { BottomSheet, Button, ButtonRow, Card, Decision, ListRow, Money, Notice, TextField, ToggleRow } from '../ui/blocks.js';
 import { shortDate } from '../ui/dates.js';
 import { moneyText } from '../ui/money-format.js';
-import { ACCOUNT_NAMES, BUCKET_NAMES, doneText, nowWords, pickLabel, reasonText, sortedWords, titleOf, transferWords } from './review-text.js';
+import { ACCOUNT_NAMES, BUCKET_NAMES, doneText, lessSincePaydayWords, markedWords, nowWords, pickLabel, reasonText, sortedWords, titleOf, transferWords } from './review-text.js';
 
 // Choosing what happens to an item: the same for an item waiting in Review
 // and for one sorted already, from the list of what went in and out of a
@@ -39,6 +39,8 @@ export interface Subject {
   readonly paycheckPreview: PaycheckSplit | null;
   // Where it is sorted now; null while it waits in review.
   readonly now: SortedNow | null;
+  // The account he marked it a transfer with (5.6, A20), when he did.
+  readonly marked: AccountId | null;
   // What a rule made from this item starts out as, and what it would catch.
   readonly ruleText: string;
   readonly ruleWhat: 'deposits' | 'payments to people' | 'purchases';
@@ -95,6 +97,7 @@ export function subjectOfReview(detail: ReviewDetail): Subject | null {
     likely: detail.likelyPurchases,
     paycheckPreview: detail.paycheckPreview,
     now: null,
+    marked: null,
     ruleText: item.description,
     ruleWhat: item.type === 'money-in' ? 'deposits' : item.reason === 'person-payment' ? 'payments to people' : 'purchases',
     refund: item.type === 'money-in' && item.reason === 'refund',
@@ -115,6 +118,7 @@ export function subjectOfRow(row: ActivityRow): Subject | null {
     likely: r.likelyPurchases,
     paycheckPreview: r.paycheckPreview,
     now: r.now,
+    marked: r.marked,
     ruleText: r.description,
     ruleWhat: r.type === 'money-in' ? 'deposits' : row.what === 'person-payment' ? 'payments to people' : 'purchases',
     refund: r.refund,
@@ -268,6 +272,11 @@ export function LeftoverDecision({ detail, busy, onChoose }: { readonly detail: 
         </ButtonRow>
       }
     >
+      {item.lessSincePayday > 0 && (
+        <p className="decision__detail" data-testid="leftover-why">
+          {lessSincePaydayWords(item.atPayday, item.lessSincePayday)}
+        </p>
+      )}
       <p className="decision__detail">Keep it in {bucket} for this pay period, or move it to Savings. Either answer is final.</p>
     </Decision>
   );
@@ -434,6 +443,12 @@ function Choices({ subject, busy, onChoose }: { readonly subject: Subject; reado
           )}
         </dl>
       </div>
+
+      {subject.marked !== null && (
+        <Notice tone="warning" icon="info" testId="marked-note">
+          {markedWords(subject.marked)}
+        </Notice>
+      )}
 
       {options.unavailable.map((u) => (
         <Notice key={u.what} tone="warning" icon="info" testId={`unavailable-${u.what}`}>

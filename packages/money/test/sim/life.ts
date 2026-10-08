@@ -27,7 +27,7 @@ import {
   type SortingRule,
   type TransferSent,
 } from '../../src/index.js';
-import { activityProblems, summaryProblems } from '../activity-helpers.js';
+import { activityProblems, leftoverProblems, summaryProblems } from '../activity-helpers.js';
 import { SimBank, type Card, type ChargeAccount, type OwnAccount, type Posted } from './bank.js';
 import { Random } from './random.js';
 
@@ -1793,8 +1793,9 @@ class Life {
     const problems = [
       ...activityProblems(this.#book, whole ? assigned : undefined, whole ? 0 : current),
       ...summaryProblems(this.#book, whole ? 0 : current),
+      ...leftoverProblems(this.#book),
     ];
-    if (problems.length > 0) throw new CheckFailed('B97 B105 what went in and out of each bucket adds up', problems.slice(0, 5).join('; '));
+    if (problems.length > 0) throw new CheckFailed('B97 B105 B109 what went in and out of each bucket adds up, and a payday question and what was taken off it add up to what was held', problems.slice(0, 5).join('; '));
     this.#stats.activityChecks++;
   }
 

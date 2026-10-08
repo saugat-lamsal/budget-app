@@ -7,7 +7,7 @@ import { POT_NAMES } from '../ui/names.js';
 import type { Back } from './Activity.js';
 import { ChoiceSheet, LeftoverDecision, SaidNotice, useChoiceFlow } from './choose.js';
 import { paydayText } from './home-text.js';
-import { titleOf } from './review-text.js';
+import { lessSincePaydayWords, titleOf } from './review-text.js';
 
 // Payday (QUESTIONS.md B104 to B107): what the last paycheck did, the mom
 // reserve first and then the split (rules 3.2, 3.3); how much is still to
@@ -249,6 +249,11 @@ function MoveToSavings({ view }: { readonly view: Tracking }) {
   );
 }
 
+// B4, B109: when spending from before payday that showed up since took something off what the bucket held, say so.
+function withWhy(text: string, leftover: LeftoverReport): string {
+  return leftover.lessSincePayday > 0 ? `${text} ${lessSincePaydayWords(leftover.leftAtPayday, leftover.lessSincePayday)}` : text;
+}
+
 // 3.4, 3.5: what became of a bucket's leftover, when nothing is left to answer.
 function LeftoverRow({ leftover }: { readonly leftover: LeftoverReport }) {
   const name = POT_NAMES[leftover.bucket];
@@ -278,7 +283,7 @@ function LeftoverRow({ leftover }: { readonly leftover: LeftoverReport }) {
               {name}: kept <Money cents={leftover.amount} />
             </>
           }
-          detail={`Rolled over into this pay period, ${by}.`}
+          detail={withWhy(`Rolled over into this pay period, ${by}.`, leftover)}
           testId={`leftover-${leftover.bucket}`}
         />
       );
@@ -291,7 +296,7 @@ function LeftoverRow({ leftover }: { readonly leftover: LeftoverReport }) {
               {name}: <Money cents={leftover.amount} /> moved to Savings
             </>
           }
-          detail={`${by.charAt(0).toUpperCase()}${by.slice(1)}.`}
+          detail={withWhy(`${by.charAt(0).toUpperCase()}${by.slice(1)}.`, leftover)}
           testId={`leftover-${leftover.bucket}`}
         />
       );

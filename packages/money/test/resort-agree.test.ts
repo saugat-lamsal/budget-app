@@ -115,11 +115,11 @@ describe('choices for sorting again match the book: a book with every kind of so
     const b = sortedBook();
     const resortable = Object.entries(SORTED).filter(([, id]) => b.resortDetail(id)?.resortable === true).map(([name]) => name);
     expect(resortable.sort()).toEqual(
-      ['card', 'pending', 'checking', 'split', 'partRefunded', 'fee', 'interest', 'fromSavings', 'oldCardFromSavings', 'friendNeeds', 'friendNotMine', 'friendMomByHand', 'momDifference', 'otherIncome', 'paybackWants', 'notMine', 'lateArrival', 'inSavings', 'refundPayback'].sort(),
+      ['card', 'pending', 'checking', 'split', 'partRefunded', 'fee', 'interest', 'fromSavings', 'oldCardFromSavings', 'friendNeeds', 'friendNotMine', 'friendMomByHand', 'momDifference', 'markedTransferOldCard', 'otherIncome', 'paybackWants', 'notMine', 'lateArrival', 'inSavings', 'refundPayback'].sort(),
     );
     const notResortable = Object.entries(SORTED).filter(([, id]) => b.resortDetail(id)?.resortable === false).map(([name]) => name);
     expect(notResortable.sort()).toEqual(
-      ['oldCardFromChecking', 'oldCardHalf', 'momRule', 'paycheck', 'matchedRefund', 'answeredLeftover', 'handMove', 'takenBack', 'dropped', 'markedTransferOldCard', 'markedTransferDeposit', 'halfArrived', 'waiting'].sort(),
+      ['oldCardFromChecking', 'oldCardHalf', 'momRule', 'paycheck', 'matchedRefund', 'answeredLeftover', 'handMove', 'takenBack', 'dropped', 'markedTransferDeposit', 'halfArrived', 'waiting'].sort(),
     );
   });
 

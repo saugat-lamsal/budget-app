@@ -1,6 +1,6 @@
 import { type BankBalances, type Book } from '@budget-app/money';
 import { describe, expect, it } from 'vitest';
-import { MOM_NAME, START_DATE, openTestBook, payPerson, paycheck, purchase } from '../../money/test/helpers.js';
+import { MOM_NAME, START_DATE, openTestBook, payPerson, paycheck, posted, purchase } from '../../money/test/helpers.js';
 import { paydayView, type PaydayView } from '../src/views/payday.js';
 
 // The Payday screen's numbers (QUESTIONS.md B104 to B107), worked out on the
@@ -61,6 +61,26 @@ describe('B104 B105 B106 the report is the money math\'s own', () => {
     expect(v.questions.every((q) => q.options.type === 'leftover' && q.options.answers.length === 2)).toBe(true);
     // And the report points at the same questions.
     expect(v.report.leftovers.map((l) => l.question)).toEqual(v.questions.map((q) => q.item.id));
+  });
+
+  it('3.4 B4 B109 a question that late spending made smaller says by how much, in the report and in the question', () => {
+    const book = openTestBook({
+      pots: { savings: 100_000, needs: 50_000, wants: 20_000, momReserve: 120_000 },
+      rules: [...RULES, { id: 'cafe', for: 'purchase', contains: 'CAFE', bucket: 'wants' }],
+    });
+    book.receive(purchase('c1', '2026-10-08', 1_000, 'MADE UP CAFE', { pending: true }));
+    book.receive(paycheck('p1', '2026-10-09', 400_000));
+    // A tip: 2.50 more, spent before payday, shown after it.
+    book.receive(posted('c1-posted', 'c1', '2026-10-10', 1_250, 'MADE UP CAFE'));
+    const v = view(book, null);
+    expect(v.report.leftovers.map((l) => [l.bucket, l.leftAtPayday, l.amount, l.lessSincePayday])).toEqual([
+      ['needs', 50_000, 50_000, 0],
+      ['wants', 19_000, 18_750, 250],
+    ]);
+    expect(v.questions.map((q) => (q.item.type === 'leftover' ? [q.item.bucket, q.item.amount, q.item.atPayday, q.item.lessSincePayday] : null))).toEqual([
+      ['needs', 50_000, 50_000, 0],
+      ['wants', 18_750, 19_000, 250],
+    ]);
   });
 
   it('3.4 B107 once a question is answered it is no longer asked here, and the report says what happened', () => {

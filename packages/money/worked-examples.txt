@@ -877,3 +877,54 @@ Step 4. The leftover question (3.4). At payday Needs held 120.00 and
 Check: reserve taken 1,500.00 | into reserve 100.00 | did not fit 1,400.00 | left to split 845.67 | savings share 422.83 | rounding 0.01
 Check: to savings 1,822.84 | to needs 253.70 | to wants 169.13 | needs left at payday 120.00 | wants moved 45.50
 Check: savings now 1,868.34 | needs now 373.70 | wants now 169.13
+
+
+EXAMPLE 30. A payment you marked as going to the old card, and then undid (rules 5.2, 5.6; QUESTIONS.md A20, B110)
+========================================================================
+
+Before: Needs 650.00, Wants 300.00. Everything else 0.00.
+
+Oct 3. A purchase on the debit card, MADE UP LANDLORD, 412.50. No rule
+matches it, so it waits in review.
+Step 1. He marks it "transfer between my accounts", to the old card. It was
+        a payment to the old card, so it comes out of Needs (5.2):
+        Needs  650.00 - 412.50 = 237.50
+        Wants  300.00
+Step 2. A few days later he sees the row on Needs' list, "Payment to the
+        old card", and taps it. It is not what he meant: it was the
+        landlord, a purchase. The sheet offers what the purchase could be
+        (Needs, Wants, split), and he picks Wants. Picking a bucket makes it
+        the purchase the bank sent (5.6), in that bucket:
+        Needs  237.50 + 412.50 = 650.00
+        Wants  300.00 - 412.50 = -112.50
+Step 3. Marking it and undoing it again, any number of times, changes
+        nothing else: after marking it once more, Needs is 237.50 again.
+
+Check: needs when marked 237.50 | wants when marked 300.00
+Check: needs after undoing 650.00 | wants after undoing -112.50
+Check: needs when marked again 237.50
+
+
+EXAMPLE 31. Spending from before payday shows up after it: the payday question asks about less, and says why (rules 3.4, B4; QUESTIONS.md B109)
+========================================================================
+
+Before: Needs 500.00, Wants 200.00, and a rule that puts MADE UP CAFE in
+Wants. Everything else 0.00.
+
+Oct 8. A charge at MADE UP CAFE, 10.00, still pending. It counts at once:
+        Wants  200.00 - 10.00 = 190.00
+Oct 9. Payday. At payday Wants held 190.00, so the question asks about
+        190.00, and says nothing about anything taken off it.
+Oct 10. The charge posts at 12.50, a tip of 2.50. It was spent before
+        payday, so it lowers what the question asks about (never below
+        zero):
+        190.00 - 2.50 = 187.50
+        The Wants card says why: "$190.00 at payday, less $2.50 spent before
+        payday and sorted since."
+Oct 11. He answers "Roll over". Nothing moves. Payday reports what the
+        question asked, 187.50 kept, with the 2.50 taken off the 190.00
+        (before, it said 190.00 kept, which was more than the question
+        asked).
+
+Check: wants at payday 190.00 | wants asked 187.50 | wants less since payday 2.50
+Check: wants kept 187.50 | wants kept less since payday 2.50

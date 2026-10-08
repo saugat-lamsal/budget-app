@@ -1097,5 +1097,54 @@
     "find": "    if (!open && dialog.open) dialog.close();\n  }, [open]);",
     "replace": "    if (!open && dialog.open) setTimeout(() => dialog.close(), 0);\n  }, [open]);",
     "why": "[activity] 13.3 the sheet closes a moment after the screen is redrawn, with its button enabled in between"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "{item.lessSincePayday > 0 && (",
+    "replace": "{item.lessSincePayday >= 0 && (",
+    "why": "[activity] 3.4 B109 the payday card says \"less $0.00\" when nothing was taken off"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/review-text.ts",
+    "find": "less ${moneyText(lessSincePayday)} spent before payday",
+    "replace": "less ${moneyText(atPayday)} spent before payday",
+    "why": "[activity] 3.4 B109 the payday card says it was all taken off"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Payday.tsx",
+    "find": "return leftover.lessSincePayday > 0 ? `${text} ${lessSincePaydayWords(leftover.leftAtPayday, leftover.lessSincePayday)}` : text;",
+    "replace": "return text;",
+    "why": "[activity] 3.4 B109 an answered payday question stops saying why"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "{subject.marked !== null && (",
+    "replace": "{false && (",
+    "why": "[activity] 5.6 A20 the sheet of a marked payment does not say it was marked"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "    now: r.now,\n    marked: r.marked,",
+    "replace": "    now: r.now,\n    marked: null,",
+    "why": "[activity] 5.6 A20 a row of the list does not tell the sheet it was marked"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/review-text.ts",
+    "find": "    case 'old-card-payment':\n      return 'marked as a payment to the old card, out of Needs';\n",
+    "replace": "",
+    "why": "[activity] 5.6 A20 the sheet of a marked payment says it is in \"old-card-payment\""
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/review-text.ts",
+    "find": "'You marked this as a payment to the old card, so it comes out of Needs. Pick what it was, and it counts as the purchase the bank sent instead.'",
+    "replace": "'You marked this as a payment to the old card.'",
+    "why": "[activity] 5.6 A20 the note does not say what picking something does"
   }
 ]

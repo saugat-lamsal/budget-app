@@ -12,7 +12,8 @@ import type { DepositRuleChoice } from './rules.js';
 // the same as in review, less the one it already has (QUESTIONS.md B100).
 
 // Where an item is sorted now.
-export type SortedNow = SpendingSort | { readonly to: 'mom' } | { readonly to: DepositRuleChoice['to'] };
+// 'old-card-payment': a purchase you marked as a payment to the old card (5.6, A20); it comes out of needs (5.2).
+export type SortedNow = SpendingSort | { readonly to: 'mom' } | { readonly to: 'old-card-payment' } | { readonly to: DepositRuleChoice['to'] };
 
 export type ResortDetail =
   // It cannot be sorted again from here, and why, in words (B100).
@@ -32,6 +33,10 @@ export type ResortDetail =
       // A store refund the app could not match to its purchase (4.5, A18).
       readonly refund: boolean;
       readonly now: SortedNow;
+      // The account you marked it a transfer with (5.6), when you did: sorting it any
+      // other way then makes it what the bank sent, and the choices are the ones that
+      // purchase had before you marked it (A20, B110). Null otherwise.
+      readonly marked: AccountId | null;
       // Always a 'sort' kind of options: never a leftover or a flag.
       readonly options: Extract<ReviewOptions, { type: 'sort' }>;
       // 20d, A15: for a refund, the purchases it likely belongs to.

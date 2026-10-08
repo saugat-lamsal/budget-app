@@ -147,6 +147,10 @@ const SHOTS = [
   ['activity-row-split-part', 'activity-busy', '/buckets/needs', async (page) => {
     await page.locator('.row', { hasText: 'HARDWARE SUPERSTORE' }).click();
   }],
+  ['activity-needs-marked', 'activity-marked', '/buckets/needs', 'full'],
+  ['activity-row-marked', 'activity-marked', '/buckets/needs', async (page) => {
+    await page.locator('.row', { hasText: 'MADE UP LANDLORD' }).click();
+  }],
   ['activity-row-cannot', 'activity-busy', '/buckets/needs', async (page) => {
     await page.locator('.row', { hasText: 'MADE UP EMPLOYER PAYROLL' }).click();
   }],
@@ -201,6 +205,10 @@ const SHOTS = [
   // Payday
   ['payday', 'payday-paid', '/payday'],
   ['payday-whole', 'payday-paid', '/payday', 'full'],
+  ['payday-leftover-why', 'payday-paid', '/payday', async (page) => {
+    await page.getByTestId('leftover-why').scrollIntoViewIfNeeded();
+    return 'no-sheet';
+  }],
   ['payday-leftover-confirm', 'payday-paid', '/payday', async (page) => {
     await page.getByTestId('answer-move-to-savings').first().click();
   }],

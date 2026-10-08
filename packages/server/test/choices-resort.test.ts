@@ -57,6 +57,59 @@ describe('4.7 B100 a tap on an item in a bucket\'s list sorts it again, the way 
     expect(a.book.activity('wants').rows.map((r) => r.id)).toEqual(['g1']);
   });
 
+  it('5.6 A20 B110 a payment marked as going to the old card is sorted from the list as what the bank sent, the way the book does', () => {
+    const a = setup();
+    const b = setup();
+    for (const { book } of [a, b]) {
+      book.receive(purchase('l1', START_DATE, 6_000, 'MADE UP LANDLORD', { account: 'checking' }));
+      book.sort('l1', { transfer: 'old-card' }, TODAY);
+    }
+    expect(a.book.pots().needs).toBe(50_000 - 6_000);
+    // Picking Needs was refused (it was read as keeping the payment); now it is the purchase, in needs.
+    done(a.desk.decide(ask({ item: 'l1', choice: { to: 'needs' } })));
+    b.book.sort('l1', { to: 'needs' }, TODAY);
+    expect(snapshot(a.book)).toBe(snapshot(b.book));
+    expect(a.book.resortDetail('l1')).toMatchObject({ now: { to: 'needs' }, marked: null });
+    // Wants takes it from wants; marking it again and picking Wants.
+    done(a.desk.decide(ask({ item: 'l1', choice: { transfer: 'old-card' } })));
+    done(a.desk.decide(ask({ item: 'l1', choice: { to: 'wants' } })));
+    expect(a.book.pots()).toMatchObject({ needs: 50_000, wants: 30_000 - 6_000 });
+  });
+
+  it('5.6 A20 B110 a repeat of the same tap changes nothing, and a different tap on a payment already undone says where it is', () => {
+    const { book, desk } = setup();
+    book.receive(purchase('l1', START_DATE, 6_000, 'MADE UP LANDLORD', { account: 'checking' }));
+    book.sort('l1', { transfer: 'old-card' }, TODAY);
+    const first = ask({ item: 'l1', choice: { to: 'wants' } });
+    done(desk.decide(first));
+    const after = snapshot(book);
+    expect(done(desk.decide(first))).toMatchObject({ replayed: true });
+    expect(snapshot(book)).toBe(after);
+    // The same pick again, as a new decision: it is already there.
+    expect(refused(desk.decide(ask({ item: 'l1', choice: { to: 'wants' } }))).why).toContain('It is already in Wants.');
+    expect(snapshot(book)).toBe(after);
+  });
+
+  it('5.6 A20 B110 what is not offered for a marked payment is refused and changes nothing: savings, marking it with the old card again', () => {
+    const { book, desk } = setup();
+    book.receive(purchase('l1', START_DATE, 6_000, 'MADE UP LANDLORD', { account: 'checking' }));
+    book.sort('l1', { transfer: 'old-card' }, TODAY);
+    const before = snapshot(book);
+    refused(desk.decide(ask({ item: 'l1', choice: { to: 'savings' } })));
+    refused(desk.decide(ask({ item: 'l1', choice: { transfer: 'old-card' } })));
+    expect(snapshot(book)).toBe(before);
+  });
+
+  it('13.6 A20 B110 "always do this" on a marked payment makes the rule and sorts it', () => {
+    const { book, desk } = setup();
+    book.receive(purchase('l1', START_DATE, 6_000, 'MADE UP LANDLORD', { account: 'checking' }));
+    book.sort('l1', { transfer: 'old-card' }, TODAY);
+    const response = done(desk.decide(ask({ item: 'l1', choice: { to: 'wants' }, always: { contains: 'MADE UP LANDLORD' }, confirmed: true })));
+    expect(response).toMatchObject({ ok: true });
+    expect(book.resortDetail('l1')).toMatchObject({ now: { to: 'wants' }, marked: null });
+    expect(book.rules().some((r) => r.for === 'purchase' && r.contains === 'MADE UP LANDLORD')).toBe(true);
+  });
+
   it('4.4 a purchase can be split from the list, with the rest worked out by the money math', () => {
     const { book, desk } = setup();
     book.receive(purchase('g1', START_DATE, 3_250, 'MADE UP GROCERY'));

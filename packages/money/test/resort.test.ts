@@ -105,6 +105,156 @@ describe('B100 a purchase can be sorted again, to where the rulebook allows', ()
     expect(b.resortDetail('o2')).toMatchObject({ resortable: false });
   });
 
+  it('5.6 A20 B110 a payment you marked as going to the old card can be sorted again: it offers what the purchase could be before you marked it', () => {
+    const b = openBook();
+    b.receive(purchase('l1', '2026-10-03', 6_000, 'MADE UP LANDLORD', { account: 'checking' }));
+    b.sort('l1', { transfer: 'old-card' }, '2026-10-04');
+    // Marked, it comes out of needs (5.2).
+    expect(b.pots().needs).toBe(START.needs - 6_000);
+    const d = b.resortDetail('l1');
+    expect(d).toMatchObject({
+      resortable: true,
+      type: 'spending',
+      description: 'MADE UP LANDLORD',
+      account: 'checking',
+      amount: 6_000,
+      pending: false,
+      now: { to: 'old-card-payment' },
+      marked: 'old-card',
+      options: {
+        picks: [{ to: 'needs' }, { to: 'wants' }],
+        split: ['needs', 'wants'],
+        // It is already marked with the old card, so that one is not offered again.
+        transfer: ['savings', 'everyday-card'],
+        always: ['needs', 'wants'],
+      },
+    });
+    // What marking it with each account would do is told for those accounts only.
+    expect(d?.resortable === true ? Object.keys(d.options.transferOutcome).sort() : null).toEqual(['everyday-card', 'savings']);
+  });
+
+  it('5.6 7.6 A20 B110 a payment to a person that you marked as going to the old card is offered what it was: needs, wants, not mine, for mom, a split of the three', () => {
+    const b = openBook();
+    b.receive(payPerson('z1', '2026-10-03', 4_000, 'MADE UP FRIEND'));
+    b.sort('z1', { transfer: 'old-card' }, '2026-10-04');
+    expect(b.resortDetail('z1')).toMatchObject({
+      resortable: true,
+      now: { to: 'old-card-payment' },
+      marked: 'old-card',
+      options: { picks: [{ to: 'needs' }, { to: 'wants' }, { to: 'not-mine' }, { to: 'mom' }], split: ['needs', 'wants', 'not-mine'], transfer: ['savings', 'everyday-card'], always: ['needs', 'wants', 'not-mine', 'mom'] },
+    });
+    // Not mine: it was a payment for someone else, so it lowers what is held for others (7.2).
+    const held = b.pots().heldForOthers;
+    b.sort('z1', { to: 'not-mine' }, '2026-10-05');
+    expect(b.pots().heldForOthers).toBe(held - 4_000);
+    expect(b.recountPots()).toEqual(b.pots());
+  });
+
+  it('13.6 7.6 A20 B110 "always do this" from a marked payment to a person makes a rule for payments to people, not for purchases', () => {
+    const b = openBook();
+    b.receive(payPerson('z1', '2026-10-03', 4_000, 'MADE UP FRIEND'));
+    b.sort('z1', { transfer: 'old-card' }, '2026-10-04');
+    b.sortAlways('z1', { to: 'not-mine' }, { id: 'friend', contains: 'MADE UP FRIEND' }, '2026-10-05');
+    expect(b.rules().find((r) => r.id === 'friend')).toMatchObject({ for: 'person', contains: 'MADE UP FRIEND', choice: { to: 'not-mine' } });
+    b.receive(payPerson('z2', '2026-10-06', 1_500, 'MADE UP FRIEND'));
+    expect(b.resortDetail('z2')).toMatchObject({ now: { to: 'not-mine' } });
+  });
+
+  it('5.6 A20 B110 sorting a marked payment to needs makes it the purchase the bank sent, in needs; to wants, in wants', () => {
+    const b = openBook();
+    b.receive(purchase('l1', '2026-10-03', 6_000, 'MADE UP LANDLORD', { account: 'checking' }));
+    const before = b.pots();
+    b.sort('l1', { transfer: 'old-card' }, '2026-10-04');
+    // Picking Needs used to be refused: it was read as "keep it a payment to the old card".
+    b.sort('l1', { to: 'needs' }, '2026-10-05');
+    expect(b.pots().needs).toBe(START.needs - 6_000);
+    expect(b.resortDetail('l1')).toMatchObject({ resortable: true, now: { to: 'needs' }, marked: null, options: { transfer: ['savings', 'everyday-card', 'old-card'] } });
+    // To wants: out of wants instead, and needs has it back.
+    b.sort('l1', { transfer: 'old-card' }, '2026-10-06');
+    b.sort('l1', { to: 'wants' }, '2026-10-07');
+    expect(b.pots()).toEqual({ ...before, wants: before.wants - 6_000, unsortedOut: before.unsortedOut - 6_000 });
+    expect(b.recountPots()).toEqual(b.pots());
+  });
+
+  it('5.6 A20 B110 a marked payment can be split, and the parts add up', () => {
+    const b = openBook();
+    b.receive(purchase('l1', '2026-10-03', 6_000, 'MADE UP LANDLORD', { account: 'checking' }));
+    b.sort('l1', { transfer: 'old-card' }, '2026-10-04');
+    expect(() => b.sort('l1', { split: [{ bucket: 'needs', amount: 2_000 }, { bucket: 'wants', amount: 3_999 }] }, '2026-10-05')).toThrow(/add up/);
+    // Refused: still marked, nothing moved.
+    expect(b.resortDetail('l1')).toMatchObject({ now: { to: 'old-card-payment' }, marked: 'old-card' });
+    expect(b.pots().needs).toBe(START.needs - 6_000);
+    b.sort('l1', { split: [{ bucket: 'needs', amount: 2_000 }, { bucket: 'wants', amount: 4_000 }] }, '2026-10-05');
+    expect(b.pots()).toMatchObject({ needs: START.needs - 2_000, wants: START.wants - 4_000 });
+    expect(b.resortDetail('l1')).toMatchObject({ now: { split: [{ bucket: 'needs', amount: 2_000 }, { bucket: 'wants', amount: 4_000 }] }, marked: null });
+  });
+
+  it('5.6 A20 B110 a marked payment cannot be sorted into savings, and the refusal changes nothing', () => {
+    const b = openBook();
+    b.receive(purchase('l1', '2026-10-03', 6_000, 'MADE UP LANDLORD', { account: 'checking' }));
+    b.sort('l1', { transfer: 'old-card' }, '2026-10-04');
+    const state = (): string => JSON.stringify([b.pots(), b.changeLog(), b.reviewItems(), b.oldCardDebt(), b.inTransit(), b.resortDetail('l1')]);
+    const before = state();
+    expect(() => b.sort('l1', { to: 'savings' }, '2026-10-05')).toThrow();
+    expect(state()).toBe(before);
+  });
+
+  it('5.6 A20 B110 marking and undoing it again and again changes nothing it should not', () => {
+    const b = openBook();
+    b.receive(purchase('l1', '2026-10-03', 6_000, 'MADE UP LANDLORD', { account: 'checking' }));
+    b.sort('l1', { to: 'needs' }, '2026-10-03');
+    const state = (): string => JSON.stringify([b.pots(), b.oldCardDebt(), b.inTransit(), b.reviewItems()]);
+    const start = state();
+    for (let i = 0; i < 4; i += 1) {
+      b.sort('l1', { transfer: 'old-card' }, '2026-10-04');
+      expect(b.pots().needs).toBe(START.needs - 6_000);
+      b.sort('l1', { to: 'needs' }, '2026-10-05');
+      expect(state()).toBe(start);
+      expect(b.recountPots()).toEqual(b.pots());
+    }
+  });
+
+  it('5.6 A20 B110 a payment already marked with the old card is not marked with it again, and the refusal changes nothing', () => {
+    const b = openBook();
+    b.receive(purchase('l1', '2026-10-03', 6_000, 'MADE UP LANDLORD', { account: 'checking' }));
+    b.sort('l1', { transfer: 'old-card' }, '2026-10-04');
+    const state = (): string => JSON.stringify([b.pots(), b.changeLog(), b.reviewItems(), b.oldCardDebt(), b.inTransit(), b.resortDetail('l1')]);
+    const before = state();
+    expect(() => b.sort('l1', { transfer: 'old-card' }, '2026-10-05')).toThrow(/already marked/);
+    expect(state()).toBe(before);
+  });
+
+  it('5.6 A20 B110 a marked payment can be marked again with another account, and undone from there', () => {
+    const b = openBook();
+    b.receive(purchase('l1', '2026-10-03', 6_000, 'MADE UP LANDLORD', { account: 'checking' }));
+    b.sort('l1', { transfer: 'old-card' }, '2026-10-04');
+    b.sort('l1', { transfer: 'savings' }, '2026-10-05');
+    // A transfer to savings changes no bucket, so it is on no list and not sortable from one.
+    expect(b.pots().needs).toBe(START.needs);
+    expect(b.resortDetail('l1')).toMatchObject({ resortable: false });
+    b.sort('l1', { to: 'wants' }, '2026-10-06');
+    expect(b.pots().wants).toBe(START.wants - 6_000);
+  });
+
+  it('13.6 A20 B110 "always do this" from a marked payment sorts it and makes the rule, which then catches the next one', () => {
+    const b = openBook();
+    b.receive(purchase('l1', '2026-10-03', 6_000, 'MADE UP LANDLORD', { account: 'checking' }));
+    b.sort('l1', { transfer: 'old-card' }, '2026-10-04');
+    b.sortAlways('l1', { to: 'needs' }, { id: 'landlord', contains: 'MADE UP LANDLORD' }, '2026-10-05');
+    expect(b.resortDetail('l1')).toMatchObject({ now: { to: 'needs' }, marked: null });
+    expect(b.rules().some((r) => r.id === 'landlord')).toBe(true);
+    b.receive(purchase('l2', '2026-10-06', 6_000, 'MADE UP LANDLORD', { account: 'checking' }));
+    expect(b.resortDetail('l2')).toMatchObject({ now: { to: 'needs' } });
+  });
+
+  it('5.2 A4 A21 a payment you marked from savings keeps its choices, savings or needs, since "Needs" there could mean two things', () => {
+    const b = openBook();
+    b.receive(withdrawal('w1', '2026-10-03', 6_000, 'MADE UP LANDLORD'));
+    b.sort('w1', { transfer: 'old-card' }, '2026-10-04');
+    b.sort('w1', { to: 'savings' }, '2026-10-05');
+    expect(b.resortDetail('w1')).toMatchObject({ resortable: true, account: 'savings', now: { to: 'savings' }, options: { picks: [{ to: 'savings' }, { to: 'needs' }], transfer: [], always: [] } });
+  });
+
   it('5.2 A4 B100 a payment to the old card from savings, once confirmed, can still be moved between savings and needs', () => {
     const b = openBook();
     b.receive(transfer('o1', '2026-10-03', 20_000, 'savings', 'old-card'));

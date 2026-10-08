@@ -115,8 +115,8 @@ describe('B106 the Payday report says what happened to each bucket\'s leftover',
     const b = openBook();
     b.receive(paycheck('p1', '2026-10-09', 400_000));
     expect(b.paydayReport().leftovers).toEqual([
-      { bucket: 'needs', leftAtPayday: 50_000, setting: 'ask', outcome: 'waiting', amount: 50_000, question: 'leftover:p1:needs' },
-      { bucket: 'wants', leftAtPayday: 20_000, setting: 'ask', outcome: 'waiting', amount: 20_000, question: 'leftover:p1:wants' },
+      { bucket: 'needs', leftAtPayday: 50_000, setting: 'ask', outcome: 'waiting', amount: 50_000, lessSincePayday: 0, question: 'leftover:p1:needs' },
+      { bucket: 'wants', leftAtPayday: 20_000, setting: 'ask', outcome: 'waiting', amount: 20_000, lessSincePayday: 0, question: 'leftover:p1:wants' },
     ]);
   });
 
@@ -124,7 +124,7 @@ describe('B106 the Payday report says what happened to each bucket\'s leftover',
     const b = openBook();
     b.receive(paycheck('p1', '2026-10-09', 400_000));
     b.answerLeftover('leftover:p1:needs', 'roll-over', '2026-10-10');
-    expect(b.paydayReport().leftovers[0]).toEqual({ bucket: 'needs', leftAtPayday: 50_000, setting: 'ask', outcome: 'kept', amount: 50_000, question: null });
+    expect(b.paydayReport().leftovers[0]).toEqual({ bucket: 'needs', leftAtPayday: 50_000, setting: 'ask', outcome: 'kept', amount: 50_000, lessSincePayday: 0, question: null });
     expect(b.paydayReport().leftovers[1]).toMatchObject({ bucket: 'wants', outcome: 'waiting' });
   });
 
@@ -132,15 +132,15 @@ describe('B106 the Payday report says what happened to each bucket\'s leftover',
     const b = openBook();
     b.receive(paycheck('p1', '2026-10-09', 400_000));
     b.answerLeftover('leftover:p1:wants', 'move-to-savings', '2026-10-10');
-    expect(b.paydayReport().leftovers[1]).toEqual({ bucket: 'wants', leftAtPayday: 20_000, setting: 'ask', outcome: 'moved-to-savings', amount: 20_000, question: null });
+    expect(b.paydayReport().leftovers[1]).toEqual({ bucket: 'wants', leftAtPayday: 20_000, setting: 'ask', outcome: 'moved-to-savings', amount: 20_000, lessSincePayday: 0, question: null });
   });
 
   it('3.4 B106 the setting says always move to savings: moved at payday, no question', () => {
     const b = openBook({ leftoverAtPayday: { needs: 'move-to-savings', wants: 'roll-over' } });
     b.receive(paycheck('p1', '2026-10-09', 400_000));
     expect(b.paydayReport().leftovers).toEqual([
-      { bucket: 'needs', leftAtPayday: 50_000, setting: 'move-to-savings', outcome: 'moved-to-savings', amount: 50_000, question: null },
-      { bucket: 'wants', leftAtPayday: 20_000, setting: 'roll-over', outcome: 'kept', amount: 20_000, question: null },
+      { bucket: 'needs', leftAtPayday: 50_000, setting: 'move-to-savings', outcome: 'moved-to-savings', amount: 50_000, lessSincePayday: 0, question: null },
+      { bucket: 'wants', leftAtPayday: 20_000, setting: 'roll-over', outcome: 'kept', amount: 20_000, lessSincePayday: 0, question: null },
     ]);
     expect(b.reviewItems()).toEqual([]);
   });
@@ -149,8 +149,8 @@ describe('B106 the Payday report says what happened to each bucket\'s leftover',
     const b = openBook({}, { needs: 0, wants: -2_500 });
     b.receive(paycheck('p1', '2026-10-09', 400_000));
     expect(b.paydayReport().leftovers).toEqual([
-      { bucket: 'needs', leftAtPayday: 0, setting: 'ask', outcome: 'nothing-to-ask', amount: 0, question: null },
-      { bucket: 'wants', leftAtPayday: -2_500, setting: 'ask', outcome: 'nothing-to-ask', amount: 0, question: null },
+      { bucket: 'needs', leftAtPayday: 0, setting: 'ask', outcome: 'nothing-to-ask', amount: 0, lessSincePayday: 0, question: null },
+      { bucket: 'wants', leftAtPayday: -2_500, setting: 'ask', outcome: 'nothing-to-ask', amount: 0, lessSincePayday: 0, question: null },
     ]);
   });
 
@@ -179,8 +179,46 @@ describe('B106 the Payday report says what happened to each bucket\'s leftover',
     b.receive(posted('c1-posted', 'c1', '2026-10-10', 1_250, 'MADE UP CAFE'));
     b.answerLeftover('leftover:p1:wants', 'move-to-savings', '2026-10-11');
     // 190.00 at payday, 2.50 more spent from before payday: 187.50 moves.
-    expect(b.paydayReport().leftovers[1]).toEqual({ bucket: 'wants', leftAtPayday: 19_000, setting: 'ask', outcome: 'moved-to-savings', amount: 18_750, question: null });
+    expect(b.paydayReport().leftovers[1]).toEqual({ bucket: 'wants', leftAtPayday: 19_000, setting: 'ask', outcome: 'moved-to-savings', amount: 18_750, lessSincePayday: 250, question: null });
     expect(b.pots().savings).toBe(100_000 + 125_000 + 18_750);
+  });
+
+  it('3.4 B4 B106 B109 the report says how much late spending took off what the question asks, and the question says the same', () => {
+    const b = openBook();
+    b.receive(purchase('c1', '2026-10-08', 1_000, 'MADE UP CAFE', { pending: true }));
+    b.receive(paycheck('p1', '2026-10-09', 400_000));
+    // Nothing late yet: what was held at payday is what is asked, and nothing was taken off.
+    expect(b.paydayReport().leftovers[1]).toMatchObject({ leftAtPayday: 19_000, outcome: 'waiting', amount: 19_000, lessSincePayday: 0 });
+    expect(b.reviewItems().find((i) => i.type === 'leftover' && i.bucket === 'wants')).toEqual({ type: 'leftover', id: 'leftover:p1:wants', date: '2026-10-09', bucket: 'wants', amount: 19_000, atPayday: 19_000, lessSincePayday: 0 });
+    // A tip: 2.50 more spent from before payday.
+    b.receive(posted('c1-posted', 'c1', '2026-10-10', 1_250, 'MADE UP CAFE'));
+    expect(b.paydayReport().leftovers[1]).toMatchObject({ leftAtPayday: 19_000, outcome: 'waiting', amount: 18_750, lessSincePayday: 250 });
+    expect(b.reviewItems().find((i) => i.type === 'leftover' && i.bucket === 'wants')).toEqual({ type: 'leftover', id: 'leftover:p1:wants', date: '2026-10-09', bucket: 'wants', amount: 18_750, atPayday: 19_000, lessSincePayday: 250 });
+    // Spent so much that nothing is left to ask about: all of it was taken off, never more.
+    b.receive(purchase('c2', '2026-10-07', 30_000, 'MADE UP CAFE'));
+    expect(b.paydayReport().leftovers[1]).toMatchObject({ leftAtPayday: 19_000, outcome: 'waiting', amount: 0, lessSincePayday: 19_000 });
+    expect(b.reviewItems().find((i) => i.type === 'leftover' && i.bucket === 'wants')).toMatchObject({ amount: 0, atPayday: 19_000, lessSincePayday: 19_000 });
+  });
+
+  it('3.4 B4 B106 B109 rolling over after late spending lowered the question keeps what the question asked, not what was held at payday', () => {
+    const b = openBook();
+    b.receive(purchase('c1', '2026-10-08', 1_000, 'MADE UP CAFE', { pending: true }));
+    b.receive(paycheck('p1', '2026-10-09', 400_000));
+    b.receive(posted('c1-posted', 'c1', '2026-10-10', 1_250, 'MADE UP CAFE'));
+    const wantsBefore = b.pots().wants;
+    b.answerLeftover('leftover:p1:wants', 'roll-over', '2026-10-11');
+    // Rolling over moves nothing, and the report says it kept the 187.50 the question asked, with the 2.50 taken off.
+    expect(b.pots().wants).toBe(wantsBefore);
+    expect(b.paydayReport().leftovers[1]).toEqual({ bucket: 'wants', leftAtPayday: 19_000, setting: 'ask', outcome: 'kept', amount: 18_750, lessSincePayday: 250, question: null });
+  });
+
+  it('3.4 B109 a leftover rolled over by the setting kept all of it, with nothing taken off', () => {
+    const b = openBook({ leftoverAtPayday: { needs: 'roll-over', wants: 'roll-over' } });
+    b.receive(paycheck('p1', '2026-10-09', 400_000));
+    expect(b.paydayReport().leftovers.map((l) => [l.outcome, l.amount, l.lessSincePayday])).toEqual([
+      ['kept', 50_000, 0],
+      ['kept', 20_000, 0],
+    ]);
   });
 
   it('3.4 B3 B106 a second payday replaces an unanswered question: only the latest payday is reported', () => {

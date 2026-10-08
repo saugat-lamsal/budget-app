@@ -61,6 +61,20 @@ describe.each(ENGINES)('worked examples on the screen, the lists, moves and Payd
     await page.context().close();
   });
 
+  it('example 15: the list of Needs shows the marked payment, and after picking Wants for it, the numbers worked out by hand', async () => {
+    const page = await openScenario(await browser().newContext(phone()), base(), EXAMPLE_LIVES[15] ?? '', '/buckets/needs');
+    const checks = checksOf(15);
+    expect(await amountAt(page, 'activity-closing'), 'now').toBe(checks.get('now'));
+    expect(await page.locator('.row[data-testid^="row-"]').count(), 'rows').toBe(checks.get('rows'));
+    expect(await page.getByTestId('row-act-landlord').innerText()).toContain('Payment to the old card');
+    await page.getByTestId('row-act-landlord').click();
+    await page.getByTestId('activity-sheet').getByTestId('choice-wants').click();
+    await page.getByTestId('notice').waitFor();
+    await expect.poll(async () => amountAt(page, 'activity-closing'), { message: 'now after wants' }).toBe(checks.get('now after wants'));
+    expect(await page.locator('.row[data-testid^="row-"]').count(), 'rows after wants').toBe(checks.get('rows after wants'));
+    await page.context().close();
+  });
+
   it('example 14: Payday shows every number worked out by hand', async () => {
     const page = await openScenario(await browser().newContext(phone()), base(), EXAMPLE_LIVES[14] ?? '', '/payday');
     const testIds: Record<string, string> = {
@@ -82,6 +96,18 @@ describe.each(ENGINES)('worked examples on the screen, the lists, moves and Payd
       if (label === 'needs asked' || label === 'wants asked') {
         const bucket = label.split(' ')[0];
         expect(await page.getByTestId(`item-leftover:demo-pay-2:${bucket}`).getByTestId('item-amount').innerText(), label).toBe(`$${(expected / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}`);
+        continue;
+      }
+      if (label === 'needs less since payday' || label === 'wants less since payday') {
+        // The card says it in words, when something was taken off; nothing is said when not.
+        const why = page.getByTestId(`item-leftover:demo-pay-2:${label.split(' ')[0]}`).getByTestId('leftover-why');
+        if (expected === 0) {
+          expect(await why.count(), label).toBe(0);
+          continue;
+        }
+        const said = /less \$([\d,]+\.\d{2}) spent before payday and sorted since\.$/.exec(await why.innerText());
+        expect(said, label).not.toBeNull();
+        expect(Math.round(Number((said?.[1] ?? '').replaceAll(',', '')) * 100), label).toBe(expected);
         continue;
       }
       const testId = testIds[label];
