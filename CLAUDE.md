@@ -145,7 +145,8 @@ This applies to every phase and every session, cloud or local.
   Phase 3 questions (A12 to A16, B4, B20), section 21 his answers to the
   Phase 4 questions (A17, B82, B84: rules 0.5, 9.6, 10.6), section 22
   his answers to the Buckets and Review questions (A18, A19: rules 4.5,
-  6.1, 13.2).
+  6.1, 13.2), section 23 his answers after the bucket lists, hand moves
+  and Payday review (A20: rule 5.6; the Payday card's reason: rule 3.4).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -366,8 +367,8 @@ This applies to every phase and every session, cloud or local.
   - Shared choosing for Review and the lists: screens/choose.tsx.
   - Demo lives added: activity-busy and payday-paid. Worked examples: money
     27 to 29, screens 12 to 14.
-  - Tests: 2,050 pass (426 more than PR #8 ended with): money 976, server
-    483, web 63, browser 513 (Chromium and WebKit). Random lives: 100
+  - Tests: 2,087 pass (463 more than PR #8 ended with): money 992, server
+    489, web 64, browser 527 (Chromium and WebKit). Random lives: 100
     simulated lives of 3 years with every check passing, including the new
     "every bucket's list adds up" check. Browser tests: bucket lists,
     moves, Payday, design rules (design-activity), random lives with random
@@ -393,11 +394,36 @@ This applies to every phase and every session, cloud or local.
     Connection: close (harness.ts listen, test/test-server.test.ts), so
     WebKit has no connection to reuse after a cancelled request or one the
     server is closing.
-  - Break-it: new breaks are tagged "[activity]" (79). The existing breaks
+  - Break-it: new breaks are tagged "[activity]" (100). The existing breaks
     for code the refactor moved (49) were pointed at where it is now. Run
     for the sections changed (the testing bar): every one caught, none
     survived. The full run is at the end of Phase 4.
-  - Waiting on: his review; A20 and B97 to B108 to check. The real server
-    must keep decision numbers with the book's history (B103, Phase 6).
+  - His review (Oct 8): A20 option 2, and the Payday card says why, both
+    built.
+    - A20: a purchase marked as a payment to the old card, from checking, is
+      on Needs' list as that, and its sheet (resortDetail, marked) offers
+      what the purchase could be before it was marked. Picking a bucket
+      makes it the purchase the bank sent (Book.sort restores it first);
+      picking Needs used to be refused. The account it is marked with is not
+      offered again, and marking it with the same account is refused.
+      "Always do this" makes the rule for the purchase it was. B110. Demo
+      life: activity-marked. Worked examples: money 30, screens 15.
+    - Payday card: a question that late spending made smaller (B4) says
+      "$657.11 at payday, less $34.67 spent before payday and sorted
+      since", on Payday and in Review, and the line stays on the summary
+      after you answer. The numbers are the money math's (LeftoverReport
+      and the leftover review item have lessSincePayday; the item has
+      atPayday). B109. Worked example: money 31, screens 14 (a new Check
+      line). The simulator checks on every day that what is asked plus what
+      was taken off is what was held at payday (leftoverProblems).
+    - Found while building it, fixed with a test first (B111): rolling over
+      after late spending lowered the question reported the full payday
+      amount as kept, not what the question asked.
+    - Break-it, only for what this round changed (his OK to cut it down):
+      the 21 new breaks, all caught. The full run is still at the end of
+      Phase 4.
+  - Waiting on: his merge; A21 (the same undo for a payment marked from
+    savings) and B97 to B111 to check. The real server must keep decision
+    numbers with the book's history (B103, Phase 6).
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.

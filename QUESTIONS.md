@@ -208,9 +208,15 @@ A19. ANSWERED Oct 7, built. A new rule that cannot sort everything it
      cannot sort is still yours to decide.
 
 
-## Part A, added with the bucket lists, hand moves, and Payday (Phase 4, Oct 7). Waiting on your answer.
+## Part A, added with the bucket lists, hand moves, and Payday (Phase 4, Oct 7).
 
-A20. Undoing "transfer between my accounts" from a list (5.6). A purchase
+A20. ANSWERED Oct 8, built. Undoing "transfer between my accounts" from a
+     list (5.6). Your answer: option 2. On that row, the sheet offers what
+     the purchase could be before you marked it (Needs, Wants, a split, a
+     transfer with another account); picking one brings it back as the
+     purchase the bank sent, and picking Needs is no longer refused.
+     Rulebook 5.6 and 23a; the details are B110.
+     The question was: a purchase
      you marked as a payment to the old card comes out of Needs (5.2), so
      it shows on Needs' list as "Payment to the old card", and its sheet
      says it always comes out of Needs. Rule 5.6 also says sorting it
@@ -227,6 +233,27 @@ A20. Undoing "transfer between my accounts" from a list (5.6). A purchase
      read as "keep it a payment to the old card".
      Recommendation: option 2. Marking is easy to get wrong, and this is
      the only way back.
+
+
+## Part A, added with his answers to A20 and the Payday card (Phase 4, Oct 8). Waiting on your answer.
+
+A21. Undoing a payment you marked as going to the old card FROM SAVINGS
+     (5.2, 5.6, A4). A20 is built for checking. From savings the same
+     marking waits in review for you to pick Savings or Needs (A4), and
+     after that it is on that bucket's list with the same two choices.
+     There "Needs" already means something: keep it a payment to the old
+     card, taken out of Needs. For the purchase it was (money leaving
+     savings, 4.9) "Needs" would mean a different thing, with no change to
+     what the old card owes. One tap cannot mean both, so I did not offer
+     the purchase's choices there. Today there is no way back from the
+     list or from review; you would tell me.
+     Option 1: leave as built.
+     Option 2: a separate choice on that row and in review, "It was not a
+     payment to the old card". It brings the item back as what the bank
+     sent, money leaving savings, which waits in review with the usual
+     choices (4.9), and the old card owes what it did before.
+     Recommendation: option 2. Same reason as A20: marking is easy to get
+     wrong. It is its own button, so nothing changes meaning.
 
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
@@ -929,3 +956,34 @@ B107. Payday opens from Home and from Buckets, and Back goes to the one you
 
 B108. On Buckets, each bucket is a link to its list, there is a "Move money"
       entry, and a Payday row. Home has a Payday row too.
+
+B109. The payday question says why it is smaller. When spending made before
+      payday shows up or changes after it (B4), the question asks about
+      less than the bucket held at payday. The card says so, in words and
+      numbers worked out by the money math: "$657.11 at payday, less
+      $34.67 spent before payday and sorted since." It is the same card on
+      Payday and in Review, and the line stays on the summary after you
+      answer. Nothing is said when nothing was taken off. "Sorted since" is
+      your wording; it also covers spending whose amount changed since, such
+      as a tip.
+
+B110. Undoing a payment marked as going to the old card (A20), from
+      checking. The row is on Needs' list as "Payment to the old card".
+      Its sheet says you marked it, and offers what the purchase could be
+      before you marked it: Needs, Wants, a split (and, for a payment to a
+      person, not mine and for mom), and a transfer with another account,
+      but not savings, and not the old card again (marking it with the
+      account it already has is refused). Picking a bucket makes it the
+      purchase the bank sent, in that bucket. To Needs, nothing changes
+      in Needs; to Wants, Wants pays it and Needs has it back. "Always do this"
+      makes the rule for the purchase it was. A refused choice changes
+      nothing. One the bank sent as a payment to the old card, rather than
+      one you marked, still cannot be sorted again.
+
+B111. A kept leftover is what the question asked. If late spending (B4)
+      lowered the question and you rolled it over, the report used to say
+      you kept what the bucket held at payday; it now says what the
+      question asked when you answered, the same as for a leftover you
+      moved to savings, with what was taken off shown beside it (B109).
+      Nothing moves when you roll over, so no bucket changed; only what
+      the Payday screen said.
