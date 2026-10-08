@@ -273,9 +273,11 @@ describe('the demo is made-up data only', () => {
       'demo/main.ts',
       'demo/scenarios.ts',
       'http/server.ts',
+      'views/activity.ts',
       'views/buckets.ts',
       'views/choice.ts',
       'views/home.ts',
+      'views/payday.ts',
       'views/review.ts',
     ]);
     expect([...packages].sort()).toEqual(['@budget-app/money', 'node:fs/promises', 'node:http', 'node:os', 'node:path', 'node:url']);

@@ -1,10 +1,13 @@
 import { readFile, stat } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';
-import { parseChoiceRequest } from '../choices.js';
+import type { Pot } from '@budget-app/money';
+import { parseRequest } from '../choices.js';
+import { POT_SLUGS, potOfSlug, type ActivityView } from '../views/activity.js';
 import type { BucketsView } from '../views/buckets.js';
-import type { ChoiceRequest, ChoiceResponse } from '../views/choice.js';
+import type { ChoiceRequest, ChoiceResponse, MoveRequest, MoveResponse } from '../views/choice.js';
 import type { HomeView } from '../views/home.js';
+import type { PaydayView } from '../views/payday.js';
 import type { ReviewView } from '../views/review.js';
 
 // The web server for the screens (Phase 4): the built app from packages/web,
@@ -15,6 +18,10 @@ import type { ReviewView } from '../views/review.js';
 // link opens the right one. Must match packages/web/src/app/routes.ts (a
 // test checks).
 export const APP_PATHS: readonly string[] = ['/', '/home', '/buckets', '/review', '/settings'];
+
+// The screens that are not tabs: the activity of each bucket and Payday. They
+// get the app too. Must match packages/web/src/app/routes.ts (a test checks).
+export const SCREEN_PATHS: readonly string[] = ['/payday', ...Object.keys(POT_SLUGS).map((slug) => `/buckets/${slug}`)];
 
 export interface AppServerOptions {
   // The built screens (packages/web/dist).
@@ -35,11 +42,18 @@ export interface AppServerOptions {
   // His choice for an item waiting in review. The money math decides; a
   // refusal comes back as an answer, with why. Without it, nothing can be sent.
   readonly choice?: ChoiceHandler;
+  // His hand move between buckets (13.3). The money math decides, and says
+  // when it needs his yes first (13.4). Without it, no move can be sent.
+  readonly move?: MoveHandler;
+  // What went in and out of one bucket (QUESTIONS.md B97), and the Payday screen's numbers.
+  readonly activity?: (request: IncomingMessage, pot: Pot) => ActivityView | Promise<ActivityView>;
+  readonly payday?: (request: IncomingMessage) => PaydayView | Promise<PaydayView>;
 }
 
 export type Seen = { readonly kind: 'bank-took-back'; readonly id: string };
 export type SeenHandler = (request: IncomingMessage, what: Seen) => boolean | Promise<boolean>;
 export type ChoiceHandler = (request: IncomingMessage, choice: ChoiceRequest) => ChoiceResponse | Promise<ChoiceResponse>;
+export type MoveHandler = (request: IncomingMessage, move: MoveRequest) => MoveResponse | Promise<MoveResponse>;
 
 // The most a "seen" request may carry; the real one is under 100 bytes.
 const SEEN_LIMIT = 1024;
@@ -104,15 +118,21 @@ async function markSeen(request: IncomingMessage, response: ServerResponse, seen
 // His choice for an item in review. A malformed request is a bad request;
 // anything well formed gets an answer: done, or refused with why (nothing
 // changed). A repeat of the same decision gets the first answer again.
-async function takeChoice(request: IncomingMessage, response: ServerResponse, choice: ChoiceHandler): Promise<void> {
+async function takeChoice(request: IncomingMessage, response: ServerResponse, handlers: { readonly choice: ChoiceHandler | undefined; readonly move: MoveHandler | undefined }): Promise<void> {
   const sent = await readOwnJson(request, response, CHOICE_LIMIT);
   if (response.writableEnded || response.headersSent) return;
-  const parsed = parseChoiceRequest(sent);
+  const parsed = parseRequest(sent);
   if (parsed === null) {
     send(response, 400, 'text/plain; charset=utf-8', 'Not a choice that can be made.', 'no-store');
     return;
   }
-  const answer = await choice(request, parsed);
+  // A hand move or a choice for an item: each goes to what handles it, and
+  // when nothing does, it is as if the address were not there.
+  const answer = 'move' in parsed ? await handlers.move?.(request, parsed) : await handlers.choice?.(request, parsed);
+  if (answer === undefined) {
+    send(response, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'not-found' }), 'no-store');
+    return;
+  }
   send(response, answer.ok ? 200 : 422, 'application/json; charset=utf-8', JSON.stringify(answer), 'no-store');
 }
 
@@ -178,13 +198,13 @@ export function createAppServer(options: AppServerOptions): Server {
       return;
     }
     // His choice for an item in review: it changes the app's books, never the bank (0.4).
-    if (path === '/api/choice' && options.choice !== undefined) {
+    if (path === '/api/choice' && (options.choice !== undefined || options.move !== undefined)) {
       if (request.method !== 'POST') {
         response.setHeader('Allow', 'POST');
         send(response, 405, 'text/plain; charset=utf-8', 'Only POST.', 'no-store');
         return;
       }
-      await takeChoice(request, response, options.choice);
+      await takeChoice(request, response, { choice: options.choice, move: options.move });
       return;
     }
     if (request.method !== 'GET' && request.method !== 'HEAD') {
@@ -221,13 +241,42 @@ export function createAppServer(options: AppServerOptions): Server {
       send(response, 200, 'application/json; charset=utf-8', JSON.stringify(view), 'no-store');
       return;
     }
+    // What went in and out of one bucket: /api/activity/needs.
+    const activityPot = /^\/api\/activity\/([^/]+)$/.exec(path)?.[1];
+    if (activityPot !== undefined && options.activity !== undefined) {
+      const pot = potOfSlug(activityPot);
+      if (pot !== null) {
+        let view: ActivityView;
+        try {
+          view = await options.activity(request, pot);
+        } catch (error) {
+          options.onError?.(error);
+          send(response, 500, 'application/json; charset=utf-8', JSON.stringify({ error: 'activity-unavailable' }), 'no-store');
+          return;
+        }
+        send(response, 200, 'application/json; charset=utf-8', JSON.stringify(view), 'no-store');
+        return;
+      }
+    }
+    if (path === '/api/payday' && options.payday !== undefined) {
+      let view: PaydayView;
+      try {
+        view = await options.payday(request);
+      } catch (error) {
+        options.onError?.(error);
+        send(response, 500, 'application/json; charset=utf-8', JSON.stringify({ error: 'payday-unavailable' }), 'no-store');
+        return;
+      }
+      send(response, 200, 'application/json; charset=utf-8', JSON.stringify(view), 'no-store');
+      return;
+    }
     if (path.startsWith('/api/')) {
       send(response, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'not-found' }), 'no-store');
       return;
     }
     if (options.extra !== undefined && (await options.extra(request, response, path))) return;
 
-    if (APP_PATHS.includes(path)) {
+    if (APP_PATHS.includes(path) || SCREEN_PATHS.includes(path)) {
       await sendFile(response, join(webRoot, 'index.html'), 'no-cache');
       return;
     }

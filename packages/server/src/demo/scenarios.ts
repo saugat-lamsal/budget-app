@@ -77,6 +77,14 @@ interface Story {
   // More to see on Buckets: money held for a roommate, and mom paid this
   // month within the target.
   readonly bucketsBusy?: boolean;
+  // One of every kind of row on the lists of what went in and out of each
+  // bucket (B97 to B100): a tip after payday, a purchase counted late, a
+  // split, a refund, money in, a hand move, a leftover moved to savings.
+  readonly activityBusy?: boolean;
+  // The second paycheck has just come in (for the Payday screen): the
+  // leftover questions are open and the new paycheck's share is not in the
+  // savings account yet.
+  readonly secondPaycheck?: boolean;
 }
 
 // When the bank was last read and matched, in the "bank-not-read" life:
@@ -102,13 +110,17 @@ function story(s: Story): HomeInput {
 
   buy('2026-09-22', 6_412, 'GROCERY OUTLET #12', 'checking');
   buy('2026-09-26', 575, 'BLUE DOOR COFFEE');
+  // A coffee still pending the day before payday, which posts after it with a tip.
+  const pendingCoffee = s.activityBusy === true ? buy('2026-10-01', 450, 'BLUE DOOR COFFEE', 'everyday-card', true) : '';
   book.receive({ kind: 'deposit', id: 'demo-pay', account: 'checking', date: PAYDAY, amount: x(420_000), description: `${EMPLOYER} DIR DEP` });
   for (const item of book.reviewItems()) {
-    if (item.type === 'leftover' && s.reviewBusy !== true) book.answerLeftover(item.id, 'roll-over', PAYDAY);
+    // On the busy lists, needs' leftover is moved to savings, so that row is there to see.
+    const answer = s.activityBusy === true && item.type === 'leftover' && item.bucket === 'needs' ? 'move-to-savings' : 'roll-over';
+    if (item.type === 'leftover' && s.reviewBusy !== true) book.answerLeftover(item.id, answer, PAYDAY);
   }
   book.receive({ kind: 'payment-to-person', id: 'demo-mom', account: 'checking', date: '2026-10-03', amount: x(50_000), description: `ZELLE TO ${MOM}` });
-  buy('2026-10-03', 8_643, 'GROCERY OUTLET #12', 'checking');
-  buy('2026-10-04', 4_120, 'CORNER GAS STATION');
+  const groceryRun = buy('2026-10-03', 8_643, 'GROCERY OUTLET #12', 'checking');
+  const gasRun = buy('2026-10-04', 4_120, 'CORNER GAS STATION');
   buy('2026-10-05', 3_890, 'MAIN ST RESTAURANT');
   if (s.chargedTwice === true) {
     const copy = buy('2026-10-05', 3_890, 'MAIN ST RESTAURANT');
@@ -126,6 +138,35 @@ function story(s: Story): HomeInput {
     book.sort('busy-roommate', { to: 'not-mine' }, DEMO_TODAY);
     // Mom again: 2,500.00 for the month so far, inside the 2,000.00 to 3,000.00 target (8.2).
     book.receive({ kind: 'payment-to-person', id: 'busy-mom', account: 'checking', date: '2026-10-06', amount: x(200_000), description: `ZELLE TO ${MOM}` });
+  }
+  if (s.activityBusy === true) {
+    // The coffee posts after payday with a tip: 1.25 more than it showed, counted in this pay period (B97).
+    book.receive({ kind: 'purchase', id: 'act-coffee-posted', account: 'everyday-card', date: '2026-10-03', amount: x(575), description: 'BLUE DOOR COFFEE', pending: false, pendingId: pendingCoffee });
+    cardExtra += 575;
+    // Something bought the day before payday that is first seen after it (B4).
+    buy('2026-10-01', 2_150, 'GROCERY OUTLET #12', 'checking');
+    // A split purchase, and part of a grocery run refunded (4.4, 4.5).
+    book.receive({ kind: 'purchase', id: 'act-hardware', account: 'checking', date: '2026-10-04', amount: x(9_000), description: 'HARDWARE SUPERSTORE', pending: false });
+    book.sort('act-hardware', { split: [{ bucket: 'needs', amount: x(6_000) }, { bucket: 'wants', amount: x(3_000) }] }, DEMO_TODAY);
+    book.receive({ kind: 'refund', id: 'act-refund', account: 'checking', date: '2026-10-05', amount: x(1_500), description: 'GROCERY OUTLET #12 REFUND', refundOf: groceryRun });
+    // The gas station run was really wants: sorted again by hand (4.7).
+    book.sort(gasRun, { to: 'wants' }, DEMO_TODAY);
+    // A card fee, sorted to needs (4.8).
+    book.receive({ kind: 'card-charge', id: 'act-fee', account: 'everyday-card', date: '2026-10-04', amount: x(3_500), description: 'LATE FEE', charge: 'fee' });
+    book.sort('act-fee', { to: 'needs' }, DEMO_TODAY);
+    cardExtra += 3_500;
+    // Money in: a friend paying back, a side job, and a roommate's share (6.1, 7.1).
+    book.receive({ kind: 'deposit', id: 'act-payback', account: 'checking', date: '2026-10-05', amount: x(5_000), description: 'ZELLE FROM MADE UP FRIEND' });
+    book.sort('act-payback', { to: 'wants' }, DEMO_TODAY);
+    book.receive({ kind: 'deposit', id: 'act-side', account: 'checking', date: '2026-10-06', amount: x(25_000), description: 'MADE UP SIDE JOB' });
+    book.sort('act-side', { to: 'other-income' }, DEMO_TODAY);
+    book.receive({ kind: 'deposit', id: 'act-roommate', account: 'checking', date: '2026-10-05', amount: x(12_000), description: 'ZELLE FROM MADE UP ROOMMATE' });
+    book.sort('act-roommate', { to: 'not-mine' }, DEMO_TODAY);
+    // Paid for a friend, marked not mine (7.2).
+    book.receive({ kind: 'payment-to-person', id: 'act-friend', account: 'checking', date: '2026-10-06', amount: x(4_000), description: 'ZELLE TO MADE UP FRIEND' });
+    book.sort('act-friend', { to: 'not-mine' }, DEMO_TODAY);
+    // A hand move (13.3).
+    book.moveMoney({ from: 'wants', to: 'needs', amount: x(2_500) }, '2026-10-06');
   }
   if (s.reviewBusy === true) {
     const rid = (name: string): string => `busy-${name}`;
@@ -161,6 +202,10 @@ function story(s: Story): HomeInput {
   // The last time the bank was read and matched was before the coffee.
   const checkedThisMorning = book.safeToSpend(s.today ?? DEMO_TODAY).amount;
   buy('2026-10-07', 625, 'BLUE DOOR COFFEE', 'everyday-card', true);
+  // The second paycheck, on its day: a new pay period, with both leftover questions open.
+  if (s.secondPaycheck === true) {
+    book.receive({ kind: 'deposit', id: 'demo-pay-2', account: 'checking', date: '2026-10-16', amount: x(420_000), description: `${EMPLOYER} DIR DEP` });
+  }
 
   let statements = s.statements ?? [EVERYDAY_STATEMENT, OLD_CARD_STATEMENT];
   let everydayCardOwes = x(61_248 + 575 + 4_120 + 3_890 + 1_599 + 2_317 + 1_150 + 625 + cardExtra) + (s.eatingOut === undefined ? 0 : x(s.eatingOut));
@@ -177,7 +222,14 @@ function story(s: Story): HomeInput {
   // been moved yet (3.8), and checking holds the rest.
   const pots = book.pots();
   const shouldBeInSavings = addCents(pots.savings, pots.momReserve);
-  const savings = s.allDone === true ? shouldBeInSavings : subtractCents(subtractCents(shouldBeInSavings, x(135_000)), x(savingsOut));
+  const lastSplit = book.paychecks().at(-1)?.split;
+  // With a second paycheck, the first one's share has been moved and the new one's has not (3.8).
+  const savings =
+    s.secondPaycheck === true && lastSplit !== undefined
+      ? subtractCents(shouldBeInSavings, addCents(lastSplit.savings, lastSplit.momReserve))
+      : s.allDone === true
+        ? shouldBeInSavings
+        : subtractCents(subtractCents(shouldBeInSavings, x(135_000)), x(savingsOut));
   const appSide = subtractCents(addCents(pots.savings, pots.needs, pots.wants, pots.momReserve, pots.heldForOthers, pots.unsortedIn), pots.unsortedOut);
   const checking = addCents(subtractCents(subtractCents(appSide, book.inTransit().total), savings), everydayCardOwes, s.bankOff ?? 0);
   const bank: BankBalances = { checking, savings, everydayCard: everydayCardOwes };
@@ -217,6 +269,8 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   { name: 'big', title: 'Very large numbers', input: () => story({ scale: 100_000 }) },
   { name: 'review-busy', title: 'Review: one of everything waiting', input: () => story({ reviewBusy: true }) },
   { name: 'buckets-busy', title: 'Buckets: money held for a roommate, mom paid in the target', input: () => story({ bucketsBusy: true }) },
+  { name: 'activity-busy', title: 'Activity: every kind of row on the lists of what went in and out', input: () => story({ activityBusy: true }) },
+  { name: 'payday-paid', title: 'Payday: the second paycheck just came in, two leftover questions open', input: () => story({ today: '2026-10-16', secondPaycheck: true, allDone: true, statements: [] }) },
   {
     name: 'not-set-up',
     title: 'Before setup day',
