@@ -208,6 +208,8 @@ describe.each(ENGINES)('Buckets in %s', (_name, engine) => {
       else await route.continue();
     });
     await page.goto(`${base()}/demo/normal`);
+    // Home's numbers are in before leaving it (see openScenario).
+    await page.locator('main[aria-busy="false"]').waitFor();
     await page.goto(`${base()}/buckets`);
     await page.getByTestId('buckets-loading').waitFor();
     expect(await page.getByTestId('buckets').getAttribute('aria-busy')).toBe('true');

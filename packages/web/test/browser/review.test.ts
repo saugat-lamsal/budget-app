@@ -853,6 +853,8 @@ describe.each(ENGINES)('Review in %s', (_name, engine) => {
       else await route.continue();
     });
     await page.goto(`${base()}/demo/normal`);
+    // Home's numbers are in before leaving it (see openScenario).
+    await page.locator('main[aria-busy="false"]').waitFor();
     await page.goto(`${base()}/review`);
     await page.getByTestId('review-loading').waitFor();
     expect(await page.getByTestId('review').getAttribute('aria-busy')).toBe('true');

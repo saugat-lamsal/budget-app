@@ -161,7 +161,12 @@ export async function openScenario(context: BrowserContext, base: string, scenar
   const page = await context.newPage();
   watchPage(page);
   await page.goto(`${base}/demo/${scenario}`);
-  if (path !== '/home') await page.goto(`${base}${path}`);
+  if (path !== '/home') {
+    // Home loads its numbers first. Leave only once they are in: WebKit on
+    // Linux can fail the next page when one is left mid-request (Oct 7, CI).
+    await waitOrReport(page, base, 'main[aria-busy="false"]');
+    await page.goto(`${base}${path}`);
+  }
   // Home, Buckets, and Review are ready once their numbers have loaded.
   await waitOrReport(page, base, 'main[aria-busy="false"], [data-testid="settings"]');
   return page;
