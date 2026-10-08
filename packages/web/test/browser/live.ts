@@ -8,7 +8,7 @@ import { bucketsView } from '../../../server/src/views/buckets.js';
 import { homeView } from '../../../server/src/views/home.js';
 import { paydayView } from '../../../server/src/views/payday.js';
 import { reviewView } from '../../../server/src/views/review.js';
-import { WEB_ROOT, listen, untilQuiet, waitOrReport, watchPage } from './harness.js';
+import { WEB_ROOT, listen, untilAnswered, waitOrReport, watchPage } from './harness.js';
 
 // One book, served live: every screen's numbers are worked out from it, and
 // his choices go to a real desk on it, so a tap changes the book the way it
@@ -49,6 +49,6 @@ export async function openLive(context: BrowserContext, base: string, path: stri
   await waitOrReport(page, base, 'main[aria-busy="false"]');
   // Home's numbers are asked for on every screen: the page is handed over only
   // once that is answered too, so a test that closes it cancels nothing.
-  await untilQuiet(page);
+  await untilAnswered(page);
   return page;
 }

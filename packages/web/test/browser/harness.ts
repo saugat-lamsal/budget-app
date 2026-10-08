@@ -95,6 +95,28 @@ export function watchPage(page: Page): void {
   const watch = { pending: new Map<Request, number>(), failed: [] as string[], console: [] as string[] };
   pageWatch.set(page, watch);
   page.on('request', (r) => watch.pending.set(r, Date.now()));
+  void page.addInitScript(() => {
+    const w = window as unknown as { __fetchesOnTheirWay?: number };
+    if (w.__fetchesOnTheirWay !== undefined) return;
+    w.__fetchesOnTheirWay = 0;
+    const real = window.fetch.bind(window);
+    window.fetch = (...args) => {
+      w.__fetchesOnTheirWay = (w.__fetchesOnTheirWay ?? 0) + 1;
+      const done = (): void => {
+        w.__fetchesOnTheirWay = (w.__fetchesOnTheirWay ?? 1) - 1;
+      };
+      return real(...args).then(
+        (response) => {
+          done();
+          return response;
+        },
+        (error: unknown) => {
+          done();
+          throw error;
+        },
+      );
+    };
+  });
   page.on('requestfinished', (r) => watch.pending.delete(r));
   // Playwright reports "finished" only for answers it counts as loaded: an error
   // answer (500) never says so. It is an answer all the same.
@@ -116,6 +138,10 @@ export function watchPage(page: Page): void {
 // only waits the first time the page goes idle. After a change the screens ask
 // for their numbers again, and this waits for those answers. The page must
 // have been opened with watchPage.
+//
+// After a tap the screens ask again a moment later, so this waits for a few
+// checks in a row, 60 ms apart, to find nothing on its way. A page that has
+// just opened is better served by untilAnswered.
 export async function untilQuiet(page: Page): Promise<void> {
   const watch = pageWatch.get(page);
   if (watch === undefined) throw new Error('untilQuiet needs a page opened with watchPage');
@@ -127,6 +153,15 @@ export async function untilQuiet(page: Page): Promise<void> {
     await page.waitForTimeout(60);
     calm = onItsWay.length === 0 ? calm + 1 : 0;
   }
+}
+
+// For a page that has just opened: waits until every fetch the page itself has
+// started is answered. The count is kept inside the page (watchPage puts it
+// there), where a fetch is counted the moment it starts, so it is exact; the
+// events Playwright sends can arrive after the screen has already moved on
+// (WebKit). It returns at once when nothing is on its way.
+export async function untilAnswered(page: Page): Promise<void> {
+  await page.waitForFunction(() => (window as unknown as { __fetchesOnTheirWay?: number }).__fetchesOnTheirWay === 0, undefined, { timeout: 15_000 });
 }
 
 async function stuckReport(page: Page, base: string): Promise<string> {
@@ -203,7 +238,7 @@ export async function openScenario(context: BrowserContext, base: string, scenar
   await waitOrReport(page, base, 'main[aria-busy="false"], [data-testid="settings"]');
   // Home's numbers are asked for on every screen: the page is handed over only
   // once that is answered too, so a test that closes it cancels nothing.
-  await untilQuiet(page);
+  await untilAnswered(page);
   return page;
 }
 

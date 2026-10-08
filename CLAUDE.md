@@ -367,8 +367,8 @@ This applies to every phase and every session, cloud or local.
   - Shared choosing for Review and the lists: screens/choose.tsx.
   - Demo lives added: activity-busy and payday-paid. Worked examples: money
     27 to 29, screens 12 to 14.
-  - Tests: 2,093 pass (469 more than PR #8 ended with): money 992, server
-    489, web 64, browser 533 (Chromium and WebKit). Random lives: 100
+  - Tests: 2,095 pass (471 more than PR #8 ended with): money 992, server
+    489, web 64, browser 535 (Chromium and WebKit). Random lives: 100
     simulated lives of 3 years with every check passing, including the new
     "every bucket's list adds up" check. Browser tests: bucket lists,
     moves, Payday, design rules (design-activity), random lives with random
@@ -394,12 +394,14 @@ This applies to every phase and every session, cloud or local.
     Connection: close (harness.ts listen, test/test-server.test.ts), so
     WebKit has no connection to reuse after a cancelled request or one the
     server is closing. A page is handed over quiet too (openScenario and
-    openLive wait for what is on its way: Home's numbers are asked for on
-    every screen, and a test that closed the page cancelled that request,
-    which stalled the next page on Linux CI, Oct 8). Playwright never says
-    an error answer (500) finished, so the page watcher counts a response as
-    the end of a request. Cost: the browser tests take about 40 seconds
-    more here.
+    openLive call untilAnswered: Home's numbers are asked for on every
+    screen, and a test that closed the page cancelled that request, which
+    stalled the next page on Linux CI, Oct 8). The count of fetches on their
+    way is kept inside the page, where it is exact; Playwright's own events
+    can arrive late in WebKit, and it never says an error answer (500)
+    finished. The Windows job's time limit is 45 minutes (it was cut off at
+    30 on Oct 8, when the tests had got slower), and the old contrast test
+    in design.test.ts is one test per colour scheme too.
   - Break-it: new breaks are tagged "[activity]" (100). The existing breaks
     for code the refactor moved (49) were pointed at where it is now. Run
     for the sections changed (the testing bar): every one caught, none
