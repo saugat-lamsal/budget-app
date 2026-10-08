@@ -268,20 +268,36 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
     await page.goto(`${base()}/buckets/needs`);
     await page.getByTestId('activity-now').waitFor();
     await page.getByTestId(`row-${GROCERY_OCT_1}`).click();
-    await page.getByTestId('activity-sheet').getByTestId('choice-wants').click();
-    await page.getByTestId('notice').waitFor();
+    await untilAskedAgain(page, async () => {
+      await page.getByTestId('activity-sheet').getByTestId('choice-wants').click();
+      await page.getByTestId('notice').waitFor();
+    });
     await page.getByTestId('move-open').click();
     await page.getByTestId('move-amount').fill('5.00');
-    await page.getByTestId('move-submit').click();
-    await page.getByTestId('notice').waitFor();
-    // The screens ask again after a change; leaving while one is on its way is not an error of the app, but WebKit reports it.
-    await page.waitForLoadState('networkidle');
+    await untilAskedAgain(page, async () => {
+      await page.getByTestId('move-submit').click();
+      await page.getByTestId('notice').waitFor();
+    });
     await page.goto(`${base()}/payday`);
     await page.getByTestId('paycheck-amount').waitFor();
     expect(errors, errors.join(' | ')).toEqual([]);
     await context.close();
   });
 });
+
+// After a change the screens ask for the bucket's list and for Home again.
+// Leaving the page while one of those is on its way is not an error of the
+// app, but WebKit reports the cut-short request as one (and waiting for
+// "network idle" does not help: the page was already idle once). So the test
+// waits for both answers, whole, before it goes anywhere.
+async function untilAskedAgain(page: Page, change: () => Promise<void>): Promise<void> {
+  const answered = Promise.all([
+    page.waitForResponse((r) => r.request().method() === 'GET' && new URL(r.url()).pathname.startsWith('/api/activity/')),
+    page.waitForResponse((r) => r.request().method() === 'GET' && new URL(r.url()).pathname === '/api/home'),
+  ]);
+  await change();
+  for (const response of await answered) await response.finished();
+}
 
 // Opens the sheets in order, up to and including the one with this name, and
 // returns its name (so each sheet can be checked on its own, from a fresh start).

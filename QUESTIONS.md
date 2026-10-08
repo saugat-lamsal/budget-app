@@ -890,7 +890,9 @@ B103. Hand moves (13.3, 13.4, 13.5), from Buckets and from the list of each
       the same decision, so it moves once. Two separate taps with the same
       amount are two moves, since that can be what you mean. Each move is
       in the change log with the day it was made, and shows on the lists of
-      both buckets. Home's safe to spend changes right away.
+      both buckets. Home's safe to spend changes right away. The demo keeps
+      the decision numbers in memory, like Review's (B92); the real server
+      must keep them with the book's history (Phase 6).
 
 B104. Payday shows what the last paycheck did, step by step, from the
       money math: the mom reserve first (how much came off, how much went

@@ -332,6 +332,53 @@ This applies to every phase and every session, cloud or local.
     out of needs (5.2); from savings it comes back to pick savings or
     needs. Buckets shows the mom reserve as its own row, and what was sent
     this month in its own card, "Sent to mom".
-  - Waiting on: his merge of PR #8, and B88 to B96 to check.
+  - PR #8 merged (Oct 7, 2026). Still to check: B88 to B96.
+- Phase 4, step 5, the lists of what went in and out of a bucket, moving
+  money by hand, and Payday: built Oct 8, 2026 on branch
+  phase-4-activity-moves-payday (PR #9), on made-up data only. Then stop,
+  for his feedback.
+  - The book now keeps a ledger (packages/money/src/activity.ts): a line each
+    time something changes what a bucket holds, stamped with the pay period
+    it was counted in, and undone with a refused answer. Book.activity (one
+    bucket's list), Book.periodSummary, Book.paydayReport (payday-report.ts)
+    and Book.resortDetail (resort.ts) read from it; the screens work out
+    nothing. For every bucket and pay period, carried in + came in + went
+    out = now, to the cent (B97), and the simulator checks that every day.
+    A pay period starts when the book counts the paycheck (B53, B97).
+  - Activity (screens/Activity.tsx, views/activity.ts, /buckets/<bucket>):
+    tapping a bucket on Buckets lists what went in and out of it this pay
+    period, newest first. Tapping a row sorts it again (4.7) with the same
+    choices Review gives, including "always do this" (13.6); what cannot be
+    sorted again says why. Sorting again uses the same facts as Review
+    (#spendFacts); a test checks that the book accepts exactly the choices
+    offered.
+  - Moves (screens/Move.tsx, from Buckets and from each list): 13.3, with 13.4's
+    questions coming from the desk (needs-confirmation with its reasons).
+  - Payday (screens/Payday.tsx, views/payday.ts, /payday, linked from Home
+    and Buckets): what the last paycheck did step by step, the amount to
+    move to savings (3.8), the leftover questions (3.4) and the summary of
+    the pay period that ended.
+  - Taps reach the books through the same desk and the same one address,
+    POST /api/choice: { resort: true } for sorting again and a move request
+    for moves. Repeats of a decision change nothing; a refusal changes
+    nothing and says why. The screens still write only /api/seen and
+    /api/choice (read-only.test.ts).
+  - Shared choosing for Review and the lists: screens/choose.tsx.
+  - Demo lives added: activity-busy and payday-paid. Worked examples: money
+    27 to 29, screens 12 to 14.
+  - Tests: 2,041 pass (417 more than PR #8 ended with): money 976, server
+    483, web 62, browser 505 (Chromium and WebKit). Random lives: 100
+    simulated lives of 3 years with every check passing, including the new
+    "every bucket's list adds up" check. Browser tests: bucket lists,
+    moves, Payday, design rules (design-activity), random lives with random
+    taps against a twin of the book. The accessibility and tap-size checks
+    now wait for animations to finish (design-helpers.ts atRest): a button
+    just tapped, or a sheet still sliding in, made them fail now and then.
+  - Break-it: new breaks are tagged "[activity]" (78). The existing breaks
+    for code the refactor moved (49) were pointed at where it is now. Run
+    for the sections changed (the testing bar): every one caught, none
+    survived. The full run is at the end of Phase 4.
+  - Waiting on: his review; A20 and B97 to B108 to check. The real server
+    must keep decision numbers with the book's history (B103, Phase 6).
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.

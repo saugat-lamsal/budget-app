@@ -12,8 +12,22 @@ interface AxeViolation {
   readonly nodes: readonly { readonly target: readonly string[]; readonly failureSummary?: string }[];
 }
 
+// The design checks judge the screen at rest. A button that was just tapped
+// fades its opacity back over a moment and a sheet slides in, and a colour or
+// a size measured halfway through that is not what he sees (a size can come
+// out a rounding error short of 44 while a sheet is still sliding). So a frame
+// or two pass, for a transition that was just started to begin, and then every
+// animation and transition that is running finishes.
+export async function atRest(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+    await Promise.all(document.getAnimations().map((animation) => animation.finished.catch(() => undefined)));
+  });
+}
+
 export async function axeViolations(page: Page): Promise<string[]> {
   await page.addScriptTag({ content: AXE });
+  await atRest(page);
   const violations = await page.evaluate(async () => {
     const axe = (window as unknown as { axe: { run: (context: Document, options: object) => Promise<{ violations: AxeViolation[] }> } }).axe;
     const result = await axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] }, resultTypes: ['violations'] });
@@ -24,6 +38,7 @@ export async function axeViolations(page: Page): Promise<string[]> {
 
 // Everything a finger can tap.
 export async function tappable(page: Page): Promise<{ readonly what: string; readonly x: number; readonly y: number; readonly width: number; readonly height: number }[]> {
+  await atRest(page);
   return page.locator('a[href], button, [role="button"], input, select, summary').evaluateAll((elements) =>
     elements
       .filter((e) => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden')
