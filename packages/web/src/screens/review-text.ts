@@ -1,6 +1,7 @@
-import type { AccountId, PickTo, ReviewDetail, SpendingSort, TransferOutcome } from '@budget-app/money';
+import type { AccountId, PickTo, ReviewDetail, SortedNow, SpendingSort, TransferOutcome } from '@budget-app/money';
 import type { ChoiceOf, Done } from '@budget-app/server/views';
 import { moneyText } from '../ui/money-format.js';
+import { POT_NAMES } from '../ui/names.js';
 
 // Words on the Review screen: what each waiting item is, what each choice
 // is called, and what was done. The screen shows what the money math offers;
@@ -14,10 +15,7 @@ export const ACCOUNT_NAMES: Readonly<Record<AccountId, string>> = {
 };
 
 export const BUCKET_NAMES: Readonly<Record<string, string>> = {
-  savings: 'Savings',
-  needs: 'Needs',
-  wants: 'Wants',
-  momReserve: 'Mom reserve',
+  ...POT_NAMES,
   'not-mine': 'Not mine',
 };
 
@@ -96,6 +94,27 @@ export function sortedWords(sorted: SpendingSort): string {
       return 'Counted on setup day';
     default:
       return `In ${BUCKET_NAMES[sorted.to] ?? sorted.to}`;
+  }
+}
+
+// Where an item is sorted now, in words (rule 4.7, B100): "in Wants", "split: ...".
+export function nowWords(now: SortedNow): string {
+  if ('split' in now) return `split: ${now.split.map((p) => `${BUCKET_NAMES[p.bucket] ?? p.bucket} ${moneyText(p.amount)}`).join(', ')}`;
+  switch (now.to) {
+    case 'not-mine':
+      return 'marked not mine';
+    case 'mom':
+      return 'marked for mom';
+    case 'other-income':
+      return 'counted as other income';
+    case 'momReserve':
+      return 'in the Mom reserve';
+    case 'unsorted':
+      return 'not sorted yet';
+    case 'counted-at-setup':
+      return 'counted on setup day';
+    default:
+      return `in ${BUCKET_NAMES[now.to] ?? now.to}`;
   }
 }
 

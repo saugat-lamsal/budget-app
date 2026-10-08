@@ -3,8 +3,10 @@ import type { Server } from 'node:http';
 import type { BrowserContext, Page } from 'playwright';
 import { ChoiceDesk } from '../../../server/src/choices.js';
 import { createAppServer } from '../../../server/src/http/server.js';
+import { activityView } from '../../../server/src/views/activity.js';
 import { bucketsView } from '../../../server/src/views/buckets.js';
 import { homeView } from '../../../server/src/views/home.js';
+import { paydayView } from '../../../server/src/views/payday.js';
 import { reviewView } from '../../../server/src/views/review.js';
 import { WEB_ROOT, listen, waitOrReport, watchPage } from './harness.js';
 
@@ -27,6 +29,9 @@ export function liveServer(life: LiveLife): Server {
     buckets: () => bucketsView({ today: life.today, book: life.book, bank: life.bank, madeUpData: true }),
     review: () => reviewView({ today: life.today, book: life.book, madeUpData: true }),
     choice: (_request, choice) => desk.decide(choice),
+    move: (_request, move) => desk.move(move),
+    activity: (_request, pot) => activityView({ today: life.today, book: life.book, pot, madeUpData: true }),
+    payday: () => paydayView({ today: life.today, book: life.book, bank: life.bank, madeUpData: true }),
   });
 }
 
@@ -36,7 +41,7 @@ export async function startLive(life: LiveLife): Promise<{ readonly server: Serv
 }
 
 // Opens a screen of a live book and waits for its numbers.
-export async function openLive(context: BrowserContext, base: string, path: '/home' | '/buckets' | '/review'): Promise<Page> {
+export async function openLive(context: BrowserContext, base: string, path: string): Promise<Page> {
   const page = await context.newPage();
   page.setDefaultTimeout(15_000);
   watchPage(page);

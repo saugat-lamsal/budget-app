@@ -1,0 +1,624 @@
+import { parseDollars, type AccountId, type ActivityRow, type Cents, type IsoDate, type LikelyPurchase, type PaycheckSplit, type PickTo, type ReviewDetail, type ReviewOptions, type SortedNow } from '@budget-app/money';
+import type { ChoiceOf, ChoicePart, ChoiceRequest } from '@budget-app/server/views';
+import { useRef, useState, type ReactNode } from 'react';
+import { newDecisionId, sendChoice, type Reload } from '../app/api.js';
+import { BottomSheet, Button, ButtonRow, Card, Decision, ListRow, Money, Notice, TextField, ToggleRow } from '../ui/blocks.js';
+import { shortDate } from '../ui/dates.js';
+import { moneyText } from '../ui/money-format.js';
+import { ACCOUNT_NAMES, BUCKET_NAMES, doneText, nowWords, pickLabel, reasonText, sortedWords, titleOf, transferWords } from './review-text.js';
+
+// Choosing what happens to an item: the same for an item waiting in Review
+// and for one sorted already, from the list of what went in and out of a
+// bucket (rule 4.7, QUESTIONS.md B100 to B102). Every choice shown is one the
+// money math offers for that kind of item (the server sends them with the
+// item); the screen decides nothing. A tap sends the choice and the server's
+// money math does the rest. The same decision sent twice changes nothing the
+// second time, a refused choice changes nothing and says why, and anything
+// final asks first.
+
+export type Kind = ReviewDetail['item']['type'];
+type SortOptions = Extract<ReviewOptions, { type: 'sort' }>;
+
+// What a choice is about, as far as sending it and saying what was done.
+export interface Target {
+  readonly id: string;
+  readonly label: string;
+  readonly kind: Kind;
+}
+
+// An item that can be sorted: what the sheet of choices needs to know.
+export interface Subject {
+  readonly target: Target & { readonly kind: 'spending' | 'money-in' };
+  readonly amount: Cents;
+  readonly date: IsoDate;
+  readonly account: AccountId | null;
+  // The first line of the sheet: why it waits, or where it is now.
+  readonly heading: string;
+  readonly options: SortOptions;
+  readonly likely: readonly LikelyPurchase[];
+  readonly paycheckPreview: PaycheckSplit | null;
+  // Where it is sorted now; null while it waits in review.
+  readonly now: SortedNow | null;
+  // What a rule made from this item starts out as, and what it would catch.
+  readonly ruleText: string;
+  readonly ruleWhat: 'deposits' | 'payments to people' | 'purchases';
+  // A store refund the app could not match to its purchase (4.5, A18).
+  readonly refund: boolean;
+}
+
+// One decision, made once: its number stays the same for every retry of it.
+export interface Pending {
+  readonly id: string;
+  readonly item: string;
+  readonly label: string;
+  readonly kind: Kind;
+  readonly choice: ChoiceOf;
+  readonly always?: { readonly contains: string };
+  readonly confirmed?: boolean;
+  // What the confirm step says.
+  readonly ask?: ReactNode;
+  // What the choice pointed at, for the answer (doneText).
+  readonly about?: string;
+}
+
+// What comes with a choice: a rule, what "are you sure" says, and what it pointed at.
+export interface Extra {
+  readonly always?: { readonly contains: string };
+  readonly ask?: ReactNode;
+  readonly final?: boolean;
+  readonly about?: string;
+}
+
+export type Choose = (target: Target, choice: ChoiceOf, extra?: Extra) => void;
+
+export type Sheet = { readonly item: string; readonly step: 'choose' } | { readonly item: string; readonly step: 'confirm'; readonly pending: Pending };
+
+export interface Said {
+  readonly tone: 'ok' | 'warning' | 'danger';
+  readonly text: string;
+  // Sending failed for want of a signal: the same decision can be sent again.
+  readonly retry?: Pending;
+}
+
+// ----- What each kind of item is, for the sheet -----
+
+export function subjectOfReview(detail: ReviewDetail): Subject | null {
+  const { item, options } = detail;
+  if ((item.type !== 'spending' && item.type !== 'money-in') || options.type !== 'sort') return null;
+  return {
+    target: { id: item.id, label: item.description, kind: item.type },
+    amount: item.amount,
+    date: item.date,
+    account: detail.account,
+    heading: reasonText(item),
+    options,
+    likely: detail.likelyPurchases,
+    paycheckPreview: detail.paycheckPreview,
+    now: null,
+    ruleText: item.description,
+    ruleWhat: item.type === 'money-in' ? 'deposits' : item.reason === 'person-payment' ? 'payments to people' : 'purchases',
+    refund: item.type === 'money-in' && item.reason === 'refund',
+  };
+}
+
+// A row of a bucket's list, if it can be sorted again (B100).
+export function subjectOfRow(row: ActivityRow): Subject | null {
+  const r = row.resort;
+  if (!r.resortable) return null;
+  return {
+    target: { id: r.id, label: r.description, kind: r.type },
+    amount: r.amount,
+    date: r.date,
+    account: r.account,
+    heading: `Now ${nowWords(r.now)}`,
+    options: r.options,
+    likely: r.likelyPurchases,
+    paycheckPreview: r.paycheckPreview,
+    now: r.now,
+    ruleText: r.description,
+    ruleWhat: r.type === 'money-in' ? 'deposits' : row.what === 'person-payment' ? 'payments to people' : 'purchases',
+    refund: r.refund,
+  };
+}
+
+// ----- Sending a choice -----
+
+// The state of choosing and sending, for a screen. One request at a time: a
+// second tap before the screen has redrawn must not send a second request.
+export function useChoiceFlow(options: { readonly resort: boolean; readonly reload: Reload; readonly onChanged: Reload }) {
+  const [sheet, setSheet] = useState<Sheet | null>(null);
+  const [said, setSaid] = useState<Said | null>(null);
+  const [sending, setSending] = useState(false);
+  const lock = useRef(false);
+
+  // Closing the sheet by hand drops a refusal he has read. The sheet also
+  // closes by itself when a choice goes through (or the item was already
+  // dealt with): that must not wipe what was just said.
+  const closeSheet = (): void => {
+    if (sheet === null) return;
+    setSheet(null);
+    setSaid(null);
+  };
+
+  // A sheet opened later does not show what was said about the last thing.
+  const openSheet = (id: string): void => {
+    setSaid(null);
+    setSheet({ item: id, step: 'choose' });
+  };
+
+  const submit = (pending: Pending): void => {
+    if (lock.current) return;
+    lock.current = true;
+    setSending(true);
+    setSaid(null);
+    const request: ChoiceRequest = {
+      id: pending.id,
+      item: pending.item,
+      choice: pending.choice,
+      ...(pending.always === undefined ? {} : { always: pending.always }),
+      ...(pending.confirmed === true ? { confirmed: true } : {}),
+      ...(options.resort ? { resort: true as const } : {}),
+    };
+    sendChoice(request).then(
+      (answer) => {
+        lock.current = false;
+        setSending(false);
+        if (answer.ok) {
+          setSheet(null);
+          setSaid({ tone: 'ok', text: doneText(pending.label, pending.kind, answer.done, pending.about) });
+        } else if (answer.code === 'not-waiting') {
+          setSheet(null);
+          setSaid({ tone: 'warning', text: `${pending.label}: ${answer.why}` });
+        } else {
+          // Refused: nothing changed. Back to the choices, with the reason.
+          setSheet((current) => (current === null ? null : { item: current.item, step: 'choose' }));
+          setSaid({ tone: 'danger', text: answer.why });
+          return;
+        }
+        options.reload('after');
+        options.onChanged('after');
+      },
+      () => {
+        lock.current = false;
+        setSending(false);
+        setSaid({ tone: 'danger', text: "Couldn't save that. Check your connection and try again. Nothing is counted twice.", retry: pending });
+      },
+    );
+  };
+
+  // A choice is made: final ones ask first, the rest are sent at once.
+  const choose: Choose = (target, choice, extra = {}) => {
+    const pending: Pending = {
+      id: newDecisionId(),
+      item: target.id,
+      label: target.label,
+      kind: target.kind,
+      choice,
+      ...(extra.always === undefined ? {} : { always: extra.always }),
+      ...(extra.ask === undefined ? {} : { ask: extra.ask }),
+      ...(extra.about === undefined ? {} : { about: extra.about }),
+    };
+    if (extra.final === true || extra.always !== undefined) {
+      setSaid(null);
+      setSheet({ item: target.id, step: 'confirm', pending });
+    } else submit(pending);
+  };
+
+  return { sheet, said, sending, setSaid, setSheet, openSheet, closeSheet, submit, choose };
+}
+
+export type ChoiceFlow = ReturnType<typeof useChoiceFlow>;
+
+export function SaidNotice({ said, sending, onRetry, onDismiss, sticky = false }: { readonly said: Said; readonly sending: boolean; readonly onRetry: (pending: Pending) => void; readonly onDismiss: () => void; readonly sticky?: boolean }) {
+  const retry = said.retry;
+  return (
+    <Notice
+      tone={said.tone}
+      icon={said.tone === 'ok' ? 'check' : 'alert'}
+      sticky={sticky}
+      testId="notice"
+      action={
+        retry !== undefined ? (
+          <Button variant="secondary" onClick={() => onRetry(retry)} testId="notice-retry">
+            {sending ? 'Saving…' : 'Try again'}
+          </Button>
+        ) : (
+          <Button variant="plain" onClick={onDismiss} testId="notice-dismiss">
+            OK
+          </Button>
+        )
+      }
+    >
+      {said.text}
+    </Notice>
+  );
+}
+
+// ----- A payday question (3.4): the same card in Review and on Payday -----
+
+export function LeftoverDecision({ detail, busy, onChoose }: { readonly detail: ReviewDetail; readonly busy: boolean; readonly onChoose: Choose }) {
+  const { item, options } = detail;
+  if (item.type !== 'leftover' || options.type !== 'leftover') return null;
+  const bucket = BUCKET_NAMES[item.bucket] ?? item.bucket;
+  const target: Target = { id: item.id, label: titleOf(item), kind: item.type };
+  return (
+    <Decision
+      testId={`item-${item.id}`}
+      title={titleOf(item)}
+      amount={<Money cents={item.amount} testId="item-amount" />}
+      detail={`${reasonText(item)} · ${shortDate(item.date)}`}
+      actions={
+        <ButtonRow>
+          {options.answers.map((answer) => (
+            <Button
+              key={answer}
+              variant={answer === 'roll-over' ? 'primary' : 'secondary'}
+              disabled={busy}
+              testId={`answer-${answer}`}
+              onClick={() =>
+                onChoose(target, { leftover: answer }, {
+                  final: true,
+                  ask: answer === 'roll-over' ? `Keep ${moneyText(item.amount)} in ${bucket} for this pay period?` : `Move ${moneyText(item.amount)} from ${bucket} to Savings?`,
+                })
+              }
+            >
+              {answer === 'roll-over' ? 'Roll over' : 'Move to savings'}
+            </Button>
+          ))}
+        </ButtonRow>
+      }
+    >
+      <p className="decision__detail">Keep it in {bucket} for this pay period, or move it to Savings. Either answer is final.</p>
+    </Decision>
+  );
+}
+
+// ----- The sheet: all the choices, then "are you sure" -----
+
+// The sheet for one item. The choices stay put (hidden) while it asks, so
+// what was typed is still there after Cancel.
+export function ChoiceSheet({
+  flow,
+  itemId,
+  subject,
+  title,
+  testId,
+  likely = false,
+  children,
+}: {
+  readonly flow: ChoiceFlow;
+  // The item the sheet is about, if it is still there. An item with nothing
+  // to pick from (a payday question) has no subject but still asks first.
+  readonly itemId: string | undefined;
+  readonly subject: Subject | undefined;
+  readonly title: string;
+  readonly testId: string;
+  // Also list the purchases a refund likely belongs to (A15, A18).
+  readonly likely?: boolean;
+  // Shown above the choices.
+  readonly children?: ReactNode;
+}) {
+  const { sheet, said, sending, setSaid, setSheet, closeSheet, submit, choose } = flow;
+  return (
+    <BottomSheet open={sheet !== null && itemId !== undefined} title={title} onClose={closeSheet} testId={testId}>
+      {itemId !== undefined && sheet !== null && (
+        <div key={itemId} style={{ display: 'contents' }}>
+          {said !== null && <SaidNotice said={said} sending={sending} onRetry={submit} onDismiss={() => setSaid(null)} />}
+          {children}
+          <div hidden={sheet.step !== 'choose'} style={sheet.step === 'choose' ? { display: 'contents' } : undefined}>
+            {subject !== undefined && <Choices subject={subject} busy={sending} onChoose={choose} />}
+            {subject !== undefined && likely && subject.refund && <LikelyPurchases subject={subject} busy={sending} onChoose={choose} />}
+          </div>
+          {sheet.step === 'confirm' && <Confirm pending={sheet.pending} busy={sending} onYes={() => submit({ ...sheet.pending, confirmed: true })} onBack={() => setSheet({ item: itemId, step: 'choose' })} />}
+        </div>
+      )}
+    </BottomSheet>
+  );
+}
+
+// What "are you sure" says for a final pick: for my paycheck, the split it would get.
+export function askFor(preview: PaycheckSplit | null, date: IsoDate, to: PickTo): ReactNode {
+  if (to !== 'paycheck' || preview === null) return undefined;
+  const p = preview;
+  return (
+    <>
+      <p>
+        This starts a new pay period on {shortDate(date)}, the day it arrived. A paycheck can't be undone here.
+      </p>
+      <div className="card">
+        <dl className="figures" data-testid="paycheck-preview">
+          <dt>Mom reserve</dt>
+          <dd>
+            <Money cents={p.momReserve} testId="preview-mom" />
+          </dd>
+          <dt>Savings</dt>
+          <dd>
+            <Money cents={p.savings} testId="preview-savings" />
+          </dd>
+          <dt>Needs</dt>
+          <dd>
+            <Money cents={p.needs} testId="preview-needs" />
+          </dd>
+          <dt>Wants</dt>
+          <dd>
+            <Money cents={p.wants} testId="preview-wants" />
+          </dd>
+        </dl>
+      </div>
+    </>
+  );
+}
+
+// 20d, A15: the purchases a refund likely belongs to. A18: each one the
+// money math offers can be picked as the one it is for; that is final, so it
+// asks first.
+export function LikelyPurchases({ subject, busy, onChoose }: { readonly subject: Subject; readonly busy: boolean; readonly onChoose: Choose }) {
+  const list = subject.likely;
+  const offered = subject.options.match;
+  return (
+    <div className="likely" data-testid="likely">
+      <p className="likely__title">Likely purchases</p>
+      {list.length === 0 ? (
+        <p className="likely__more" data-testid="likely-none">
+          No likely purchase found.
+        </p>
+      ) : (
+        <>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            {list.map((p) => (
+              <li key={p.id} className="likely__item" data-testid={`likely-${p.id}`}>
+                <span className="likely__line">
+                  <span>{p.description}</span>
+                  <Money cents={p.amount} />
+                </span>
+                <span className="likely__more">
+                  {shortDate(p.date)} · {sortedWords(p.sortedTo)}
+                  {p.sameName ? ' · Same name' : ''}
+                  {p.sameAmount ? ' · Same amount' : ''}
+                </span>
+                {offered.includes(p.id) && (
+                  <Button
+                    variant="secondary"
+                    wide
+                    disabled={busy}
+                    testId={`match-${p.id}`}
+                    onClick={() =>
+                      onChoose(subject.target, { refundOf: p.id }, {
+                        final: true,
+                        about: p.description,
+                        ask: `${subject.target.label}, ${moneyText(subject.amount)}, is for ${p.description}, ${moneyText(p.amount)}, on ${shortDate(p.date)}. It then counts as if the bank had matched it, and goes back where that purchase came from. This can't be undone here.`,
+                      })
+                    }
+                  >
+                    This refund is for this one
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p className="likely__more">{offered.length > 0 ? 'If you know which one it is for, tap it. The refund then goes back where that purchase came from.' : 'Put the refund back where the purchase came from.'}</p>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ----- All the choices, in a sheet -----
+
+function Choices({ subject, busy, onChoose }: { readonly subject: Subject; readonly busy: boolean; readonly onChoose: Choose }) {
+  const { options, target } = subject;
+  const [always, setAlways] = useState(false);
+  const [text, setText] = useState(subject.ruleText);
+  const kind = target.kind;
+  const ruleText = text.trim();
+  const rule = always ? { contains: ruleText } : undefined;
+  const picks = always ? options.picks.filter((p) => options.always.includes(p.to)) : options.picks;
+  // Sorting it where it already is does nothing, unless it makes a rule (B101).
+  const here = (to: PickTo): boolean => !always && subject.now !== null && 'to' in subject.now && subject.now.to === to;
+
+  return (
+    <>
+      <div className="card">
+        <dl className="figures">
+          <dt>{subject.heading}</dt>
+          <dd>
+            <Money cents={subject.amount} testId="sheet-amount" />
+          </dd>
+          <dt>When</dt>
+          <dd>{shortDate(subject.date)}</dd>
+          {subject.account !== null && (
+            <>
+              <dt>Account</dt>
+              <dd>{ACCOUNT_NAMES[subject.account]}</dd>
+            </>
+          )}
+        </dl>
+      </div>
+
+      {options.unavailable.map((u) => (
+        <Notice key={u.what} tone="warning" icon="info" testId={`unavailable-${u.what}`}>
+          {u.why}
+        </Notice>
+      ))}
+
+      {options.always.length > 0 && (
+        <div className="card">
+          <ToggleRow label="Always do this" detail="Make a rule so the next one sorts itself." checked={always} onChange={setAlways} testId="always-toggle" />
+          {always && (
+            <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
+              <TextField label="When the description contains" value={text} onChange={setText} hint="Upper and lower case do not matter. A shorter piece, such as the store's name, catches more." testId="always-text" />
+            </div>
+          )}
+        </div>
+      )}
+
+      <Card title={always ? 'Always put it in' : subject.now === null ? 'Put it in' : 'Put it in instead'} testId="sheet-picks">
+        {picks.map((pick) =>
+          here(pick.to) ? (
+            <ListRow key={pick.to} title={pickLabel(kind, pick.to)} detail="It is here now." testId={`choice-${pick.to}`} />
+          ) : (
+            <ListRow
+              key={pick.to}
+              title={pickLabel(kind, pick.to)}
+              detail={pick.final ? "This can't be undone here, so you'll be asked to confirm." : undefined}
+              onClick={() => {
+                if (busy) return;
+                if (always && ruleText === '') return;
+                onChoose(target, { to: pick.to }, {
+                  ...(rule === undefined ? {} : { always: rule }),
+                  final: pick.final,
+                  ask: always ? <p>{ruleSentence(subject, ruleText, pickLabel(kind, pick.to))}</p> : askFor(subject.paycheckPreview, subject.date, pick.to),
+                });
+              }}
+              testId={`choice-${pick.to}`}
+            />
+          ),
+        )}
+      </Card>
+
+      {!always && options.split !== null && <SplitForm subject={subject} buckets={options.split} busy={busy} onChoose={onChoose} />}
+
+      {!always && options.transfer.length > 0 && (
+        <Card title="Transfer between my accounts" testId="sheet-transfer">
+          {options.transfer.map((account) => {
+            // What it does comes from the money math (5.1 to 5.3).
+            const words = transferWords(options.transferOutcome[account]);
+            return (
+              <ListRow
+                key={account}
+                title={kind === 'money-in' ? `From ${ACCOUNT_NAMES[account]}` : `To ${ACCOUNT_NAMES[account]}`}
+                detail={words.row}
+                onClick={() => {
+                  if (!busy) onChoose(target, { transfer: account }, words.done === '' ? {} : { about: words.done });
+                }}
+                testId={`choice-transfer-${account}`}
+              />
+            );
+          })}
+        </Card>
+      )}
+
+      {always && <p className="sheet__note">A rule picks one bucket. It can't split a purchase or mark a transfer.</p>}
+    </>
+  );
+}
+
+// What a rule would do, in words.
+function ruleSentence(subject: Subject, text: string, label: string): string {
+  return `From now on, ${subject.ruleWhat} whose description contains “${text}” are sorted as: ${label}. Anything waiting that matches is sorted now too, if it can be.`;
+}
+
+function SplitForm({
+  subject,
+  buckets,
+  busy,
+  onChoose,
+}: {
+  readonly subject: Subject;
+  readonly buckets: readonly ('needs' | 'wants' | 'not-mine')[];
+  readonly busy: boolean;
+  readonly onChoose: Choose;
+}) {
+  const [values, setValues] = useState<Record<string, string>>({});
+  const rest = buckets[buckets.length - 1];
+  const entered = buckets.slice(0, -1);
+  if (rest === undefined) return null;
+
+  // What he typed, as parts. Reading the digits is all that happens here: the
+  // money math adds them up, works out "the rest", and refuses what is wrong.
+  const read = (): { readonly parts: ChoicePart[] } | { readonly problem: string } => {
+    const parts: ChoicePart[] = [];
+    for (const bucket of entered) {
+      const typed = (values[bucket] ?? '').trim();
+      if (typed === '') continue;
+      let cents: Cents;
+      try {
+        cents = parseDollars(typed);
+      } catch {
+        return { problem: `${BUCKET_NAMES[bucket]}: enter an amount like 4.00` };
+      }
+      if (cents <= 0) return { problem: `${BUCKET_NAMES[bucket]}: enter more than zero` };
+      parts.push({ bucket, amount: cents });
+    }
+    if (parts.length === 0) return { problem: `Enter an amount for ${entered.map((b) => BUCKET_NAMES[b]).join(' or ')}` };
+    parts.push({ bucket: rest, amount: 'rest' });
+    return { parts };
+  };
+  const result = read();
+  const typedAnything = entered.some((b) => (values[b] ?? '').trim() !== '');
+
+  return (
+    <Card title="Split it" testId="sheet-split">
+      <div style={{ display: 'grid', gap: 'var(--space-3)', padding: 'var(--space-4)' }}>
+        {entered.map((bucket) => (
+          <TextField key={bucket} label={`${BUCKET_NAMES[bucket]} (dollars)`} money value={values[bucket] ?? ''} onChange={(v) => setValues((current) => ({ ...current, [bucket]: v }))} testId={`split-${bucket}`} />
+        ))}
+        <p className="field__hint" data-testid="split-rest">
+          {BUCKET_NAMES[rest]} gets the rest.
+        </p>
+        {typedAnything && 'problem' in result && (
+          <p className="field__hint" role="alert" data-testid="split-problem">
+            {result.problem}
+          </p>
+        )}
+        <Button
+          wide
+          disabled={busy || 'problem' in result}
+          testId="split-submit"
+          onClick={() => {
+            if ('problem' in result) return;
+            onChoose(subject.target, { split: result.parts });
+          }}
+        >
+          Split it
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+// ----- Are you sure -----
+
+function Confirm({ pending, busy, onYes, onBack }: { readonly pending: Pending; readonly busy: boolean; readonly onYes: () => void; readonly onBack: () => void }) {
+  const c = pending.choice;
+  const yes =
+    pending.always !== undefined
+      ? 'Yes, always'
+      : 'leftover' in c
+        ? c.leftover === 'roll-over'
+          ? 'Yes, roll it over'
+          : 'Yes, move it to savings'
+        : 'to' in c && c.to === 'paycheck'
+          ? 'Yes, this is my paycheck'
+          : 'refundOf' in c
+            ? "Yes, it's for this one"
+            : 'Yes, do it';
+  const title =
+    pending.always !== undefined
+      ? 'Make this a rule?'
+      : 'leftover' in c
+        ? 'Answer for good?'
+        : 'to' in c && c.to === 'paycheck'
+          ? 'Start a new pay period?'
+          : 'refundOf' in c
+            ? 'Match this refund?'
+            : 'Are you sure?';
+  return (
+    <>
+      <p className="sheet__title" data-testid="confirm-title">
+        {title}
+      </p>
+      <Notice tone="warning" icon="alert" testId="confirm-ask">
+        {pending.ask ?? "This can't be undone here."}
+      </Notice>
+      <ButtonRow>
+        <Button wide disabled={busy} testId="confirm-yes" onClick={onYes}>
+          {busy ? 'Saving…' : yes}
+        </Button>
+        <Button variant="secondary" wide disabled={busy} testId="confirm-cancel" onClick={onBack}>
+          Cancel
+        </Button>
+      </ButtonRow>
+    </>
+  );
+}

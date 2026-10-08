@@ -1,16 +1,21 @@
 import type { BucketsView } from '@budget-app/server/views';
+import { useState } from 'react';
 import type { Load, Reload } from '../app/api.js';
-import { pathOf } from '../app/routes.js';
+import { activityPath, pathOf } from '../app/routes.js';
 import { Banner, BucketBar, Button, Card, Hero, ListRow, MadeUpPill, Money, Skeleton, StateMessage, TargetBar } from '../ui/blocks.js';
 import { longDate, monthName } from '../ui/dates.js';
 import { Icon } from '../ui/Icon.js';
+import { SaidNotice, type Said } from './choose.js';
+import { MoveMoney } from './Move.js';
 
 // Buckets: what is left in each bucket, the mom reserve with this month
 // against the target, money held for others, and the old card debt. The one
 // main number is everything in the buckets (12.2). Every number comes from
-// the server, worked out by the money math.
+// the server, worked out by the money math. Each bucket opens the list of
+// what went in and out of it (B97), money can be moved between them by hand
+// (13.3), and Payday opens from here (B104).
 
-export function BucketsScreen({ load, onRetry }: { readonly load: Load<BucketsView>; readonly onRetry: Reload }) {
+export function BucketsScreen({ load, onRetry, onChanged }: { readonly load: Load<BucketsView>; readonly onRetry: Reload; readonly onChanged: Reload }) {
   return (
     <main className="screen" aria-busy={load.status === 'loading'} data-testid="buckets">
       <h1 className="sr-only">Buckets</h1>
@@ -28,7 +33,7 @@ export function BucketsScreen({ load, onRetry }: { readonly load: Load<BucketsVi
           <StateMessage icon="bank" title="No buckets yet" detail="Setup day reads your bank balances and lets you hand out your starting money. Your buckets show here after that." testId="buckets-not-set-up" />
         </>
       )}
-      {load.status === 'ready' && load.value.state === 'tracking' && <BucketsReady view={load.value} />}
+      {load.status === 'ready' && load.value.state === 'tracking' && <BucketsReady view={load.value} reload={onRetry} onChanged={onChanged} />}
     </main>
   );
 }
@@ -60,14 +65,18 @@ const HELD_WORDS = {
   'owed-to-you': 'Someone owes you',
 } as const;
 
-function BucketsReady({ view }: { readonly view: Tracking }) {
+function BucketsReady({ view, reload, onChanged }: { readonly view: Tracking; readonly reload: Reload; readonly onChanged: Reload }) {
   const { check, momReserve, heldForOthers, waiting } = view;
+  const [moving, setMoving] = useState(false);
+  const [moved, setMoved] = useState<Said | null>(null);
   return (
     <>
       <div className="eyebrow">
         <span>{longDate(view.today)}</span>
         {view.madeUpData && <MadeUpPill />}
       </div>
+
+      {moved !== null && <SaidNotice said={moved} sending={false} onRetry={() => undefined} onDismiss={() => setMoved(null)} sticky />}
 
       {check.state === 'does-not-match' && (
         <Banner tone="danger" icon="alert" title="Totals do not match the bank" testId="mismatch">
@@ -100,17 +109,19 @@ function BucketsReady({ view }: { readonly view: Tracking }) {
       </Hero>
 
       <Card title="This pay period" testId="pay-period">
-        <BucketBar name="Needs" {...view.needs} testId="bucket-needs" />
-        <BucketBar name="Wants" {...view.wants} testId="bucket-wants" />
+        <BucketBar name="Needs" {...view.needs} href={activityPath('needs')} testId="bucket-needs" />
+        <BucketBar name="Wants" {...view.wants} href={activityPath('wants')} testId="bucket-wants" />
+        <ListRow icon="bank" title="Payday" detail="What your last paycheck did, and how the pay period went" href="/payday" testId="row-payday" />
       </Card>
 
       <Card title="Savings and reserves" testId="reserves">
-        <ListRow icon="bank" title="Savings" trailing={<Money cents={view.savings} testId="savings" />} testId="row-savings" />
+        <ListRow icon="bank" title="Savings" trailing={<Money cents={view.savings} testId="savings" />} href={activityPath('savings')} testId="row-savings" />
         <ListRow
           icon="heart"
           title="Mom reserve"
           detail="Set aside from each paycheck. What you send her comes out of it."
           trailing={<Money cents={momReserve.amount} testId="mom-reserve" />}
+          href={activityPath('momReserve')}
           testId="row-mom-reserve"
         />
         <ListRow
@@ -118,8 +129,13 @@ function BucketsReady({ view }: { readonly view: Tracking }) {
           title="Held for others"
           detail={HELD_WORDS[heldForOthers.meaning]}
           trailing={<Money cents={heldForOthers.heldForOthers} testId="held-for-others" />}
+          href={activityPath('heldForOthers')}
           testId="row-held"
         />
+      </Card>
+
+      <Card title="Move money" testId="move-money">
+        <ListRow icon="move" title="Move money between buckets" detail="Needs, wants, savings, the mom reserve, or money held for others" onClick={() => setMoving(true)} testId="move-open" />
       </Card>
 
       {/* 8.2: what was sent this month, apart from what the reserve holds. */}
@@ -175,6 +191,18 @@ function BucketsReady({ view }: { readonly view: Tracking }) {
           testId="row-old-card"
         />
       </Card>
+
+      <MoveMoney
+        open={moving}
+        onClose={() => setMoving(false)}
+        balances={{ savings: view.savings, needs: view.needs.left, wants: view.wants.left, momReserve: momReserve.amount, heldForOthers: heldForOthers.heldForOthers }}
+        start={{ from: 'wants', to: 'needs' }}
+        onMoved={(text) => {
+          setMoved({ tone: 'ok', text });
+          reload('after');
+          onChanged('after');
+        }}
+      />
     </>
   );
 }

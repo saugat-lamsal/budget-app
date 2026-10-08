@@ -1,9 +1,10 @@
-WORKED EXAMPLES: THE SCREENS (HOME, BUCKETS, REVIEW)
+WORKED EXAMPLES: THE SCREENS (HOME, BUCKETS, REVIEW, THE BUCKET LISTS, PAYDAY)
 
 Made-up numbers, worked out step by step, so you can check by hand what
 the screens show. These are the demo's made-up lives (npm run demo, then
 /demo). Every amount is in dollars and cents. Examples 1 to 6 are Home,
-7 and 8 are Buckets, 9 to 11 are Review.
+7 and 8 are Buckets, 9 to 11 are Review, 12 is the list of what went in and
+out of a bucket, 13 is moving money by hand, and 14 is Payday.
 
 Each example is also a test. packages/web/test/worked-examples.test.ts
 reads the "Check:" lines straight from this file and compares them with
@@ -299,3 +300,110 @@ Two purchases are listed. Putting the refund back in a bucket is his
 choice, one tap (payback, 6.1).
 
 Check: likely count 2 | likely first 23.17 | likely second 54.00
+
+
+========================================================================
+EXAMPLE 12. What went in and out of Needs (demo life "activity-busy"; rules
+            3.3, 3.4, 4.1, 4.4, 4.5, 4.6, 4.7, 4.8, 6.1, 13.3; B97, B98, B99)
+========================================================================
+
+This is the same life as example 1, with more going on. Tap Needs on
+Buckets to see its list. The list is for this pay period, which began
+Fri Oct 2, the day the paycheck came in.
+
+Before payday, Needs held (see example 1): 312.50 - 64.12 = 248.38.
+That is what the list calls "carried in".
+
+Fri Oct 2, payday: the paycheck's share of Needs is 810.00 (+810.00).
+        The leftover, 248.38, he moves to savings (3.4): -248.38.
+        (Needs started the pay period with 810.00.)
+Thu Oct 1  GROCERY OUTLET, 21.50 on the debit card. Bought the day before
+        payday, but the app only saw it after: -21.50. It is listed on the
+        day it was bought.
+Sat Oct 3  GROCERY OUTLET, 86.43 on the debit card, and 15.00 of it was
+        refunded (4.5): it shows what is left of it, -71.43, and says
+        "Refunded $15.00".
+Sun Oct 4  CORNER GAS STATION, 41.20: first in Needs by the rule, then he
+        sorted it to Wants (4.7). Needs gave and took the same 41.20, so
+        it is not on Needs' list at all.
+Sun Oct 4  HARDWARE SUPERSTORE, 90.00 split 60.00 Needs and 30.00 Wants
+        (4.4): Needs' list has its part, -60.00, and says "Part of a split".
+Sun Oct 4  LATE FEE, 35.00 on the everyday card, sorted to Needs (4.8): -35.00
+Tue Oct 6  MADE UP SIDE JOB, 250.00, counted as other income (6.1). It is
+        split 50% savings, 30% needs, 20% wants, with no mom reserve:
+        Needs gets 75.00 (+75.00).
+Tue Oct 6  He moves 25.00 from Wants to Needs by hand (13.3): +25.00
+
+Came in    810.00 + 75.00 + 25.00 = 910.00
+Went out   248.38 + 21.50 + 71.43 + 60.00 + 35.00 = 436.31
+Now        248.38 + 910.00 - 436.31 = 722.07
+That is what Buckets shows for Needs.
+
+Check: carried in 248.38 | came in 910.00 | went out -436.31 | now 722.07
+Check: rows 8
+
+
+========================================================================
+EXAMPLE 13. Moving money by hand from Buckets (demo life "normal"; rules
+            13.3, 13.4, 13.5; B103)
+========================================================================
+
+Before (example 1): Needs 930.75, Wants 657.11, Savings 9,550.00. In your
+buckets: 13,303.19.
+
+Step 1. Wants to Needs, 25.00. Nothing asks:
+        Needs 930.75 + 25.00 = 955.75. Wants 657.11 - 25.00 = 632.11.
+Step 2. Savings to Needs, 100.00. Money out of savings asks first, and
+        says so. Until he says yes nothing moves. With his yes:
+        Savings 9,550.00 - 100.00 = 9,450.00.
+        Needs 955.75 + 100.00 = 1,055.75.
+Step 3. Wants to Needs, 700.00. Wants holds only 632.11, so this would
+        leave it below zero, which is usually a typo. It asks, and he
+        says no: nothing moves.
+
+Moving money never changes how much there is: In your buckets is still
+13,303.19. Safe to spend (Wants left, minus the 34.67 waiting in review,
+example 1) goes from 622.44 down by the 25.00 moved: 597.44.
+
+Check: needs 1,055.75 | wants 632.11 | savings 9,450.00 | total 13,303.19 | safe to spend 597.44
+
+
+========================================================================
+EXAMPLE 14. Payday, the second paycheck has just come in (demo life
+            "payday-paid"; rules 3.2, 3.3, 3.4, 3.8, 8.1; B104, B105, B106)
+========================================================================
+
+This is the same life as example 1, with the card paid, and today is Fri
+Oct 16: the second paycheck, 4,200.00, came in this morning. The two
+purchases that were waiting in review (23.17 and 11.50, bought Oct 6) are
+sorted to Wants after it. Open Payday.
+
+The mom reserve before the paycheck: 1,200.00 + 1,500.00 - 500.00 = 2,200.00
+(the first paycheck, and what he sent mom on Oct 3).
+Step 1. The reserve comes off first: 1,500.00. Only 800.00 fits under the
+        3,000.00 cap (3,000.00 - 2,200.00), so 800.00 goes into the
+        reserve and the other 700.00 goes to savings.
+Step 2. The rest, 4,200.00 - 1,500.00 = 2,700.00, is split:
+        Savings 50% = 1,350.00, Needs 30% = 810.00, Wants 20% = 540.00.
+Step 3. What each bucket got: Mom reserve 800.00; Savings 1,350.00 +
+        700.00 = 2,050.00; Needs 810.00; Wants 540.00.
+        800.00 + 2,050.00 + 810.00 + 540.00 = 4,200.00.
+Step 4. Move to savings (3.8): the savings account should hold savings plus
+        the mom reserve. The first paycheck's share is already there; this
+        one's is not: 2,050.00 + 800.00 = 2,850.00 still to move.
+Step 5. The leftover questions: Needs held 930.75 at payday and Wants held
+        657.11. He has not answered yet. The 34.67 sorted to Wants after
+        payday was bought before it, so it lowers what the Wants question
+        asks about, from 657.11 to 657.11 - 34.67 = 622.44 (B4). Needs asks
+        about all 930.75.
+Step 6. The pay period that just ended, Fri Oct 2 to Fri Oct 16:
+        Spent from Needs: 86.43 + 41.20 = 127.63
+        Spent from Wants: 38.90 + 15.99 + 6.25 = 61.14
+        (the 34.67 is counted in this pay period, as above)
+        Sent to mom: 500.00
+        Left at payday: Needs 930.75, Wants 657.11
+
+Check: paycheck 4,200.00 | reserve before 2,200.00 | into reserve 800.00 | did not fit 700.00
+Check: to savings 2,050.00 | to needs 810.00 | to wants 540.00 | still to move 2,850.00
+Check: needs spent -127.63 | wants spent -61.14 | sent to mom -500.00 | needs left 930.75 | wants left 657.11
+Check: needs asked 930.75 | wants asked 622.44

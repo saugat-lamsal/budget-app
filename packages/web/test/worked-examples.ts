@@ -20,12 +20,18 @@ export const EXAMPLE_LIVES: Readonly<Record<number, string>> = {
   9: 'review-busy',
   10: 'normal',
   11: 'review-busy',
+  12: 'activity-busy',
+  13: 'normal',
+  14: 'payday-paid',
 };
 
 // Which screen each example is about.
 export const HOME_EXAMPLES: readonly number[] = [1, 2, 3, 4, 5, 6];
 export const BUCKETS_EXAMPLES: readonly number[] = [7, 8];
 export const REVIEW_EXAMPLES: readonly number[] = [9, 10, 11];
+export const ACTIVITY_EXAMPLES: readonly number[] = [12];
+export const MOVES_EXAMPLES: readonly number[] = [13];
+export const PAYDAY_EXAMPLES: readonly number[] = [14];
 
 export function checksOf(number: number): Map<string, number> {
   const block = text.split(/^EXAMPLE /m).find((b) => b.startsWith(`${number}.`));

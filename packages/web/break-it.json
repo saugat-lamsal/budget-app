@@ -30,8 +30,8 @@
   {
     "section": "home",
     "file": "packages/web/src/ui/blocks.tsx",
-    "find": "      aria-label={negative ? moneyWords(cents) : undefined}\n",
-    "replace": "",
+    "find": "aria-label={negative ? moneyWords(cents) : signed && cents > 0 ? `plus ${moneyWords(cents)}` : undefined}",
+    "replace": "aria-label={signed && cents > 0 ? `plus ${moneyWords(cents)}` : undefined}",
     "why": "0.1 negative amounts lose their spoken minus"
   },
   {
@@ -331,21 +331,21 @@
   {
     "section": "home",
     "file": "packages/web/src/app/App.tsx",
-    "find": "window.history.pushState(null, '', pathOf(next));",
-    "replace": "window.history.replaceState(null, '', pathOf(next));",
+    "find": "window.history.pushState({ from: window.location.pathname }, '', pathOfRoute(next));",
+    "replace": "window.history.replaceState({ from: window.location.pathname }, '', pathOfRoute(next));",
     "why": "Back no longer goes to the last tab"
   },
   {
     "section": "home",
     "file": "packages/web/src/app/App.tsx",
-    "find": "window.history.pushState(null, '', pathOf(next));",
+    "find": "      window.history.pushState({ from: window.location.pathname }, '', pathOfRoute(next));\n",
     "replace": "",
     "why": "changing tabs does not change the address"
   },
   {
     "section": "home",
     "file": "packages/web/src/main.tsx",
-    "find": "if (tabOf(window.location.pathname) === null) window.history.replaceState(null, '', pathOf('home'));",
+    "find": "if (routeOf(window.location.pathname) === null) window.history.replaceState(null, '', pathOf('home'));",
     "replace": "",
     "why": "the bare address does not say /home"
   },
@@ -554,65 +554,65 @@
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "onClick={() => onRetry(retry)}",
     "replace": "onClick={() => onRetry({ ...retry, id: newDecisionId() })}",
     "why": "[review] Try again is a new decision, so it could be counted twice"
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
-    "find": "    if (extra.final === true || extra.always !== undefined) {\n      setSaid(null);\n      setSheet({ item: detail.item.id, step: 'confirm', pending });\n    } else submit(pending);\n",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "    if (extra.final === true || extra.always !== undefined) {\n      setSaid(null);\n      setSheet({ item: target.id, step: 'confirm', pending });\n    } else submit(pending);\n",
     "replace": "    submit(pending);\n",
     "why": "[review] 6.1 B52 anything final is sent without asking"
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "if (extra.final === true || extra.always !== undefined) {",
     "replace": "if (extra.final === true) {",
     "why": "[review] 13.6 a rule is sent without asking"
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "if (extra.final === true || extra.always !== undefined) {",
     "replace": "if (extra.always !== undefined) {",
     "why": "[review] 6.1 3.4 my paycheck and a leftover answer are sent without asking"
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "...(pending.confirmed === true ? { confirmed: true } : {}),",
     "replace": "confirmed: true,",
     "why": "[review] every choice says he was asked"
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "onYes={() => submit({ ...sheet.pending, confirmed: true })}",
     "replace": "onYes={() => submit(sheet.pending)}",
     "why": "[review] 6.1 saying yes does not say he was asked"
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "    if (sheet === null) return;\n    setSheet(null);\n    setSaid(null);\n",
     "replace": "    setSheet(null);\n    setSaid(null);\n",
     "why": "[review] the sheet closing by itself wipes what was just said"
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
-    "find": "        reload('after');\n        onChanged('after');\n",
-    "replace": "        reload('after');\n",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "        options.reload('after');\n        options.onChanged('after');\n",
+    "replace": "        options.reload('after');\n",
     "why": "[review] 10.3 Home and the Review badge are not refreshed after a choice"
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
-    "find": "        reload('after');\n        onChanged('after');\n",
-    "replace": "        onChanged('after');\n",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "        options.reload('after');\n        options.onChanged('after');\n",
+    "replace": "        options.onChanged('after');\n",
     "why": "[review] the list is not refreshed after a choice"
   },
   {
@@ -631,49 +631,49 @@
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "    parts.push({ bucket: rest, amount: 'rest' });\n",
     "replace": "",
     "why": "[review] 4.4 the rest of a split is left out"
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "if (cents <= 0) return { problem:",
     "replace": "if (cents < 0) return { problem:",
     "why": "[review] 4.4 a part of zero can be sent"
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "const rest = buckets[buckets.length - 1];",
     "replace": "const rest = buckets[0];",
     "why": "[review] 7.6 the first bucket, not the last, gets the rest"
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "const picks = always ? options.picks.filter((p) => options.always.includes(p.to)) : options.picks;",
     "replace": "const picks = options.picks;",
     "why": "[review] 13.6 with a rule on, choices a rule cannot make are offered"
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "{!always && options.split !== null && <SplitForm",
     "replace": "{options.split !== null && <SplitForm",
     "why": "[review] 13.6 with a rule on, splitting is offered"
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "{!always && options.transfer.length > 0 && (",
     "replace": "{options.transfer.length > 0 && (",
     "why": "[review] 13.6 with a rule on, marking a transfer is offered"
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "} else if (answer.code === 'not-waiting') {",
     "replace": "} else if (false) {",
     "why": "[review] an item already dealt with is treated as a refusal"
@@ -827,14 +827,14 @@
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "  const openSheet = (id: string): void => {\n    setSaid(null);\n",
     "replace": "  const openSheet = (id: string): void => {\n",
     "why": "[review] a sheet opened later shows what was said about the last thing"
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "    if (extra.final === true || extra.always !== undefined) {\n      setSaid(null);\n",
     "replace": "    if (extra.final === true || extra.always !== undefined) {\n",
     "why": "[review] the question that asks first shows what was said about the last thing"
@@ -869,7 +869,7 @@
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "const words = transferWords(options.transferOutcome[account]);",
     "replace": "const words = transferWords(undefined);",
     "why": "[review] [pre-merge] 5.2 5.6 every transfer row says no bucket changes, the old card too"
@@ -890,23 +890,23 @@
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "{offered.includes(p.id) && (",
     "replace": "{false && (",
     "why": "[review] [pre-merge] A18 no button to match a refund"
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "                        final: true,\n                        about: p.description,",
     "replace": "                        about: p.description,",
     "why": "[review] [pre-merge] A18 matching a refund does not ask first"
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
-    "find": "onChoose(detail, { refundOf: p.id }, {",
-    "replace": "onChoose(detail, { refundOf: list.at(-1)!.id }, {",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "onChoose(subject.target, { refundOf: p.id }, {",
+    "replace": "onChoose(subject.target, { refundOf: list.at(-1)!.id }, {",
     "why": "[review] [pre-merge] A18 the button matches the wrong purchase"
   },
   {
@@ -925,7 +925,7 @@
   },
   {
     "section": "home",
-    "file": "packages/web/src/screens/Review.tsx",
+    "file": "packages/web/src/screens/choose.tsx",
     "find": "            ? 'Match this refund?'",
     "replace": "            ? 'Are you sure?'",
     "why": "[review] [pre-merge] A18 the question does not say what it is about"
@@ -943,5 +943,152 @@
     "find": "trailing={<Money cents={momReserve.amount} testId=\"mom-reserve\" />}",
     "replace": "trailing={<Money cents={momReserve.sent} testId=\"mom-reserve\" />}",
     "why": "[review] [pre-merge] 8.1 the mom reserve row shows what was sent"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Activity.tsx",
+    "find": "<Money cents={row.amount} signed testId=\"row-amount\" />",
+    "replace": "<Money cents={row.amount} testId=\"row-amount\" />",
+    "why": "[activity] B98 money that came in has no plus"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Activity.tsx",
+    "find": "<Money cents={activity.closing} hero testId=\"activity-now\" />",
+    "replace": "<Money cents={activity.opening} hero testId=\"activity-now\" />",
+    "why": "[activity] B97 the main number is what the bucket held at the start"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Activity.tsx",
+    "find": "<Money cents={activity.in} signed testId=\"activity-in\" />",
+    "replace": "<Money cents={activity.out} signed testId=\"activity-in\" />",
+    "why": "[activity] B97 came in shows what went out"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Activity.tsx",
+    "find": "onClick={() => openSheet(row.id)}",
+    "replace": "onClick={() => openSheet(activity.rows[0]?.id ?? row.id)}",
+    "why": "[activity] 4.7 every row opens the first one"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "      ...(options.resort ? { resort: true as const } : {}),\n",
+    "replace": "",
+    "why": "[activity] B101 a tap on a list does not say it is sorting again"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "const here = (to: PickTo): boolean => !always && subject.now !== null && 'to' in subject.now && subject.now.to === to;",
+    "replace": "const here = (to: PickTo): boolean => false && to === 'x';",
+    "why": "[activity] B101 where it is now can be tapped as if it were a change"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "    heading: `Now ${nowWords(r.now)}`,",
+    "replace": "    heading: '',",
+    "why": "[activity] 4.7 the sheet does not say where it is now"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Move.tsx",
+    "find": "const id = attempt.current?.key === key ? attempt.current.id : newDecisionId();",
+    "replace": "const id = newDecisionId();",
+    "why": "[activity] B103 trying a move again is a new decision, so it could be moved twice"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Move.tsx",
+    "find": "sendChoice({ id, move: { from, to, amount: cents }, ...(confirmed ? { confirmed: true } : {}) }).then(",
+    "replace": "sendChoice({ id, move: { from, to, amount: cents }, confirmed: true }).then(",
+    "why": "[activity] 13.4 a move is sent as if he had said yes"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Move.tsx",
+    "find": "    if (lock.current || 'problem' in amount) return;",
+    "replace": "    if ('problem' in amount) return;",
+    "why": "[activity] 13.3 a double tap sends two moves"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Move.tsx",
+    "find": "    if (cents <= 0) return { problem: 'Enter more than zero' };",
+    "replace": "    if (cents < 0) return { problem: 'Enter more than zero' };",
+    "why": "[activity] 13.3 an amount of nothing can be sent"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Move.tsx",
+    "find": "          setAsked(answer.why);\n          setStep('confirm');",
+    "replace": "          setAsked(answer.why);",
+    "why": "[activity] 13.4 a move that asks does not show the question"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Payday.tsx",
+    "find": "{d.roundingToSavings > 0 && (",
+    "replace": "{d.roundingToSavings >= 0 && (",
+    "why": "[activity] 3.3 the cents left over from rounding are shown even when there are none"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Payday.tsx",
+    "find": "<Money cents={report.paycheck.amount} hero testId=\"paycheck-amount\" />",
+    "replace": "<Money cents={report.paycheck.split.savings} hero testId=\"paycheck-amount\" />",
+    "why": "[activity] 3.1 the paycheck is shown as what savings got"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Payday.tsx",
+    "find": "const by = leftover.setting === 'ask' ? 'by your answer' : 'by your setting';",
+    "replace": "const by = leftover.setting === 'ask' ? 'by your setting' : 'by your answer';",
+    "why": "[activity] 3.4 a leftover says it was decided by the wrong thing"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Payday.tsx",
+    "find": "{t.transfer.extraInSavings !== undefined && (",
+    "replace": "{t.transfer.extraInSavings === undefined && (",
+    "why": "[activity] 3.8 the extra in the savings account is not shown on its own"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/routes.ts",
+    "find": "return route.screen === 'tab' ? route.tab : 'buckets';",
+    "replace": "return route.screen === 'tab' ? route.tab : 'home';",
+    "why": "[activity] B97 a bucket's screen lights the wrong tab"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/routes.ts",
+    "find": "if (from === null || pathOfRoute(from) === pathOfRoute(route)) return home;",
+    "replace": "if (from === null) return home;",
+    "why": "[activity] B104 back from a screen can lead to itself"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/App.tsx",
+    "find": "window.history.pushState({ from: window.location.pathname }, '', pathOfRoute(next));",
+    "replace": "window.history.pushState(null, '', pathOfRoute(next));",
+    "why": "[activity] B104 back always goes to Buckets"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/main.tsx",
+    "find": "if (routeOf(window.location.pathname) === null) window.history.replaceState",
+    "replace": "if (window.location.pathname !== '/home' && window.location.pathname !== '/buckets' && window.location.pathname !== '/review' && window.location.pathname !== '/settings') window.history.replaceState",
+    "why": "[activity] B97 opening a bucket's address opens Home"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "const text = signed && cents > 0 ? `+${moneyText(cents)}` : moneyText(cents);",
+    "replace": "const text = signed && cents >= 0 ? `+${moneyText(cents)}` : moneyText(cents);",
+    "why": "[activity] B98 nothing has a plus"
   }
 ]
