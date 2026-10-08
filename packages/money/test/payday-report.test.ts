@@ -172,6 +172,17 @@ describe('B106 the Payday report says what happened to each bucket\'s leftover',
     expect(b.paydayReport().leftovers[1]).toMatchObject({ leftAtPayday: 19_000, outcome: 'waiting', amount: 0 });
   });
 
+  it('3.4 B4 B106 after late spending lowered the question, moving the leftover moves what the question asked, and the report says that amount', () => {
+    const b = openBook();
+    b.receive(purchase('c1', '2026-10-08', 1_000, 'MADE UP CAFE', { pending: true }));
+    b.receive(paycheck('p1', '2026-10-09', 400_000));
+    b.receive(posted('c1-posted', 'c1', '2026-10-10', 1_250, 'MADE UP CAFE'));
+    b.answerLeftover('leftover:p1:wants', 'move-to-savings', '2026-10-11');
+    // 190.00 at payday, 2.50 more spent from before payday: 187.50 moves.
+    expect(b.paydayReport().leftovers[1]).toEqual({ bucket: 'wants', leftAtPayday: 19_000, setting: 'ask', outcome: 'moved-to-savings', amount: 18_750, question: null });
+    expect(b.pots().savings).toBe(100_000 + 125_000 + 18_750);
+  });
+
   it('3.4 B3 B106 a second payday replaces an unanswered question: only the latest payday is reported', () => {
     const b = openBook();
     b.receive(paycheck('p1', '2026-10-09', 400_000));

@@ -109,7 +109,7 @@ describe('B100 a purchase can be sorted again, to where the rulebook allows', ()
     const b = openBook();
     b.receive(transfer('o1', '2026-10-03', 20_000, 'savings', 'old-card'));
     b.sort('o1', { to: 'savings' }, '2026-10-04');
-    expect(b.resortDetail('o1')).toMatchObject({ resortable: true, now: { to: 'savings' }, options: { picks: [{ to: 'savings' }, { to: 'needs' }], split: null, transfer: [], always: [] } });
+    expect(b.resortDetail('o1')).toMatchObject({ resortable: true, account: 'savings', now: { to: 'savings' }, options: { picks: [{ to: 'savings' }, { to: 'needs' }], split: null, transfer: [], always: [] } });
   });
 });
 

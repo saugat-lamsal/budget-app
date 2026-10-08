@@ -989,8 +989,8 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "      // 13.1: a change to the split or the reserve applies from this paycheck.\n      this.#periodSplit = splitSettingsOf(this.#settings);\n",
-    "replace": "",
+    "find": "      this.#periodSplit = splitSettingsOf(this.#settings);\n      this.#period = { number: this.#period.number + 1, startDate: txn.date };",
+    "replace": "      this.#period = { number: this.#period.number + 1, startDate: txn.date };",
     "why": "13.1 never pick up a split change at the next paycheck"
   },
   {
@@ -1010,8 +1010,8 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "      this.#log.push(Object.freeze({ date, kind: 'rule-added', rule: this.#ruleById(rule.id) }));\n      this.#sortWaitingByRules(rule.id);",
-    "replace": "      this.#log.push(Object.freeze({ date, kind: 'rule-added', rule: this.#ruleById(rule.id) }));",
+    "find": "rule: this.#ruleById(rule.id) }));\n      return { stillWaiting: this.#sortWaitingByRules(rule.id) };",
+    "replace": "rule: this.#ruleById(rule.id) }));\n      return { stillWaiting: [] };",
     "why": "13.2 a new rule ignores what is waiting in review"
   },
   {
@@ -1073,8 +1073,8 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "const MOVABLE: readonly Pot[] = ['savings', 'needs', 'wants', 'momReserve', 'heldForOthers'];",
-    "replace": "const MOVABLE: readonly string[] = ['savings', 'needs', 'wants', 'momReserve', 'heldForOthers', 'unsortedIn'];",
+    "find": "export const MOVABLE_POTS: readonly Pot[] = Object.freeze(['savings', 'needs', 'wants', 'momReserve', 'heldForOthers'] as const);",
+    "replace": "export const MOVABLE_POTS: readonly string[] = Object.freeze(['savings', 'needs', 'wants', 'momReserve', 'heldForOthers', 'unsortedIn'] as const);",
     "why": "13.3 let money be moved out of review by hand"
   },
   {
@@ -1297,8 +1297,8 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "aheadOf: corrected?.id ?? null }));\n      this.#sortWaitingByRules(added.id);",
-    "replace": "aheadOf: corrected?.id ?? null }));",
+    "find": "aheadOf: corrected?.id ?? null }));\n      const stillWaiting = this.#sortWaitingByRules(added.id);",
+    "replace": "aheadOf: corrected?.id ?? null }));\n      const stillWaiting: string[] = [];",
     "why": "13.6 leave matching waiting items unsorted"
   },
   {
@@ -1675,8 +1675,8 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "return { sticks: findRule(this.#rules, newRule.for, descriptions[0] ?? '')?.id === added.id };",
-    "replace": "return { sticks: findRule(this.#rules, newRule.for, descriptions.at(-1) ?? '')?.id === added.id };",
+    "find": "descriptions[0] ?? '')?.id === added.id, stillWaiting };",
+    "replace": "descriptions.at(-1) ?? '')?.id === added.id, stillWaiting };",
     "why": "13.6 judge whether the fix sticks by the posted description"
   },
   {
@@ -2186,8 +2186,8 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "      const fromSavings = entry.kind === 'spend' && entry.txn.kind === 'savings-withdrawal';\n      if (unsortedSpending",
-    "replace": "      const fromSavings = false;\n      if (unsortedSpending",
+    "find": "      const fromSavings = entry.kind === 'spend' && entry.txn.kind === 'savings-withdrawal';\n      let apply: (() => void) | undefined;",
+    "replace": "      const fromSavings = false;\n      let apply: (() => void) | undefined;",
     "why": "4.9 let a new rule sort money leaving savings that is waiting (A16)"
   },
   {
@@ -2410,8 +2410,8 @@
   {
     "section": "5",
     "file": "packages/money/src/review-options.ts",
-    "find": "transfer: (['checking', 'savings'] as const).filter((a) => a !== f.account),",
-    "replace": "transfer: ['checking', 'savings'],",
+    "find": "const transfer = (['checking', 'savings'] as const).filter((a) => a !== f.account);",
+    "replace": "const transfer = ['checking', 'savings'] as const;",
     "why": "[review] 5.6 a deposit can be a transfer from the account it landed in"
   },
   {
@@ -2669,15 +2669,15 @@
   {
     "section": "6",
     "file": "packages/money/src/book.ts",
-    "find": "const older = txn.kind === 'deposit' && daysBetween(this.#lastPaycheckDate, txn.date) < 0;",
-    "replace": "const older = txn.kind === 'deposit' && daysBetween(this.#lastPaycheckDate, txn.date) <= 0;",
+    "find": "const older = txn.kind === 'deposit' && daysBetween(this.#lastPaycheckDate, txn.date) < 0;\n        const likely = txn.kind === 'refund' ? likelyPurchases({ account: txn.account, date: txn.date, amount: txn.amount, description: txn.description }, this.#purchaseCandidates()) : [];\n        const facts: ReviewFacts =",
+    "replace": "const older = txn.kind === 'deposit' && daysBetween(this.#lastPaycheckDate, txn.date) <= 0;\n        const likely = txn.kind === 'refund' ? likelyPurchases({ account: txn.account, date: txn.date, amount: txn.amount, description: txn.description }, this.#purchaseCandidates()) : [];\n        const facts: ReviewFacts =",
     "why": "[review] B54 a deposit on the day of the last paycheck cannot be my paycheck"
   },
   {
     "section": "3",
     "file": "packages/money/src/book.ts",
-    "find": "paycheckPreview: txn.kind === 'deposit' && !older ? this.#splitIfPaycheck(txn.amount) : null,",
-    "replace": "paycheckPreview: txn.kind === 'deposit' ? this.#splitIfPaycheck(txn.amount) : null,",
+    "find": "paycheckPreview: txn.kind === 'deposit' && !older ? this.#splitIfPaycheck(txn.amount) : null,\n        };",
+    "replace": "paycheckPreview: txn.kind === 'deposit' ? this.#splitIfPaycheck(txn.amount) : null,\n        };",
     "why": "[review] 3.2 a deposit that cannot be my paycheck gets a paycheck preview"
   },
   {
@@ -2690,8 +2690,8 @@
   {
     "section": "7",
     "file": "packages/money/src/book.ts",
-    "find": " && entry.refunded === 0,\n          net: netOf(entry),",
-    "replace": ",\n          net: netOf(entry),",
+    "find": "canBeForMom: entry.spendingKind === 'person-payment' && txn.kind === 'payment-to-person' && entry.refunded === 0,",
+    "replace": "canBeForMom: entry.spendingKind === 'person-payment' && txn.kind === 'payment-to-person',",
     "why": "[review] B73 a partly refunded payment can be marked for mom (facts)"
   },
   {
@@ -2718,36 +2718,36 @@
   {
     "section": "5",
     "file": "packages/money/src/book.ts",
-    "find": "          pending: entry.pending,\n          partlyRefunded",
-    "replace": "          pending: false,\n          partlyRefunded",
+    "find": "      pending: entry.pending,\n      partlyRefunded: entry.refunded > 0,",
+    "replace": "      pending: false,\n      partlyRefunded: entry.refunded > 0,",
     "why": "[review] 5.6 B74 a pending charge can be marked a transfer (facts)"
   },
   {
     "section": "5",
     "file": "packages/money/src/book.ts",
-    "find": "(account === 'checking' || account === 'savings'),\n          pending",
-    "replace": "true,\n          pending",
+    "find": "(account === 'checking' || account === 'savings'),\n      pending: entry.pending,",
+    "replace": "true,\n      pending: entry.pending,",
     "why": "[review] 5.6 money charged to a card can be marked a transfer"
   },
   {
     "section": "5",
     "file": "packages/money/src/book.ts",
-    "find": "txn.kind === 'transfer' || txn.kind === 'transfer-sent' ? txn.from : txn.account;",
-    "replace": "txn.kind === 'transfer' || txn.kind === 'transfer-sent' ? 'checking' : txn.account;",
+    "find": "const account: AccountId = txn.kind === 'transfer' || txn.kind === 'transfer-sent' ? txn.from : txn.account;\n        return { item, account, pending: entry.pending, options: reviewOptions(this.#spendFacts(entry))",
+    "replace": "const account: AccountId = txn.kind === 'transfer' || txn.kind === 'transfer-sent' ? 'checking' : txn.account;\n        return { item, account, pending: entry.pending, options: reviewOptions(this.#spendFacts(entry))",
     "why": "[review] 5.2 a payment to the old card from savings is shown as from checking"
   },
   {
     "section": "4",
     "file": "packages/money/src/book.ts",
-    "find": "fromSavings: txn.kind === 'savings-withdrawal',\n          account,",
-    "replace": "fromSavings: false,\n          account,",
+    "find": "      fromSavings: txn.kind === 'savings-withdrawal',\n      account,",
+    "replace": "      fromSavings: false,\n      account,",
     "why": "[review] 4.9 money out of savings can get a rule (facts)"
   },
   {
     "section": "20",
     "file": "packages/money/src/book.ts",
-    "find": "likelyPurchases: txn.kind === 'refund' ? likelyPurchases(",
-    "replace": "likelyPurchases: false ? likelyPurchases(",
+    "find": "const likely = txn.kind === 'refund' ? likelyPurchases({ account: txn.account, date: txn.date, amount: txn.amount, description: txn.description }, this.#purchaseCandidates()) : [];\n        const facts: ReviewFacts = {",
+    "replace": "const likely = false ? likelyPurchases({ account: txn.account, date: txn.date, amount: txn.amount, description: txn.description }, this.#purchaseCandidates()) : [];\n        const facts: ReviewFacts = {",
     "why": "[review] 20d a refund lists no purchases"
   },
   {
@@ -2889,5 +2889,271 @@
     "find": "transferOutcome: Object.fromEntries(transfer.map((a) => [a, 'no-bucket-change'])),",
     "replace": "transferOutcome: Object.fromEntries(transfer.map((a) => [a, 'out-of-needs'])),",
     "why": "[review] [pre-merge] 5.6 money coming in marked a transfer is said to come out of needs"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if (change !== 0 && POT_NAMES_SET.has(name)) lines.push({ pot: name as Pot, delta: change });",
+    "replace": "if (change !== 0 && POT_NAMES_SET.has(name)) lines.push({ pot: name as Pot, delta: -change });",
+    "why": "[activity] B97 a line of the ledger has the wrong sign"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "for (const line of lines) ledger.push({ entry: entry.id, pot: line.pot, delta: line.delta, kind });",
+    "replace": "for (const line of lines.slice(0, 1)) ledger.push({ entry: entry.id, pot: line.pot, delta: line.delta, kind });",
+    "why": "[activity] B97 an entry that changes two buckets is only written down for one"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#periods.length = saved.periods;\n      this.#ledger.length = saved.periods;\n",
+    "replace": "",
+    "why": "[activity] 0.1 a refused payday leaves the pay period it began in the ledger"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (last !== undefined) last.length = saved.ledgerLast;\n",
+    "replace": "",
+    "why": "[activity] 0.1 a refused change leaves its lines in the ledger"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#ledger.push([]);\n      this.#closePeriod('needs', txn);",
+    "replace": "      this.#closePeriod('needs', txn);\n      this.#ledger.push([]);",
+    "why": "[activity] B97 a leftover moved at payday is counted in the pay period before"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "found.sort((a, b) => daysBetween(a.row.date, b.row.date) || b.last - a.last);",
+    "replace": "found.sort((a, b) => daysBetween(b.row.date, a.row.date) || b.last - a.last);",
+    "why": "[activity] B99 the oldest is first"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "found.sort((a, b) => daysBetween(a.row.date, b.row.date) || b.last - a.last);",
+    "replace": "found.sort((a, b) => daysBetween(a.row.date, b.row.date) || a.last - b.last);",
+    "why": "[activity] B99 on the same day the one counted first is first"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if (amount === 0 && !(entry?.kind === 'spend' && this.#refundedInFullIn(entry, pot))) return null;",
+    "replace": "if (amount === 0) return null;",
+    "why": "[activity] B98 a purchase refunded in full disappears from the list"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if (amount === 0 && !(entry?.kind === 'spend' && this.#refundedInFullIn(entry, pot))) return null;",
+    "replace": "if (false as boolean) return null;",
+    "why": "[activity] B98 an item that nets to zero is listed"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.refunded === 0 || netOf(entry) !== 0 ||",
+    "replace": "if (entry.refunded !== 0 || netOf(entry) !== 0 ||",
+    "why": "[activity] B98 the wrong purchases are kept at zero"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "closing: next === undefined ? this.#totals[pot] : next.opening[pot],",
+    "replace": "closing: this.#totals[pot],",
+    "why": "[activity] B97 an old pay period ends with what the bucket holds now"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "period: Object.freeze({ number, startDate: record.startDate, endDate: next === undefined ? null : next.startDate }),",
+    "replace": "period: Object.freeze({ number, startDate: record.startDate, endDate: null }),",
+    "why": "[activity] B97 an old pay period has no end day"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "opening: record.opening[pot],\n      in: wentIn,",
+    "replace": "opening: this.#totals[pot],\n      in: wentIn,",
+    "why": "[activity] B97 a pay period starts with what the bucket holds now"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "for (const line of lines) byKind[line.pot][line.kind] = addCents(byKind[line.pot][line.kind], line.delta);",
+    "replace": "for (const line of lines) byKind[line.pot][line.kind] = line.delta;",
+    "why": "[activity] B105 a pay period is added up by keeping only the last line of each kind"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "entry.sortedTo === 'other-income' ? 'other-income' : entry.sortedTo === 'not-mine' ? 'not-mine' : 'payback'",
+    "replace": "entry.sortedTo === 'other-income' ? 'payback' : entry.sortedTo === 'not-mine' ? 'not-mine' : 'other-income'",
+    "why": "[activity] B98 other income and a payback are mixed up"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "other: pot === entry.from ? entry.to : entry.from, pending: false",
+    "replace": "other: entry.to, pending: false",
+    "why": "[activity] B98 a hand move says the same bucket on both sides"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "other: pot === entry.bucket ? 'savings' : entry.bucket, pending: false",
+    "replace": "other: 'savings', pending: false",
+    "why": "[activity] B98 a leftover says savings on both sides"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "partOfSplit: 'split' in entry.sortedTo, resort });",
+    "replace": "partOfSplit: false, resort });",
+    "why": "[activity] 4.4 a part of a split purchase does not say so"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "number > this.#period.number) {\n      throw new MoneyError('unknown-period'",
+    "replace": "number >= this.#period.number) {\n      throw new MoneyError('unknown-period'",
+    "why": "[activity] B97 the current pay period cannot be named"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if (!Number.isInteger(number) || number < 0 ||",
+    "replace": "if (!Number.isInteger(number) || number < 1 ||",
+    "why": "[activity] B97 the first pay period cannot be named"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "this.#add(entry, { [from]: -amount, [to]: amount });\n    this.#moveCount += 1;",
+    "replace": "this.#moveCount += 1;\n    this.#add(entry, { [from]: -amount, [to]: amount });",
+    "why": "[activity] 0.1 a refused hand move uses up its number"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (this.#review.has(entry.id)) return no('It is still waiting in Review. Sort it there.');\n    switch (entry.kind) {",
+    "replace": "    switch (entry.kind) {",
+    "why": "[activity] 4.7 something still waiting in review is offered to be sorted again"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.how === 'mom-rule') return no(",
+    "replace": "if (false as boolean) return no(",
+    "why": "[activity] 8.1 a payment the mom rule matched can be sorted another way"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "options: { ...options, always: [] },",
+    "replace": "options,",
+    "why": "[activity] 13.6 a payment marked for mom is offered a rule it cannot make"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "(txn.kind === 'transfer' || txn.kind === 'transfer-sent') && txn.from === 'checking') {\n          return no(",
+    "replace": "(txn.kind === 'transfer' || txn.kind === 'transfer-sent') && txn.from === 'savings') {\n          return no(",
+    "why": "[activity] 5.2 a payment to the old card from checking can be sorted again"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "olderThanLastPaycheck: older, likely: likely.map((p) => p.id) });\n        if (options.type !== 'sort') throw new MoneyError('broken-book', 'money in has no choices');",
+    "replace": "olderThanLastPaycheck: false, likely: likely.map((p) => p.id) });\n        if (options.type !== 'sort') throw new MoneyError('broken-book', 'money in has no choices');",
+    "why": "[activity] B54 a deposit older than the last paycheck is offered to be your paycheck"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "refund: txn.kind === 'refund',",
+    "replace": "refund: false,",
+    "why": "[activity] A18 a store refund is not known to be one"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if (entry.dropped === true || entry.takenBack === true) return no('The bank took it back, so there is nothing left to sort.');",
+    "replace": "if (false as boolean) return no('The bank took it back, so there is nothing left to sort.');",
+    "why": "[activity] 4.10 something the bank took back can be sorted again"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "          now: entry.sortedTo,\n          options,",
+    "replace": "          now: { to: 'needs' as const },\n          options,",
+    "why": "[activity] 4.7 where an item is sorted now is not what the book says"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "partlyRefunded: entry.refunded > 0,",
+    "replace": "partlyRefunded: false,",
+    "why": "[activity] 5.6 a part-refunded purchase can be marked a transfer"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "reserveBefore: record.opening.momReserve,",
+    "replace": "reserveBefore: this.#totals.momReserve,",
+    "why": "[activity] 3.2 the reserve before the paycheck is what it holds now"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "if (leftAtPayday <= 0) return report('nothing-to-ask', 0, null);",
+    "replace": "if (leftAtPayday < 0) return report('nothing-to-ask', 0, null);",
+    "why": "[activity] 3.5 a bucket with exactly nothing left is asked about"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (setting === 'roll-over') return report('kept', leftAtPayday, null);\n",
+    "replace": "",
+    "why": "[activity] 3.4 a leftover the setting rolls over is looked for as a question"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "return report('moved-to-savings', -(asked.effect[bucket] ?? 0), null);",
+    "replace": "return report('moved-to-savings', asked.amount, null);",
+    "why": "[activity] B4 the amount moved is what was asked at payday, not what moved"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "ended: number >= 1 ? this.periodSummary(number - 1) : null });",
+    "replace": "ended: number >= 1 ? this.periodSummary(number) : null });",
+    "why": "[activity] B105 the pay period that ended is the one now running"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "takenBack: entry.takenBack === true,",
+    "replace": "takenBack: false,",
+    "why": "[activity] 4.10 a paycheck the bank took back is not said to be"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "leftoverSetting: { needs, wants }, paycheckId: txn.id });",
+    "replace": "leftoverSetting: { needs: wants, wants: needs }, paycheckId: txn.id });",
+    "why": "[activity] 3.4 the setting at payday is mixed up between the buckets"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "const account: AccountId = txn.kind === 'transfer' || txn.kind === 'transfer-sent' ? txn.from : txn.account;\n        return Object.freeze({\n          resortable: true,\n          id,\n          type: 'spending',",
+    "replace": "const account: AccountId = txn.kind === 'transfer' || txn.kind === 'transfer-sent' ? 'checking' : txn.account;\n        return Object.freeze({\n          resortable: true,\n          id,\n          type: 'spending',",
+    "why": "[activity] 5.2 a payment to the old card from savings is said to be from checking when sorting it again"
   }
 ]

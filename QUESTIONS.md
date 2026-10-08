@@ -208,6 +208,27 @@ A19. ANSWERED Oct 7, built. A new rule that cannot sort everything it
      cannot sort is still yours to decide.
 
 
+## Part A, added with the bucket lists, hand moves, and Payday (Phase 4, Oct 7). Waiting on your answer.
+
+A20. Undoing "transfer between my accounts" from a list (5.6). A purchase
+     you marked as a payment to the old card comes out of Needs (5.2), so
+     it shows on Needs' list as "Payment to the old card", and its sheet
+     says it always comes out of Needs. Rule 5.6 also says sorting it
+     another way later makes it what the bank sent again, and the money
+     math can do that, but the list does not offer it. Nowhere else does
+     either: it is no longer waiting in review. (A transfer that changes no
+     bucket is on no list at all, so this is the only case you can reach.)
+     Option 1: leave it as built. If you mark one by mistake, tell me and
+     I undo it.
+     Option 2: on that row, offer what the purchase could be before you
+     marked it (needs, wants, split, and so on), which brings it back as
+     the purchase the bank sent. One catch in the money math to fix with
+     it: today picking Needs on such a payment is refused, because it is
+     read as "keep it a payment to the old card".
+     Recommendation: option 2. Marking is easy to get wrong, and this is
+     the only way back.
+
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 B1. Paycheck smaller than the mom reserve (3.2).
@@ -783,3 +804,126 @@ B96. Money back waiting in review. If a charge counted on setup day posts
      refunded, what is left waiting is money back, shown as a negative
      amount with a minus sign. It can go to needs or wants (it adds to
      that bucket) but cannot be split (4.4).
+
+
+## Part B, added with the bucket lists, hand moves, and Payday (Phase 4, Oct 7). Tell me if any is wrong.
+
+B97. What "this pay period" covers on a bucket's list. Everything the app
+     counted into or out of the bucket since the paycheck that began the
+     pay period was counted, up to now. That is the same moment the
+     leftover question uses (B53), so the list and the question always
+     agree. In practice:
+     - A purchase made before payday that first shows up after it (B4) is
+       in the new pay period's list, dated the day it was bought.
+     - A change after payday to something from the old pay period (a tip, a
+       refund, sorting it again, the bank taking it back) puts only that
+       change in the new pay period. The old pay period's list stays as it
+       was.
+     - "Carried in" is what the bucket held when the pay period began,
+       before the paycheck. Carried in + came in + went out = what it
+       holds now, to the cent; every pay period adds up and joins the next.
+     - Before the first paycheck the pay period is the stretch from setup
+       day.
+     Every bucket has a list: needs, wants, savings, the mom reserve, and
+     held for others. Spending and money in that wait in review belong to
+     no bucket yet, so they are on no list until they are sorted.
+
+B98. Each item is one row, with everything it did to that bucket this pay
+     period added up. Pending and posted versions of a charge are one row.
+     A purchase split across buckets has a row in each, with its own part,
+     saying "Part of a split". A hand move and a leftover moved to savings
+     have a row in both buckets, saying where the other side is. A row
+     whose total for the bucket is zero is left out: it was sorted
+     somewhere else, marked a transfer, taken back, or dropped while
+     pending. The one exception is a purchase refunded in full, which stays
+     at $0.00 and says "Refunded $X", so you can see where the refund went.
+     A part-refunded purchase shows what is left of it and says how much
+     came back. Money that came in has a plus and money that went out has a
+     minus.
+
+B99. Newest first, by the day it happened (the day of the purchase, the
+     payday for a leftover). On the same day, the one the app counted last
+     is first.
+
+B100. Which rows can be sorted again from the list, and with what. Tapping
+      a row shows what it is. If the rulebook lets it be sorted again
+      (4.7), the sheet gives the same choices review gives that kind of
+      item: other bucket, split, "always do this" (13.6), a transfer
+      between your accounts (5.6), for mom, not mine, payback, other
+      income, "this is my paycheck" (it asks first, B52). The choice it is
+      already on is shown as "here now" and cannot be tapped. It cannot be
+      sorted again from the list, and the sheet says why:
+      - a paycheck (it started a pay period, B52)
+      - your answer to a payday question (3.4; move the money by hand to
+        change it)
+      - a hand move (13.3; move the money back)
+      - a refund the bank matched to its purchase (4.5)
+      - a payment the mom rule matched (8.1)
+      - a payment to the old card from checking, which always comes out of
+        needs (5.2), including a purchase you marked as one (A20 asks
+        whether to offer undoing that)
+      - anything the bank took back or dropped (4.10, 4.6)
+      - anything still waiting in review (sort it there)
+      Which choices are offered comes from the money math, which also checks
+      that the book accepts every one offered and refuses every other.
+
+B101. Sorting something where it already is changes nothing and says "It is
+      already in Wants". That also catches a double tap: the second tap has
+      its own decision number, and finds it already there. One exception:
+      "always do this" on an item that is already where the rule would
+      put it is allowed, since the rule is what you asked for. A request
+      from a list says it is sorting again; without that, only an item
+      waiting in review can be sorted, as before.
+
+B102. "Always do this" from a list works exactly as in review (13.6, B49,
+      B90): it asks first, the rule goes just ahead of the rule it
+      corrects, anything waiting that it now matches is sorted too, and the
+      answer says whether the next one will go there by itself.
+
+B103. Hand moves (13.3, 13.4, 13.5), from Buckets and from the list of each
+      bucket. You pick where the money comes from, where it goes, and an
+      amount in dollars and cents above zero; any two different buckets of
+      the five. It asks first only when 13.4 says: out of savings, out of
+      the mom reserve, or if it would leave the bucket below zero. It says
+      which, in words, and until you say yes nothing moves. A refused move
+      changes nothing and says why. If there is no signal, trying again is
+      the same decision, so it moves once. Two separate taps with the same
+      amount are two moves, since that can be what you mean. Each move is
+      in the change log with the day it was made, and shows on the lists of
+      both buckets. Home's safe to spend changes right away.
+
+B104. Payday shows what the last paycheck did, step by step, from the
+      money math: the mom reserve first (how much came off, how much went
+      into the reserve, how much did not fit under the cap and went to
+      savings), then the rest split by the percentages (the cents left over
+      from rounding go to savings), and what each bucket got, which adds up
+      to the paycheck. The percentages and reserve shown are the ones that
+      paycheck was worked out with, not the ones in settings now (13.1).
+      Before the first paycheck it says there is none and when the next is
+      expected. A paycheck the bank took back says so; its pay period
+      stays (B71).
+
+B105. "The pay period that just ended" is the one before the current one:
+      from its paycheck (setup day for the first) to the day the last
+      paycheck was counted. It shows what was spent from needs and wants
+      (what purchases, fees and payments took out, after refunds), what was
+      sent to mom, and what was left in needs and wants at payday, which is
+      what the leftover questions are about.
+
+B106. What became of each leftover is one of four things: nothing to ask
+      (the bucket held nothing, or was overspent, so it carries over, 3.5),
+      kept (rolled over, by your answer or your setting), moved to savings
+      (by your answer or your setting), or still waiting. The setting
+      shown is the one in force at that payday. While a question is open
+      it asks about what is left after spending from before payday that
+      showed up late (B4), which can be less than what the bucket held at
+      payday; the amount shown for a leftover that was moved is what
+      actually moved.
+
+B107. Payday opens from Home and from Buckets, and Back goes to the one you
+      came from. The payday questions you can answer on Payday are the same
+      ones as in Review: same desk, same promises, and an answer given in
+      one place is answered in the other.
+
+B108. On Buckets, each bucket is a link to its list, there is a "Move money"
+      entry, and a Payday row. Home has a Payday row too.

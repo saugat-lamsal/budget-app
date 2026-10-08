@@ -128,6 +128,96 @@ const SHOTS = [
     await page.getByTestId('split-wants').fill('5.00');
     await page.getByTestId('review-sheet').evaluate((e) => e.scrollTo(0, e.scrollHeight));
   }],
+  // Buckets: each bucket is a link, with Move money and Payday
+  ['buckets-links', 'activity-busy', '/buckets', 'full'],
+  ['home-payday-row', 'payday-paid', '/home', 'full'],
+  // What went in and out of a bucket
+  ['activity-needs', 'activity-busy', '/buckets/needs'],
+  ['activity-needs-whole', 'activity-busy', '/buckets/needs', 'full'],
+  ['activity-wants-pending', 'activity-busy', '/buckets/wants', 'full'],
+  ['activity-mom-reserve', 'activity-busy', '/buckets/mom-reserve', 'full'],
+  ['activity-empty', 'normal', '/buckets/held-for-others'],
+  ['activity-big', 'big', '/buckets/needs'],
+  ['activity-not-set-up', 'not-set-up', '/buckets/needs'],
+  ['activity-error', 'error', '/buckets/needs', 'error'],
+  ['activity-loading', 'slow', '/buckets/needs', 'loading-activity'],
+  ['activity-row-sheet', 'activity-busy', '/buckets/needs', async (page) => {
+    await page.locator('.row', { hasText: 'GROCERY OUTLET #12' }).filter({ hasText: 'Thu, Oct 1' }).click();
+  }],
+  ['activity-row-split-part', 'activity-busy', '/buckets/needs', async (page) => {
+    await page.locator('.row', { hasText: 'HARDWARE SUPERSTORE' }).click();
+  }],
+  ['activity-row-cannot', 'activity-busy', '/buckets/needs', async (page) => {
+    await page.locator('.row', { hasText: 'MADE UP EMPLOYER PAYROLL' }).click();
+  }],
+  ['activity-always-confirm', 'activity-busy', '/buckets/needs', async (page) => {
+    await page.locator('.row', { hasText: 'GROCERY OUTLET #12' }).filter({ hasText: 'Thu, Oct 1' }).click();
+    await page.getByTestId('always-toggle').click();
+    await page.getByTestId('always-text').fill('GROCERY OUTLET');
+    await page.getByTestId('choice-wants').click();
+  }],
+  ['activity-resorted', 'activity-busy', '/buckets/needs', async (page) => {
+    await page.locator('.row', { hasText: 'GROCERY OUTLET #12' }).filter({ hasText: 'Thu, Oct 1' }).click();
+    await page.getByTestId('activity-sheet').getByTestId('choice-wants').click();
+    await page.getByTestId('notice').waitFor();
+    return 'no-sheet';
+  }],
+  // Moving money by hand
+  ['move-form', 'normal', '/buckets', async (page) => {
+    await page.getByTestId('move-open').click();
+    await page.getByTestId('move-amount').fill('25.00');
+  }],
+  ['move-reading', 'normal', '/buckets', async (page) => {
+    await page.getByTestId('move-open').click();
+    await page.getByTestId('move-amount').fill('abc');
+  }],
+  ['move-confirm-savings', 'normal', '/buckets', async (page) => {
+    await page.getByTestId('move-open').click();
+    await page.getByTestId('move-from').selectOption('savings');
+    await page.getByTestId('move-amount').fill('100.00');
+    await page.getByTestId('move-submit').click();
+    await page.getByTestId('move-confirm-title').waitFor();
+  }],
+  ['move-confirm-below-zero', 'normal', '/buckets', async (page) => {
+    await page.getByTestId('move-open').click();
+    await page.getByTestId('move-amount').fill('700.00');
+    await page.getByTestId('move-submit').click();
+    await page.getByTestId('move-confirm-title').waitFor();
+  }],
+  ['move-refused', 'normal', '/buckets', async (page) => {
+    await page.getByTestId('move-open').click();
+    await page.getByTestId('move-to').selectOption('wants');
+    await page.getByTestId('move-amount').fill('10.00');
+    await page.getByTestId('move-submit').click();
+    await page.getByTestId('move-problem').waitFor();
+  }],
+  ['move-done', 'normal', '/buckets', async (page) => {
+    await page.getByTestId('move-open').click();
+    await page.getByTestId('move-amount').fill('25.00');
+    await page.getByTestId('move-submit').click();
+    await page.getByTestId('notice').waitFor();
+    return 'no-sheet';
+  }],
+  // Payday
+  ['payday', 'payday-paid', '/payday'],
+  ['payday-whole', 'payday-paid', '/payday', 'full'],
+  ['payday-leftover-confirm', 'payday-paid', '/payday', async (page) => {
+    await page.getByTestId('answer-move-to-savings').first().click();
+  }],
+  ['payday-answered', 'payday-paid', '/payday', async (page) => {
+    await page.getByTestId('answer-roll-over').first().click();
+    await page.getByTestId('confirm-yes').click();
+    await page.getByTestId('notice').waitFor();
+    await page.getByTestId('answer-move-to-savings').first().click();
+    await page.getByTestId('confirm-yes').click();
+    await page.getByTestId('leftover-wants').waitFor();
+    return 'no-sheet';
+  }],
+  ['payday-bank-not-read', 'bank-not-read', '/payday', 'full'],
+  ['payday-late', 'late', '/payday'],
+  ['payday-not-set-up', 'not-set-up', '/payday'],
+  ['payday-error', 'error', '/payday', 'error'],
+  ['payday-loading', 'slow', '/payday', 'loading-payday'],
 ];
 
 mkdirSync(out, { recursive: true });
@@ -153,6 +243,8 @@ try {
       if (step === 'loading') await page.getByTestId('home-loading').waitFor();
       else if (step === 'loading-buckets') await page.getByTestId('buckets-loading').waitFor();
       else if (step === 'loading-review') await page.getByTestId('review-loading').waitFor();
+      else if (step === 'loading-activity') await page.getByTestId('activity-loading').waitFor();
+      else if (step === 'loading-payday') await page.getByTestId('payday-loading').waitFor();
       else if (step === 'error') await page.locator('[data-testid$="-error"]').waitFor();
       else await page.locator('main[aria-busy="false"]').waitFor();
       if (typeof step === 'function') {
