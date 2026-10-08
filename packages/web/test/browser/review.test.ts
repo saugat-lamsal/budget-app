@@ -509,6 +509,15 @@ describe.each(ENGINES)('Review in %s', (_name, engine) => {
     await page.context().close();
   });
 
+  it('3.4 B4 B109 the payday question that late spending made smaller says why here too, and the one it did not touch does not', async () => {
+    const twin = life('payday-paid');
+    const [needs, wants] = twin.book.paydayReport().leftovers;
+    const page = await openReview(await browser().newContext(phone()), base(), 'payday-paid');
+    expect(await item(page, wants!.question!).getByTestId('leftover-why').innerText()).toBe('$657.11 at payday, less $34.67 spent before payday and sorted since.');
+    expect(await item(page, needs!.question!).getByTestId('leftover-why').count()).toBe(0);
+    await page.context().close();
+  });
+
   it('3.4 a leftover answer asks first, both ways, and then does what the money math does', async () => {
     const twin = life('review-busy');
     const needs = twin.book.reviewItems().find((i) => i.type === 'leftover' && i.bucket === 'needs')!;

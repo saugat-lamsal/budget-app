@@ -43,9 +43,12 @@ describe.each(ENGINES)('design rules in %s', (engineName, engine) => {
     }
   });
 
-  it('readable contrast and no accessibility problems, in light and dark, in every state', async () => {
-    const problems: string[] = [];
-    for (const scheme of ['light', 'dark'] as const) {
+  // One test for each colour scheme: the pass over every state is long on a slow
+  // machine (the checks wait for the screen to be at rest), and both together
+  // took longer than the time limit on Windows CI (Oct 8).
+  for (const scheme of ['light', 'dark'] as const) {
+    it(`readable contrast and no accessibility problems, in ${scheme} mode, in every state`, async () => {
+      const problems: string[] = [];
       const context = await browser().newContext(phone({ colorScheme: scheme, bypassCSP: true }));
       for (const state of STATES) {
         const page = await openScenario(context, base(), state);
@@ -60,9 +63,9 @@ describe.each(ENGINES)('design rules in %s', (engineName, engine) => {
       const other = await openScenario(context, base(), 'normal', '/review');
       problems.push(...(await axeViolations(other)).map((p) => `${scheme} review tab: ${p}`));
       await context.close();
-    }
-    expect(problems).toEqual([]);
-  });
+      expect(problems).toEqual([]);
+    }, 120_000);
+  }
 
   it('every tap target is at least 44 by 44 points, in every state', async () => {
     const small: string[] = [];

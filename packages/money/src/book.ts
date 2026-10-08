@@ -1,4 +1,5 @@
 import { ACCOUNTS, type AccountId } from './accounts.js';
+import { ACTIVITY_KINDS, foldLines, type ActivityKind, type ActivityRow, type ActivityWhat, type BucketActivity, type LedgerLine, type PeriodSummary } from './activity.js';
 import { bucketLevel, type Alert, type AlertInput } from './alerts.js';
 import { isSpendingBucket, type SplitBucket } from './buckets.js';
 import type { CardPayment } from './reminders.js';
@@ -8,6 +9,8 @@ import { MoneyError } from './errors.js';
 import { splitPaycheck, type PaycheckSplit, type SplitSettings } from './payday.js';
 import { likelyPurchases, type LikelyPurchase, type PurchaseCandidate } from './likely-purchases.js';
 import { reviewOptions, type ReviewFacts, type ReviewOptions } from './review-options.js';
+import type { LeftoverReport, PaycheckReport, PaydayReport } from './payday-report.js';
+import type { ResortDetail } from './resort.js';
 import { bankSide, type BankBalances } from './self-check.js';
 import {
   checkRules,
@@ -20,7 +23,7 @@ import {
   type PersonPaymentChoice,
   type SortingRule,
 } from './rules.js';
-import { changeSettings as applySettingsChange, matchesTextRule, validateSettings, type Settings } from './settings.js';
+import { changeSettings as applySettingsChange, matchesTextRule, validateSettings, type LeftoverChoice, type Settings } from './settings.js';
 import {
   checkTransaction,
   sameTransaction,
@@ -173,7 +176,13 @@ export type ReviewItem =
       readonly id: string;
       readonly date: IsoDate;
       readonly bucket: SplitBucket;
+      // What the question asks about now.
       readonly amount: Cents;
+      // What the bucket held at payday, and how much spending made before
+      // payday that showed up or changed since took off it (B4, B109).
+      // amount + lessSincePayday = atPayday.
+      readonly atPayday: Cents;
+      readonly lessSincePayday: Cents;
     };
 
 export type MoneyInReason = 'deposit' | 'early-paycheck' | 'refund';
@@ -280,7 +289,9 @@ export type CheckedSafeToSpend =
 // The buckets you can move money between by hand (13.3).
 export type Pot = 'savings' | 'needs' | 'wants' | 'momReserve' | 'heldForOthers';
 
-const MOVABLE: readonly Pot[] = ['savings', 'needs', 'wants', 'momReserve', 'heldForOthers'];
+// The buckets money can be moved between by hand (13.3), and the ones whose
+// activity is kept (QUESTIONS.md B97), in the order to show them.
+export const MOVABLE_POTS: readonly Pot[] = Object.freeze(['savings', 'needs', 'wants', 'momReserve', 'heldForOthers'] as const);
 
 export interface MoneyMove {
   readonly from: Pot;
@@ -419,6 +430,8 @@ interface MoveEntry {
   readonly kind: 'move';
   readonly id: string;
   readonly date: IsoDate;
+  readonly from: Pot;
+  readonly to: Pot;
   effect: Effect;
 }
 
@@ -455,6 +468,8 @@ interface LeftoverEntry {
   readonly amount: Cents;
   readonly spentBefore: Cents;
   answer: 'open' | LeftoverAnswer;
+  // What the question asked about when it was answered (B4, B109); null while it is open.
+  answeredFor: Cents | null;
   effect: Effect;
 }
 
@@ -469,6 +484,46 @@ type Entry =
   | OldCardEntry
   | LeftoverEntry
   | MoveEntry;
+
+// Which kind of entry made a change to a bucket, for the ledger (B97). The
+// kinds that never touch a bucket (a refund counts on its purchase, a transfer
+// only moves money in transit, old card activity only changes the debt) have none.
+function ledgerKind(entry: Entry): ActivityKind | null {
+  switch (entry.kind) {
+    case 'paycheck':
+      return 'paycheck';
+    case 'money-in':
+      return 'money-in';
+    case 'spend':
+      return 'spending';
+    case 'mom':
+      return 'mom';
+    case 'move':
+      return 'move';
+    case 'leftover':
+      return 'leftover';
+    case 'refund':
+    case 'leg':
+    case 'transfer':
+    case 'old-card':
+      return null;
+  }
+}
+
+const POT_NAMES_SET: ReadonlySet<string> = new Set(MOVABLE_POTS);
+
+// A pay period as the ledger knows it: when it began, what every bucket held
+// then, and what the paycheck that began it was worked out with (3.3, 13.1)
+// and what the leftover setting said (3.4). Pay period 0, the stretch from
+// setup day to the first paycheck, has no paycheck.
+interface PeriodRecord {
+  readonly number: number;
+  readonly startDate: IsoDate;
+  readonly opening: Readonly<Record<Pot, Cents>>;
+  readonly split: SplitSettings;
+  readonly leftoverSetting: Readonly<Record<SplitBucket, LeftoverChoice>> | null;
+  readonly paycheckId: string | null;
+}
 
 // Why spending of each kind is waiting in review.
 function spendingReason(kind: SpendingKind): 'no-rule' | 'card-fee' | 'card-interest' | 'old-card-from-savings' | 'person-payment' | 'mom-difference' {
@@ -545,6 +600,13 @@ export class Book {
   #rules: readonly SortingRule[];
   #lastPaycheckDate: IsoDate;
   #period: Period;
+  // The ledger (QUESTIONS.md B97): every change to a bucket, in the pay period
+  // it was counted in, so what went in and out of a bucket can always be read
+  // back and always adds up to what the bucket holds. A line is added
+  // whenever an entry's effect changes, and never taken away. Pay period k's
+  // lines are in #ledger[k]; #periods[k] says how it began.
+  readonly #periods: PeriodRecord[] = [];
+  readonly #ledger: LedgerLine[][] = [];
 
   constructor(input: OpenBookInput) {
     assertIsoDate(input.date, 'start date');
@@ -560,6 +622,8 @@ export class Book {
     this.#rules = checkRules(input.rules ?? []);
     this.#lastPaycheckDate = input.lastPaycheckDate;
     this.#period = { number: 0, startDate: input.date };
+    this.#periods.push({ number: 0, startDate: input.date, opening: this.#potTotals(), split: this.#periodSplit, leftoverSetting: null, paycheckId: null });
+    this.#ledger.push([]);
     this.#periodStart = { needs, wants };
     for (const txn of input.countedAtSetup ?? []) this.#countAtSetup(txn);
     for (const txn of input.inTransitAtSetup ?? []) this.#inTransitAtSetup(txn);
@@ -842,6 +906,344 @@ export class Book {
     const heldForOthers = this.#totals.heldForOthers;
     const meaning = heldForOthers === 0 ? 'settled' : heldForOthers > 0 ? 'holding-for-others' : 'owed-to-you';
     return { heldForOthers, meaning };
+  }
+
+  // ----- What went in and out of a bucket (QUESTIONS.md B97 to B99) -----
+
+  // What went in and out of a bucket in a pay period (the current one unless
+  // one is named): what it held at the start, each item that changed it with
+  // what that item did to it in total, and what it held at the end. Read back
+  // from the ledger, so opening + in + out is always closing. An item whose
+  // total for the bucket is zero is left out (it was sorted somewhere else,
+  // marked a transfer, taken back, or dropped), except a purchase refunded in
+  // full, which stays so the refund can be seen (B98). Newest first (B99).
+  activity(pot: Pot, period?: number): BucketActivity {
+    if (!MOVABLE_POTS.includes(pot)) throw new MoneyError('bad-pot', `not a bucket: ${String(pot)}`);
+    const number = this.#payPeriod(period);
+    const record = this.#periods[number];
+    const lines = this.#ledger[number];
+    if (record === undefined || lines === undefined) throw new MoneyError('broken-book', `pay period ${number} has no ledger`);
+    const next = this.#periods[number + 1];
+    const found: { readonly row: ActivityRow; readonly last: number }[] = [];
+    for (const item of foldLines(lines, pot)) {
+      const row = this.#activityRow(item.entry, item.net, pot);
+      if (row !== null) found.push({ row, last: item.last });
+    }
+    // The newest day first; on the same day, the one counted last.
+    found.sort((a, b) => daysBetween(a.row.date, b.row.date) || b.last - a.last);
+    const rows = Object.freeze(found.map((f) => f.row));
+    const wentIn = addCents(0, ...rows.filter((row) => row.amount > 0).map((row) => row.amount));
+    const wentOut = addCents(0, ...rows.filter((row) => row.amount < 0).map((row) => row.amount));
+    return Object.freeze({
+      pot,
+      period: Object.freeze({ number, startDate: record.startDate, endDate: next === undefined ? null : next.startDate }),
+      opening: record.opening[pot],
+      in: wentIn,
+      out: wentOut,
+      closing: next === undefined ? this.#totals[pot] : next.opening[pot],
+      rows,
+    });
+  }
+
+  // The pay period asked for, the current one when none is named.
+  #payPeriod(period: number | undefined): number {
+    const number = period ?? this.#period.number;
+    if (!Number.isInteger(number) || number < 0 || number > this.#period.number) {
+      throw new MoneyError('unknown-period', `there is no pay period ${String(number)}; the current one is ${this.#period.number}`);
+    }
+    return number;
+  }
+
+  // A whole pay period (the current one unless one is named) added up by kind
+  // of entry, bucket by bucket: what each bucket held at the start, what each
+  // kind did to it, and what it held at the end (B105).
+  periodSummary(period?: number): PeriodSummary {
+    const number = this.#payPeriod(period);
+    const record = this.#periods[number];
+    const lines = this.#ledger[number];
+    if (record === undefined || lines === undefined) throw new MoneyError('broken-book', `pay period ${number} has no ledger`);
+    const next = this.#periods[number + 1];
+    const byKind = {} as Record<Pot, Record<ActivityKind, Cents>>;
+    for (const pot of MOVABLE_POTS) byKind[pot] = Object.fromEntries(ACTIVITY_KINDS.map((kind) => [kind, 0])) as Record<ActivityKind, Cents>;
+    for (const line of lines) byKind[line.pot][line.kind] = addCents(byKind[line.pot][line.kind], line.delta);
+    for (const pot of MOVABLE_POTS) Object.freeze(byKind[pot]);
+    return Object.freeze({
+      number,
+      startDate: record.startDate,
+      endDate: next === undefined ? null : next.startDate,
+      opening: Object.freeze({ ...record.opening }),
+      closing: Object.freeze(next === undefined ? this.#potTotals() : { ...next.opening }),
+      byKind: Object.freeze(byKind),
+    });
+  }
+
+  // What the Payday screen shows (B104 to B106): the last paycheck and what
+  // it did (3.2, 3.3), what became of each bucket's leftover (3.4, 3.5), and
+  // the pay period that just ended, added up.
+  paydayReport(): PaydayReport {
+    const number = this.#period.number;
+    const record = this.#periods[number];
+    if (record === undefined) throw new MoneyError('broken-book', `pay period ${number} has no record`);
+    const period = Object.freeze({ number, startDate: record.startDate });
+    const settings = record.leftoverSetting;
+    if (record.paycheckId === null || settings === null) return Object.freeze({ period, paycheck: null, leftovers: Object.freeze([]), ended: null });
+
+    const made = this.#paychecks.find((p) => p.id === record.paycheckId);
+    const entry = this.#entries.get(record.paycheckId);
+    if (made === undefined || entry?.kind !== 'paycheck') throw new MoneyError('broken-book', `pay period ${number} began with ${record.paycheckId}, which is not a paycheck`);
+    const paycheck: PaycheckReport = Object.freeze({
+      id: made.id,
+      date: made.date,
+      amount: made.amount,
+      description: entry.txn.description,
+      split: made.split,
+      percent: Object.freeze({ ...record.split.split }),
+      reservePerPaycheck: record.split.momReservePerPaycheck,
+      reserveCap: record.split.momReserveCap,
+      reserveBefore: record.opening.momReserve,
+      takenBack: entry.takenBack === true,
+    });
+
+    const leftovers: LeftoverReport[] = (['needs', 'wants'] as const).map((bucket) => {
+      const leftAtPayday = record.opening[bucket];
+      const setting = settings[bucket];
+      const report = (outcome: LeftoverReport['outcome'], amount: Cents, question: string | null, lessSincePayday: Cents = 0): LeftoverReport => Object.freeze({ bucket, leftAtPayday, setting, outcome, amount, lessSincePayday, question });
+      // 3.5: nothing left, or overspent, asks nothing and moves nothing.
+      if (leftAtPayday <= 0) return report('nothing-to-ask', 0, null);
+      if (setting === 'roll-over') return report('kept', leftAtPayday, null);
+      const asked = this.#entries.get(`leftover:${made.id}:${bucket}`);
+      if (asked?.kind !== 'leftover') throw new MoneyError('broken-book', `the ${bucket} leftover question for ${made.id} is missing`);
+      const now = this.#asked(asked);
+      const less = subtractCents(asked.amount, now);
+      if (asked.answer === 'open') return report('waiting', now, asked.id, less);
+      if (asked.answer === 'roll-over') return report('kept', now, null, less);
+      return report('moved-to-savings', -(asked.effect[bucket] ?? 0), null, less);
+    });
+
+    return Object.freeze({ period, paycheck, leftovers: Object.freeze(leftovers), ended: number >= 1 ? this.periodSummary(number - 1) : null });
+  }
+
+  // One item's row in a bucket's list, or null when it has nothing to show there.
+  #activityRow(id: string, amount: Cents, pot: Pot): ActivityRow | null {
+    const entry = this.#entries.get(id) ?? this.#entries.get(id.split(':')[0] ?? id);
+    if (amount === 0 && !(entry?.kind === 'spend' && this.#refundedInFullIn(entry, pot))) return null;
+    const base = { id, amount };
+    if (entry === undefined) {
+      // Nothing left of it to describe (B98): it was removed after it counted.
+      const startDate = this.#period.startDate;
+      return Object.freeze({ ...base, what: 'removed', description: '', date: startDate, account: null, other: null, pending: false, refunded: 0, partOfSplit: false, resort: this.#resortOf(id, undefined) });
+    }
+    const resort = this.#resortOf(id, entry);
+    switch (entry.kind) {
+      case 'paycheck':
+        return Object.freeze({ ...base, what: 'paycheck', description: entry.txn.description, date: entry.txn.date, account: entry.txn.account, other: null, pending: false, refunded: 0, partOfSplit: false, resort });
+      case 'money-in': {
+        const what: ActivityWhat = entry.sortedTo === 'other-income' ? 'other-income' : entry.sortedTo === 'not-mine' ? 'not-mine' : 'payback';
+        return Object.freeze({ ...base, what, description: entry.txn.description, date: entry.txn.date, account: entry.txn.account, other: null, pending: false, refunded: 0, partOfSplit: false, resort });
+      }
+      case 'spend': {
+        const shown = entry.postedTxn ?? entry.txn;
+        const account: AccountId = entry.txn.kind === 'transfer' || entry.txn.kind === 'transfer-sent' ? entry.txn.from : entry.txn.account;
+        return Object.freeze({ ...base, what: entry.spendingKind, description: shown.description, date: entry.txn.date, account, other: null, pending: entry.pending, refunded: entry.refunded, partOfSplit: 'split' in entry.sortedTo, resort });
+      }
+      case 'mom':
+        return Object.freeze({ ...base, what: 'mom', description: entry.txn.description, date: entry.txn.date, account: entry.txn.account, other: null, pending: false, refunded: 0, partOfSplit: false, resort });
+      case 'move':
+        return Object.freeze({ ...base, what: 'move', description: '', date: entry.date, account: null, other: pot === entry.from ? entry.to : entry.from, pending: false, refunded: 0, partOfSplit: false, resort });
+      case 'leftover':
+        return Object.freeze({ ...base, what: 'leftover', description: '', date: entry.date, account: null, other: pot === entry.bucket ? 'savings' : entry.bucket, pending: false, refunded: 0, partOfSplit: false, resort });
+      case 'refund':
+      case 'leg':
+      case 'transfer':
+      case 'old-card':
+        // These never change a bucket (ledgerKind), so they have no rows.
+        throw new MoneyError('broken-book', `${entry.kind} ${id} has a row in ${pot}, but it should never`);
+    }
+  }
+
+  // ----- Sorting something again (rule 4.7, QUESTIONS.md B100) -----
+
+  // Whether an item that is not waiting in review can be sorted again, and the
+  // choices for it: the same ones review gives that kind of item. null when
+  // the book has no such item.
+  resortDetail(id: string): ResortDetail | null {
+    const entry = this.#entries.get(this.#aliases.get(id) ?? id);
+    return entry === undefined ? null : this.#resortOf(entry.id, entry);
+  }
+
+  #resortOf(id: string, entry: Entry | undefined): ResortDetail {
+    const no = (why: string): ResortDetail => Object.freeze({ resortable: false, id, why });
+    if (entry === undefined) return no('It is no longer in your books.');
+    if (this.#review.has(entry.id)) return no('It is still waiting in Review. Sort it there.');
+    switch (entry.kind) {
+      case 'paycheck':
+        return no("A paycheck can't be sorted again: it started a pay period, and its money was split by the rules.");
+      case 'leftover':
+        return no('Your answer to a payday question is final. Move the money by hand if you want it somewhere else.');
+      case 'move':
+        return no('A hand move is undone by moving the money back.');
+      case 'refund':
+        return no('This refund was matched to its purchase, and counts on that purchase.');
+      case 'leg':
+      case 'transfer':
+        return no('This is money moving between your own accounts. No bucket changes.');
+      case 'old-card':
+        return no('This only changes what the old card owes. No bucket changes.');
+      case 'mom': {
+        if (entry.takenBack === true) return no('The bank took it back.');
+        // 8.1: a payment the mom rule matched always comes out of the reserve.
+        if (entry.how === 'mom-rule') return no('This payment matches your mom rule, so it always comes out of the mom reserve.');
+        const txn = entry.txn;
+        // Sorting it again can pick another bucket or split it, but a rule or a transfer starts
+        // from a payment waiting to be sorted, not one already counted for mom.
+        const options = reviewOptions({ type: 'spending', kind: 'person-payment', fromSavings: false, account: txn.account, leavesAnAccount: false, pending: false, partlyRefunded: false, countedAtSetup: false, gone: false, canBeForMom: true, net: txn.amount });
+        if (options.type !== 'sort') throw new MoneyError('broken-book', 'a payment to a person has no choices');
+        return Object.freeze({
+          resortable: true,
+          id,
+          type: 'spending',
+          description: txn.description,
+          date: txn.date,
+          amount: txn.amount,
+          account: txn.account,
+          pending: false,
+          refund: false,
+          now: Object.freeze({ to: 'mom' as const }),
+          marked: null,
+          options: { ...options, always: [] },
+          likelyPurchases: [],
+          paycheckPreview: null,
+        });
+      }
+      case 'money-in': {
+        if (entry.takenBack === true) return no('The bank took it back.');
+        if (entry.sortedTo === 'unsorted') return no('It is still waiting in Review. Sort it there.');
+        const txn = entry.txn;
+        // 3.7, B54: a deposit older than the last paycheck cannot start a pay period.
+        const older = txn.kind === 'deposit' && daysBetween(this.#lastPaycheckDate, txn.date) < 0;
+        const likely = txn.kind === 'refund' ? likelyPurchases({ account: txn.account, date: txn.date, amount: txn.amount, description: txn.description }, this.#purchaseCandidates()) : [];
+        const options = reviewOptions({ type: 'money-in', reason: entry.reason, account: txn.account, olderThanLastPaycheck: older, likely: likely.map((p) => p.id) });
+        if (options.type !== 'sort') throw new MoneyError('broken-book', 'money in has no choices');
+        return Object.freeze({
+          resortable: true,
+          id,
+          type: 'money-in',
+          description: txn.description,
+          date: txn.date,
+          amount: txn.amount,
+          account: txn.account,
+          pending: false,
+          refund: txn.kind === 'refund',
+          now: Object.freeze({ to: entry.sortedTo }),
+          marked: null,
+          options,
+          likelyPurchases: likely,
+          paycheckPreview: txn.kind === 'deposit' && !older ? this.#splitIfPaycheck(txn.amount) : null,
+        });
+      }
+      case 'spend': {
+        if (entry.dropped === true || entry.takenBack === true) return no('The bank took it back, so there is nothing left to sort.');
+        const txn = entry.txn;
+        // 5.2: a payment to the old card from checking always comes out of needs.
+        if (entry.spendingKind === 'debt-payoff' && (txn.kind === 'transfer' || txn.kind === 'transfer-sent') && txn.from === 'checking') {
+          // 5.6, A20: one you marked by hand can be undone by sorting it, as what the bank sent.
+          if (entry.original !== undefined) return this.#markedPaymentDetail(id, entry, txn);
+          return no('A payment to the old card from checking always comes out of Needs.');
+        }
+        if ('to' in entry.sortedTo && entry.sortedTo.to === 'counted-at-setup') return no('It was counted on setup day.');
+        const options = reviewOptions(this.#spendFacts(entry));
+        if (options.type !== 'sort') throw new MoneyError('broken-book', 'spending has no choices');
+        const account: AccountId = txn.kind === 'transfer' || txn.kind === 'transfer-sent' ? txn.from : txn.account;
+        return Object.freeze({
+          resortable: true,
+          id,
+          type: 'spending',
+          description: (entry.postedTxn ?? txn).description,
+          date: txn.date,
+          amount: netOf(entry),
+          account,
+          pending: entry.pending,
+          refund: false,
+          now: entry.sortedTo,
+          marked: null,
+          options,
+          likelyPurchases: [],
+          paycheckPreview: null,
+        });
+      }
+    }
+  }
+
+  // A20, B110: a purchase you marked as a payment to the old card, from checking.
+  // It comes out of needs (5.2) and is on needs' list as that. Sorting it any
+  // way but a transfer makes it what the bank sent again (5.6), so the choices
+  // are the ones that purchase had before you marked it, less the transfer you
+  // already made.
+  #markedPaymentDetail(id: string, entry: SpendEntry, txn: Transfer | TransferSent): ResortDetail {
+    const original = entry.original;
+    if (original === undefined) throw new MoneyError('broken-book', `${id} was not marked as a transfer`);
+    const person = original.kind === 'payment-to-person';
+    const facts: ReviewFacts = {
+      type: 'spending',
+      kind: person ? 'person-payment' : 'purchase',
+      fromSavings: original.kind === 'savings-withdrawal',
+      account: original.account,
+      leavesAnAccount: true,
+      pending: false,
+      partlyRefunded: false,
+      countedAtSetup: false,
+      gone: false,
+      canBeForMom: person,
+      net: entry.amount,
+    };
+    const options = reviewOptions(facts);
+    if (options.type !== 'sort') throw new MoneyError('broken-book', 'a marked payment has no choices');
+    const partner = txn.to;
+    const transferOutcome = Object.fromEntries(Object.entries(options.transferOutcome).filter(([account]) => account !== partner));
+    return Object.freeze({
+      resortable: true,
+      id,
+      type: 'spending',
+      description: (entry.postedTxn ?? txn).description,
+      date: txn.date,
+      amount: netOf(entry),
+      account: txn.from,
+      pending: false,
+      refund: false,
+      now: Object.freeze({ to: 'old-card-payment' as const }),
+      marked: partner,
+      options: { ...options, transfer: options.transfer.filter((account) => account !== partner), transferOutcome },
+      likelyPurchases: [],
+      paycheckPreview: null,
+    });
+  }
+
+  // What the book knows about a piece of spending, without any rule applied to
+  // it yet, for the choices review and sorting again give it.
+  #spendFacts(entry: SpendEntry): ReviewFacts {
+    const txn = entry.txn;
+    const account: AccountId = txn.kind === 'transfer' || txn.kind === 'transfer-sent' ? txn.from : txn.account;
+    return {
+      type: 'spending',
+      kind: entry.spendingKind,
+      fromSavings: txn.kind === 'savings-withdrawal',
+      account,
+      leavesAnAccount: (txn.kind === 'purchase' || txn.kind === 'savings-withdrawal' || txn.kind === 'payment-to-person') && (account === 'checking' || account === 'savings'),
+      pending: entry.pending,
+      partlyRefunded: entry.refunded > 0,
+      countedAtSetup: entry.countedAtSetup > 0,
+      gone: entry.dropped === true || entry.takenBack === true,
+      canBeForMom: entry.spendingKind === 'person-payment' && txn.kind === 'payment-to-person' && entry.refunded === 0,
+      net: netOf(entry),
+    };
+  }
+
+  // A purchase refunded in full, and still sorted into this bucket (B98).
+  #refundedInFullIn(entry: SpendEntry, pot: Pot): boolean {
+    if (entry.refunded === 0 || netOf(entry) !== 0 || entry.dropped === true || entry.takenBack === true) return false;
+    const sorted = entry.sortedTo;
+    if ('split' in sorted) return sorted.split.some((part) => part.bucket === pot);
+    return sorted.to === pot;
   }
 
   // ----- Bank activity -----
@@ -1396,15 +1798,20 @@ export class Book {
   // whole: no leftover moves, no question, no new pay period.
   #payday(txn: Deposit): void {
     this.#atomically(() => {
+      // 13.1: a change to the split or the reserve applies from this paycheck.
+      // The new pay period begins first, so what the paycheck does, leftover
+      // moves included, is counted in it (B97).
+      this.#periodSplit = splitSettingsOf(this.#settings);
+      this.#period = { number: this.#period.number + 1, startDate: txn.date };
+      const { needs, wants } = this.#settings.leftoverAtPayday;
+      this.#periods.push({ number: this.#period.number, startDate: txn.date, opening: this.#potTotals(), split: this.#periodSplit, leftoverSetting: { needs, wants }, paycheckId: txn.id });
+      this.#ledger.push([]);
       this.#closePeriod('needs', txn);
       this.#closePeriod('wants', txn);
-      // 13.1: a change to the split or the reserve applies from this paycheck.
-      this.#periodSplit = splitSettingsOf(this.#settings);
       const split = splitPaycheck(txn.amount, this.#totals.momReserve, this.#periodSplit);
       const entry: PaycheckEntry = { kind: 'paycheck', id: txn.id, txn, split, effect: {} };
       this.#add(entry, { momReserve: split.momReserve, savings: split.savings, needs: split.needs, wants: split.wants });
       this.#paychecks.push({ id: txn.id, date: txn.date, amount: txn.amount, split });
-      this.#period = { number: this.#period.number + 1, startDate: txn.date };
       this.#periodStart.needs = this.#totals.needs;
       this.#periodStart.wants = this.#totals.wants;
       this.#lastPaycheckDate = txn.date;
@@ -1427,7 +1834,7 @@ export class Book {
     const choice = this.#settings.leftoverAtPayday[bucket];
     if (amount <= 0 || choice === 'roll-over') return;
     const spentBefore = this.#spentBefore(bucket, txn.date);
-    const entry: LeftoverEntry = { kind: 'leftover', id: `leftover:${txn.id}:${bucket}`, date: txn.date, bucket, amount, spentBefore, answer: 'open', effect: {} };
+    const entry: LeftoverEntry = { kind: 'leftover', id: `leftover:${txn.id}:${bucket}`, date: txn.date, bucket, amount, spentBefore, answer: 'open', answeredFor: null, effect: {} };
     this.#add(entry, {});
     if (choice === 'ask') this.#review.add(entry.id);
     else this.#answerLeftover(entry, 'move-to-savings', amount);
@@ -1447,7 +1854,7 @@ export class Book {
   // payday that showed up or changed since lowers it, never below zero and
   // never above what was asked at payday.
   #asked(entry: LeftoverEntry): Cents {
-    if (entry.answer !== 'open') return entry.amount;
+    if (entry.answer !== 'open') return entry.answeredFor ?? entry.amount;
     const late = subtractCents(this.#spentBefore(entry.bucket, entry.date), entry.spentBefore);
     return Math.min(entry.amount, Math.max(0, subtractCents(entry.amount, late)));
   }
@@ -1474,6 +1881,7 @@ export class Book {
   #answerLeftover(entry: LeftoverEntry, answer: LeftoverAnswer, amount: Cents): void {
     if (answer === 'move-to-savings') this.#setEffect(entry, { [entry.bucket]: -amount, savings: amount });
     entry.answer = answer;
+    entry.answeredFor = amount;
   }
 
   // Sorts something waiting in review, or re-sorts it later (4.7).
@@ -1487,8 +1895,15 @@ export class Book {
     if (typeof choice === 'object' && choice !== null && 'refundOf' in choice) return this.#matchRefund(entry, choice.refundOf);
     // Marked as a transfer by hand (5.6): sorting it any other way makes it
     // what the bank sent again first. A payment to the old card from savings
-    // still takes savings or needs, like any (5.2, A4).
-    const oldCardFromSavings = entry.kind === 'spend' && entry.spendingKind === 'debt-payoff' && 'to' in choice && (choice.to === 'savings' || choice.to === 'needs');
+    // still takes savings or needs, like any (5.2, A4). From checking, picking
+    // needs is picking what the purchase was (A20, B110).
+    const oldCardFromSavings =
+      entry.kind === 'spend' &&
+      entry.spendingKind === 'debt-payoff' &&
+      (entry.txn.kind === 'transfer' || entry.txn.kind === 'transfer-sent') &&
+      entry.txn.from === 'savings' &&
+      'to' in choice &&
+      (choice.to === 'savings' || choice.to === 'needs');
     if ((entry.kind === 'leg' || entry.kind === 'spend') && entry.original !== undefined && !oldCardFromSavings) {
       this.#atomically(() => this.sort(this.#restore(entry), choice, date));
       return;
@@ -1559,6 +1974,9 @@ export class Book {
     }
     const account = other as AccountId;
     if ((entry.kind === 'leg' || entry.kind === 'spend') && entry.original !== undefined) {
+      // Marked already with this account: not a choice (A20), so it is refused rather than redone.
+      const partner = entry.txn.kind === 'transfer-sent' ? entry.txn.to : entry.txn.kind === 'transfer-arrived' ? entry.txn.from : undefined;
+      if (partner === account) throw new MoneyError('bad-choice', `${entry.id} is already marked as a transfer with ${account}`);
       this.#atomically(() => this.#markAsTransfer(this.#entry(this.#restore(entry)), account));
       return;
     }
@@ -1832,16 +2250,19 @@ export class Book {
     let descriptions: string[];
     // 4.9: money leaving savings always waits in review, so no rule can sort it.
     const fromSavings = entry.kind === 'spend' && entry.txn.kind === 'savings-withdrawal';
+    // A20: a purchase you marked as a payment to the old card from checking is, for a
+    // rule, the purchase it was: sorting it makes it that again first.
+    const was = entry.kind === 'spend' ? this.#wasBeforeMarked(entry) : undefined;
     if ('transfer' in choice) throw new MoneyError('bad-choice', 'a sorting rule cannot mark transfers; the bank rules in settings do that');
     if ('refundOf' in choice) throw new MoneyError('bad-choice', 'a sorting rule cannot match a refund to a purchase');
-    if (entry.kind === 'spend' && entry.spendingKind === 'purchase' && !fromSavings) {
+    if (was?.kind === 'purchase' || (entry.kind === 'spend' && was === undefined && entry.spendingKind === 'purchase' && !fromSavings)) {
       if ('split' in choice || !isSpendingBucket(choice.to)) throw new MoneyError('bad-choice', 'a rule picks needs or wants; it cannot split');
       newRule = { id: rule.id, for: 'purchase', contains: rule.contains, bucket: choice.to };
-      descriptions = [entry.txn.description, ...(entry.postedTxn === null ? [] : [entry.postedTxn.description])];
-    } else if (entry.kind === 'spend' && entry.spendingKind === 'person-payment') {
+      descriptions = was?.descriptions ?? (entry.kind === 'spend' ? [entry.txn.description, ...(entry.postedTxn === null ? [] : [entry.postedTxn.description])] : []);
+    } else if (was?.kind === 'person-payment' || (entry.kind === 'spend' && was === undefined && entry.spendingKind === 'person-payment')) {
       if (!isPersonPaymentChoice(choice)) throw new MoneyError('bad-choice', 'a person rule picks needs, wants, not mine, or mom; it cannot split');
       newRule = { id: rule.id, for: 'person', contains: rule.contains, choice: { to: choice.to } };
-      descriptions = [entry.txn.description];
+      descriptions = was?.descriptions ?? (entry.kind === 'spend' ? [entry.txn.description] : []);
     } else if (entry.kind === 'money-in' && entry.reason === 'deposit') {
       if (!isDepositRuleChoice(choice)) {
         throw new MoneyError('bad-choice', 'a deposit rule picks other income, a bucket, or not mine; paychecks are found by the paycheck rule in settings');
@@ -1887,6 +2308,21 @@ export class Book {
     const rule = this.#rules.find((r) => r.id === id);
     if (rule === undefined) throw new MoneyError('unknown-rule', `no rule ${id}`);
     return rule;
+  }
+
+  // A20: what a purchase you marked as a payment to the old card from checking
+  // was, for a sorting rule: a purchase or a payment to a person, as the bank
+  // described it. Undefined for anything else.
+  #wasBeforeMarked(entry: SpendEntry): { readonly kind: 'purchase' | 'person-payment'; readonly descriptions: string[] } | undefined {
+    const { original, originalPosted } = entry;
+    if (original === undefined || entry.spendingKind !== 'debt-payoff') return undefined;
+    // Only from checking: one from savings keeps its own choices (A4, A21).
+    if ((entry.txn.kind !== 'transfer' && entry.txn.kind !== 'transfer-sent') || entry.txn.from !== 'checking') return undefined;
+    if (original.kind === 'savings-withdrawal') return undefined;
+    return {
+      kind: original.kind === 'payment-to-person' ? 'person-payment' : 'purchase',
+      descriptions: [original.description, ...(originalPosted === undefined ? [] : [originalPosted.description])],
+    };
   }
 
   // 13.2: a new or changed rule sorts the items waiting in review that it is
@@ -1938,7 +2374,7 @@ export class Book {
   moveMoney(move: MoneyMove, date: IsoDate): MoveResult {
     assertIsoDate(date);
     const { from, to, amount } = move;
-    if (!MOVABLE.includes(from) || !MOVABLE.includes(to) || from === to) {
+    if (!MOVABLE_POTS.includes(from) || !MOVABLE_POTS.includes(to) || from === to) {
       throw new MoneyError('bad-move', `cannot move money from ${String(from)} to ${String(to)}`);
     }
     assertPositiveCents(amount, 'amount to move');
@@ -1947,9 +2383,11 @@ export class Book {
     if (from === 'momReserve') reasons.push('out-of-mom-reserve');
     if (subtractCents(this.#totals[from], amount) < 0) reasons.push('below-zero');
     if (reasons.length > 0 && move.confirmed !== true) return { moved: false, needsConfirmation: true, reasons };
-    this.#moveCount += 1;
-    const entry: MoveEntry = { kind: 'move', id: `move:${this.#moveCount}`, date, effect: {} };
+    // A move that is refused (a total too large to stay exact, 0.1) does not
+    // use up a number: it is counted only once it has gone through.
+    const entry: MoveEntry = { kind: 'move', id: `move:${this.#moveCount + 1}`, date, from, to, effect: {} };
     this.#add(entry, { [from]: -amount, [to]: amount });
+    this.#moveCount += 1;
     this.#log.push(Object.freeze({ date, kind: 'money-moved', from, to, amount }));
     return { moved: true };
   }
@@ -1982,6 +2420,8 @@ export class Book {
       rules: this.#rules,
       lastPaycheckDate: this.#lastPaycheckDate,
       period: this.#period,
+      periods: this.#periods.length,
+      ledgerLast: this.#ledger[this.#ledger.length - 1]?.length ?? 0,
     };
     try {
       return change();
@@ -2006,6 +2446,11 @@ export class Book {
       this.#rules = saved.rules;
       this.#lastPaycheckDate = saved.lastPaycheckDate;
       this.#period = saved.period;
+      // The ledger only ever grows, so going back is cutting off what was added.
+      this.#periods.length = saved.periods;
+      this.#ledger.length = saved.periods;
+      const last = this.#ledger[saved.periods - 1];
+      if (last !== undefined) last.length = saved.ledgerLast;
       throw error;
     }
   }
@@ -2064,12 +2509,24 @@ export class Book {
   // first, so a total too large to stay exact changes nothing.
   #setEffect(entry: Entry, next: Effect): void {
     const updated = { ...this.#totals };
+    const lines: { pot: Pot; delta: Cents }[] = [];
     for (const name of TOTAL_NAMES) {
       const change = subtractCents(next[name] ?? 0, entry.effect[name] ?? 0);
       updated[name] = addCents(updated[name], change);
+      if (change !== 0 && POT_NAMES_SET.has(name)) lines.push({ pot: name as Pot, delta: change });
     }
+    const kind = ledgerKind(entry);
+    if (lines.length > 0 && kind === null) throw new MoneyError('broken-book', `${entry.kind} ${entry.id} changed a bucket, but it should never`);
     Object.assign(this.#totals, updated);
     entry.effect = { ...next };
+    const ledger = this.#ledger[this.#ledger.length - 1];
+    if (kind !== null && ledger !== undefined) for (const line of lines) ledger.push({ entry: entry.id, pot: line.pot, delta: line.delta, kind });
+  }
+
+  // What every bucket holds right now.
+  #potTotals(): Record<Pot, Cents> {
+    const t = this.#totals;
+    return { savings: t.savings, needs: t.needs, wants: t.wants, momReserve: t.momReserve, heldForOthers: t.heldForOthers };
   }
 
   #reviewDetail(entry: Entry): ReviewDetail {
@@ -2093,20 +2550,7 @@ export class Book {
       case 'spend': {
         const txn = entry.txn;
         const account: AccountId = txn.kind === 'transfer' || txn.kind === 'transfer-sent' ? txn.from : txn.account;
-        const facts: ReviewFacts = {
-          type: 'spending',
-          kind: entry.spendingKind,
-          fromSavings: txn.kind === 'savings-withdrawal',
-          account,
-          leavesAnAccount: (txn.kind === 'purchase' || txn.kind === 'savings-withdrawal' || txn.kind === 'payment-to-person') && (account === 'checking' || account === 'savings'),
-          pending: entry.pending,
-          partlyRefunded: entry.refunded > 0,
-          countedAtSetup: entry.countedAtSetup > 0,
-          gone: entry.dropped === true || entry.takenBack === true,
-          canBeForMom: entry.spendingKind === 'person-payment' && txn.kind === 'payment-to-person' && entry.refunded === 0,
-          net: netOf(entry),
-        };
-        return { item, account, pending: entry.pending, options: reviewOptions(facts), likelyPurchases: [], paycheckPreview: null };
+        return { item, account, pending: entry.pending, options: reviewOptions(this.#spendFacts(entry)), likelyPurchases: [], paycheckPreview: null };
       }
       case 'old-card':
         return { item, account: 'old-card', pending: entry.pending, options: reviewOptions({ type: 'old-card-purchase' }), likelyPurchases: [], paycheckPreview: null };
@@ -2169,7 +2613,7 @@ export class Book {
         return { type: 'spending', id: entry.id, date: entry.txn.date, amount: netOf(entry), description, reason, suggestion };
       }
       case 'leftover':
-        return { type: 'leftover', id: entry.id, date: entry.date, bucket: entry.bucket, amount: this.#asked(entry) };
+        return { type: 'leftover', id: entry.id, date: entry.date, bucket: entry.bucket, amount: this.#asked(entry), atPayday: entry.amount, lessSincePayday: subtractCents(entry.amount, this.#asked(entry)) };
       case 'old-card':
         return { type: 'old-card-purchase', id: entry.id, date: entry.txn.date, amount: entry.amount, description: (entry.postedTxn ?? entry.txn).description };
       case 'paycheck':

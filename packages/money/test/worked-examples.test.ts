@@ -392,6 +392,121 @@ const examples: Record<number, () => Record<string, Cents>> = {
     book.sortAlways('first', { to: 'mom' }, { id: 'friend-for-mom', contains: 'MADE UP FRIEND' }, '2026-10-06');
     return { ...buckets(book), 'sent to mom': book.momSentInMonth('2026-10').sent };
   },
+  27: () => {
+    const rules = [
+      { id: 'grocery', for: 'purchase', contains: 'GROCERY', bucket: 'needs' },
+      { id: 'gas', for: 'purchase', contains: 'GAS', bucket: 'needs' },
+    ] as const;
+    const book = openTestBook({ pots: { needs: parseDollars('500.00'), wants: parseDollars('200.00') }, rules });
+    book.receive(purchase('grocery', '2026-10-02', parseDollars('32.50'), 'MADE UP GROCERY'));
+    book.receive(purchase('gas', '2026-10-08', parseDollars('40.00'), 'MADE UP GAS', { pending: true }));
+    book.receive(paycheck('pay', '2026-10-09', parseDollars('4,000.00')));
+    book.answerLeftover('leftover:pay:needs', 'roll-over', '2026-10-09');
+    book.answerLeftover('leftover:pay:wants', 'roll-over', '2026-10-09');
+    book.receive(posted('gas-posted', 'gas', '2026-10-10', parseDollars('42.00'), 'MADE UP GAS'));
+    book.sort('grocery', { to: 'wants' }, '2026-10-12');
+    book.moveMoney({ from: 'wants', to: 'needs', amount: parseDollars('5.00') }, '2026-10-12');
+    const old = book.activity('needs', 0);
+    const now = book.activity('needs');
+    // The list, newest first (B99).
+    expect(now.rows.map((r) => r.id)).toEqual(['move:1', 'pay', 'gas', 'grocery']);
+    return {
+      'before payday carried in': old.opening,
+      'before payday went out': old.out,
+      'before payday now': old.closing,
+      'carried in': now.opening,
+      'came in': now.in,
+      'went out': now.out,
+      now: now.closing,
+    };
+  },
+  28: () => {
+    const book = openTestBook({ pots: { savings: parseDollars('1,000.00'), needs: parseDollars('100.00'), wants: parseDollars('50.00'), momReserve: parseDollars('500.00') } });
+    const total = (): Cents => appSide(book.pots());
+    const day = '2026-10-05';
+    expect(book.moveMoney({ from: 'wants', to: 'needs', amount: parseDollars('25.00') }, day)).toEqual({ moved: true });
+    // Out of savings asks first, and until he says yes nothing moves.
+    expect(book.moveMoney({ from: 'savings', to: 'needs', amount: parseDollars('75.00') }, day)).toEqual({ moved: false, needsConfirmation: true, reasons: ['out-of-savings'] });
+    expect(book.pots().needs).toBe(parseDollars('125.00'));
+    expect(book.moveMoney({ from: 'savings', to: 'needs', amount: parseDollars('75.00'), confirmed: true }, day)).toEqual({ moved: true });
+    // Leaving exactly zero asks nothing; one cent more would leave it below zero, and asks.
+    expect(book.moveMoney({ from: 'needs', to: 'wants', amount: parseDollars('200.00') }, day)).toEqual({ moved: true });
+    expect(book.moveMoney({ from: 'needs', to: 'wants', amount: 1 }, day)).toEqual({ moved: false, needsConfirmation: true, reasons: ['below-zero'] });
+    expect(book.pots().needs).toBe(0);
+    expect(book.moveMoney({ from: 'momReserve', to: 'savings', amount: parseDollars('100.00') }, day)).toEqual({ moved: false, needsConfirmation: true, reasons: ['out-of-mom-reserve'] });
+    expect(book.moveMoney({ from: 'momReserve', to: 'savings', amount: parseDollars('100.00'), confirmed: true }, day)).toEqual({ moved: true });
+    // Moving money never changes how much there is.
+    expect(total()).toBe(parseDollars('1,650.00'));
+    return buckets(book);
+  },
+  29: () => {
+    const book = openTestBook({ pots: { momReserve: parseDollars('2,900.00'), needs: parseDollars('120.00'), wants: parseDollars('45.50') } });
+    book.receive(paycheck('pay', '2026-10-09', parseDollars('2,345.67')));
+    const report = book.paydayReport();
+    const paid = report.paycheck!;
+    const d = paid.split.detail;
+    // What payday asked: needs 120.00 and wants 45.50.
+    expect(report.leftovers.map((l) => [l.bucket, l.leftAtPayday, l.outcome])).toEqual([['needs', parseDollars('120.00'), 'waiting'], ['wants', parseDollars('45.50'), 'waiting']]);
+    book.answerLeftover('leftover:pay:needs', 'roll-over', '2026-10-09');
+    book.answerLeftover('leftover:pay:wants', 'move-to-savings', '2026-10-09');
+    const after = book.paydayReport().leftovers;
+    expect(after.map((l) => l.outcome)).toEqual(['kept', 'moved-to-savings']);
+    const now = book.pots();
+    return {
+      'reserve taken': d.reserveTaken,
+      'into reserve': paid.split.momReserve,
+      'did not fit': d.overflowToSavings,
+      'left to split': d.rest,
+      'savings share': d.savingsShare,
+      rounding: d.roundingToSavings,
+      'to savings': paid.split.savings,
+      'to needs': paid.split.needs,
+      'to wants': paid.split.wants,
+      'needs left at payday': report.leftovers[0]!.leftAtPayday,
+      'wants moved': after[1]!.amount,
+      'savings now': now.savings,
+      'needs now': now.needs,
+      'wants now': now.wants,
+    };
+  },
+  30: () => {
+    const book = openTestBook({ pots: { needs: parseDollars('650.00'), wants: parseDollars('300.00') } });
+    book.receive(purchase('landlord', '2026-10-03', parseDollars('412.50'), 'MADE UP LANDLORD', { account: 'checking' }));
+    book.sort('landlord', { transfer: 'old-card' }, '2026-10-03');
+    const marked = book.pots();
+    // The row on Needs' list offers what the purchase could be, and Wants makes it that purchase again.
+    const offered = book.resortDetail('landlord');
+    expect(offered).toMatchObject({ resortable: true, marked: 'old-card', options: { picks: [{ to: 'needs' }, { to: 'wants' }] } });
+    book.sort('landlord', { to: 'wants' }, '2026-10-06');
+    const undone = book.pots();
+    book.sort('landlord', { transfer: 'old-card' }, '2026-10-07');
+    return {
+      'needs when marked': marked.needs,
+      'wants when marked': marked.wants,
+      'needs after undoing': undone.needs,
+      'wants after undoing': undone.wants,
+      'needs when marked again': book.pots().needs,
+    };
+  },
+  31: () => {
+    const book = openTestBook({ pots: { needs: parseDollars('500.00'), wants: parseDollars('200.00') }, rules: [{ id: 'cafe', for: 'purchase', contains: 'CAFE', bucket: 'wants' }] });
+    book.receive(purchase('cafe', '2026-10-08', parseDollars('10.00'), 'MADE UP CAFE', { pending: true }));
+    book.receive(paycheck('pay', '2026-10-09', parseDollars('4,000.00')));
+    const atPayday = book.paydayReport().leftovers[1]!;
+    expect(atPayday).toMatchObject({ outcome: 'waiting', lessSincePayday: 0 });
+    book.receive(posted('cafe-posted', 'cafe', '2026-10-10', parseDollars('12.50'), 'MADE UP CAFE'));
+    const asked = book.paydayReport().leftovers[1]!;
+    book.answerLeftover('leftover:pay:wants', 'roll-over', '2026-10-11');
+    const kept = book.paydayReport().leftovers[1]!;
+    expect(kept.outcome).toBe('kept');
+    return {
+      'wants at payday': asked.leftAtPayday,
+      'wants asked': asked.amount,
+      'wants less since payday': asked.lessSincePayday,
+      'wants kept': kept.amount,
+      'wants kept less since payday': kept.lessSincePayday,
+    };
+  },
 };
 
 describe('worked examples (worked-examples.txt)', () => {

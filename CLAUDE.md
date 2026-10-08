@@ -47,7 +47,8 @@ This applies to every phase and every session, cloud or local.
 3. Break-it check. After a section passes, break the code on purpose in
    several ways (flip a sign, change a rounding, shift a boundary by one
    cent). Some test must fail each time. If none does, add the missing test.
-   Restore the code afterward.
+   Restore the code afterward. Run break-it only for the sections you
+   changed. Do one full run at the end of each phase.
 4. Random-scenario tests as soon as a section exists, for things that must
    always be true: paycheck parts add up exactly, no cent is created or
    lost, own-account transfers never change a bucket, the self-check holds.
@@ -144,7 +145,8 @@ This applies to every phase and every session, cloud or local.
   Phase 3 questions (A12 to A16, B4, B20), section 21 his answers to the
   Phase 4 questions (A17, B82, B84: rules 0.5, 9.6, 10.6), section 22
   his answers to the Buckets and Review questions (A18, A19: rules 4.5,
-  6.1, 13.2).
+  6.1, 13.2), section 23 his answers after the bucket lists, hand moves
+  and Payday review (A20: rule 5.6; the Payday card's reason: rule 3.4).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -331,6 +333,105 @@ This applies to every phase and every session, cloud or local.
     out of needs (5.2); from savings it comes back to pick savings or
     needs. Buckets shows the mom reserve as its own row, and what was sent
     this month in its own card, "Sent to mom".
-  - Waiting on: his merge of PR #8, and B88 to B96 to check.
+  - PR #8 merged (Oct 7, 2026). Still to check: B88 to B96.
+- Phase 4, step 5, the lists of what went in and out of a bucket, moving
+  money by hand, and Payday: built Oct 8, 2026 on branch
+  phase-4-activity-moves-payday (PR #9), on made-up data only. Then stop,
+  for his feedback.
+  - The book now keeps a ledger (packages/money/src/activity.ts): a line each
+    time something changes what a bucket holds, stamped with the pay period
+    it was counted in, and undone with a refused answer. Book.activity (one
+    bucket's list), Book.periodSummary, Book.paydayReport (payday-report.ts)
+    and Book.resortDetail (resort.ts) read from it; the screens work out
+    nothing. For every bucket and pay period, carried in + came in + went
+    out = now, to the cent (B97), and the simulator checks that every day.
+    A pay period starts when the book counts the paycheck (B53, B97).
+  - Activity (screens/Activity.tsx, views/activity.ts, /buckets/<bucket>):
+    tapping a bucket on Buckets lists what went in and out of it this pay
+    period, newest first. Tapping a row sorts it again (4.7) with the same
+    choices Review gives, including "always do this" (13.6); what cannot be
+    sorted again says why. Sorting again uses the same facts as Review
+    (#spendFacts); a test checks that the book accepts exactly the choices
+    offered.
+  - Moves (screens/Move.tsx, from Buckets and from each list): 13.3, with 13.4's
+    questions coming from the desk (needs-confirmation with its reasons).
+  - Payday (screens/Payday.tsx, views/payday.ts, /payday, linked from Home
+    and Buckets): what the last paycheck did step by step, the amount to
+    move to savings (3.8), the leftover questions (3.4) and the summary of
+    the pay period that ended.
+  - Taps reach the books through the same desk and the same one address,
+    POST /api/choice: { resort: true } for sorting again and a move request
+    for moves. Repeats of a decision change nothing; a refusal changes
+    nothing and says why. The screens still write only /api/seen and
+    /api/choice (read-only.test.ts).
+  - Shared choosing for Review and the lists: screens/choose.tsx.
+  - Demo lives added: activity-busy and payday-paid. Worked examples: money
+    27 to 29, screens 12 to 14.
+  - Tests: 2,095 pass (471 more than PR #8 ended with): money 992, server
+    489, web 64, browser 535 (Chromium and WebKit). Random lives: 100
+    simulated lives of 3 years with every check passing, including the new
+    "every bucket's list adds up" check. Browser tests: bucket lists,
+    moves, Payday, design rules (design-activity), random lives with random
+    taps against a twin of the book. The accessibility and tap-size checks
+    now wait for animations to finish (design-helpers.ts atRest): a button
+    just tapped, or a sheet still sliding in, made them fail now and then.
+  - Found on CI (Oct 8, WebKit on Linux and Windows): after a move went
+    through, the screen was redrawn with the sheet's button enabled again
+    and the sheet closed a moment later (a passive effect), so a second tap
+    in that moment sent a second request. The BottomSheet now opens and
+    closes in a layout effect, in the same step as the redraw. The tests
+    watch for the moment itself (watchSheetsAfterAnAnswer in screens.ts)
+    rather than depend on tap timing. The contrast test is one test per
+    colour scheme now: both together came close to the 60-second limit.
+  - Found on Windows CI (Oct 8): a page closed with its refresh still on
+    its way made WebKit lose the answer to the next page's request (the same
+    thing as the Oct 7 note above). The tests that close or leave a page
+    after a change wait for what is on its way first: untilQuiet in
+    harness.ts (it looks at the page's fetch and XHR requests only: its own
+    document was sometimes never reported finished on Windows). Waiting for
+    "network idle" does not do it, since that only waits the first time a
+    page goes idle. And the test servers answer every request with
+    Connection: close (harness.ts listen, test/test-server.test.ts), so
+    WebKit has no connection to reuse after a cancelled request or one the
+    server is closing. A page is handed over quiet too (openScenario and
+    openLive call untilAnswered: Home's numbers are asked for on every
+    screen, and a test that closed the page cancelled that request, which
+    stalled the next page on Linux CI, Oct 8). The count of fetches on their
+    way is kept inside the page, where it is exact; Playwright's own events
+    can arrive late in WebKit, and it never says an error answer (500)
+    finished. The Windows job's time limit is 45 minutes (it was cut off at
+    30 on Oct 8, when the tests had got slower), and the old contrast test
+    in design.test.ts is one test per colour scheme too.
+  - Break-it: new breaks are tagged "[activity]" (100). The existing breaks
+    for code the refactor moved (49) were pointed at where it is now. Run
+    for the sections changed (the testing bar): every one caught, none
+    survived. The full run is at the end of Phase 4.
+  - His review (Oct 8): A20 option 2, and the Payday card says why, both
+    built.
+    - A20: a purchase marked as a payment to the old card, from checking, is
+      on Needs' list as that, and its sheet (resortDetail, marked) offers
+      what the purchase could be before it was marked. Picking a bucket
+      makes it the purchase the bank sent (Book.sort restores it first);
+      picking Needs used to be refused. The account it is marked with is not
+      offered again, and marking it with the same account is refused.
+      "Always do this" makes the rule for the purchase it was. B110. Demo
+      life: activity-marked. Worked examples: money 30, screens 15.
+    - Payday card: a question that late spending made smaller (B4) says
+      "$657.11 at payday, less $34.67 spent before payday and sorted
+      since", on Payday and in Review, and the line stays on the summary
+      after you answer. The numbers are the money math's (LeftoverReport
+      and the leftover review item have lessSincePayday; the item has
+      atPayday). B109. Worked example: money 31, screens 14 (a new Check
+      line). The simulator checks on every day that what is asked plus what
+      was taken off is what was held at payday (leftoverProblems).
+    - Found while building it, fixed with a test first (B111): rolling over
+      after late spending lowered the question reported the full payday
+      amount as kept, not what the question asked.
+    - Break-it, only for what this round changed (his OK to cut it down):
+      the 21 new breaks, all caught. The full run is still at the end of
+      Phase 4.
+  - Waiting on: his merge; A21 (the same undo for a payment marked from
+    savings) and B97 to B111 to check. The real server must keep decision
+    numbers with the book's history (B103, Phase 6).
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.

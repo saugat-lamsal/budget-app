@@ -27,6 +27,7 @@ import {
   type SortingRule,
   type TransferSent,
 } from '../../src/index.js';
+import { activityProblems, leftoverProblems, summaryProblems } from '../activity-helpers.js';
 import { SimBank, type Card, type ChargeAccount, type OwnAccount, type Posted } from './bank.js';
 import { Random } from './random.js';
 
@@ -150,6 +151,7 @@ export const STAT_NAMES = [
   'takenBack',
   'pendingAtSetup',
   'inTransitAtSetup',
+  'activityChecks',
 ] as const;
 export type Stats = Record<(typeof STAT_NAMES)[number], number>;
 
@@ -1778,6 +1780,23 @@ class Life {
     }
     this.#checkMomMonth(this.#date);
     this.#checkAlerts(pots, review.length, bank);
+    this.#checkActivity();
+  }
+
+  // B97, B105: what went in and out of every bucket adds up, and joins the pay
+  // period before it. The current pay period every day; every pay period
+  // since setup day on the last day and every 60 days.
+  #checkActivity(): void {
+    const current = this.#book.period().number;
+    const whole = this.#day === this.#days - 1 || this.#day % 60 === 59;
+    const assigned = this.#setupInput.assignment;
+    const problems = [
+      ...activityProblems(this.#book, whole ? assigned : undefined, whole ? 0 : current),
+      ...summaryProblems(this.#book, whole ? 0 : current),
+      ...leftoverProblems(this.#book),
+    ];
+    if (problems.length > 0) throw new CheckFailed('B97 B105 B109 what went in and out of each bucket adds up, and a payday question and what was taken off it add up to what was held', problems.slice(0, 5).join('; '));
+    this.#stats.activityChecks++;
   }
 
   // Section 10, taken every day like the phone will: the low alert below the

@@ -214,8 +214,8 @@ describe('3.4 unspent needs and wants: roll over or move to savings, your choice
     const book = openTestBook({ pots: { needs: 12_000, wants: 3_456 } });
     book.receive(paycheck('p1', '2026-10-09', 400_000));
     expect(book.reviewItems().filter((i) => i.type === 'leftover')).toEqual([
-      { type: 'leftover', id: 'leftover:p1:needs', date: '2026-10-09', bucket: 'needs', amount: 12_000 },
-      { type: 'leftover', id: 'leftover:p1:wants', date: '2026-10-09', bucket: 'wants', amount: 3_456 },
+      { type: 'leftover', id: 'leftover:p1:needs', date: '2026-10-09', bucket: 'needs', amount: 12_000, atPayday: 12_000, lessSincePayday: 0 },
+      { type: 'leftover', id: 'leftover:p1:wants', date: '2026-10-09', bucket: 'wants', amount: 3_456, atPayday: 3_456, lessSincePayday: 0 },
     ]);
     expect(book.pots()).toMatchObject({ needs: 12_000 + 75_000, wants: 3_456 + 50_000, savings: 125_000 });
   });
@@ -246,7 +246,7 @@ describe('3.4 unspent needs and wants: roll over or move to savings, your choice
   it('3.4 one cent left is still asked about', () => {
     const book = openTestBook({ pots: { wants: 1 } });
     book.receive(paycheck('p1', '2026-10-09', 400_000));
-    expect(book.reviewItems()).toEqual([{ type: 'leftover', id: 'leftover:p1:wants', date: '2026-10-09', bucket: 'wants', amount: 1 }]);
+    expect(book.reviewItems()).toEqual([{ type: 'leftover', id: 'leftover:p1:wants', date: '2026-10-09', bucket: 'wants', amount: 1, atPayday: 1, lessSincePayday: 0 }]);
   });
 
   it('3.4 nothing is asked when a bucket is exactly empty', () => {
@@ -276,8 +276,8 @@ describe('3.4 unspent needs and wants: roll over or move to savings, your choice
     // Before the second paycheck, wants held the old $10 plus the first $500
     // share, and needs held the first $750 share.
     expect(book.reviewItems()).toEqual([
-      { type: 'leftover', id: 'leftover:p2:needs', date: '2026-10-23', bucket: 'needs', amount: 75_000 },
-      { type: 'leftover', id: 'leftover:p2:wants', date: '2026-10-23', bucket: 'wants', amount: 51_000 },
+      { type: 'leftover', id: 'leftover:p2:needs', date: '2026-10-23', bucket: 'needs', amount: 75_000, atPayday: 75_000, lessSincePayday: 0 },
+      { type: 'leftover', id: 'leftover:p2:wants', date: '2026-10-23', bucket: 'wants', amount: 51_000, atPayday: 51_000, lessSincePayday: 0 },
     ]);
     book.answerLeftover('leftover:p2:wants', 'move-to-savings', '2026-10-23');
     expect(book.pots()).toMatchObject({ wants: 50_000, savings: 250_000 + 51_000 });

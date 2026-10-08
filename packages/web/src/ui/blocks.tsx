@@ -1,5 +1,5 @@
 import type { BucketLevel, Cents } from '@budget-app/money';
-import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from 'react';
+import { useId, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { barFill } from './bar-fill.js';
 import { Icon, type IconName } from './Icon.js';
 import { moneyText, moneyWords } from './money-format.js';
@@ -14,15 +14,17 @@ export type Tone = 'info' | 'warning' | 'danger' | 'ok';
 // Every amount on every screen. Tabular digits, a real minus sign, and the
 // negative color on top of the sign, never instead of it. A stale amount
 // (one that could not be checked today) is greyed, and the screen says why.
-export function Money({ cents, hero = false, stale = false, testId }: { readonly cents: Cents; readonly hero?: boolean; readonly stale?: boolean; readonly testId?: string | undefined }) {
-  const text = moneyText(cents);
+export function Money({ cents, hero = false, stale = false, signed = false, testId }: { readonly cents: Cents; readonly hero?: boolean; readonly stale?: boolean; readonly signed?: boolean; readonly testId?: string | undefined }) {
+  // A list of money in and money out shows a plus on what came in, so the
+  // direction is in the amount itself, not only in a color.
+  const text = signed && cents > 0 ? `+${moneyText(cents)}` : moneyText(cents);
   const negative = cents < 0;
   return (
     <span
       className={`money${hero ? ' money--hero' : ''}${negative ? ' is-negative' : ''}${stale ? ' money--stale' : ''}`}
       data-money=""
       data-testid={testId}
-      aria-label={negative ? moneyWords(cents) : undefined}
+      aria-label={negative ? moneyWords(cents) : signed && cents > 0 ? `plus ${moneyWords(cents)}` : undefined}
       style={hero ? ({ '--chars': text.length } as CSSProperties) : undefined}
     >
       {text}
@@ -155,10 +157,12 @@ export function StatusLabel({ status }: { readonly status: Status }) {
 
 // What is left in a bucket, against what it started the pay period with
 // (10.1). Low and empty say so in words (10.1, 10.2).
-export function BucketBar({ name, left, startedWith, level, testId }: { readonly name: string; readonly left: Cents; readonly startedWith: Cents; readonly level: BucketLevel; readonly testId?: string | undefined }) {
+export function BucketBar({ name, left, startedWith, level, href, testId }: { readonly name: string; readonly left: Cents; readonly startedWith: Cents; readonly level: BucketLevel; readonly href?: string; readonly testId?: string | undefined }) {
   const fill = barFill(left, startedWith);
+  // With an address, the whole bar is a link to what went in and out of the bucket.
+  const Tag = href === undefined ? 'div' : 'a';
   return (
-    <div className="bucket" data-testid={testId} data-level={level}>
+    <Tag className={`bucket${href === undefined ? '' : ' bucket--link'}`} data-testid={testId} data-level={level} {...(href === undefined ? {} : { href })}>
       <div className="bucket__line">
         <span className="bucket__name">{name}</span>
         {level !== 'ok' && <StatusLabel status={level} />}
@@ -169,11 +173,16 @@ export function BucketBar({ name, left, startedWith, level, testId }: { readonly
             left of <Money cents={startedWith} testId={testId === undefined ? undefined : `${testId}-of`} />
           </span>
         </span>
+        {href !== undefined && (
+          <span className="row__chevron">
+            <Icon name="chevron" size={16} />
+          </span>
+        )}
       </div>
       <div className="bar" aria-hidden="true">
         <div className={`bar__fill${level === 'ok' ? '' : ` bar__fill--${level}`}`} style={{ width: `${(fill * 100).toFixed(2)}%` }} />
       </div>
-    </div>
+    </Tag>
   );
 }
 
@@ -199,7 +208,11 @@ export function Banner({ tone, icon, title, children, testId }: { readonly tone:
 export function BottomSheet({ open, title, onClose, children, testId }: { readonly open: boolean; readonly title: string; readonly onClose: () => void; readonly children: ReactNode; readonly testId?: string | undefined }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
-  useEffect(() => {
+  // Opens and closes in the same step that redraws the screen (not a moment
+  // later), so a sheet whose job is done never sits open with its button
+  // enabled again: a second tap in that moment would send the choice twice
+  // (CI, Oct 8, WebKit on Linux).
+  useLayoutEffect(() => {
     const dialog = ref.current;
     if (dialog === null) return;
     if (open && !dialog.open) {
@@ -414,6 +427,58 @@ export function TextField({
         </p>
       )}
     </div>
+  );
+}
+
+// ----- Select field: one of a few, chosen from the phone's own list -----
+
+export function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  testId,
+}: {
+  readonly label: string;
+  readonly value: string;
+  readonly onChange: (value: string) => void;
+  readonly options: readonly { readonly value: string; readonly label: string }[];
+  readonly testId?: string | undefined;
+}) {
+  const id = useId();
+  return (
+    <div className="field">
+      <label htmlFor={id} className="field__label">
+        {label}
+      </label>
+      <select id={id} className="field__input field__input--select" value={value} onChange={(event) => onChange(event.currentTarget.value)} data-testid={testId}>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+// ----- Back link: goes back to the screen this one was opened from -----
+
+export function BackLink({ href, label, onBack, testId }: { readonly href: string; readonly label: string; readonly onBack?: () => void; readonly testId?: string | undefined }) {
+  return (
+    <a
+      className="back"
+      href={href}
+      data-testid={testId}
+      onClick={(event) => {
+        if (onBack === undefined || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        onBack();
+      }}
+    >
+      <Icon name="back" size={18} />
+      <span>{label}</span>
+    </a>
   );
 }
 

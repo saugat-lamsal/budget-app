@@ -1,758 +1,891 @@
 [
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/amounts.ts",
-  "find": "const cents = Number(dollars) * 100 + Number(fraction.padEnd(2, '0'));",
-  "replace": "const cents = Number(dollars) * 100 + Number(fraction);",
-  "why": "0.1 read 72.1 as 72.01"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/amounts.ts",
-  "find": "return sign === '-' && cents !== 0 ? -cents : cents;",
-  "replace": "return cents;",
-  "why": "0.1 lose the minus sign"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/amounts.ts",
-  "find": "const AMOUNT_TEXT = /^(-?)(\\d+)(?:\\.(\\d{1,2}))?$/;",
-  "replace": "const AMOUNT_TEXT = /^(-?)(\\d+)(?:\\.(\\d{1,3}))?$/;",
-  "why": "0.1 let fractions of a cent through"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/amounts.ts",
-  "find": "const LIMIT = 1e12;",
-  "replace": "const LIMIT = 1e17;",
-  "why": "0.1 accept amounts too large to keep exact"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/plaid-item.ts",
-  "find": "        day: authorized ?? date,",
-  "replace": "        day: date,",
-  "why": "4.1 date a purchase by when it posted"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/plaid-item.ts",
-  "find": "    if (currency !== 'USD' && !(currency === null && tx['unofficial_currency_code'] === null)) {",
-  "replace": "    if (currency === 'XXX') {",
-  "why": "0.5 take money in another currency as dollars"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/plaid-item.ts",
-  "find": "    const description = typeof original === 'string' && original.trim() !== '' ? original : text(tx['name'], 'description');",
-  "replace": "    const description = text(tx['name'], 'description');",
-  "why": "B9 match rules against Plaid's cleaned-up name, not the bank's own words"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/reading.ts",
-  "find": "  if (amount === 0) return { kind: 'nothing' };\n",
-  "replace": "",
-  "why": "reading: treat zero as money moving"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/reading.ts",
-  "find": "  const out = amount > 0;",
-  "replace": "  const out = amount < 0;",
-  "why": "4.1 flip which way the money went"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/reading.ts",
-  "find": "  if (isCard(account)) return out ? { kind: 'purchase' } : { kind: 'refund' };",
-  "replace": "  if (isCard(account)) return out ? { kind: 'refund' } : { kind: 'purchase' };",
-  "why": "4.5 swap card purchases and refunds"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/reading.ts",
-  "find": "    if (rule.account !== account || !matchesTextRule(rule, description)) continue;",
-  "replace": "    if (!matchesTextRule(rule, description)) continue;",
-  "why": "B9 apply a bank rule on every account"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/reading.ts",
-  "find": "      return isBankAccount(rule.other) ? { kind: 'transfer-arrived', from: rule.other } : null;",
-  "replace": "      return { kind: 'transfer-arrived', from: 'checking' };",
-  "why": "12.5 take every arriving half as from checking"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/reading.ts",
-  "find": "    case 'payment-to-person':\n      return out ? { kind: 'payment-to-person' } : null;",
-  "replace": "    case 'payment-to-person':\n      return null;",
-  "why": "7.4 and 8.1 never see a payment to a person"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/balances.ts",
-  "find": "      pendingCharges.push({ account: role, amount: item.amountCents });",
-  "replace": "      void role;",
-  "why": "12.1 leave pending charges out of the bank side"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/balances.ts",
-  "find": "if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined) continue;",
-  "replace": "if (!item.pending || item.removed || item.replacedBy !== null || role === undefined) continue;",
-  "why": "B36 count pending money in and pending transfers in the bank side"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/balances.ts",
-  "find": "if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase'",
-  "replace": "if (!item.pending || item.replacedBy !== null || item.kind !== 'purchase'",
-  "why": "4.6 keep counting a pending charge the bank removed"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/statements.ts",
-  "find": "    const closingDate = date(raw.last_statement_issue_date, 'statement date');",
-  "replace": "    const closingDate = date(raw.last_payment_date, 'statement date');",
-  "why": "9.3 take the last payment date as the statement date"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/statements.ts",
-  "find": "    const minimumPayment = centsFromPlaid(raw.minimum_payment_amount, 'minimum payment');",
-  "replace": "    const minimumPayment = centsFromPlaid(raw.last_statement_balance, 'minimum payment');",
-  "why": "9.2 take the statement balance as the minimum"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/plan.ts",
-  "find": "      this.#give({ kind: 'pending-dropped', id: `${id}-dropped`, pendingId: known.bookId ?? id, date: this.#in.today, description: describe(known) }, known);",
-  "replace": "      void describe;",
-  "why": "A2 never tell the book a pending charge was dropped"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/plan.ts",
-  "find": "        this.#give({ ...this.#purchase(item, role), pendingId: pending.bookId ?? pending.transactionId }, stored);",
-  "replace": "        this.#give(this.#purchase(item, role), stored);",
-  "why": "4.6 count a posted charge as new, beside its pending one"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/plan.ts",
-  "find": "        pending.replacedBy = item.id;\n",
-  "replace": "",
-  "why": "4.6 forget which posted charge replaced a pending one"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/plan.ts",
-  "find": "      else stored.status = 'waiting';",
-  "replace": "      else stored.status = 'skipped';",
-  "why": "B36 never send a pending deposit or payment once it posts"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/plan.ts",
-  "find": "    const pick = candidates.find((l) => l.from === ruleFrom) ?? candidates[0];",
-  "replace": "    const pick = candidates.find((l) => l.from === ruleFrom);",
-  "why": "12.5 pair a card payment only with the account its rule names"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/plan.ts",
-  "find": "    // 4.10 (A14): the bank took back a transaction the app had counted. Its\n    // money goes back where it came from.\n    this.#takeBack(known);",
-  "replace": "    void known;",
-  "why": "4.10 do nothing and say nothing when the bank takes back a counted transaction (A14)"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/plan.ts",
-  "find": "      .filter((p) => !(removed.has(p.item.id) && !this.#in.stored.has(p.item.id)))\n",
-  "replace": "",
-  "why": "4.6 send a pending charge that was already gone"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/plan.ts",
-  "find": "    if (known.kind === 'purchase' && before.pending && !item.pending && known.replacedBy === null && role !== undefined && item.amount > 0) {",
-  "replace": "    if (known.kind === 'purchase' && before.pending && !item.pending && known.replacedBy === null && role !== undefined && item.amount > 100_000_000) {",
-  "why": "4.6 miss a pending charge that posts under its own id"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/plan.ts",
-  "find": "    const sameMoney = known.accountId === item.accountId && known.pending === item.pending && known.amountCents === item.amount;",
-  "replace": "    const sameMoney = known.accountId === item.accountId && known.pending === item.pending;",
-  "why": "4.6 miss a pending charge whose amount changed"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/plan.ts",
-  "find": "    if (this.#in.book === null) {\n      stored.status = 'history';\n      return;\n    }",
-  "replace": "    if (this.#in.book === null) {\n      stored.status = 'waiting';\n      return;\n    }",
-  "why": "14 treat history from before setup day as still to come"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/sync.ts",
-  "find": "      if (error instanceof PlaidError && error.errorCode === 'TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION' && restart < TRIES) continue;",
-  "replace": "      if (error instanceof PlaidError && error.errorCode === 'TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION' && restart < 0) continue;",
-  "why": "sync: give up when the data changes while paging"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/sync.ts",
-  "find": "      if (error instanceof PlaidError && error.errorCode === 'ITEM_LOGIN_REQUIRED') {",
-  "replace": "      if (error instanceof PlaidError && error.errorCode === 'NO_SUCH_CODE') {",
-  "why": "10.5 miss the bank asking for a new login"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/sync.ts",
-  "find": "  const historyComplete = connection.historyComplete || statusSeen;",
-  "replace": "  const historyComplete = true;",
-  "why": "14 start setup day before all the history is in"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/sync.ts",
-  "find": "    for (const r of page.removed) removed.add(r.transaction_id);",
-  "replace": "    void page.removed;",
-  "why": "A2 ignore what Plaid removed"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/crypto/token-box.ts",
-  "find": "      decipher.setAAD(boundTo(connectionId));",
-  "replace": "      void connectionId;",
-  "why": "safety: open a sealed bank key for any connection"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/plaid/sandbox-lock.ts",
-  "find": "  if (env?.trim() !== 'sandbox') {",
-  "replace": "  if (env === undefined) {",
-  "why": "safety: accept any PLAID_ENV"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/plaid/sandbox-lock.ts",
-  "find": "  if (!token.startsWith('access-sandbox-')) throw new SandboxOnlyError('that bank key is not a test-bank key');",
-  "replace": "  if (token === '') throw new SandboxOnlyError('that bank key is not a test-bank key');",
-  "why": "safety: accept a bank key for a real bank"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/log.ts",
-  "find": "const BANK_KEY = /\\b(?:access|public)-(?:sandbox|development|production)-[A-Za-z0-9-]+/g;",
-  "replace": "const BANK_KEY = /\\b(?:access|public)-(?:sandbox)-[A-Za-z0-9-]+/g;",
-  "why": "safety: show real-bank keys in the log"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/plaid/client.ts",
-  "find": "      const kind = error instanceof Error ? hideSecrets(error.name, secrets) : 'unknown';",
-  "replace": "      const kind = error instanceof Error ? error.message : 'unknown';",
-  "why": "safety: pass on what the network layer said, which may hold the key"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/setup-day.ts",
-  "find": "    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || !read.ok || read.item.amount <= 0) continue;",
-  "replace": "    if (!item.pending || item.removed || role === undefined || !read.ok || read.item.amount === 0) continue;",
-  "why": "14.2 count pending money in as a pending charge"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/setup-day.ts",
-  "find": "    startingMoney: startingMoney(history.posted, history.pendingCharges, inTransit),",
-  "replace": "    startingMoney: startingMoney(history.posted, history.pendingCharges),",
-  "why": "B48 leave money on its way out of the starting money"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/setup-day.ts",
-  "find": "        updated.status = 'waiting';",
-  "replace": "        updated.status = 'history';",
-  "why": "B36 never send a deposit that was pending on setup day"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/sync.ts",
-  "find": "card.account_id !== null && storedCards.get(card.account_id)?.rawText !== JSON.stringify(card)",
-  "replace": "card.account_id !== null && roles.has(card.account_id) && storedCards.get(card.account_id)?.rawText !== JSON.stringify(card)",
-  "why": "9.1 keep statements only for accounts already set as his cards"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/status.ts",
-  "find": "return (a.role === 'everyday-card' || a.role === 'old-card') && raw !== undefined ? [{ card: a.role, result: cardStatement(a.role, raw) }] : [];",
-  "replace": "return a.role === 'everyday-card' && raw !== undefined ? [{ card: a.role, result: cardStatement(a.role, raw) }] : [];",
-  "why": "9.2 leave out the old card statement"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/reading.ts",
-  "find": "  return out ? { kind: 'purchase' } : { kind: 'deposit' };",
-  "replace": "  return out && account === 'checking' ? { kind: 'purchase' } : { kind: 'deposit' };",
-  "why": "4.9 read money leaving savings as money in (A16)"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/reading.ts",
-  "find": "          return Object.freeze({ ...base, account: on as 'checking' | 'savings', means: 'payment-to-person' as const });",
-  "replace": "          return Object.freeze({ ...base, account: 'checking' as const, means: 'payment-to-person' as const });",
-  "why": "7.4 turn a bank rule for payments to people from savings into one for checking (A16)"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/plan.ts",
-  "find": "        return role === 'checking' || role === 'savings' ? { ...base, kind: 'payment-to-person', account: role, date: item.day } : null;",
-  "replace": "        return role === 'checking' ? { ...base, kind: 'payment-to-person', account: role, date: item.day } : null;",
-  "why": "7.4 hold a payment to a person from savings (A16)"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/plan.ts",
-  "find": "    return role === 'savings' ? { ...base, kind: 'savings-withdrawal', account: role } : { ...base, kind: 'purchase', account: role };",
-  "replace": "    return { ...base, kind: 'purchase', account: role } as Purchase;",
-  "why": "4.9 send money leaving savings as a purchase (A16)"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/bank/balances.ts",
-  "find": "      if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined) continue;",
-  "replace": "      if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined || role === 'savings') continue;",
-  "why": "12.1 leave a charge pending on savings out of the bank side (A16)"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/setup-day.ts",
-  "find": "    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || !read.ok || read.item.amount <= 0) continue;",
-  "replace": "    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || role === 'savings' || !read.ok || read.item.amount <= 0) continue;",
-  "why": "14.2 leave a charge pending on savings out of the starting money (A16)"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/plan.ts",
-  "find": "      this.#give(change, known);\n      return;",
-  "replace": "      this.#notice(known, 'the bank changed a pending charge');\n      return;",
-  "why": "4.6 keep the first amount of a pending charge until it posts (A13)"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/plan.ts",
-  "find": "      if (!this.#takeBack(known)) return;\n",
-  "replace": "",
-  "why": "4.10 count a corrected transaction on top of the old one (A14)"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/plan.ts",
-  "find": "      if (this.#give(fresh, known)) known.bookId = fresh.id;",
-  "replace": "      this.#give(fresh, known);",
-  "why": "4.10 lose track of a corrected transaction's new version (A14)"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/plan.ts",
-  "find": "    // 4.10 (A14): the bank took back a transaction the app had counted. Its\n    // money goes back where it came from.\n    this.#takeBack(known);",
-  "replace": "    this.#notice(known, 'the bank removed a transaction the app had already counted');",
-  "why": "4.10 wait for his decision when the bank takes something back (A14)"
- },
- {
-  "section": "bank",
-  "file": "packages/server/src/sync/plan.ts",
-  "find": "      id: `${known.transactionId}-taken-back-${this.#in.sync}`,",
-  "replace": "      id: `${known.transactionId}-taken-back`,",
-  "why": "4.10 give two take-backs of the same item the same id (A14)"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "if (earlier.fingerprint === fingerprint) return { ok: true, replayed: true, done: earlier.done };",
-  "replace": "if (true) return { ok: true, replayed: true, done: earlier.done };",
-  "why": "[review] a different choice under the same decision number is taken for a repeat"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "    this.#done.set(request.id, { fingerprint, done });\n",
-  "replace": "",
-  "why": "[review] a repeat of a decision is not recognized"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "return refuse('not-waiting', 'That one was already dealt with.');",
-  "replace": "return refuse('refused', 'That one was already dealt with.');",
-  "why": "[review] an item already dealt with is reported as refused"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "if (isFinal(request, detail.options) && request.confirmed !== true) {",
-  "replace": "if (false) {",
-  "why": "[review] 6.1 B52 final choices do not ask first"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "if (request.always !== undefined || 'leftover' in c) return true;",
-  "replace": "if ('leftover' in c) return true;",
-  "why": "[review] 13.6 a rule does not ask first"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "if (request.always !== undefined || 'leftover' in c) return true;",
-  "replace": "if (request.always !== undefined) return true;",
-  "why": "[review] 3.4 a leftover answer does not ask first"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "return options.type === 'sort' && 'to' in c && options.picks.some((p) => p.to === c.to && p.final);",
-  "replace": "return false;",
-  "why": "[review] 6.1 B52 my paycheck does not ask first"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "return known === net ? parts : `The parts add up to ${formatDollars(known)}, but this is ${formatDollars(net)}`;",
-  "replace": "return parts;",
-  "why": "[review] 4.4 a split that does not add up is left to the book, in cents"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "if (left <= 0) {",
-  "replace": "if (left < 0) {",
-  "why": "[review] 4.4 a rest of exactly nothing is accepted"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "const left = subtractCents(net, known);",
-  "replace": "const left = subtractCents(known, net);",
-  "why": "[review] 4.4 the rest is worked out the wrong way round"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "if (error.code === 'not-cents') return 'That would make a total too large to keep exact';",
-  "replace": "",
-  "why": "[review] 0.1 a total too large to keep exact is not said in plain words"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "[...before].filter((id) => id !== request.item && !after.has(id)).length;",
-  "replace": "[...before].filter((id) => !after.has(id)).length;",
-  "why": "[review] 13.2 the item itself is counted as another one the rule sorted"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "{ id: `always-${request.id}`,",
-  "replace": "{ id: 'always',",
-  "why": "[review] 13.6 every rule gets the same id"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "request.always.contains }, today).sticks;",
-  "replace": "request.always.contains }, today).sticks || true;",
-  "why": "[review] 13.6 B49 it always says the rule will catch the next one"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "options.always.includes(c.to) ? null : \"A rule can't do that for this item.\";",
-  "replace": "options.always.includes(c.to) ? null : null;",
-  "why": "[review] 13.6 a rule for a choice rules cannot make is passed on"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "    if (request.always !== undefined) return \"A rule can't do that for this item.\";\n",
-  "replace": "",
-  "why": "[review] 13.6 a rule can split or mark a transfer"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "const unavailable = options.unavailable.find(",
-  "replace": "const unavailable = options.unavailable.filter(() => false).find(",
-  "why": "[review] B54 5.6 why a choice is not available is not said"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "/^[A-Za-z0-9_-]{8,64}$/",
-  "replace": "/^[A-Za-z0-9_-]{1,64}$/",
-  "why": "[review] a one-letter decision number is taken"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "/^[A-Za-z0-9_-]{8,64}$/",
-  "replace": "/^[A-Za-z0-9_-]{8,65}$/",
-  "why": "[review] a decision number one too long is taken"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "item.length > MAX_ITEM_LENGTH",
-  "replace": "item.length >= MAX_ITEM_LENGTH",
-  "why": "[review] an item id of exactly the longest length is not taken"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "contains.length > MAX_TEXT_LENGTH",
-  "replace": "contains.length >= MAX_TEXT_LENGTH",
-  "why": "[review] rule text of exactly the longest length is not taken"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "if (keys.length !== 1) return null;",
-  "replace": "if (keys.length < 1) return null;",
-  "why": "[review] a choice that says two things is taken"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "Number.isSafeInteger(amount) && amount > 0)",
-  "replace": "Number.isSafeInteger(amount) && amount >= 0)",
-  "why": "[review] a part of nothing is taken"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "value.length < 2 || value.length > SPLIT_BUCKETS.length",
-  "replace": "value.length < 1 || value.length > SPLIT_BUCKETS.length",
-  "why": "[review] a split of one part is taken"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "  if (new Set(parts.map((p) => p.bucket)).size !== parts.length) return null;\n",
-  "replace": "",
-  "why": "[review] a split with the same bucket twice is taken"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "  if (parts.filter((p) => p.amount === 'rest').length > 1) return null;\n",
-  "replace": "",
-  "why": "[review] a split with two rests is taken"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "if (d.item.id.length < 4) continue;",
-  "replace": "if (d.item.id.length < 0) continue;",
-  "why": "[review] a short id is cut out of the words of a reason"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "return text.charAt(0).toUpperCase() + text.slice(1);",
-  "replace": "return text;",
-  "why": "[review] a reason from the money math starts with a small letter"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/views/review.ts",
-  "find": "= ['leftover', 'money-in', 'spending', 'old-card-purchase'];",
-  "replace": "= ['money-in', 'leftover', 'spending', 'old-card-purchase'];",
-  "why": "[review] 3.4 payday questions do not come first"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/views/review.ts",
-  "find": "(a.item.date < b.item.date ? -1 : a.item.date > b.item.date ? 1 : 0)",
-  "replace": "(a.item.date > b.item.date ? -1 : a.item.date < b.item.date ? 1 : 0)",
-  "why": "[review] the newest of a kind comes first"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/views/review.ts",
-  "find": "heldBack: book.pots().unsortedOut",
-  "replace": "heldBack: book.pots().unsortedIn",
-  "why": "[review] 4.3 what is held back is the money waiting to come in"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/views/buckets.ts",
-  "find": "month.sent < month.target.low ? 'under'",
-  "replace": "month.sent <= month.target.low ? 'under'",
-  "why": "[review] 8.2 exactly the low end of the target is under it"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/views/buckets.ts",
-  "find": "month.sent > month.target.high ? 'over'",
-  "replace": "month.sent >= month.target.high ? 'over'",
-  "why": "[review] 8.2 exactly the high end of the target is over it"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/views/buckets.ts",
-  "find": "book.momSentInMonth(monthOf(today))",
-  "replace": "book.momSentInMonth('2026-10')",
-  "why": "[review] 8.2 mom's month is always October"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/views/buckets.ts",
-  "find": "total: book.appSide(),",
-  "replace": "total: book.pots().savings,",
-  "why": "[review] 12.2 the total is only savings"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/views/buckets.ts",
-  "find": "difference: self.difference }",
-  "replace": "difference: -self.difference }",
-  "why": "[review] 12.3 the difference is the wrong way round"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/views/buckets.ts",
-  "find": "moneyIn: pots.unsortedIn, spending: pots.unsortedOut }",
-  "replace": "moneyIn: pots.unsortedOut, spending: pots.unsortedIn }",
-  "why": "[review] 12.2 money coming in and going out are swapped"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/views/buckets.ts",
-  "find": "oldCard: book.oldCardDebt(),",
-  "replace": "oldCard: 0,",
-  "why": "[review] 12.4 the old card debt is not shown"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/views/buckets.ts",
-  "find": "needs: bar(pots.needs, started.needs),",
-  "replace": "needs: bar(pots.needs, started.wants),",
-  "why": "[review] 10.1 needs is measured against what wants started with"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/views/buckets.ts",
-  "find": "heldForOthers: book.othersMoney(),",
-  "replace": "heldForOthers: { heldForOthers: 0, meaning: 'settled' },",
-  "why": "[review] 7.3 money held for others is not shown"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/views/buckets.ts",
-  "find": "savings: pots.savings,",
-  "replace": "savings: pots.needs,",
-  "why": "[review] savings shows what is in needs"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/http/server.ts",
-  "find": "send(response, answer.ok ? 200 : 422,",
-  "replace": "send(response, 200,",
-  "why": "[review] a refused choice is answered as if it was done"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/http/server.ts",
-  "find": "const CHOICE_LIMIT = 4096;",
-  "replace": "const CHOICE_LIMIT = 40960;",
-  "why": "[review] a choice may be ten times as big"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/http/server.ts",
-  "find": "JSON.stringify(answer), 'no-store');",
-  "replace": "JSON.stringify(answer), 'public, max-age=3600');",
-  "why": "[review] safety: the answer to a choice is kept by the browser"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/http/server.ts",
-  "find": "      if (request.method !== 'POST') {\n        response.setHeader('Allow', 'POST');\n        send(response, 405, 'text/plain; charset=utf-8', 'Only POST.', 'no-store');\n        return;\n      }\n      await takeChoice(",
-  "replace": "      await takeChoice(",
-  "why": "[review] 0.4 a choice can be sent with GET"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/http/server.ts",
-  "find": "JSON.stringify(view), 'no-store');\n      return;\n    }\n    if (path.startsWith('/api/')) {",
-  "replace": "JSON.stringify(view), 'public, max-age=3600');\n      return;\n    }\n    if (path.startsWith('/api/')) {",
-  "why": "[review] safety: the Buckets and Review numbers are kept by the browser"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "of.length <= MAX_ITEM_LENGTH",
-  "replace": "of.length < MAX_ITEM_LENGTH",
-  "why": "[review] [pre-merge] A18 the longest purchase id allowed is not read"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "typeof of === 'string' && of !== '' &&",
-  "replace": "typeof of === 'string' &&",
-  "why": "[review] [pre-merge] A18 an empty purchase id is read"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "|| 'leftover' in c || 'refundOf' in c) return true;",
-  "replace": "|| 'leftover' in c) return true;",
-  "why": "[review] [pre-merge] A18 matching a refund does not ask first"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "return options.match.includes(c.refundOf) ? null :",
-  "replace": "return true ? null :",
-  "why": "[review] [pre-merge] A18 a purchase that is not offered is handed to the book"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "      if (request.always !== undefined) return \"A rule can't do that for this item.\";\n      if (detail.item.type",
-  "replace": "      if (detail.item.type",
-  "why": "[review] [pre-merge] A18 a rule that matches a refund is not refused up front"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "      if (detail.item.type !== 'money-in' || detail.item.reason !== 'refund') return no;\n",
-  "replace": "",
-  "why": "[review] [pre-merge] A18 matching something that is not a refund gets the refund reason"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "return { item: id, name: d === undefined ? 'An item' : nameOf(d) };",
-  "replace": "return { item: id, name: id };",
-  "why": "[review] [pre-merge] A19 what stays waiting is named by its id"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "const stillWaiting = applied.stillWaiting.map(",
-  "replace": "const stillWaiting = applied.stillWaiting.slice(1).map(",
-  "why": "[review] [pre-merge] A19 the first item left waiting is not named"
- },
- {
-  "section": "review",
-  "file": "packages/server/src/choices.ts",
-  "find": "            ? { refundOf: choice.refundOf }",
-  "replace": "            ? { to: 'wants' as const }",
-  "why": "[review] [pre-merge] A18 a matched refund is put in wants instead"
- }
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/amounts.ts",
+    "find": "const cents = Number(dollars) * 100 + Number(fraction.padEnd(2, '0'));",
+    "replace": "const cents = Number(dollars) * 100 + Number(fraction);",
+    "why": "0.1 read 72.1 as 72.01"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/amounts.ts",
+    "find": "return sign === '-' && cents !== 0 ? -cents : cents;",
+    "replace": "return cents;",
+    "why": "0.1 lose the minus sign"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/amounts.ts",
+    "find": "const AMOUNT_TEXT = /^(-?)(\\d+)(?:\\.(\\d{1,2}))?$/;",
+    "replace": "const AMOUNT_TEXT = /^(-?)(\\d+)(?:\\.(\\d{1,3}))?$/;",
+    "why": "0.1 let fractions of a cent through"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/amounts.ts",
+    "find": "const LIMIT = 1e12;",
+    "replace": "const LIMIT = 1e17;",
+    "why": "0.1 accept amounts too large to keep exact"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/plaid-item.ts",
+    "find": "        day: authorized ?? date,",
+    "replace": "        day: date,",
+    "why": "4.1 date a purchase by when it posted"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/plaid-item.ts",
+    "find": "    if (currency !== 'USD' && !(currency === null && tx['unofficial_currency_code'] === null)) {",
+    "replace": "    if (currency === 'XXX') {",
+    "why": "0.5 take money in another currency as dollars"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/plaid-item.ts",
+    "find": "    const description = typeof original === 'string' && original.trim() !== '' ? original : text(tx['name'], 'description');",
+    "replace": "    const description = text(tx['name'], 'description');",
+    "why": "B9 match rules against Plaid's cleaned-up name, not the bank's own words"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/reading.ts",
+    "find": "  if (amount === 0) return { kind: 'nothing' };\n",
+    "replace": "",
+    "why": "reading: treat zero as money moving"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/reading.ts",
+    "find": "  const out = amount > 0;",
+    "replace": "  const out = amount < 0;",
+    "why": "4.1 flip which way the money went"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/reading.ts",
+    "find": "  if (isCard(account)) return out ? { kind: 'purchase' } : { kind: 'refund' };",
+    "replace": "  if (isCard(account)) return out ? { kind: 'refund' } : { kind: 'purchase' };",
+    "why": "4.5 swap card purchases and refunds"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/reading.ts",
+    "find": "    if (rule.account !== account || !matchesTextRule(rule, description)) continue;",
+    "replace": "    if (!matchesTextRule(rule, description)) continue;",
+    "why": "B9 apply a bank rule on every account"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/reading.ts",
+    "find": "      return isBankAccount(rule.other) ? { kind: 'transfer-arrived', from: rule.other } : null;",
+    "replace": "      return { kind: 'transfer-arrived', from: 'checking' };",
+    "why": "12.5 take every arriving half as from checking"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/reading.ts",
+    "find": "    case 'payment-to-person':\n      return out ? { kind: 'payment-to-person' } : null;",
+    "replace": "    case 'payment-to-person':\n      return null;",
+    "why": "7.4 and 8.1 never see a payment to a person"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "      pendingCharges.push({ account: role, amount: item.amountCents });",
+    "replace": "      void role;",
+    "why": "12.1 leave pending charges out of the bank side"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined) continue;",
+    "replace": "if (!item.pending || item.removed || item.replacedBy !== null || role === undefined) continue;",
+    "why": "B36 count pending money in and pending transfers in the bank side"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase'",
+    "replace": "if (!item.pending || item.replacedBy !== null || item.kind !== 'purchase'",
+    "why": "4.6 keep counting a pending charge the bank removed"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/statements.ts",
+    "find": "    const closingDate = date(raw.last_statement_issue_date, 'statement date');",
+    "replace": "    const closingDate = date(raw.last_payment_date, 'statement date');",
+    "why": "9.3 take the last payment date as the statement date"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/statements.ts",
+    "find": "    const minimumPayment = centsFromPlaid(raw.minimum_payment_amount, 'minimum payment');",
+    "replace": "    const minimumPayment = centsFromPlaid(raw.last_statement_balance, 'minimum payment');",
+    "why": "9.2 take the statement balance as the minimum"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "      this.#give({ kind: 'pending-dropped', id: `${id}-dropped`, pendingId: known.bookId ?? id, date: this.#in.today, description: describe(known) }, known);",
+    "replace": "      void describe;",
+    "why": "A2 never tell the book a pending charge was dropped"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "        this.#give({ ...this.#purchase(item, role), pendingId: pending.bookId ?? pending.transactionId }, stored);",
+    "replace": "        this.#give(this.#purchase(item, role), stored);",
+    "why": "4.6 count a posted charge as new, beside its pending one"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "        pending.replacedBy = item.id;\n",
+    "replace": "",
+    "why": "4.6 forget which posted charge replaced a pending one"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "      else stored.status = 'waiting';",
+    "replace": "      else stored.status = 'skipped';",
+    "why": "B36 never send a pending deposit or payment once it posts"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "    const pick = candidates.find((l) => l.from === ruleFrom) ?? candidates[0];",
+    "replace": "    const pick = candidates.find((l) => l.from === ruleFrom);",
+    "why": "12.5 pair a card payment only with the account its rule names"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "    // 4.10 (A14): the bank took back a transaction the app had counted. Its\n    // money goes back where it came from.\n    this.#takeBack(known);",
+    "replace": "    void known;",
+    "why": "4.10 do nothing and say nothing when the bank takes back a counted transaction (A14)"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "      .filter((p) => !(removed.has(p.item.id) && !this.#in.stored.has(p.item.id)))\n",
+    "replace": "",
+    "why": "4.6 send a pending charge that was already gone"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "    if (known.kind === 'purchase' && before.pending && !item.pending && known.replacedBy === null && role !== undefined && item.amount > 0) {",
+    "replace": "    if (known.kind === 'purchase' && before.pending && !item.pending && known.replacedBy === null && role !== undefined && item.amount > 100_000_000) {",
+    "why": "4.6 miss a pending charge that posts under its own id"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "    const sameMoney = known.accountId === item.accountId && known.pending === item.pending && known.amountCents === item.amount;",
+    "replace": "    const sameMoney = known.accountId === item.accountId && known.pending === item.pending;",
+    "why": "4.6 miss a pending charge whose amount changed"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "    if (this.#in.book === null) {\n      stored.status = 'history';\n      return;\n    }",
+    "replace": "    if (this.#in.book === null) {\n      stored.status = 'waiting';\n      return;\n    }",
+    "why": "14 treat history from before setup day as still to come"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "      if (error instanceof PlaidError && error.errorCode === 'TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION' && restart < TRIES) continue;",
+    "replace": "      if (error instanceof PlaidError && error.errorCode === 'TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION' && restart < 0) continue;",
+    "why": "sync: give up when the data changes while paging"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "      if (error instanceof PlaidError && error.errorCode === 'ITEM_LOGIN_REQUIRED') {",
+    "replace": "      if (error instanceof PlaidError && error.errorCode === 'NO_SUCH_CODE') {",
+    "why": "10.5 miss the bank asking for a new login"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "  const historyComplete = connection.historyComplete || statusSeen;",
+    "replace": "  const historyComplete = true;",
+    "why": "14 start setup day before all the history is in"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "    for (const r of page.removed) removed.add(r.transaction_id);",
+    "replace": "    void page.removed;",
+    "why": "A2 ignore what Plaid removed"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/crypto/token-box.ts",
+    "find": "      decipher.setAAD(boundTo(connectionId));",
+    "replace": "      void connectionId;",
+    "why": "safety: open a sealed bank key for any connection"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "  if (env?.trim() !== 'sandbox') {",
+    "replace": "  if (env === undefined) {",
+    "why": "safety: accept any PLAID_ENV"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "  if (!token.startsWith('access-sandbox-')) throw new SandboxOnlyError('that bank key is not a test-bank key');",
+    "replace": "  if (token === '') throw new SandboxOnlyError('that bank key is not a test-bank key');",
+    "why": "safety: accept a bank key for a real bank"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/log.ts",
+    "find": "const BANK_KEY = /\\b(?:access|public)-(?:sandbox|development|production)-[A-Za-z0-9-]+/g;",
+    "replace": "const BANK_KEY = /\\b(?:access|public)-(?:sandbox)-[A-Za-z0-9-]+/g;",
+    "why": "safety: show real-bank keys in the log"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "      const kind = error instanceof Error ? hideSecrets(error.name, secrets) : 'unknown';",
+    "replace": "      const kind = error instanceof Error ? error.message : 'unknown';",
+    "why": "safety: pass on what the network layer said, which may hold the key"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/setup-day.ts",
+    "find": "    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || !read.ok || read.item.amount <= 0) continue;",
+    "replace": "    if (!item.pending || item.removed || role === undefined || !read.ok || read.item.amount === 0) continue;",
+    "why": "14.2 count pending money in as a pending charge"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/setup-day.ts",
+    "find": "    startingMoney: startingMoney(history.posted, history.pendingCharges, inTransit),",
+    "replace": "    startingMoney: startingMoney(history.posted, history.pendingCharges),",
+    "why": "B48 leave money on its way out of the starting money"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/setup-day.ts",
+    "find": "        updated.status = 'waiting';",
+    "replace": "        updated.status = 'history';",
+    "why": "B36 never send a deposit that was pending on setup day"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "card.account_id !== null && storedCards.get(card.account_id)?.rawText !== JSON.stringify(card)",
+    "replace": "card.account_id !== null && roles.has(card.account_id) && storedCards.get(card.account_id)?.rawText !== JSON.stringify(card)",
+    "why": "9.1 keep statements only for accounts already set as his cards"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/status.ts",
+    "find": "return (a.role === 'everyday-card' || a.role === 'old-card') && raw !== undefined ? [{ card: a.role, result: cardStatement(a.role, raw) }] : [];",
+    "replace": "return a.role === 'everyday-card' && raw !== undefined ? [{ card: a.role, result: cardStatement(a.role, raw) }] : [];",
+    "why": "9.2 leave out the old card statement"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/reading.ts",
+    "find": "  return out ? { kind: 'purchase' } : { kind: 'deposit' };",
+    "replace": "  return out && account === 'checking' ? { kind: 'purchase' } : { kind: 'deposit' };",
+    "why": "4.9 read money leaving savings as money in (A16)"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/reading.ts",
+    "find": "          return Object.freeze({ ...base, account: on as 'checking' | 'savings', means: 'payment-to-person' as const });",
+    "replace": "          return Object.freeze({ ...base, account: 'checking' as const, means: 'payment-to-person' as const });",
+    "why": "7.4 turn a bank rule for payments to people from savings into one for checking (A16)"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "        return role === 'checking' || role === 'savings' ? { ...base, kind: 'payment-to-person', account: role, date: item.day } : null;",
+    "replace": "        return role === 'checking' ? { ...base, kind: 'payment-to-person', account: role, date: item.day } : null;",
+    "why": "7.4 hold a payment to a person from savings (A16)"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "    return role === 'savings' ? { ...base, kind: 'savings-withdrawal', account: role } : { ...base, kind: 'purchase', account: role };",
+    "replace": "    return { ...base, kind: 'purchase', account: role } as Purchase;",
+    "why": "4.9 send money leaving savings as a purchase (A16)"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "      if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined) continue;",
+    "replace": "      if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined || role === 'savings') continue;",
+    "why": "12.1 leave a charge pending on savings out of the bank side (A16)"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/setup-day.ts",
+    "find": "    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || !read.ok || read.item.amount <= 0) continue;",
+    "replace": "    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || role === 'savings' || !read.ok || read.item.amount <= 0) continue;",
+    "why": "14.2 leave a charge pending on savings out of the starting money (A16)"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "      this.#give(change, known);\n      return;",
+    "replace": "      this.#notice(known, 'the bank changed a pending charge');\n      return;",
+    "why": "4.6 keep the first amount of a pending charge until it posts (A13)"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "      if (!this.#takeBack(known)) return;\n",
+    "replace": "",
+    "why": "4.10 count a corrected transaction on top of the old one (A14)"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "      if (this.#give(fresh, known)) known.bookId = fresh.id;",
+    "replace": "      this.#give(fresh, known);",
+    "why": "4.10 lose track of a corrected transaction's new version (A14)"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "    // 4.10 (A14): the bank took back a transaction the app had counted. Its\n    // money goes back where it came from.\n    this.#takeBack(known);",
+    "replace": "    this.#notice(known, 'the bank removed a transaction the app had already counted');",
+    "why": "4.10 wait for his decision when the bank takes something back (A14)"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "      id: `${known.transactionId}-taken-back-${this.#in.sync}`,",
+    "replace": "      id: `${known.transactionId}-taken-back`,",
+    "why": "4.10 give two take-backs of the same item the same id (A14)"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "if (earlier.fingerprint === fingerprint) return { ok: true, replayed: true, done: earlier.done };",
+    "replace": "if (true) return { ok: true, replayed: true, done: earlier.done };",
+    "why": "[review] a different choice under the same decision number is taken for a repeat"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "    this.#done.set(request.id, { fingerprint, done });\n",
+    "replace": "",
+    "why": "[review] a repeat of a decision is not recognized"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "return refuse('not-waiting', 'That one was already dealt with.');",
+    "replace": "return refuse('refused', 'That one was already dealt with.');",
+    "why": "[review] an item already dealt with is reported as refused"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "if (isFinal(request, subject.options) && request.confirmed !== true) {",
+    "replace": "if (false) {",
+    "why": "[review] 6.1 B52 final choices do not ask first"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "if (request.always !== undefined || 'leftover' in c || 'refundOf' in c) return true;",
+    "replace": "if ('leftover' in c || 'refundOf' in c) return true;",
+    "why": "[review] 13.6 a rule does not ask first"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "if (request.always !== undefined || 'leftover' in c || 'refundOf' in c) return true;",
+    "replace": "if (request.always !== undefined || 'refundOf' in c) return true;",
+    "why": "[review] 3.4 a leftover answer does not ask first"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "return options.type === 'sort' && 'to' in c && options.picks.some((p) => p.to === c.to && p.final);",
+    "replace": "return false;",
+    "why": "[review] 6.1 B52 my paycheck does not ask first"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "return known === net ? parts : `The parts add up to ${formatDollars(known)}, but this is ${formatDollars(net)}`;",
+    "replace": "return parts;",
+    "why": "[review] 4.4 a split that does not add up is left to the book, in cents"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "if (left <= 0) {",
+    "replace": "if (left < 0) {",
+    "why": "[review] 4.4 a rest of exactly nothing is accepted"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "const left = subtractCents(net, known);",
+    "replace": "const left = subtractCents(known, net);",
+    "why": "[review] 4.4 the rest is worked out the wrong way round"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "if (error.code === 'not-cents') return 'That would make a total too large to keep exact';",
+    "replace": "",
+    "why": "[review] 0.1 a total too large to keep exact is not said in plain words"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "[...before].filter((id) => id !== request.item && !after.has(id)).length;",
+    "replace": "[...before].filter((id) => !after.has(id)).length;",
+    "why": "[review] 13.2 the item itself is counted as another one the rule sorted"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "{ id: `always-${request.id}`,",
+    "replace": "{ id: 'always',",
+    "why": "[review] 13.6 every rule gets the same id"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "return book.sortAlways(item, sort, { id: `always-${request.id}`, contains: request.always.contains }, today);",
+    "replace": "return { ...book.sortAlways(item, sort, { id: `always-${request.id}`, contains: request.always.contains }, today), sticks: true };",
+    "why": "[review] 13.6 B49 it always says the rule will catch the next one"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "options.always.includes(c.to) ? null : \"A rule can't do that for this item.\";",
+    "replace": "options.always.includes(c.to) ? null : null;",
+    "why": "[review] 13.6 a rule for a choice rules cannot make is passed on"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "    if (request.always !== undefined) return \"A rule can't do that for this item.\";\n    if ('transfer' in c)",
+    "replace": "    if ('transfer' in c)",
+    "why": "[review] 13.6 a rule can split or mark a transfer"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "const unavailable = options.unavailable.find(",
+    "replace": "const unavailable = options.unavailable.filter(() => false).find(",
+    "why": "[review] B54 5.6 why a choice is not available is not said"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "/^[A-Za-z0-9_-]{8,64}$/",
+    "replace": "/^[A-Za-z0-9_-]{1,64}$/",
+    "why": "[review] a one-letter decision number is taken"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "/^[A-Za-z0-9_-]{8,64}$/",
+    "replace": "/^[A-Za-z0-9_-]{8,65}$/",
+    "why": "[review] a decision number one too long is taken"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "item.length > MAX_ITEM_LENGTH",
+    "replace": "item.length >= MAX_ITEM_LENGTH",
+    "why": "[review] an item id of exactly the longest length is not taken"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "contains.length > MAX_TEXT_LENGTH",
+    "replace": "contains.length >= MAX_TEXT_LENGTH",
+    "why": "[review] rule text of exactly the longest length is not taken"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "if (keys.length !== 1) return null;",
+    "replace": "if (keys.length < 1) return null;",
+    "why": "[review] a choice that says two things is taken"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "Number.isSafeInteger(amount) && amount > 0)",
+    "replace": "Number.isSafeInteger(amount) && amount >= 0)",
+    "why": "[review] a part of nothing is taken"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "value.length < 2 || value.length > SPLIT_BUCKETS.length",
+    "replace": "value.length < 1 || value.length > SPLIT_BUCKETS.length",
+    "why": "[review] a split of one part is taken"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "  if (new Set(parts.map((p) => p.bucket)).size !== parts.length) return null;\n",
+    "replace": "",
+    "why": "[review] a split with the same bucket twice is taken"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "  if (parts.filter((p) => p.amount === 'rest').length > 1) return null;\n",
+    "replace": "",
+    "why": "[review] a split with two rests is taken"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "if (d.item.id.length < 4) continue;",
+    "replace": "if (d.item.id.length < 0) continue;",
+    "why": "[review] a short id is cut out of the words of a reason"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "return text.charAt(0).toUpperCase() + text.slice(1);",
+    "replace": "return text;",
+    "why": "[review] a reason from the money math starts with a small letter"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/review.ts",
+    "find": "= ['leftover', 'money-in', 'spending', 'old-card-purchase'];",
+    "replace": "= ['money-in', 'leftover', 'spending', 'old-card-purchase'];",
+    "why": "[review] 3.4 payday questions do not come first"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/review.ts",
+    "find": "(a.item.date < b.item.date ? -1 : a.item.date > b.item.date ? 1 : 0)",
+    "replace": "(a.item.date > b.item.date ? -1 : a.item.date < b.item.date ? 1 : 0)",
+    "why": "[review] the newest of a kind comes first"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/review.ts",
+    "find": "heldBack: book.pots().unsortedOut",
+    "replace": "heldBack: book.pots().unsortedIn",
+    "why": "[review] 4.3 what is held back is the money waiting to come in"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "month.sent < month.target.low ? 'under'",
+    "replace": "month.sent <= month.target.low ? 'under'",
+    "why": "[review] 8.2 exactly the low end of the target is under it"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "month.sent > month.target.high ? 'over'",
+    "replace": "month.sent >= month.target.high ? 'over'",
+    "why": "[review] 8.2 exactly the high end of the target is over it"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "book.momSentInMonth(monthOf(today))",
+    "replace": "book.momSentInMonth('2026-10')",
+    "why": "[review] 8.2 mom's month is always October"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "total: book.appSide(),",
+    "replace": "total: book.pots().savings,",
+    "why": "[review] 12.2 the total is only savings"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "difference: self.difference }",
+    "replace": "difference: -self.difference }",
+    "why": "[review] 12.3 the difference is the wrong way round"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "moneyIn: pots.unsortedIn, spending: pots.unsortedOut }",
+    "replace": "moneyIn: pots.unsortedOut, spending: pots.unsortedIn }",
+    "why": "[review] 12.2 money coming in and going out are swapped"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "oldCard: book.oldCardDebt(),",
+    "replace": "oldCard: 0,",
+    "why": "[review] 12.4 the old card debt is not shown"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "needs: bar(pots.needs, started.needs),",
+    "replace": "needs: bar(pots.needs, started.wants),",
+    "why": "[review] 10.1 needs is measured against what wants started with"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "heldForOthers: book.othersMoney(),",
+    "replace": "heldForOthers: { heldForOthers: 0, meaning: 'settled' },",
+    "why": "[review] 7.3 money held for others is not shown"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "savings: pots.savings,",
+    "replace": "savings: pots.needs,",
+    "why": "[review] savings shows what is in needs"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/http/server.ts",
+    "find": "send(response, answer.ok ? 200 : 422,",
+    "replace": "send(response, 200,",
+    "why": "[review] a refused choice is answered as if it was done"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/http/server.ts",
+    "find": "const CHOICE_LIMIT = 4096;",
+    "replace": "const CHOICE_LIMIT = 40960;",
+    "why": "[review] a choice may be ten times as big"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/http/server.ts",
+    "find": "JSON.stringify(answer), 'no-store');",
+    "replace": "JSON.stringify(answer), 'public, max-age=3600');",
+    "why": "[review] safety: the answer to a choice is kept by the browser"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      if (request.method !== 'POST') {\n        response.setHeader('Allow', 'POST');\n        send(response, 405, 'text/plain; charset=utf-8', 'Only POST.', 'no-store');\n        return;\n      }\n      await takeChoice(",
+    "replace": "      await takeChoice(",
+    "why": "[review] 0.4 a choice can be sent with GET"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/http/server.ts",
+    "find": "JSON.stringify(view), 'no-store');\n      return;\n    }\n    if (path.startsWith('/api/')) {",
+    "replace": "JSON.stringify(view), 'public, max-age=3600');\n      return;\n    }\n    if (path.startsWith('/api/')) {",
+    "why": "[review] safety: the Buckets and Review numbers are kept by the browser"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "of.length <= MAX_ITEM_LENGTH",
+    "replace": "of.length < MAX_ITEM_LENGTH",
+    "why": "[review] [pre-merge] A18 the longest purchase id allowed is not read"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "typeof of === 'string' && of !== '' &&",
+    "replace": "typeof of === 'string' &&",
+    "why": "[review] [pre-merge] A18 an empty purchase id is read"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "|| 'leftover' in c || 'refundOf' in c) return true;",
+    "replace": "|| 'leftover' in c) return true;",
+    "why": "[review] [pre-merge] A18 matching a refund does not ask first"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "return options.match.includes(c.refundOf) ? null :",
+    "replace": "return true ? null :",
+    "why": "[review] [pre-merge] A18 a purchase that is not offered is handed to the book"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "      if (request.always !== undefined) return \"A rule can't do that for this item.\";\n      if (!subject.storeRefund) return no;",
+    "replace": "      if (!subject.storeRefund) return no;",
+    "why": "[review] [pre-merge] A18 a rule that matches a refund is not refused up front"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "      if (!subject.storeRefund) return no;\n",
+    "replace": "",
+    "why": "[review] [pre-merge] A18 matching something that is not a refund gets the refund reason"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "return { item: id, name: d === undefined ? 'An item' : nameOf(d) };",
+    "replace": "return { item: id, name: id };",
+    "why": "[review] [pre-merge] A19 what stays waiting is named by its id"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "const stillWaiting = applied.stillWaiting.map(",
+    "replace": "const stillWaiting = applied.stillWaiting.slice(1).map(",
+    "why": "[review] [pre-merge] A19 the first item left waiting is not named"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "            ? { refundOf: choice.refundOf }",
+    "replace": "            ? { to: 'wants' as const }",
+    "why": "[review] [pre-merge] A18 a matched refund is put in wants instead"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "const sorted = request.resort === true ? this.#book.resortDetail(request.item) : null;",
+    "replace": "const sorted = this.#book.resortDetail(request.item);",
+    "why": "[activity] B101 an item that is not waiting can be sorted without saying it is a re-sort"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "      if (!sorted.resortable) return refuse('refused', sorted.why);\n",
+    "replace": "",
+    "why": "[activity] B100 an item that cannot be sorted again is sorted anyway"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "if (subject.now !== null && request.always === undefined) {",
+    "replace": "if (false as boolean) {",
+    "why": "[activity] B101 sorting it where it already is is not noticed"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "if (subject.now !== null && request.always === undefined) {",
+    "replace": "if (subject.now !== null) {",
+    "why": "[activity] B102 a rule for an item that is already right is refused as already there"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "return same(choice.split) === same(now.split) ? 'split that way' : null;",
+    "replace": "return same(choice.split) === same(now.split) ? null : 'split that way';",
+    "why": "[activity] B101 a different split is taken for the same one"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "if (from === to) return refuse('refused', 'Pick two different buckets to move money between');",
+    "replace": "",
+    "why": "[activity] 13.3 the same bucket twice is not refused in words"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "...(request.confirmed === true ? { confirmed: true } : {}) }, this.#today());",
+    "replace": "confirmed: true }, this.#today());",
+    "why": "[activity] 13.4 a move never asks first"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "    this.#moved.set(request.id, { fingerprint, moved });\n",
+    "replace": "",
+    "why": "[activity] B103 a repeat of a move is not recognized"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "    if (this.#done.has(request.id)) return refuse('id-reused', 'That decision number was already used for a different choice.');\n\n    const { from, to, amount } = request.move;",
+    "replace": "    const { from, to, amount } = request.move;",
+    "why": "[activity] B103 a decision number used for a choice can be used for a move"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "return { ...refuse('needs-confirmation', askingWhy(request.move, result.reasons)), reasons: result.reasons };",
+    "replace": "return { ...refuse('needs-confirmation', askingWhy(request.move, result.reasons)), reasons: [] };",
+    "why": "[activity] 13.4 a move that asks does not say why"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "return `would leave ${from} below zero, which is usually a typo`;",
+    "replace": "return `would leave ${from} below zero`;",
+    "why": "[activity] 13.4 a move below zero does not say it is usually a typo"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "if (typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount <= 0) return null;",
+    "replace": "if (typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount < 0) return null;",
+    "why": "[activity] 13.3 a move of nothing is taken"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "  if (resort !== undefined && resort !== true) return null;\n",
+    "replace": "",
+    "why": "[activity] B101 resort can be anything"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/http/server.ts",
+    "find": "const answer = 'move' in parsed ? await handlers.move?.(request, parsed) : await handlers.choice?.(request, parsed);",
+    "replace": "const answer = 'move' in parsed ? await handlers.choice?.(request, parsed as never) : await handlers.move?.(request, parsed as never);",
+    "why": "[activity] B103 moves and choices go to each other's handler"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/http/server.ts",
+    "find": "export const SCREEN_PATHS: readonly string[] = ['/payday', ...",
+    "replace": "export const SCREEN_PATHS: readonly string[] = [...",
+    "why": "[activity] B104 Payday has no address of its own"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/activity.ts",
+    "find": "return Object.hasOwn(POT_SLUGS, slug) ? (POT_SLUGS[slug] ?? null) : null;",
+    "replace": "return slug in POT_SLUGS ? (POT_SLUGS[slug] ?? null) : null;",
+    "why": "[activity] B97 anything with a name on an object is a bucket"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/activity.ts",
+    "find": "Object.fromEntries(MOVABLE_POTS.map((p) => [p, pots[p]]))",
+    "replace": "Object.fromEntries(MOVABLE_POTS.map((p) => [p, pots.needs]))",
+    "why": "[activity] B97 every bucket holds what needs holds"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/payday.ts",
+    "find": "transfer: book.savingsTransfer(bank.savings) }",
+    "replace": "transfer: book.savingsTransfer(bank.checking) }",
+    "why": "[activity] 3.8 the savings account is read from checking"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/payday.ts",
+    "find": "filter((d) => d.item.type === 'leftover')",
+    "replace": "filter((d) => d.item.type !== 'leftover')",
+    "why": "[activity] 3.4 the questions on Payday are everything but the payday questions"
+  }
 ]

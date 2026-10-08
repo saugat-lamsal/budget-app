@@ -3,4 +3,6 @@
 export * from './home.js';
 export * from './buckets.js';
 export * from './review.js';
+export * from './activity.js';
+export * from './payday.js';
 export type * from './choice.js';

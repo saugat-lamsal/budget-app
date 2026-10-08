@@ -39,8 +39,12 @@ export type {
 } from './transactions.js';
 export { BUCKETS, SPENDING_BUCKETS, type Bucket, type SplitBucket } from './buckets.js';
 export type { DepositRuleChoice, MoneyInChoice, PersonPaymentChoice, SortingRule } from './rules.js';
+export { ACTIVITY_KINDS, type ActivityKind, type ActivityRow, type ActivityWhat, type BucketActivity, type PeriodSummary } from './activity.js';
+export type { LeftoverReport, PaycheckReport, PaydayReport } from './payday-report.js';
+export type { ResortDetail, SortedNow } from './resort.js';
 export {
   Book,
+  MOVABLE_POTS,
   openBook,
   type ChangeLogEntry,
   type LeftoverAnswer,

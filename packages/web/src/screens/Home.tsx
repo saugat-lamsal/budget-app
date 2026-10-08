@@ -134,6 +134,7 @@ function HomeReady({ view, onChanged }: { readonly view: Tracking; readonly onCh
         <BucketBar name="Needs" {...view.buckets.needs} testId="bucket-needs" />
         <BucketBar name="Wants" {...view.buckets.wants} testId="bucket-wants" />
         <ListRow title="All buckets" href={pathOf('buckets')} testId="all-buckets" />
+        <ListRow title="Payday" detail="What your last paycheck did" href="/payday" testId="home-payday" />
       </Card>
 
       {!safeToSpend.shown && safeToSpend.why === 'totals-do-not-match' && (

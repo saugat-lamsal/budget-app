@@ -63,7 +63,14 @@ interface ServerLogEntry {
 }
 const serverLogs = new Map<string, ServerLogEntry[]>();
 
+// Every answer closes its connection (test/test-server.test.ts says why): WebKit,
+// as Playwright builds it for Linux and Windows, loses the answer to a request
+// on a connection that was reused after a cancelled one or while the server
+// was closing it. With nothing to reuse, that cannot happen.
 export async function listen(server: Server): Promise<string> {
+  server.prependListener('request', (_request, response) => {
+    response.setHeader('Connection', 'close');
+  });
   await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const log: ServerLogEntry[] = [];
@@ -88,13 +95,73 @@ export function watchPage(page: Page): void {
   const watch = { pending: new Map<Request, number>(), failed: [] as string[], console: [] as string[] };
   pageWatch.set(page, watch);
   page.on('request', (r) => watch.pending.set(r, Date.now()));
+  void page.addInitScript(() => {
+    const w = window as unknown as { __fetchesOnTheirWay?: number };
+    if (w.__fetchesOnTheirWay !== undefined) return;
+    w.__fetchesOnTheirWay = 0;
+    const real = window.fetch.bind(window);
+    window.fetch = (...args) => {
+      w.__fetchesOnTheirWay = (w.__fetchesOnTheirWay ?? 0) + 1;
+      const done = (): void => {
+        w.__fetchesOnTheirWay = (w.__fetchesOnTheirWay ?? 1) - 1;
+      };
+      return real(...args).then(
+        (response) => {
+          done();
+          return response;
+        },
+        (error: unknown) => {
+          done();
+          throw error;
+        },
+      );
+    };
+  });
   page.on('requestfinished', (r) => watch.pending.delete(r));
+  // Playwright reports "finished" only for answers it counts as loaded: an error
+  // answer (500) never says so. It is an answer all the same.
+  page.on('response', (r) => watch.pending.delete(r.request()));
   page.on('requestfailed', (r) => {
     watch.pending.delete(r);
     watch.failed.push(`${r.method()} ${r.url()}: ${r.failure()?.errorText ?? '?'}`);
   });
   page.on('console', (m) => watch.console.push(`${m.type()}: ${m.text()}`));
   page.on('pageerror', (e) => watch.console.push(`page error: ${e.message}`));
+}
+
+// Waits until nothing the page's own code asked for (fetch and XHR) is still on
+// its way, and nothing new has started for a moment. The page's own document is
+// left out: Playwright's WebKit on Windows did not always say it had finished.
+// A page closed (or left) with a request on its way cancels it, and WebKit then
+// loses the answer to the next request (see CLAUDE.md, found on Linux CI Oct 7,
+// and on Windows CI Oct 8). Waiting for "network idle" is no use for this: it
+// only waits the first time the page goes idle. After a change the screens ask
+// for their numbers again, and this waits for those answers. The page must
+// have been opened with watchPage.
+//
+// After a tap the screens ask again a moment later, so this waits for a few
+// checks in a row, 60 ms apart, to find nothing on its way. A page that has
+// just opened is better served by untilAnswered.
+export async function untilQuiet(page: Page): Promise<void> {
+  const watch = pageWatch.get(page);
+  if (watch === undefined) throw new Error('untilQuiet needs a page opened with watchPage');
+  const deadline = Date.now() + 15_000;
+  let calm = 0;
+  while (calm < 3) {
+    const onItsWay = [...watch.pending.keys()].filter((r) => r.resourceType() === 'fetch' || r.resourceType() === 'xhr');
+    if (Date.now() > deadline) throw new Error(`still waiting for: ${onItsWay.map((r) => `${r.method()} ${r.url()}`).join(', ')}`);
+    await page.waitForTimeout(60);
+    calm = onItsWay.length === 0 ? calm + 1 : 0;
+  }
+}
+
+// For a page that has just opened: waits until every fetch the page itself has
+// started is answered. The count is kept inside the page (watchPage puts it
+// there), where a fetch is counted the moment it starts, so it is exact; the
+// events Playwright sends can arrive after the screen has already moved on
+// (WebKit). It returns at once when nothing is on its way.
+export async function untilAnswered(page: Page): Promise<void> {
+  await page.waitForFunction(() => (window as unknown as { __fetchesOnTheirWay?: number }).__fetchesOnTheirWay === 0, undefined, { timeout: 15_000 });
 }
 
 async function stuckReport(page: Page, base: string): Promise<string> {
@@ -169,6 +236,9 @@ export async function openScenario(context: BrowserContext, base: string, scenar
   }
   // Home, Buckets, and Review are ready once their numbers have loaded.
   await waitOrReport(page, base, 'main[aria-busy="false"], [data-testid="settings"]');
+  // Home's numbers are asked for on every screen: the page is handed over only
+  // once that is answered too, so a test that closes it cancels nothing.
+  await untilAnswered(page);
   return page;
 }
 

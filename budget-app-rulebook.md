@@ -445,3 +445,14 @@ a.  A refund waiting in review can be matched to one of the purchases it
 b.  A new rule sorts the waiting items it can and leaves the others
     waiting, saying which, instead of being refused whole (13.2,
     QUESTIONS.md A19).
+
+
+## 23. Answers after the bucket lists, hand moves, and Payday review (Oct 8, 2026)
+
+a.  A purchase you marked as a payment to the old card (5.6) can be undone
+    from its row on Needs' list: sorting it any other way makes it the
+    purchase the bank sent, in that bucket. Marking it again with the
+    account it already has is not a choice (5.6, QUESTIONS.md A20, B110).
+b.  A payday question that spending from before payday made smaller (3.4,
+    B4) says why on its card: what the bucket held at payday, less what
+    was spent before payday and has shown up since (QUESTIONS.md B109).

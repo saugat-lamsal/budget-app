@@ -779,3 +779,152 @@ Step 3. On the first one you pick "for mom" with "always do this", for
         you are told which one (13.2).
 
 Check: mom reserve 460.00 | sent to mom 40.00 | unsorted spending 30.00
+
+
+========================================================================
+EXAMPLE 27. What went in and out of Needs (rules 4.1, 4.6, 4.7, 3.3, 3.4, 13.3; B97, B98, B99)
+========================================================================
+
+Before: Needs 500.00, Wants 200.00. Everything else 0.00. Rules: GROCERY
+and GAS are needs. Each pay period has its own list for each bucket: what
+the bucket held when the pay period began, each thing that changed it,
+and what it holds now.
+
+Pay period 0 (setup day to the first paycheck):
+  Oct 2   MADE UP GROCERY, 32.50: needs 500.00 - 32.50 = 467.50
+  Oct 8   MADE UP GAS, 40.00, still pending. It counts now (4.6):
+          needs 467.50 - 40.00 = 427.50
+  Needs held 500.00, 72.50 went out, and it holds 427.50.
+
+Oct 9, payday: 4,000.00. The mom reserve takes 1,500.00, and the rest,
+2,500.00, is split (3.3): needs 30% = 750.00. He rolls the leftover over
+(3.4): nothing moves. Pay period 1 begins. Needs held 427.50 when it began.
+  Oct 9   the paycheck's share: +750.00
+
+Still in pay period 1:
+  Oct 10  The gas charge posts at 42.00, 2.00 more than it showed (4.6).
+          The 40.00 was counted in pay period 0, so this pay period gets
+          only the 2.00 it grew by: -2.00. The list says it was bought
+          on Oct 8.
+  Oct 12  He sorts the grocery run again, to Wants (4.7). It came out of
+          Needs in pay period 0, so this pay period gives the 32.50 back:
+          +32.50. Wants pays it.
+  Oct 12  He moves 5.00 from Wants to Needs by hand (13.3): +5.00
+
+The list for Needs now, newest first (B99): the move (Oct 12), the
+paycheck (Oct 9), the gas (Oct 8), the grocery run (Oct 2).
+  Carried in      427.50
+  Came in         750.00 + 32.50 + 5.00 = 787.50
+  Went out        2.00
+  Now             427.50 + 787.50 - 2.00 = 1,213.00
+
+Check: before payday carried in 500.00 | before payday went out -72.50 | before payday now 427.50
+Check: carried in 427.50 | came in 787.50 | went out -2.00 | now 1,213.00
+
+
+========================================================================
+EXAMPLE 28. Moving money by hand, and when it asks first (rules 13.3, 13.4, 13.5; B103)
+========================================================================
+
+Before: Savings 1,000.00, Needs 100.00, Wants 50.00, Mom reserve 500.00.
+Moving money between buckets changes where it is, never how much there
+is: the four add up to 1,650.00 before and after.
+
+Step 1. Wants to Needs, 25.00. Nothing asks (13.4):
+        Wants 50.00 - 25.00 = 25.00. Needs 100.00 + 25.00 = 125.00.
+Step 2. Savings to Needs, 75.00. Money out of savings asks first. Until
+        he says yes nothing moves. With his yes:
+        Savings 1,000.00 - 75.00 = 925.00. Needs 125.00 + 75.00 = 200.00.
+Step 3. Needs to Wants, 200.00. It leaves Needs at exactly 0.00, so it
+        asks nothing:
+        Needs 200.00 - 200.00 = 0.00. Wants 25.00 + 200.00 = 225.00.
+Step 4. Needs to Wants, 0.01. Needs is at 0.00, so this would leave it
+        at -0.01 below zero. That is usually a typo, so it asks first.
+        He does not say yes, so nothing moves.
+Step 5. Mom reserve to Savings, 100.00. Money out of the mom reserve asks
+        first. With his yes:
+        Mom reserve 500.00 - 100.00 = 400.00.
+        Savings 925.00 + 100.00 = 1,025.00.
+
+Check: savings 1,025.00 | needs 0.00 | wants 225.00 | mom reserve 400.00 | held for others 0.00
+
+
+========================================================================
+EXAMPLE 29. What the last paycheck did, and what became of the leftover (rules 3.2, 3.3, 3.4, 3.5; B104, B106)
+========================================================================
+
+Before: Mom reserve 2,900.00 (the cap is 3,000.00), Needs 120.00,
+Wants 45.50. Everything else 0.00.
+
+Paycheck 2,345.67.
+Step 1. The mom reserve comes off first (3.2): 1,500.00.
+        Only 100.00 fits under the cap (3,000.00 - 2,900.00), so
+        100.00 goes into the reserve and the other 1,400.00 goes to
+        savings.
+Step 2. The rest, 2,345.67 - 1,500.00 = 845.67, is split (3.3):
+        Savings 50% of 845.67 = 422.835 -> 422.83
+        Needs   30% of 845.67 = 253.701 -> 253.70
+        Wants   20% of 845.67 = 169.134 -> 169.13
+        0.01 is left over from rounding, and goes to savings.
+Step 3. What savings got: 1,400.00 + 422.83 + 0.01 = 1,822.84.
+        The four parts: 100.00 + 1,822.84 + 253.70 + 169.13 = 2,345.67.
+Step 4. The leftover question (3.4). At payday Needs held 120.00 and
+        Wants 45.50. He rolls Needs over, and moves Wants to savings:
+        Savings 1,822.84 + 45.50 = 1,868.34
+        Needs   120.00 + 253.70 = 373.70
+        Wants   45.50 + 169.13 - 45.50 = 169.13
+
+Check: reserve taken 1,500.00 | into reserve 100.00 | did not fit 1,400.00 | left to split 845.67 | savings share 422.83 | rounding 0.01
+Check: to savings 1,822.84 | to needs 253.70 | to wants 169.13 | needs left at payday 120.00 | wants moved 45.50
+Check: savings now 1,868.34 | needs now 373.70 | wants now 169.13
+
+
+EXAMPLE 30. A payment you marked as going to the old card, and then undid (rules 5.2, 5.6; QUESTIONS.md A20, B110)
+========================================================================
+
+Before: Needs 650.00, Wants 300.00. Everything else 0.00.
+
+Oct 3. A purchase on the debit card, MADE UP LANDLORD, 412.50. No rule
+matches it, so it waits in review.
+Step 1. He marks it "transfer between my accounts", to the old card. It was
+        a payment to the old card, so it comes out of Needs (5.2):
+        Needs  650.00 - 412.50 = 237.50
+        Wants  300.00
+Step 2. A few days later he sees the row on Needs' list, "Payment to the
+        old card", and taps it. It is not what he meant: it was the
+        landlord, a purchase. The sheet offers what the purchase could be
+        (Needs, Wants, split), and he picks Wants. Picking a bucket makes it
+        the purchase the bank sent (5.6), in that bucket:
+        Needs  237.50 + 412.50 = 650.00
+        Wants  300.00 - 412.50 = -112.50
+Step 3. Marking it and undoing it again, any number of times, changes
+        nothing else: after marking it once more, Needs is 237.50 again.
+
+Check: needs when marked 237.50 | wants when marked 300.00
+Check: needs after undoing 650.00 | wants after undoing -112.50
+Check: needs when marked again 237.50
+
+
+EXAMPLE 31. Spending from before payday shows up after it: the payday question asks about less, and says why (rules 3.4, B4; QUESTIONS.md B109)
+========================================================================
+
+Before: Needs 500.00, Wants 200.00, and a rule that puts MADE UP CAFE in
+Wants. Everything else 0.00.
+
+Oct 8. A charge at MADE UP CAFE, 10.00, still pending. It counts at once:
+        Wants  200.00 - 10.00 = 190.00
+Oct 9. Payday. At payday Wants held 190.00, so the question asks about
+        190.00, and says nothing about anything taken off it.
+Oct 10. The charge posts at 12.50, a tip of 2.50. It was spent before
+        payday, so it lowers what the question asks about (never below
+        zero):
+        190.00 - 2.50 = 187.50
+        The Wants card says why: "$190.00 at payday, less $2.50 spent before
+        payday and sorted since."
+Oct 11. He answers "Roll over". Nothing moves. Payday reports what the
+        question asked, 187.50 kept, with the 2.50 taken off the 190.00
+        (before, it said 190.00 kept, which was more than the question
+        asked).
+
+Check: wants at payday 190.00 | wants asked 187.50 | wants less since payday 2.50
+Check: wants kept 187.50 | wants kept less since payday 2.50

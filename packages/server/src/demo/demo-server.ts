@@ -1,8 +1,10 @@
 import type { IncomingMessage, Server } from 'node:http';
 import { ChoiceDesk } from '../choices.js';
 import { createAppServer, send } from '../http/server.js';
+import { activityView } from '../views/activity.js';
 import { bucketsView } from '../views/buckets.js';
 import { homeView, type HomeInput } from '../views/home.js';
+import { paydayView } from '../views/payday.js';
 import { reviewView } from '../views/review.js';
 import { DEMO_SCENARIOS, demoScenario, type DemoScenario } from './scenarios.js';
 
@@ -49,6 +51,20 @@ export function createDemoServer(options: { readonly webRoot: string; readonly o
       // Before setup day there is nothing in review to choose from.
       if (desk === null) return { ok: false, code: 'not-waiting', why: 'That one was already dealt with. Nothing was changed.' };
       return desk.decide(choice);
+    },
+    move: (request, move) => {
+      const { desk } = liveOf(scenarioOf(request));
+      // Before setup day there are no buckets to move money between.
+      if (desk === null) return { ok: false, code: 'refused', why: 'There is nothing to move yet. Nothing was changed.' };
+      return desk.move(move);
+    },
+    activity: async (request, pot) => {
+      const { input } = await wait(scenarioOf(request));
+      return activityView({ today: input.today, book: input.book, pot, madeUpData: input.madeUpData });
+    },
+    payday: async (request) => {
+      const { input } = await wait(scenarioOf(request));
+      return paydayView({ today: input.today, book: input.book, bank: input.bank, madeUpData: input.madeUpData });
     },
     seen: (request, what) => {
       const live = liveOf(scenarioOf(request));

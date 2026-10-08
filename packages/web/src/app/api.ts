@@ -1,5 +1,6 @@
+import type { Pot } from '@budget-app/money';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { BucketsView, ChoiceRequest, ChoiceResponse, HomeView, ReviewView } from '@budget-app/server/views';
+import type { ActivityView, BucketsView, ChoiceRequest, ChoiceResponse, HomeView, MoveRequest, MoveResponse, PaydayView, ReviewView } from '@budget-app/server/views';
 
 // The screens' numbers, from the server. The screens never work money out
 // themselves: every amount comes from the money math on the server.
@@ -12,7 +13,21 @@ const READS = {
   '/api/home': () => fetch('/api/home', READ),
   '/api/buckets': () => fetch('/api/buckets', READ),
   '/api/review': () => fetch('/api/review', READ),
+  '/api/payday': () => fetch('/api/payday', READ),
+  '/api/activity/savings': () => fetch('/api/activity/savings', READ),
+  '/api/activity/needs': () => fetch('/api/activity/needs', READ),
+  '/api/activity/wants': () => fetch('/api/activity/wants', READ),
+  '/api/activity/mom-reserve': () => fetch('/api/activity/mom-reserve', READ),
+  '/api/activity/held-for-others': () => fetch('/api/activity/held-for-others', READ),
 } as const;
+// Each bucket's activity is read from its own address.
+const ACTIVITY_URL: Readonly<Record<Pot, ViewUrl>> = {
+  savings: '/api/activity/savings',
+  needs: '/api/activity/needs',
+  wants: '/api/activity/wants',
+  momReserve: '/api/activity/mom-reserve',
+  heldForOthers: '/api/activity/held-for-others',
+};
 type ViewUrl = keyof typeof READS;
 
 async function fetchView<T extends { readonly state: string }>(url: ViewUrl): Promise<T> {
@@ -35,12 +50,15 @@ export async function markTakeBackSeen(id: string): Promise<void> {
   if (!response.ok) throw new Error(`marking it seen answered ${response.status}`);
 }
 
-// His choice for an item waiting in review. The money math on the server
-// decides; a refusal comes back as an answer with the reason (nothing was
-// changed). Anything else, such as no signal, throws: the same request, with
-// the same decision number, can be sent again and changes nothing twice.
-// It changes the app's books, never the bank (0.4).
-export async function sendChoice(request: ChoiceRequest): Promise<ChoiceResponse> {
+// His choice for an item (waiting in review, or sorted already), or a move
+// of money between buckets by hand. The money math on the server decides; a
+// refusal comes back as an answer with the reason (nothing was changed).
+// Anything else, such as no signal, throws: the same request, with the same
+// decision number, can be sent again and changes nothing twice. It changes
+// the app's books, never the bank (0.4).
+export async function sendChoice(request: ChoiceRequest): Promise<ChoiceResponse>;
+export async function sendChoice(request: MoveRequest): Promise<MoveResponse>;
+export async function sendChoice(request: ChoiceRequest | MoveRequest): Promise<ChoiceResponse | MoveResponse> {
   const response = await fetch('/api/choice', {
     method: 'POST',
     cache: 'no-store',
@@ -48,7 +66,7 @@ export async function sendChoice(request: ChoiceRequest): Promise<ChoiceResponse
     body: JSON.stringify(request),
   });
   if (response.status !== 200 && response.status !== 422) throw new Error(`sending the choice answered ${response.status}`);
-  const answer = (await response.json()) as ChoiceResponse;
+  const answer = (await response.json()) as ChoiceResponse | MoveResponse;
   if (typeof answer !== 'object' || answer === null || typeof answer.ok !== 'boolean') throw new Error('the choice was answered with something unexpected');
   return answer;
 }
@@ -140,3 +158,5 @@ function useView<T extends { readonly state: string }>(url: ViewUrl): [Load<T>, 
 export const useHome = (): [Load<HomeView>, Reload] => useView<HomeView>('/api/home');
 export const useBuckets = (): [Load<BucketsView>, Reload] => useView<BucketsView>('/api/buckets');
 export const useReview = (): [Load<ReviewView>, Reload] => useView<ReviewView>('/api/review');
+export const usePayday = (): [Load<PaydayView>, Reload] => useView<PaydayView>('/api/payday');
+export const useActivity = (pot: Pot): [Load<ActivityView>, Reload] => useView<ActivityView>(ACTIVITY_URL[pot]);
