@@ -1,5 +1,6 @@
 import {
   ACCOUNTS,
+  MOVABLE_POTS,
   MoneyError,
   addCents,
   formatDollars,
@@ -7,15 +8,18 @@ import {
   type AccountId,
   type Book,
   type Cents,
+  type ConfirmReason,
   type IsoDate,
   type LeftoverAnswer,
   type PickTo,
+  type Pot,
   type ReviewDetail,
   type ReviewOptions,
   type SortChoice,
+  type SortedNow,
   type SplitPart,
 } from '@budget-app/money';
-import type { ChoiceOf, ChoicePart, ChoiceRequest, ChoiceResponse, Done, RefusalCode } from './views/choice.js';
+import type { ChoiceOf, ChoicePart, ChoiceRequest, ChoiceResponse, Done, MoveRequest, MoveResponse, Moved, RefusalCode } from './views/choice.js';
 
 // How a tap reaches the books (Phase 4). The screen sends the choice it was
 // offered; the money math decides. Three promises:
@@ -26,10 +30,15 @@ import type { ChoiceOf, ChoicePart, ChoiceRequest, ChoiceResponse, Done, Refusal
 // - A refused choice changes nothing (the book undoes anything half done)
 //   and says why, in words.
 // - Anything final asks first: it is not done without his OK in the request.
+//
+// Three kinds of tap come through here: a choice for an item waiting in
+// review; the same for an item sorted already, from the list of what went in
+// and out of a bucket (4.7, QUESTIONS.md B100 to B102); and moving money
+// between buckets by hand (13.3, 13.4, B103).
 
 const PICKS: readonly PickTo[] = ['paycheck', 'other-income', 'savings', 'needs', 'wants', 'momReserve', 'not-mine', 'mom'];
 const SPLIT_BUCKETS: readonly ChoicePart['bucket'][] = ['needs', 'wants', 'not-mine'];
-const BUCKET_WORDS: Readonly<Record<string, string>> = { needs: 'Needs', wants: 'Wants', 'not-mine': 'Not mine', savings: 'Savings', momReserve: 'Mom reserve' };
+const BUCKET_WORDS: Readonly<Record<string, string>> = { needs: 'Needs', wants: 'Wants', 'not-mine': 'Not mine', savings: 'Savings', momReserve: 'Mom reserve', heldForOthers: 'Held for others' };
 
 const ID_FORMAT = /^[A-Za-z0-9_-]{8,64}$/;
 const MAX_ITEM_LENGTH = 200;
@@ -40,8 +49,8 @@ const MAX_TEXT_LENGTH = 200;
 // The request, if it is exactly the right shape, otherwise null. Nothing is
 // guessed or repaired.
 export function parseChoiceRequest(value: unknown): ChoiceRequest | null {
-  if (!isRecord(value) || !onlyKeys(value, ['id', 'item', 'choice', 'always', 'confirmed'])) return null;
-  const { id, item, choice, always, confirmed } = value;
+  if (!isRecord(value) || !onlyKeys(value, ['id', 'item', 'choice', 'always', 'confirmed', 'resort'])) return null;
+  const { id, item, choice, always, confirmed, resort } = value;
   if (typeof id !== 'string' || !ID_FORMAT.test(id)) return null;
   if (typeof item !== 'string' || item === '' || item.length > MAX_ITEM_LENGTH) return null;
   const parsed = parseChoice(choice);
@@ -54,7 +63,31 @@ export function parseChoiceRequest(value: unknown): ChoiceRequest | null {
     rule = { contains };
   }
   if (confirmed !== undefined && typeof confirmed !== 'boolean') return null;
-  return { id, item, choice: parsed, ...(rule === undefined ? {} : { always: rule }), ...(confirmed === undefined ? {} : { confirmed }) };
+  if (resort !== undefined && resort !== true) return null;
+  return { id, item, choice: parsed, ...(rule === undefined ? {} : { always: rule }), ...(confirmed === undefined ? {} : { confirmed }), ...(resort === undefined ? {} : { resort: true as const }) };
+}
+
+// A hand move, if it is exactly an id, two buckets, and a whole number of
+// cents more than zero (and, if he said so, his yes); otherwise null.
+export function parseMoveRequest(value: unknown): MoveRequest | null {
+  if (!isRecord(value) || !onlyKeys(value, ['id', 'move', 'confirmed'])) return null;
+  const { id, move, confirmed } = value;
+  if (typeof id !== 'string' || !ID_FORMAT.test(id)) return null;
+  if (!isRecord(move) || !onlyKeys(move, ['from', 'to', 'amount'])) return null;
+  const { from, to, amount } = move;
+  if (!isPot(from) || !isPot(to)) return null;
+  if (typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount <= 0) return null;
+  if (confirmed !== undefined && typeof confirmed !== 'boolean') return null;
+  return { id, move: { from, to, amount }, ...(confirmed === undefined ? {} : { confirmed }) };
+}
+
+// Whatever the phone sent: a move if it says move, otherwise a choice.
+export function parseRequest(value: unknown): ChoiceRequest | MoveRequest | null {
+  return isRecord(value) && 'move' in value ? parseMoveRequest(value) : parseChoiceRequest(value);
+}
+
+function isPot(value: unknown): value is Pot {
+  return (MOVABLE_POTS as readonly unknown[]).includes(value);
 }
 
 function parseChoice(value: unknown): ChoiceOf | null {
@@ -99,12 +132,24 @@ function onlyKeys(value: Record<string, unknown>, allowed: readonly string[]): b
 
 // ----- The desk -----
 
+// What a choice is about: an item waiting in review, or one sorted already.
+interface Subject {
+  readonly options: ReviewOptions;
+  // What is left to sort or split (4.4).
+  readonly net: Cents;
+  // A store refund the app could not match (4.5, A18).
+  readonly storeRefund: boolean;
+  // Where it is sorted now; null for an item waiting in review.
+  readonly now: SortedNow | null;
+}
+
 export class ChoiceDesk {
   readonly #book: Book;
   readonly #today: () => IsoDate;
   // What each decision number did, for the repeats. Kept in memory here (the
   // demo); the real server keeps it with the book's history.
   readonly #done = new Map<string, { readonly fingerprint: string; readonly done: Done }>();
+  readonly #moved = new Map<string, { readonly fingerprint: string; readonly moved: Moved }>();
 
   constructor(book: Book, today: () => IsoDate) {
     this.#book = book;
@@ -118,26 +163,44 @@ export class ChoiceDesk {
       if (earlier.fingerprint === fingerprint) return { ok: true, replayed: true, done: earlier.done };
       return refuse('id-reused', 'That decision number was already used for a different choice.');
     }
+    if (this.#moved.has(request.id)) return refuse('id-reused', 'That decision number was already used for a different choice.');
 
     const details = this.#book.reviewDetails();
     const detail = details.find((d) => d.item.id === request.item);
-    if (detail === undefined) return refuse('not-waiting', 'That one was already dealt with.');
+    let subject: Subject;
+    if (detail !== undefined) {
+      subject = { options: detail.options, net: detail.item.type === 'spending' ? detail.item.amount : 0, storeRefund: detail.item.type === 'money-in' && detail.item.reason === 'refund', now: null };
+    } else {
+      // Only a tap on the list of what went in and out of a bucket may change
+      // something that is not waiting.
+      const sorted = request.resort === true ? this.#book.resortDetail(request.item) : null;
+      if (sorted === null) return refuse('not-waiting', 'That one was already dealt with.');
+      if (!sorted.resortable) return refuse('refused', sorted.why);
+      subject = { options: sorted.options, net: sorted.type === 'spending' ? sorted.amount : 0, storeRefund: sorted.refund, now: sorted.now };
+    }
 
     // Only what the rulebook gives for this kind of item.
-    const notOffered = this.#notOffered(request, detail);
+    const notOffered = this.#notOffered(request, subject);
     if (notOffered !== null) return refuse('refused', notOffered);
 
     // Anything final asks first.
-    if (isFinal(request, detail.options) && request.confirmed !== true) {
+    if (isFinal(request, subject.options) && request.confirmed !== true) {
       return refuse('needs-confirmation', "This can't be undone here, so it needs your OK first.");
     }
 
     // "The rest" of a split is worked out by the money math, not the screen.
     let choice = request.choice;
     if ('split' in choice) {
-      const resolved = resolveSplit(choice.split, detail);
+      const resolved = resolveSplit(choice.split, subject.net);
       if (typeof resolved === 'string') return refuse('refused', resolved);
       choice = { split: resolved };
+    }
+
+    // B101: sorting it where it already is changes nothing. (A rule for it
+    // is still a rule: "always do this" on an item that is already right.)
+    if (subject.now !== null && request.always === undefined) {
+      const there = alreadyThere(choice, subject.now);
+      if (there !== null) return refuse('refused', `It is already ${there}.`);
     }
 
     const before = new Set(this.#book.reviewItems().map((i) => i.id));
@@ -161,11 +224,40 @@ export class ChoiceDesk {
     return { ok: true, replayed: false, done };
   }
 
+  // Moves money between two buckets by hand (13.3). The money math says when
+  // it needs his yes first (13.4); a move that asks is not done and not
+  // remembered, so the same decision can be sent again with his yes.
+  move(request: MoveRequest): MoveResponse {
+    const fingerprint = canonical(request);
+    const earlier = this.#moved.get(request.id);
+    if (earlier !== undefined) {
+      if (earlier.fingerprint === fingerprint) return { ok: true, replayed: true, moved: earlier.moved };
+      return refuse('id-reused', 'That decision number was already used for a different move.');
+    }
+    if (this.#done.has(request.id)) return refuse('id-reused', 'That decision number was already used for a different choice.');
+
+    const { from, to, amount } = request.move;
+    if (from === to) return refuse('refused', 'Pick two different buckets to move money between');
+    let result: ReturnType<Book['moveMoney']>;
+    try {
+      result = this.#book.moveMoney({ from, to, amount, ...(request.confirmed === true ? { confirmed: true } : {}) }, this.#today());
+    } catch (error) {
+      if (error instanceof MoneyError) return refuse('refused', error.code === 'not-cents' ? 'That would make a total too large to keep exact' : capitalize(error.message));
+      throw error;
+    }
+    if (!result.moved) {
+      return { ...refuse('needs-confirmation', askingWhy(request.move, result.reasons)), reasons: result.reasons };
+    }
+    const moved: Moved = { from, to, amount };
+    this.#moved.set(request.id, { fingerprint, moved });
+    return { ok: true, replayed: false, moved };
+  }
+
   // The choice is one the money math offers for this item (review-options.ts).
   // The book still has the last word; this gives the plain reason up front.
-  #notOffered(request: ChoiceRequest, detail: ReviewDetail): string | null {
+  #notOffered(request: ChoiceRequest, subject: Subject): string | null {
     const c = request.choice;
-    const options = detail.options;
+    const options = subject.options;
     const no = "That isn't one of the choices for this item.";
     if ('leftover' in c) return options.type === 'leftover' && options.answers.includes(c.leftover) && request.always === undefined ? null : no;
     if ('acknowledge' in c) return options.type === 'acknowledge' && request.always === undefined ? null : no;
@@ -174,7 +266,7 @@ export class ChoiceDesk {
     // never by a rule.
     if ('refundOf' in c) {
       if (request.always !== undefined) return "A rule can't do that for this item.";
-      if (detail.item.type !== 'money-in' || detail.item.reason !== 'refund') return no;
+      if (!subject.storeRefund) return no;
       return options.match.includes(c.refundOf) ? null : "That purchase isn't one this refund can belong to.";
     }
     const unavailable = options.unavailable.find((u) => ('to' in c && c.to === 'paycheck' && u.what === 'paycheck') || ('transfer' in c && u.what === 'transfer'));
@@ -227,8 +319,27 @@ interface Applied {
   readonly stillWaiting: readonly string[];
 }
 
-function refuse(code: RefusalCode, why: string): ChoiceResponse {
+type Refusal = Extract<ChoiceResponse, { ok: false }>;
+
+function refuse(code: RefusalCode, why: string): Refusal {
   return { ok: false, code, why: `${why.replace(/\s*\.?\s*$/, '')}. Nothing was changed.` };
+}
+
+// 13.4: why a move asks first, in his words: what it takes out of, and
+// whether it would leave that bucket below zero, which is usually a typo.
+function askingWhy(move: Moved, reasons: readonly ConfirmReason[]): string {
+  const from = BUCKET_WORDS[move.from] ?? move.from;
+  const because = reasons.map((reason) => {
+    switch (reason) {
+      case 'out-of-savings':
+        return 'takes money out of Savings';
+      case 'out-of-mom-reserve':
+        return 'takes money out of the Mom reserve';
+      case 'below-zero':
+        return `would leave ${from} below zero, which is usually a typo`;
+    }
+  });
+  return `Moving ${formatDollars(move.amount)} out of ${from} needs your OK first: it ${because.join(' and ')}`;
 }
 
 // 3.4, 6.1, 13.6: what cannot be taken back here asks first. A leftover
@@ -241,9 +352,31 @@ function isFinal(request: ChoiceRequest, options: ReviewOptions): boolean {
   return options.type === 'sort' && 'to' in c && options.picks.some((p) => p.to === c.to && p.final);
 }
 
+// Where the choice would leave the item, if that is where it already is (B101).
+function alreadyThere(choice: ChoiceOf, now: SortedNow): string | null {
+  if ('to' in choice && 'to' in now && choice.to === now.to) {
+    switch (now.to) {
+      case 'not-mine':
+        return 'marked not mine';
+      case 'mom':
+        return 'marked for mom';
+      case 'other-income':
+        return 'counted as other income';
+      case 'momReserve':
+        return 'in the Mom reserve';
+      default:
+        return `in ${BUCKET_WORDS[now.to] ?? now.to}`;
+    }
+  }
+  if ('split' in choice && 'split' in now) {
+    const same = (parts: readonly { readonly bucket: string; readonly amount: unknown }[]): string => parts.map((p) => `${p.bucket}:${String(p.amount)}`).sort().join(',');
+    return same(choice.split) === same(now.split) ? 'split that way' : null;
+  }
+  return null;
+}
+
 // The parts of a split with "the rest" worked out, or the reason it cannot be.
-function resolveSplit(parts: readonly ChoicePart[], detail: ReviewDetail): readonly ChoicePart[] | string {
-  const net = detail.item.type === 'spending' ? detail.item.amount : 0;
+function resolveSplit(parts: readonly ChoicePart[], net: Cents): readonly ChoicePart[] | string {
   const rest = parts.find((p) => p.amount === 'rest');
   const known = addCents(0, ...parts.map((p) => (p.amount === 'rest' ? 0 : p.amount)));
   if (rest === undefined) {
@@ -260,7 +393,7 @@ function resolveSplit(parts: readonly ChoicePart[], detail: ReviewDetail): reado
 }
 
 // A refusal from the money math in plain words: the ids of the items waiting
-// are replaced with what they are, and a total too large to keep exact says so.
+// are replaced with what they are, and a total too large to stay exact says so.
 export function explainRefusal(error: MoneyError, details: readonly ReviewDetail[]): string {
   if (error.code === 'not-cents') return 'That would make a total too large to keep exact';
   let text = error.message;
@@ -269,6 +402,10 @@ export function explainRefusal(error: MoneyError, details: readonly ReviewDetail
     if (d.item.id.length < 4) continue;
     text = text.replace(new RegExp(`(?<![\\w:-])${escape(d.item.id)}(?![\\w:-])`, 'g'), () => `"${nameOf(d)}"`);
   }
+  return capitalize(text);
+}
+
+function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 

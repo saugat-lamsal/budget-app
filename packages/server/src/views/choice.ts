@@ -1,4 +1,4 @@
-import type { AccountId, Cents, LeftoverAnswer, PickTo } from '@budget-app/money';
+import type { AccountId, Cents, ConfirmReason, LeftoverAnswer, PickTo, Pot } from '@budget-app/money';
 
 // How a tap reaches the books. The screen sends the choice it was offered;
 // the server hands it to the money math, which decides. Types only, so the
@@ -30,7 +30,7 @@ export interface ChoiceRequest {
   // retry. The server answers a repeat with the first answer and changes
   // nothing.
   readonly id: string;
-  // The item waiting in review.
+  // The item waiting in review, or, with resort, an item sorted already.
   readonly item: string;
   readonly choice: ChoiceOf;
   // "Always do this" (13.6): a rule that makes this the answer for anything
@@ -38,6 +38,10 @@ export interface ChoiceRequest {
   readonly always?: { readonly contains: string };
   // He said yes to "are you sure". Needed for anything final.
   readonly confirmed?: boolean;
+  // Sorting something again from the list of what went in and out of a
+  // bucket (4.7, QUESTIONS.md B100): the item may be one that is not waiting
+  // in review. Without it, only an item waiting in review can be sorted.
+  readonly resort?: true;
 }
 
 // What was done.
@@ -69,3 +73,26 @@ export type ChoiceResponse =
   | { readonly ok: true; readonly replayed: boolean; readonly done: Done }
   // Nothing was changed. why is for him to read.
   | { readonly ok: false; readonly code: RefusalCode; readonly why: string };
+
+// ----- Moving money between buckets by hand (13.3, 13.4; B103) -----
+
+export interface Moved {
+  readonly from: Pot;
+  readonly to: Pot;
+  readonly amount: Cents;
+}
+
+export interface MoveRequest {
+  // As for a choice: made once, sent again, the same, on a retry.
+  readonly id: string;
+  readonly move: Moved;
+  // He said yes to "are you sure" (13.4): money out of savings or the mom
+  // reserve, or a move that would leave a bucket below zero.
+  readonly confirmed?: boolean;
+}
+
+export type MoveResponse =
+  | { readonly ok: true; readonly replayed: boolean; readonly moved: Moved }
+  // Nothing was changed. With needs-confirmation, reasons says why it asks
+  // (the money math's, 13.4).
+  | { readonly ok: false; readonly code: RefusalCode; readonly why: string; readonly reasons?: readonly ConfirmReason[] };
