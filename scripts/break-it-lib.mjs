@@ -109,16 +109,30 @@ function git(root, args) {
 const gitPaths = (root, args) => git(root, args).split('\0').filter((path) => path !== '');
 const atPath = (folder, gitPath) => join(folder, ...gitPath.split('/'));
 
-// What differs between the project folder and its last commit: files that are
-// changed or new (copied into each worktree) and files that are gone (removed
-// from each). Files git ignores (node_modules, builds, .env) are not part of it.
-function takeSnapshot(root) {
-  const changed = gitPaths(root, ['diff', '--name-only', '-z', '--no-renames', 'HEAD']);
+// The project folder as it is at the moment the run starts: its commit, what
+// differs from that commit (files changed or new, with their contents copied
+// into `frozen`, and files that are gone), and the list of packages. Files git
+// ignores (node_modules, builds, .env) are not part of it. Every copy is built
+// from this and never from the project folder again, so no two copies can
+// differ, however long the nothing-broken check takes and whatever happens to
+// the project meanwhile (an edit, a new file, a deleted one, a commit).
+function freezeProject(root, frozen) {
+  const commit = git(root, ['rev-parse', 'HEAD']).trim();
+  const changed = gitPaths(root, ['diff', '--name-only', '-z', '--no-renames', commit]);
   const untracked = gitPaths(root, ['ls-files', '-z', '--others', '--exclude-standard']);
   const copy = [];
   const remove = [];
-  for (const path of new Set([...changed, ...untracked])) (existsSync(atPath(root, path)) ? copy : remove).push(path);
-  return { copy, remove };
+  for (const path of new Set([...changed, ...untracked])) {
+    mkdirSync(dirname(atPath(frozen, path)), { recursive: true });
+    try {
+      copyFileSync(atPath(root, path), atPath(frozen, path));
+      copy.push(path);
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      remove.push(path);
+    }
+  }
+  return { commit, copy, remove, frozen, folders: packageFolders(root) };
 }
 
 function packageFolders(root) {
@@ -170,15 +184,15 @@ function mirrorNodeModules(root, workspace, folder, links) {
 }
 
 function createWorkspace(root, dir, snapshot) {
-  git(root, ['worktree', 'add', '--detach', '--quiet', dir, 'HEAD']);
+  git(root, ['worktree', 'add', '--detach', '--quiet', dir, snapshot.commit]);
   const workspace = { dir, links: [], tmp: join(dirname(dir), `tmp-${dir.split(/[\\/]/).pop()}`) };
   mkdirSync(workspace.tmp, { recursive: true });
   for (const path of snapshot.copy) {
     mkdirSync(dirname(atPath(dir, path)), { recursive: true });
-    copyFileSync(atPath(root, path), atPath(dir, path));
+    copyFileSync(atPath(snapshot.frozen, path), atPath(dir, path));
   }
   for (const path of snapshot.remove) rmSync(atPath(dir, path), { force: true });
-  for (const folder of packageFolders(root)) mirrorNodeModules(root, dir, folder, workspace.links);
+  for (const folder of snapshot.folders) mirrorNodeModules(root, dir, folder, workspace.links);
   return workspace;
 }
 
@@ -332,7 +346,7 @@ export async function runBreakIt({ root, breaks, workers, runTests, workDir = de
   const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
   for (const signal of signals) process.on(signal, onSignal);
   try {
-    const snapshot = takeSnapshot(root);
+    const snapshot = freezeProject(root, join(runDir, 'frozen'));
     workspaces.push(createWorkspace(root, join(runDir, 'w1'), snapshot));
 
     // The check with nothing broken, once, in the first copy and before the

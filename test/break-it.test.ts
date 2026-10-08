@@ -2,7 +2,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { availableParallelism, tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -375,6 +375,147 @@ describe.skipIf(insideBreakIt)('break-it: running the breaks', () => {
     const outcome = await runBreakIt({ root, breaks: [], workers: 4, workDir, runTests: () => Promise.reject(new Error('should not run')) });
     expect(outcome.results).toEqual([]);
     expect(existsSync(workDir)).toBe(false);
+  });
+});
+
+// The first copy is made when the run starts and the others after the
+// nothing-broken check, which can take minutes. These change the project folder
+// during that check and show that every copy is still the project as it was at
+// the start: the same commit, the same changed, new, and deleted files with the
+// same contents, and nothing that appeared later.
+describe.skipIf(insideBreakIt)('break-it: every copy is the project as it was when the run started', () => {
+  const WATCHED = ['notes.txt', 'packages/a/src/new.txt', 'packages/a/src/staged.txt', 'packages/a/src/second.txt', 'packages/a/src/late.txt', 'packages/a/src/appeared.txt', 'packages/a/src/gone.txt'];
+  const AT_THE_START: Record<string, string | undefined> = {
+    'notes.txt': 'edited\n',
+    'packages/a/src/new.txt': 'new\n',
+    'packages/a/src/staged.txt': 'staged\n',
+    'packages/a/src/second.txt': 'one\n',
+    'packages/a/src/late.txt': undefined,
+    'packages/a/src/appeared.txt': undefined,
+    'packages/a/src/gone.txt': undefined,
+  };
+
+  // Every file of a copy except node_modules (links, different in each copy),
+  // the git file, and the value that the breaks change.
+  function codeOf(dir: string): Record<string, string> {
+    const found: Record<string, string> = {};
+    const walk = (folder: string): void => {
+      for (const name of readdirSync(folder).sort()) {
+        const path = join(folder, name);
+        const key = path.slice(dir.length);
+        if (key === `${sep}.git` || name === 'node_modules' || path === join(dir, VALUE)) continue;
+        if (lstatSync(path).isDirectory()) walk(path);
+        else found[key] = createHash('sha1').update(readFileSync(path)).digest('hex');
+      }
+    };
+    walk(dir);
+    return found;
+  }
+
+  interface Seen {
+    readonly files: Record<string, string | undefined>;
+    readonly head: string;
+    readonly code: Record<string, string>;
+    readonly depOfPackageB: string | undefined;
+  }
+
+  // Runs four breaks on four workers. The first call of runTests is the
+  // nothing-broken check: the project is changed there, after the first copy has
+  // been looked at and before the other three exist.
+  async function copiesWhileProjectChanges(change: (root: string) => void): Promise<{ startCommit: string; seen: Seen[] }> {
+    const { root, workDir } = makeProject();
+    put(root, 'packages/b/package.json', '{"name":"@fixture/b"}');
+    put(root, 'packages/b/node_modules/dep-b/index.js', 'module.exports = 2;\n');
+    const startCommit = git(root, 'rev-parse', 'HEAD').trim();
+    const seen = new Map<string, Seen>();
+    let checking = true;
+    await runBreakIt({
+      root,
+      breaks: [caughtBreak(2), caughtBreak(3), caughtBreak(4), caughtBreak(5)],
+      workers: 4,
+      workDir,
+      runTests: ({ workspace }) => {
+        if (!seen.has(workspace.dir)) {
+          const at = (path: string): string | undefined => (existsSync(join(workspace.dir, path)) ? readFileSync(join(workspace.dir, path), 'utf8') : undefined);
+          seen.set(workspace.dir, {
+            files: Object.fromEntries(WATCHED.map((path) => [path, at(path)])),
+            head: git(workspace.dir, 'rev-parse', 'HEAD').trim(),
+            code: codeOf(workspace.dir),
+            depOfPackageB: at('packages/b/node_modules/dep-b/index.js'),
+          });
+        }
+        if (checking) {
+          checking = false;
+          change(root);
+        }
+        return Promise.resolve(pass);
+      },
+    });
+    return { startCommit, seen: [...seen.values()] };
+  }
+
+  function expectEveryCopyIsTheStart({ startCommit, seen }: { startCommit: string; seen: Seen[] }): void {
+    expect(seen).toHaveLength(4);
+    for (const copy of seen) {
+      expect(copy.head).toBe(startCommit);
+      expect(copy.files).toEqual(AT_THE_START);
+      expect(copy.code).toEqual(seen[0]!.code);
+      expect(copy.depOfPackageB).toBe('module.exports = 2;\n');
+    }
+  }
+
+  it('a commit that lands during the check is in no copy', { timeout: 120_000 }, async () => {
+    const result = await copiesWhileProjectChanges((root) => {
+      put(root, 'packages/a/src/second.txt', 'two\n');
+      put(root, 'packages/a/src/late.txt', 'late\n');
+      git(root, 'add', 'packages/a/src/second.txt', 'packages/a/src/late.txt');
+      git(root, 'commit', '--quiet', '-m', 'late', '--', 'packages/a/src/second.txt', 'packages/a/src/late.txt');
+    });
+    expectEveryCopyIsTheStart(result);
+  });
+
+  it('files edited or created in the project during the check are seen by no copy', { timeout: 120_000 }, async () => {
+    expectEveryCopyIsTheStart(
+      await copiesWhileProjectChanges((root) => {
+        put(root, 'notes.txt', 'rewritten during the check\n');
+        put(root, 'packages/a/src/new.txt', 'rewritten during the check\n');
+        put(root, 'packages/a/src/appeared.txt', 'appeared during the check\n');
+      }),
+    );
+  });
+
+  it('files deleted from the project during the check are still in every copy', { timeout: 120_000 }, async () => {
+    expectEveryCopyIsTheStart(
+      await copiesWhileProjectChanges((root) => {
+        rmSync(join(root, 'packages/a/src/staged.txt'));
+        rmSync(join(root, 'packages/a/src/new.txt'));
+        rmSync(join(root, 'notes.txt'));
+      }),
+    );
+  });
+
+  it('the list of packages is read once, at the start', { timeout: 120_000 }, async () => {
+    expectEveryCopyIsTheStart(
+      await copiesWhileProjectChanges((root) => {
+        put(root, 'package.json', JSON.stringify({ name: 'fixture', private: true, workspaces: ['elsewhere/*'] }));
+      }),
+    );
+  });
+
+  it('all of it at once', { timeout: 120_000 }, async () => {
+    expectEveryCopyIsTheStart(
+      await copiesWhileProjectChanges((root) => {
+        put(root, 'packages/a/src/second.txt', 'two\n');
+        put(root, 'packages/a/src/late.txt', 'late\n');
+        git(root, 'add', 'packages/a/src/second.txt', 'packages/a/src/late.txt');
+        git(root, 'commit', '--quiet', '-m', 'late', '--', 'packages/a/src/second.txt', 'packages/a/src/late.txt');
+        put(root, 'notes.txt', 'rewritten during the check\n');
+        put(root, 'packages/a/src/appeared.txt', 'appeared during the check\n');
+        rmSync(join(root, 'packages/a/src/staged.txt'));
+        rmSync(join(root, 'packages/a/src/new.txt'));
+        put(root, 'package.json', JSON.stringify({ name: 'fixture', private: true, workspaces: ['elsewhere/*'] }));
+      }),
+    );
   });
 });
 
