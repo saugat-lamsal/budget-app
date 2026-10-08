@@ -5,7 +5,7 @@ import { moneyText } from '../../src/ui/money-format.js';
 import { POT_NAMES } from '../../src/ui/names.js';
 import { activityOf, amountAt, numbersOf, readActivity } from './activity-screens.js';
 import { ENGINES, openScenario, phone, textAt, useEngine } from './harness.js';
-import { bucketsOf, readBuckets, watchChoices } from './screens.js';
+import { bucketsOf, readBuckets, sheetGapsAfterAnAnswer, watchChoices, watchSheetsAfterAnAnswer } from './screens.js';
 
 // Moving money between buckets by hand, used in a browser like a person
 // would (rules 13.3, 13.4, 13.5; QUESTIONS.md B103). A move is compared with
@@ -195,6 +195,20 @@ describe.each(ENGINES)('moving money by hand, in %s', (_name, engine) => {
     twin.book.moveMoney({ from: 'wants', to: 'needs', amount: 2_500 }, twin.today);
     await expect.poll(async () => (await readBuckets(page)).needs).toBe(twin.book.pots().needs);
     expect(await readBuckets(page)).toEqual(bucketsOf(twin.book));
+    await page.context().close();
+  });
+
+  it('13.3 once a move has gone through, the sheet never shows a button that could send it again', async () => {
+    const context = await browser().newContext(phone());
+    await watchSheetsAfterAnAnswer(context, '[data-testid="move-submit"], [data-testid="move-confirm-yes"]');
+    const page = await openScenario(context, base(), 'normal', '/buckets');
+    await page.getByTestId('move-open').click();
+    await page.getByTestId('move-amount').fill('25.00');
+    await page.getByTestId('move-submit').click();
+    await page.getByTestId('notice').waitFor();
+    const seen = await sheetGapsAfterAnAnswer(page);
+    expect(seen.answered).toBe(true);
+    expect(seen.gaps).toEqual([]);
     await page.context().close();
   });
 

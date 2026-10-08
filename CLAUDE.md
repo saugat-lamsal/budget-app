@@ -366,15 +366,23 @@ This applies to every phase and every session, cloud or local.
   - Shared choosing for Review and the lists: screens/choose.tsx.
   - Demo lives added: activity-busy and payday-paid. Worked examples: money
     27 to 29, screens 12 to 14.
-  - Tests: 2,041 pass (417 more than PR #8 ended with): money 976, server
-    483, web 62, browser 505 (Chromium and WebKit). Random lives: 100
+  - Tests: 2,049 pass (425 more than PR #8 ended with): money 976, server
+    483, web 62, browser 513 (Chromium and WebKit). Random lives: 100
     simulated lives of 3 years with every check passing, including the new
     "every bucket's list adds up" check. Browser tests: bucket lists,
     moves, Payday, design rules (design-activity), random lives with random
     taps against a twin of the book. The accessibility and tap-size checks
     now wait for animations to finish (design-helpers.ts atRest): a button
     just tapped, or a sheet still sliding in, made them fail now and then.
-  - Break-it: new breaks are tagged "[activity]" (78). The existing breaks
+  - Found on CI (Oct 8, WebKit on Linux and Windows): after a move went
+    through, the screen was redrawn with the sheet's button enabled again
+    and the sheet closed a moment later (a passive effect), so a second tap
+    in that moment sent a second request. The BottomSheet now opens and
+    closes in a layout effect, in the same step as the redraw. The tests
+    watch for the moment itself (watchSheetsAfterAnAnswer in screens.ts)
+    rather than depend on tap timing. The contrast test is one test per
+    colour scheme now: both together came close to the 60-second limit.
+  - Break-it: new breaks are tagged "[activity]" (79). The existing breaks
     for code the refactor moved (49) were pointed at where it is now. Run
     for the sections changed (the testing bar): every one caught, none
     survived. The full run is at the end of Phase 4.

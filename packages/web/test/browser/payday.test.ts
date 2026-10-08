@@ -8,7 +8,7 @@ import { moneyText } from '../../src/ui/money-format.js';
 import { amountAt } from './activity-screens.js';
 import { ENGINES, close, openScenario, phone, textAt, useEngine } from './harness.js';
 import { openLive, startLive } from './live.js';
-import { watchChoices } from './screens.js';
+import { sheetGapsAfterAnAnswer, watchChoices, watchSheetsAfterAnAnswer } from './screens.js';
 
 // Payday, used in a browser like a person would (QUESTIONS.md B104 to B107):
 // what the last paycheck did, how much is still to move to savings, what
@@ -96,6 +96,21 @@ describe.each(ENGINES)('Payday in %s', (_name, engine) => {
     const page = await openScenario(await browser().newContext(phone()), base(), 'bank-not-read', '/payday');
     expect(await textAt(page, 'savings-not-read')).toContain("Can't reach the bank to check the savings account now");
     expect(await page.getByTestId('savings-to-move').count()).toBe(0);
+    await page.context().close();
+  });
+
+  it('3.4 B106 once a leftover answer has gone through, the sheet never shows a button that could send it again', async () => {
+    const twin = life('payday-paid');
+    const context = await browser().newContext(phone());
+    await watchSheetsAfterAnAnswer(context, '[data-testid="confirm-yes"], [data-testid="confirm-cancel"]');
+    const page = await openScenario(context, base(), 'payday-paid', '/payday');
+    const [needsId] = twin.book.paydayReport().leftovers.map((l) => l.question!);
+    await page.getByTestId(`item-${needsId}`).getByTestId('answer-roll-over').click();
+    await page.getByTestId('confirm-yes').click();
+    await page.getByTestId('leftover-needs').waitFor();
+    const seen = await sheetGapsAfterAnAnswer(page);
+    expect(seen.answered).toBe(true);
+    expect(seen.gaps).toEqual([]);
     await page.context().close();
   });
 

@@ -7,7 +7,7 @@ import { demoScenario } from '../../../server/src/demo/scenarios.js';
 import { activityOf, amountAt, numbersOf, pathOfPot, readActivity, rowOf } from './activity-screens.js';
 import { ENGINES, close, openScenario, phone, textAt, useEngine } from './harness.js';
 import { openLive, startLive } from './live.js';
-import { watchChoices } from './screens.js';
+import { sheetGapsAfterAnAnswer, watchChoices, watchSheetsAfterAnAnswer } from './screens.js';
 
 // What went in and out of each bucket, used in a browser like a person would
 // (QUESTIONS.md B97 to B102). Every number and row on the screen is compared
@@ -254,6 +254,21 @@ describe.each(ENGINES)('sorting something again from a list, in %s', (_name, eng
     expect(watch.posts.length).toBe(1);
     twin.book.sort(id, { to: 'wants' }, twin.today);
     await expect.poll(async () => numbersOf(await readActivity(page))).toEqual(numbersOf(activityOf(twin.book, 'needs')));
+    await page.context().close();
+  });
+
+  it('4.7 B101 once a choice has gone through, the sheet never shows a button that could send it again', async () => {
+    const twin = life('activity-busy');
+    const id = groceryOct1(twin.book);
+    const context = await browser().newContext(phone());
+    await watchSheetsAfterAnAnswer(context, '[data-testid^="choice-"]');
+    const page = await openScenario(context, base(), 'activity-busy', '/buckets/needs');
+    await page.getByTestId(`row-${id}`).click();
+    await page.getByTestId('activity-sheet').getByTestId('choice-wants').click();
+    await page.getByTestId('notice').waitFor();
+    const seen = await sheetGapsAfterAnAnswer(page);
+    expect(seen.answered).toBe(true);
+    expect(seen.gaps).toEqual([]);
     await page.context().close();
   });
 

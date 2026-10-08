@@ -72,9 +72,12 @@ async function activitySheets(page: Page): Promise<string[]> {
 describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s', (_engine, engine) => {
   const { browser, base } = useEngine(engine);
 
-  it('readable contrast and no accessibility problems, in light and dark, in every state, and in every sheet', async () => {
-    const problems: string[] = [];
-    for (const scheme of ['light', 'dark'] as const) {
+  // One test for each colour scheme: the pass over every screen and every
+  // sheet is long (the checks wait for the screen to be at rest), and both
+  // together came close to the time limit on the slower machines.
+  for (const scheme of ['light', 'dark'] as const) {
+    it(`readable contrast and no accessibility problems, in ${scheme} mode, in every state, and in every sheet`, async () => {
+      const problems: string[] = [];
       const context = await browser().newContext(phone({ colorScheme: scheme, bypassCSP: true }));
       for (const [life, path] of SCREENS) {
         const page = await openScenario(context, base(), life, path);
@@ -101,9 +104,9 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
       await payday.getByTestId('notice').waitFor();
       problems.push(...(await axeViolations(payday)).map((p) => `${scheme} payday done message: ${p}`));
       await context.close();
-    }
-    expect(problems).toEqual([]);
-  });
+      expect(problems).toEqual([]);
+    });
+  }
 
   it('every tap target is at least 44 by 44 points, in every state and every sheet', async () => {
     const small: string[] = [];

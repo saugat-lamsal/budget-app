@@ -1090,5 +1090,12 @@
     "find": "const text = signed && cents > 0 ? `+${moneyText(cents)}` : moneyText(cents);",
     "replace": "const text = signed && cents >= 0 ? `+${moneyText(cents)}` : moneyText(cents);",
     "why": "[activity] B98 nothing has a plus"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "    if (!open && dialog.open) dialog.close();\n  }, [open]);",
+    "replace": "    if (!open && dialog.open) setTimeout(() => dialog.close(), 0);\n  }, [open]);",
+    "why": "[activity] 13.3 the sheet closes a moment after the screen is redrawn, with its button enabled in between"
   }
 ]

@@ -1,5 +1,5 @@
 import type { Book } from '@budget-app/money';
-import type { Locator, Page, Request } from 'playwright';
+import type { BrowserContext, Locator, Page, Request } from 'playwright';
 import { centsAt } from './harness.js';
 
 // Reading Buckets and Review off the screen, for the tests that compare what
@@ -61,4 +61,49 @@ export function watchChoices(page: Page): { readonly posts: Request[]; readonly 
     if (r.method() === 'POST' && new URL(r.url()).pathname === '/api/choice') posts.push(r);
   });
   return { posts, ids: () => posts.map((p) => (JSON.parse(p.postData() ?? '{}') as { id: string }).id) };
+}
+
+// A second tap got through on CI (Oct 8, WebKit on Linux): a choice had gone
+// through, the screen was redrawn with the sheet's send button enabled again,
+// and the sheet itself only closed a moment later. A tap in that moment sends
+// the choice again. This watches for exactly that moment, whatever the timing
+// of any tap: after an answer that said ok, a sheet that is still open must
+// not show an enabled button matching `sendButtons` (a CSS selector for the
+// buttons that send). Set it up on the context before the page opens.
+export async function watchSheetsAfterAnAnswer(context: BrowserContext, sendButtons: string): Promise<void> {
+  await context.addInitScript((selector: string) => {
+    const w = window as unknown as { __answeredOk: boolean; __sheetGaps: string[] };
+    w.__answeredOk = false;
+    w.__sheetGaps = [];
+    const real = window.fetch.bind(window);
+    window.fetch = async (input, init) => {
+      const response = await real(input, init);
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
+      if (url.includes('/api/choice') && init?.method === 'POST') {
+        const json = response.json.bind(response);
+        response.json = async () => {
+          const body = (await json()) as { ok?: boolean };
+          if (body.ok === true) w.__answeredOk = true;
+          return body;
+        };
+      }
+      return response;
+    };
+    new MutationObserver(() => {
+      if (!w.__answeredOk) return;
+      for (const dialog of document.querySelectorAll('dialog[open]')) {
+        for (const button of dialog.querySelectorAll(selector)) {
+          if (!(button as HTMLButtonElement).disabled) w.__sheetGaps.push(`${dialog.getAttribute('data-testid') ?? 'sheet'}: ${button.getAttribute('data-testid') ?? button.tagName} is enabled in an open sheet`);
+        }
+      }
+    }).observe(document, { subtree: true, childList: true, attributes: true });
+  }, sendButtons);
+}
+
+// What watchSheetsAfterAnAnswer saw: whether a choice went through at all, and the moments it found.
+export async function sheetGapsAfterAnAnswer(page: Page): Promise<{ readonly answered: boolean; readonly gaps: string[] }> {
+  return page.evaluate(() => {
+    const w = window as unknown as { __answeredOk: boolean; __sheetGaps: string[] };
+    return { answered: w.__answeredOk, gaps: [...new Set(w.__sheetGaps)] };
+  });
 }

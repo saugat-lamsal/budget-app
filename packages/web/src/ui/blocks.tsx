@@ -1,5 +1,5 @@
 import type { BucketLevel, Cents } from '@budget-app/money';
-import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from 'react';
+import { useId, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { barFill } from './bar-fill.js';
 import { Icon, type IconName } from './Icon.js';
 import { moneyText, moneyWords } from './money-format.js';
@@ -208,7 +208,11 @@ export function Banner({ tone, icon, title, children, testId }: { readonly tone:
 export function BottomSheet({ open, title, onClose, children, testId }: { readonly open: boolean; readonly title: string; readonly onClose: () => void; readonly children: ReactNode; readonly testId?: string | undefined }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
-  useEffect(() => {
+  // Opens and closes in the same step that redraws the screen (not a moment
+  // later), so a sheet whose job is done never sits open with its button
+  // enabled again: a second tap in that moment would send the choice twice
+  // (CI, Oct 8, WebKit on Linux).
+  useLayoutEffect(() => {
     const dialog = ref.current;
     if (dialog === null) return;
     if (open && !dialog.open) {
