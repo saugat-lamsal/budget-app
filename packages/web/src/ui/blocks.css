@@ -204,6 +204,21 @@ button.row:active {
   font-variant-numeric: tabular-nums;
 }
 
+/* A row with an amount on its right: when the text is so large (or the
+   amount so long) that both do not fit, the amount goes on a line of its
+   own, on the right, instead of off the screen. */
+.row--trailing {
+  flex-wrap: wrap;
+}
+
+.row--trailing .row__text {
+  flex: 1 1 8rem;
+}
+
+.row--trailing .row__trailing {
+  margin-left: auto;
+}
+
 .row__chevron {
   flex: none;
   color: var(--text-2);
@@ -250,6 +265,17 @@ button.row:active {
 
 .button--wide {
   width: 100%;
+}
+
+/* Waiting for the server: quieter, and it does not react to a tap. */
+.button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.button:disabled:active {
+  opacity: 0.55;
+  transform: none;
 }
 
 /* ----- Status label: a word and an icon, never color alone ----- */
@@ -622,4 +648,296 @@ button.row:active {
 
 .figures dt.figures__total {
   color: var(--text);
+}
+
+/* ----- Hero when the main number is a count ----- */
+
+.hero__count {
+  display: block;
+  font-size: var(--text-hero);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+/* ----- Target bar: a range to be in, with a tick at the low end ----- */
+
+.bar--target {
+  position: relative;
+}
+
+.bar__tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text);
+  opacity: 0.55;
+}
+
+.bucket__caption {
+  font-size: var(--text-sub);
+  color: var(--text-2);
+}
+
+.bucket .status {
+  align-self: flex-start;
+}
+
+/* ----- Notice: a short message with an icon, in a tone ----- */
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+}
+
+.notice .icon {
+  flex: none;
+  margin-top: 0.1em;
+}
+
+.notice__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  color: var(--text);
+}
+
+/* What was just done or refused stays in view while the list scrolls. */
+.notice--sticky {
+  position: sticky;
+  top: calc(var(--safe-top) + var(--space-2));
+  z-index: 5;
+  box-shadow: var(--shadow-raised);
+}
+
+.notice--ok {
+  background: var(--ok-bg);
+}
+
+.notice--ok .icon {
+  color: var(--ok);
+}
+
+.notice--warning {
+  background: var(--warning-bg);
+}
+
+.notice--warning .icon {
+  color: var(--warning);
+}
+
+.notice--danger {
+  background: var(--danger-bg);
+}
+
+.notice--danger .icon {
+  color: var(--danger);
+}
+
+/* ----- Toggle row ----- */
+
+.toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+}
+
+/* The real checkbox covers the whole row, invisibly, so a tap anywhere on
+   it works and the keyboard and screen readers still find it. */
+.toggle__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.toggle__track {
+  flex: none;
+  position: relative;
+  width: 51px;
+  height: 31px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 2px solid var(--text-2);
+  transition: background-color var(--duration) var(--ease);
+}
+
+.toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: var(--text-2);
+  transition: transform var(--duration) var(--ease), background-color var(--duration) var(--ease);
+}
+
+.toggle__input:checked + .toggle__track {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.toggle__input:checked + .toggle__track .toggle__thumb {
+  transform: translateX(20px);
+  background: var(--on-accent);
+}
+
+.toggle__input:focus-visible + .toggle__track {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ----- Text field ----- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field__label {
+  font-size: var(--text-sub);
+  font-weight: var(--weight-medium);
+  color: var(--text-2);
+}
+
+.field__input {
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--text-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  width: 100%;
+}
+
+.field__input--money {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.field__hint {
+  font-size: var(--text-sub);
+  color: var(--text-2);
+}
+
+/* ----- Button row ----- */
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.button-row > .button {
+  flex: 1 1 8rem;
+}
+
+/* ----- Decision: something waiting for him, and what to do ----- */
+
+.decision {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.decision + .decision {
+  border-top: 1px solid var(--separator);
+}
+
+.decision__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.decision__title {
+  min-width: 0;
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+}
+
+.decision__amount {
+  flex: none;
+  font-weight: var(--weight-bold);
+}
+
+.decision__detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  font-size: var(--text-sub);
+  color: var(--text-2);
+}
+
+.decision__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+/* The purchases a refund likely belongs to. */
+.likely {
+  margin: 0;
+  padding: var(--space-3);
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.likely__title {
+  font-size: var(--text-sub);
+  font-weight: var(--weight-medium);
+  color: var(--text-2);
+}
+
+.likely__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.likely__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* A long name wraps; the amount stays whole. */
+.likely__line > :first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.likely__line > .money {
+  flex: none;
+}
+
+.likely__more {
+  font-size: var(--text-sub);
+  color: var(--text-2);
 }

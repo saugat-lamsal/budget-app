@@ -723,3 +723,59 @@ Step 3. You answer "move to savings". 75.00 moves:
         Savings 2,750.00 + 75.00 = 2,825.00
 
 Check: savings 2,825.00 | needs 450.00 | wants 100.00 | moved to savings 75.00
+
+
+========================================================================
+EXAMPLE 25. A refund you match to its purchase yourself (rules 4.5, 4.4; A18)
+========================================================================
+
+Before: Needs 400.00, wants 200.00.
+
+Step 1. You buy 90.00 at MADE UP HOME STORE on the everyday card and split
+        it: 60.00 for needs, 30.00 for wants (4.4):
+        Needs 400.00 - 60.00 = 340.00
+        Wants 200.00 - 30.00 = 170.00
+
+Step 2. Two days later a 90.00 refund shows up on the everyday card, but
+        the bank does not say which purchase it is for. It waits in
+        review (4.5):
+        Unsorted money in 0.00 + 90.00 = 90.00
+        Review lists the home store purchase as the one it likely
+        belongs to: same account, made before the refund, with 90.00 not
+        yet refunded.
+
+Step 3. You tap "This refund is for this one" and say yes. It counts as
+        if the bank had matched it. A full refund of a split purchase goes
+        back to each bucket as it was split (4.5):
+        Unsorted money in 90.00 - 90.00 = 0.00
+        Needs 340.00 + 60.00 = 400.00
+        Wants 170.00 + 30.00 = 200.00
+
+Check: needs 400.00 | wants 200.00 | unsorted money in 0.00
+
+
+========================================================================
+EXAMPLE 26. A rule that cannot sort everything it matches (rules 13.2, 13.6, 7.6, 8.1; A19)
+========================================================================
+
+Before: Mom reserve 500.00. No rule knows MADE UP FRIEND.
+
+Step 1. You send MADE UP FRIEND 40.00, and then 40.00 again. Both wait in
+        review (7.4):
+        Unsorted spending 0.00 + 40.00 + 40.00 = 80.00
+
+Step 2. The friend sends 10.00 of the second one back, and the bank
+        matches it to that payment:
+        Unsorted spending 80.00 - 10.00 = 70.00
+
+Step 3. On the first one you pick "for mom" with "always do this", for
+        descriptions containing MADE UP FRIEND. The rule is made, and the
+        first one comes out of the mom reserve (7.6, 8.1):
+        Mom reserve 500.00 - 40.00 = 460.00
+        Sent to mom this month: 40.00
+        Unsorted spending 70.00 - 40.00 = 30.00
+        The second one also matches the rule, but part of it was refunded,
+        so it cannot be for mom. It stays waiting exactly as it was, and
+        you are told which one (13.2).
+
+Check: mom reserve 460.00 | sent to mom 40.00 | unsorted spending 30.00

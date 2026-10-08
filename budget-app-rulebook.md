@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 10)
+# Budget App Rulebook (draft 11)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -87,7 +87,11 @@ number so a test can point at it. Nothing gets coded until you approve this.
 4.5  A refund goes back into the bucket the purchase came from. A full
      refund of a split purchase goes back to each bucket as it was split;
      a partial one sends the purchase back to review to be split again. If
-     the app cannot match a refund to a purchase, it goes to review.
+     the app cannot match a refund to a purchase, it goes to review. Review
+     lists the purchases it likely belongs to; picking one ("this refund is
+     for this one") matches it exactly as if the bank had, and cannot be
+     undone in review. A likely purchase is on the same account, made on or
+     before the refund, with at least the refund's amount not yet refunded.
 4.6  A pending charge counts once. When it posts, the final charge replaces
      the pending one, even if the amount changed (a tip, for example). If
      the bank changes a pending charge's amount before it posts, the new
@@ -150,7 +154,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
      - Payback: goes into the bucket you pick
      - Not mine: goes to "held for others"
      A paycheck-looking deposit held back under 3.7 gets the same
-     choices.
+     choices. A store refund waiting in review is not income: it gets
+     payback and not mine, and it can be matched to the purchase it belongs
+     to (4.5).
 6.2  A rule can make the choice automatic for a known source.
 
 
@@ -280,7 +286,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
       paycheck rule or the mom rule does the same with what is waiting: a
       deposit that matches the paycheck rule becomes a paycheck, still with
       the 10-day check (3.7), and a payment that matches the mom rule comes
-      out of the mom reserve (8.1).
+      out of the mom reserve (8.1). A waiting item the rule matches but
+      cannot sort (a partly refunded payment cannot be for mom, for
+      example) stays waiting exactly as it was, and you are told which.
 13.3  You can move money between buckets by hand at any time.
 13.4  Moving money out of savings or the mom reserve asks you to confirm
       first. So does any move that would leave the bucket it comes out of
@@ -426,3 +434,14 @@ b.  A transaction the bank took back stays in Needs attention on Home
 c.  When the bank cannot be read, Home shows the last checked safe to
     spend, greyed, with the day and time it was checked (0.5,
     QUESTIONS.md B82).
+
+
+## 22. Answers to the Buckets and Review questions (Oct 7, 2026)
+
+a.  A refund waiting in review can be matched to one of the purchases it
+    likely belongs to. It then counts exactly as if the bank had matched
+    it: back into the bucket the purchase came from, and a split purchase
+    as in 4.5. It asks first (4.5, 6.1, QUESTIONS.md A18).
+b.  A new rule sorts the waiting items it can and leaves the others
+    waiting, saying which, instead of being refused whole (13.2,
+    QUESTIONS.md A19).

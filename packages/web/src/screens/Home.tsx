@@ -1,9 +1,9 @@
 import type { SelfCheck } from '@budget-app/money';
 import type { Attention, HomeView } from '@budget-app/server/views';
 import { useState } from 'react';
-import { markTakeBackSeen, type Load } from '../app/api.js';
+import { markTakeBackSeen, type Load, type Reload } from '../app/api.js';
 import { pathOf } from '../app/routes.js';
-import { Banner, BottomSheet, BucketBar, Button, Card, ListRow, Money, Skeleton, StateMessage, StatusLabel } from '../ui/blocks.js';
+import { Banner, BottomSheet, BucketBar, Button, Card, ListRow, MadeUpPill, Money, Skeleton, StateMessage, StatusLabel } from '../ui/blocks.js';
 import { asOfText, longDate, shortDate } from '../ui/dates.js';
 import { Icon } from '../ui/Icon.js';
 import { dueText, paydayText, waitingText } from './home-text.js';
@@ -11,7 +11,7 @@ import { dueText, paydayText, waitingText } from './home-text.js';
 // Home: safe to spend is the one main number. Below it, what needs
 // attention, then needs and wants as compact bars.
 
-export function HomeScreen({ load, onRetry }: { readonly load: Load<HomeView>; readonly onRetry: () => void }) {
+export function HomeScreen({ load, onRetry }: { readonly load: Load<HomeView>; readonly onRetry: Reload }) {
   return (
     <main className="screen" aria-busy={load.status === 'loading'} data-testid="home">
       <h1 className="sr-only">Home</h1>
@@ -25,7 +25,7 @@ export function HomeScreen({ load, onRetry }: { readonly load: Load<HomeView>; r
       )}
       {load.status === 'ready' && load.value.state === 'not-set-up' && (
         <>
-          {load.value.madeUpData && <MadeUpData />}
+          {load.value.madeUpData && <MadeUpPill />}
           <StateMessage
             icon="bank"
             title="Not set up yet"
@@ -36,15 +36,6 @@ export function HomeScreen({ load, onRetry }: { readonly load: Load<HomeView>; r
       )}
       {load.status === 'ready' && load.value.state === 'tracking' && <HomeReady view={load.value} onChanged={onRetry} />}
     </main>
-  );
-}
-
-function MadeUpData() {
-  return (
-    <span className="pill" data-testid="made-up">
-      <Icon name="info" size={12} />
-      Made-up data
-    </span>
   );
 }
 
@@ -87,7 +78,7 @@ function HomeReady({ view, onChanged }: { readonly view: Tracking; readonly onCh
     <>
       <div className="eyebrow">
         <span>{longDate(view.today)}</span>
-        {view.madeUpData && <MadeUpData />}
+        {view.madeUpData && <MadeUpPill />}
       </div>
 
       {safeToSpend.shown ? (

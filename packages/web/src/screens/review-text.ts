@@ -1,0 +1,150 @@
+import type { AccountId, PickTo, ReviewDetail, SpendingSort, TransferOutcome } from '@budget-app/money';
+import type { ChoiceOf, Done } from '@budget-app/server/views';
+import { moneyText } from '../ui/money-format.js';
+
+// Words on the Review screen: what each waiting item is, what each choice
+// is called, and what was done. The screen shows what the money math offers;
+// these are only its names.
+
+export const ACCOUNT_NAMES: Readonly<Record<AccountId, string>> = {
+  checking: 'Checking',
+  savings: 'Savings',
+  'everyday-card': 'Everyday card',
+  'old-card': 'Old card',
+};
+
+export const BUCKET_NAMES: Readonly<Record<string, string>> = {
+  savings: 'Savings',
+  needs: 'Needs',
+  wants: 'Wants',
+  momReserve: 'Mom reserve',
+  'not-mine': 'Not mine',
+};
+
+type Item = ReviewDetail['item'];
+
+export function groupTitle(type: Item['type']): string {
+  switch (type) {
+    case 'leftover':
+      return 'Payday questions';
+    case 'money-in':
+      return 'Money in';
+    case 'spending':
+      return 'Spending';
+    case 'old-card-purchase':
+      return 'Old card';
+  }
+}
+
+// What the item is, and why it waits (4.2 to 4.9, 5.2, 5.4, 6.1, 3.7, 8.3, 14.2).
+export function reasonText(item: Item): string {
+  switch (item.type) {
+    case 'leftover':
+      return 'Left over at payday';
+    case 'old-card-purchase':
+      return 'New purchase on the old card';
+    case 'money-in':
+      return item.reason === 'refund' ? 'Refund the bank did not match to a purchase' : item.reason === 'early-paycheck' ? 'Looks like a paycheck, but it came early' : 'Deposit';
+    case 'spending':
+      switch (item.reason) {
+        case 'no-rule':
+          return 'No rule matched';
+        case 'from-savings':
+          return 'Money out of savings';
+        case 'card-fee':
+          return 'Card fee';
+        case 'card-interest':
+          return 'Card interest';
+        case 'split-changed':
+          return 'The split no longer adds up';
+        case 'old-card-from-savings':
+          return 'Payment to the old card from savings';
+        case 'person-payment':
+          return 'Payment to a person';
+        case 'mom-difference':
+          return 'Left over from a mom payment bigger than the reserve';
+        case 'setup-difference':
+          return 'Different from what was counted on setup day';
+      }
+  }
+}
+
+export function titleOf(item: Item): string {
+  if (item.type === 'leftover') return `${BUCKET_NAMES[item.bucket] ?? item.bucket} leftover`;
+  return item.description;
+}
+
+// A choice's name on a button or a row. For money in, a bucket is a payback
+// into it (6.1); for spending it is the bucket the spending comes out of.
+export function pickLabel(kind: 'money-in' | 'spending', to: PickTo, short = false): string {
+  const bucket = BUCKET_NAMES[to] ?? to;
+  if (to === 'paycheck') return 'This is my paycheck';
+  if (to === 'other-income') return 'Other income';
+  if (to === 'not-mine') return 'Not mine';
+  if (to === 'mom') return 'For mom';
+  if (kind === 'money-in') return short ? `Into ${bucket}` : `Payback into ${bucket}`;
+  return bucket;
+}
+
+// Where a purchase went, for the likely purchases of a refund.
+export function sortedWords(sorted: SpendingSort): string {
+  if ('split' in sorted) return `Split: ${sorted.split.map((p) => `${BUCKET_NAMES[p.bucket] ?? p.bucket} ${moneyText(p.amount)}`).join(', ')}`;
+  switch (sorted.to) {
+    case 'unsorted':
+      return 'Not sorted yet';
+    case 'counted-at-setup':
+      return 'Counted on setup day';
+    default:
+      return `In ${BUCKET_NAMES[sorted.to] ?? sorted.to}`;
+  }
+}
+
+// 5.6: what marking it a transfer with this account does, from the money
+// math (5.1, 5.2, 5.3).
+export function transferWords(outcome: TransferOutcome | undefined): { readonly row: string; readonly done: string } {
+  switch (outcome) {
+    case 'out-of-needs':
+      return { row: 'A payment to the old card. It comes out of Needs.', done: 'marked as a payment to the old card. It came out of Needs.' };
+    case 'savings-or-needs':
+      return {
+        row: 'A payment to the old card from savings. It comes back here for you to pick Savings or Needs.',
+        done: 'marked as a payment to the old card. It is waiting again, for you to pick Savings or Needs.',
+      };
+    default:
+      return { row: 'No bucket changes. It is money moving between your accounts.', done: '' };
+  }
+}
+
+// What was done, said back to him (after "Done" from the server). about
+// names what the choice pointed at: the purchase a refund was matched to, or
+// what a transfer did.
+export function doneText(label: string, kind: 'money-in' | 'spending' | 'leftover' | 'old-card-purchase', done: Done, about?: string): string {
+  const c: ChoiceOf = done.choice;
+  let text: string;
+  if ('refundOf' in c) {
+    text = `${label} matched to ${about ?? 'the purchase'}, as if the bank had matched it.`;
+  } else if ('to' in c) {
+    if (c.to === 'paycheck') text = `${label} is your paycheck. A new pay period started.`;
+    else if (c.to === 'other-income') text = `${label} counted as other income.`;
+    else if (c.to === 'not-mine') text = kind === 'money-in' ? `${label} is held for others.` : `${label} marked not mine.`;
+    else if (c.to === 'mom') text = `${label} marked for mom.`;
+    else if (kind === 'money-in') text = `${label} put back into ${BUCKET_NAMES[c.to] ?? c.to}.`;
+    else if (c.to === 'savings') text = `${label} taken out of Savings.`;
+    else text = `${label} sorted to ${BUCKET_NAMES[c.to] ?? c.to}.`;
+  } else if ('split' in c) {
+    text = `${label} split: ${c.split.map((p) => `${BUCKET_NAMES[p.bucket] ?? p.bucket} ${p.amount === 'rest' ? 'the rest' : moneyText(p.amount)}`).join(', ')}.`;
+  } else if ('transfer' in c) {
+    text = about === undefined || about === '' ? `${label} marked as a transfer with ${ACCOUNT_NAMES[c.transfer]}.` : `${label} ${about}`;
+  } else if ('leftover' in c) {
+    text = c.leftover === 'roll-over' ? `${label} kept for this pay period.` : `${label} moved to Savings.`;
+  } else {
+    text = `Seen: ${label}.`;
+  }
+  if (done.alsoSorted > 0) text += ` ${done.alsoSorted} other waiting ${done.alsoSorted === 1 ? 'item' : 'items'} matched and ${done.alsoSorted === 1 ? 'was' : 'were'} sorted too.`;
+  // A19: what the rule matched but could not sort stays waiting, by name.
+  const still = done.stillWaiting;
+  if (still.length > 0) text += ` ${still.length} that matched could not take it, so ${still.length === 1 ? 'it is' : 'they are'} still waiting: ${still.map((s) => s.name).join(', ')}.`;
+  if (done.sticks === true) text += ' From now on it goes there by itself.';
+  if (done.sticks === false) text += ' The text only matches how it looked after it posted, so a new one may still wait while it is pending.';
+  return text;
+}

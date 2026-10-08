@@ -376,6 +376,22 @@ const examples: Record<number, () => Record<string, Cents>> = {
     book.answerLeftover('leftover:pay:wants', 'move-to-savings', '2026-10-10');
     return { ...buckets(book), 'moved to savings': book.pots().savings - before };
   },
+  25: () => {
+    const book = openTestBook({ pots: { needs: parseDollars('400.00'), wants: parseDollars('200.00') } });
+    book.receive(purchase('home', '2026-10-05', parseDollars('90.00'), 'MADE UP HOME STORE'));
+    book.sort('home', { split: [{ bucket: 'needs', amount: parseDollars('60.00') }, { bucket: 'wants', amount: parseDollars('30.00') }] }, '2026-10-05');
+    book.receive(refund('back', '2026-10-07', parseDollars('90.00'), undefined, 'everyday-card'));
+    book.sort('back', { refundOf: 'home' }, '2026-10-07');
+    return buckets(book);
+  },
+  26: () => {
+    const book = openTestBook({ pots: { momReserve: parseDollars('500.00') } });
+    book.receive(payPerson('first', '2026-10-05', parseDollars('40.00'), 'MADE UP FRIEND'));
+    book.receive(payPerson('second', '2026-10-05', parseDollars('40.00'), 'MADE UP FRIEND'));
+    book.receive(refund('some-back', '2026-10-06', parseDollars('10.00'), 'second', 'checking'));
+    book.sortAlways('first', { to: 'mom' }, { id: 'friend-for-mom', contains: 'MADE UP FRIEND' }, '2026-10-06');
+    return { ...buckets(book), 'sent to mom': book.momSentInMonth('2026-10').sent };
+  },
 };
 
 describe('worked examples (worked-examples.txt)', () => {

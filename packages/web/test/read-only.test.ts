@@ -2,9 +2,10 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 // Rule 0.4 for the screens: they never move money. They ask the app's own
-// server for numbers, and the one thing they ever send is that he has seen
-// a take-back (10.6, QUESTIONS.md B84), which changes no money. Nothing
-// about money is kept on the phone either.
+// server for numbers, and the only things they ever send are that he has
+// seen a take-back (10.6, QUESTIONS.md B84) and his choice for an item in
+// review, which the server's money math decides. Both change the app's own
+// books, never the bank. Nothing about money is kept on the phone either.
 const sourceDir = new URL('../src/', import.meta.url);
 
 function sourceFiles(): { name: string; text: string }[] {
@@ -40,11 +41,19 @@ describe('0.4 the screens never move money', () => {
     for (const { name, call } of calls) expect(call, name).toMatch(/^fetch\( ?'\/api\//);
   });
 
-  it('0.4 every request only reads, except the one that marks a take-back seen', () => {
+  it('0.4 every request only reads, except the two that send his answers: a take-back seen, and a choice in review', () => {
     const writes = fetchCalls().filter(({ call }) => /method|body/.test(call));
     expect(writes.map((w) => w.call)).toEqual([
       "fetch('/api/seen', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'bank-took-back', id }), })",
+      "fetch('/api/choice', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request), })",
     ]);
+  });
+
+  it('0.4 every request is made in one place, app/api.ts, and the screens only call what it offers', () => {
+    const makers = sourceFiles()
+      .filter(({ text }) => /\bfetch\(/.test(text))
+      .map(({ name }) => name.replaceAll('\\', '/'));
+    expect(makers).toEqual(['app/api.ts']);
   });
 
   it('0.4 no other way to send anything, and nothing kept on the phone', () => {

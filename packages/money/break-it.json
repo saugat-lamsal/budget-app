@@ -968,15 +968,15 @@
   {
     "section": "12",
     "file": "packages/money/src/book.ts",
-    "find": "return { bankSide: bankTotal, inTransit: t.inTransit, appSide: appTotal, difference, ok: difference === 0 };",
-    "replace": "return { bankSide: bankTotal, inTransit: t.inTransit, appSide: appTotal, difference, ok: Math.abs(difference) <= 1 };",
+    "find": "return { bankSide: bankTotal, inTransit: this.#totals.inTransit, appSide: appTotal, difference, ok: difference === 0 };",
+    "replace": "return { bankSide: bankTotal, inTransit: this.#totals.inTransit, appSide: appTotal, difference, ok: Math.abs(difference) <= 1 };",
     "why": "12.3 let a one-cent difference pass"
   },
   {
     "section": "12",
     "file": "packages/money/src/book.ts",
-    "find": "const difference = subtractCents(addCents(bankTotal, t.inTransit), appTotal);",
-    "replace": "const difference = subtractCents(appTotal, addCents(bankTotal, t.inTransit));",
+    "find": "const difference = subtractCents(addCents(bankTotal, this.#totals.inTransit), appTotal);",
+    "replace": "const difference = subtractCents(appTotal, addCents(bankTotal, this.#totals.inTransit));",
     "why": "12.3 flip the sign of the difference"
   },
   {
@@ -1150,7 +1150,7 @@
   {
     "section": "12",
     "file": "packages/money/src/book.ts",
-    "find": "const difference = subtractCents(addCents(bankTotal, t.inTransit), appTotal);",
+    "find": "const difference = subtractCents(addCents(bankTotal, this.#totals.inTransit), appTotal);",
     "replace": "const difference = subtractCents(bankTotal, appTotal);",
     "why": "12.5 leave money in transit out of the check"
   },
@@ -2364,5 +2364,530 @@
     "find": "if (daysLeft < 0) return paid < minimumPayment ? { kind: 'overdue', card, dueDate, minimumPayment } : null;",
     "replace": "if (daysLeft <= 0) return paid < minimumPayment ? { kind: 'overdue', card, dueDate, minimumPayment } : null;",
     "why": "9.6 call it overdue on the due date itself"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/review-options.ts",
+    "find": "picks.push({ to: 'paycheck', final: true });",
+    "replace": "picks.push({ to: 'paycheck', final: false });",
+    "why": "[review] 6.1 my paycheck no longer asks first"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/review-options.ts",
+    "find": "if (f.reason !== 'refund') {",
+    "replace": "if (true) {",
+    "why": "[review] 4.5 B16 a store refund can be called income"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/review-options.ts",
+    "find": "if (f.olderThanLastPaycheck) {",
+    "replace": "if (false) {",
+    "why": "[review] B54 a deposit older than the last paycheck can be my paycheck"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/review-options.ts",
+    "find": "always: f.reason === 'deposit' ? ['other-income', ...BUCKET_PAYBACKS, 'not-mine'] : [],",
+    "replace": "always: f.reason !== 'refund' ? ['other-income', ...BUCKET_PAYBACKS, 'not-mine'] : [],",
+    "why": "[review] B17 an early paycheck can get a rule"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/review-options.ts",
+    "find": "always: f.reason === 'deposit' ? ['other-income', ...BUCKET_PAYBACKS, 'not-mine'] : [],",
+    "replace": "always: ['other-income', ...BUCKET_PAYBACKS, 'not-mine'],",
+    "why": "[review] 6.2 a store refund can get a rule"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/review-options.ts",
+    "find": "? ['other-income', ...BUCKET_PAYBACKS",
+    "replace": "? ['paycheck', 'other-income', ...BUCKET_PAYBACKS",
+    "why": "[review] B55 a rule can make my paycheck"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/review-options.ts",
+    "find": "transfer: (['checking', 'savings'] as const).filter((a) => a !== f.account),",
+    "replace": "transfer: ['checking', 'savings'],",
+    "why": "[review] 5.6 a deposit can be a transfer from the account it landed in"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/review-options.ts",
+    "find": "picks: [plain('savings'), plain('needs')]",
+    "replace": "picks: [plain('needs')]",
+    "why": "[review] 5.2 A4 a payment to the old card from savings cannot come out of savings"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/review-options.ts",
+    "find": "picks: [plain('savings'), plain('needs')]",
+    "replace": "picks: [plain('savings'), plain('needs'), plain('wants')]",
+    "why": "[review] 5.2 a payment to the old card from savings can come out of wants"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/review-options.ts",
+    "find": "if (f.canBeForMom) picks.push(plain('mom'));",
+    "replace": "picks.push(plain('mom'));",
+    "why": "[review] B73 a partly refunded payment can be for mom"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/review-options.ts",
+    "find": "    picks.push(plain('not-mine'));\n    if (f.canBeForMom)",
+    "replace": "    if (f.canBeForMom)",
+    "why": "[review] 7.2 a payment to a person cannot be not mine"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/review-options.ts",
+    "find": "f.kind !== 'mom-difference' && f.net >= 2;",
+    "replace": "f.kind !== 'mom-difference' && f.net >= 1;",
+    "why": "[review] 4.4 one cent can be split"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/review-options.ts",
+    "find": "f.kind !== 'mom-difference' && f.net >= 2;",
+    "replace": "f.kind !== 'mom-difference' && f.net >= 3;",
+    "why": "[review] 4.4 two cents cannot be split"
+  },
+  {
+    "section": "8",
+    "file": "packages/money/src/review-options.ts",
+    "find": "f.kind !== 'mom-difference' && f.net >= 2;",
+    "replace": "f.net >= 2;",
+    "why": "[review] 8.3 B23 the difference on a mom payment can be split"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/review-options.ts",
+    "find": "(person ? (['needs', 'wants', 'not-mine'] as const) : (['needs', 'wants'] as const))",
+    "replace": "(['needs', 'wants'] as const)",
+    "why": "[review] 7.6 a payment to a person cannot be split with not mine"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/review-options.ts",
+    "find": "(person ? (['needs', 'wants', 'not-mine'] as const) : (['needs', 'wants'] as const))",
+    "replace": "(['needs', 'wants', 'not-mine'] as const)",
+    "why": "[review] 4.4 a purchase can be split with not mine"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/review-options.ts",
+    "find": "if (f.leavesAnAccount && (f.kind === 'purchase' || person)) {",
+    "replace": "if (f.leavesAnAccount) {",
+    "why": "[review] 5.6 the difference on a mom payment can be marked a transfer"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/review-options.ts",
+    "find": "if (f.pending) unavailable.push(",
+    "replace": "if (false) unavailable.push(",
+    "why": "[review] 5.6 B74 a pending charge can be marked a transfer"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/review-options.ts",
+    "find": "else if (f.gone) unavailable.push(",
+    "replace": "else if (false) unavailable.push(",
+    "why": "[review] 4.10 what the bank took back can be marked a transfer"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/review-options.ts",
+    "find": "else if (f.countedAtSetup) unavailable.push(",
+    "replace": "else if (false) unavailable.push(",
+    "why": "[review] 14.2 B74 a charge counted on setup day can be marked a transfer"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/review-options.ts",
+    "find": "else if (f.partlyRefunded) unavailable.push(",
+    "replace": "else if (false) unavailable.push(",
+    "why": "[review] 5.6 B74 a partly refunded purchase can be marked a transfer"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/review-options.ts",
+    "find": "if (f.kind === 'purchase' && !f.fromSavings) always = ['needs', 'wants'];",
+    "replace": "if (f.kind === 'purchase') always = ['needs', 'wants'];",
+    "why": "[review] 4.9 money out of savings can get a rule"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/review-options.ts",
+    "find": "if (person) always = picks.map((p) => p.to);",
+    "replace": "if (person) always = ['needs', 'wants', 'not-mine', 'mom'];",
+    "why": "[review] B73 a rule can say for mom for a partly refunded payment"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/review-options.ts",
+    "find": "answers: ['roll-over', 'move-to-savings'] };",
+    "replace": "answers: ['roll-over'] };",
+    "why": "[review] 3.4 the leftover question cannot be moved to savings"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/review-options.ts",
+    "find": "answers: ['roll-over', 'move-to-savings'] };",
+    "replace": "answers: ['move-to-savings'] };",
+    "why": "[review] 3.4 the leftover question cannot be rolled over"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/review-options.ts",
+    "find": "= ['savings', 'needs', 'wants', 'momReserve'];",
+    "replace": "= ['savings', 'needs', 'wants'];",
+    "why": "[review] 6.1 payback into the mom reserve is not offered"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/review-options.ts",
+    "find": "const picks: ReviewPick[] = [plain('needs'), plain('wants')];",
+    "replace": "const picks: ReviewPick[] = [plain('needs')];",
+    "why": "[review] 4.2 wants is not offered for spending"
+  },
+  {
+    "section": "20",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "daysBetween(c.date, refund.date) >= 0",
+    "replace": "daysBetween(c.date, refund.date) > 0",
+    "why": "[review] 20d a purchase on the day of the refund is left out"
+  },
+  {
+    "section": "20",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "daysBetween(c.date, refund.date) >= 0",
+    "replace": "true",
+    "why": "[review] 20d a purchase after the refund can be what it belongs to"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "c.left >= refund.amount)",
+    "replace": "c.left > refund.amount)",
+    "why": "[review] 4.5 a purchase with exactly the refund left is left out"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "&& c.left >= refund.amount)",
+    "replace": ")",
+    "why": "[review] 4.5 a purchase with less left than the refund is listed"
+  },
+  {
+    "section": "20",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "c.account === refund.account && ",
+    "replace": "",
+    "why": "[review] 20d purchases on another account are listed"
+  },
+  {
+    "section": "20",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": ".filter((p) => p.sameName || p.sameAmount)",
+    "replace": ".filter((p) => p.sameName && p.sameAmount)",
+    "why": "[review] 20d only a purchase with both the name and the amount is listed"
+  },
+  {
+    "section": "20",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": ".filter((p) => p.sameName || p.sameAmount)",
+    "replace": ".filter(() => true)",
+    "why": "[review] 20d every purchase is listed"
+  },
+  {
+    "section": "20",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "export const MOST_LIKELY_SHOWN = 5;",
+    "replace": "export const MOST_LIKELY_SHOWN = 6;",
+    "why": "[review] 20d six are listed"
+  },
+  {
+    "section": "20",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "export const MOST_LIKELY_SHOWN = 5;",
+    "replace": "export const MOST_LIKELY_SHOWN = 4;",
+    "why": "[review] 20d four are listed"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "sameAmount: c.left === refund.amount,",
+    "replace": "sameAmount: c.amount === refund.amount,",
+    "why": "[review] 4.5 the same amount is compared with the whole purchase, not what is left"
+  },
+  {
+    "section": "20",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "(p.sameName ? 2 : 0) + (p.sameAmount ? 1 : 0)",
+    "replace": "(p.sameName ? 1 : 0) + (p.sameAmount ? 2 : 0)",
+    "why": "[review] 20d the same amount beats the same name"
+  },
+  {
+    "section": "20",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "daysBetween(a.date, b.date)",
+    "replace": "daysBetween(b.date, a.date)",
+    "why": "[review] 20d the oldest comes first among equals"
+  },
+  {
+    "section": "20",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "word.length >= 3",
+    "replace": "word.length >= 2",
+    "why": "[review] 20d words of two letters count as a name"
+  },
+  {
+    "section": "20",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "new Set(['refund',",
+    "replace": "new Set(['xrefund',",
+    "why": "[review] 20d the word refund counts as a name"
+  },
+  {
+    "section": "20",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "      .toLowerCase()\n      .split(/[^a-z0-9]+/)",
+    "replace": "      .split(/[^a-z0-9]+/)",
+    "why": "[review] 20d names are compared with their case"
+  },
+  {
+    "section": "20",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": ".split(/[^a-z0-9]+/)",
+    "replace": ".split(' ')",
+    "why": "[review] 20d a name only splits at spaces"
+  },
+  {
+    "section": "6",
+    "file": "packages/money/src/book.ts",
+    "find": "const older = txn.kind === 'deposit' && daysBetween(this.#lastPaycheckDate, txn.date) < 0;",
+    "replace": "const older = txn.kind === 'deposit' && daysBetween(this.#lastPaycheckDate, txn.date) <= 0;",
+    "why": "[review] B54 a deposit on the day of the last paycheck cannot be my paycheck"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "paycheckPreview: txn.kind === 'deposit' && !older ? this.#splitIfPaycheck(txn.amount) : null,",
+    "replace": "paycheckPreview: txn.kind === 'deposit' ? this.#splitIfPaycheck(txn.amount) : null,",
+    "why": "[review] 3.2 a deposit that cannot be my paycheck gets a paycheck preview"
+  },
+  {
+    "section": "3",
+    "file": "packages/money/src/book.ts",
+    "find": "return splitPaycheck(amount, this.#totals.momReserve, splitSettingsOf(this.#settings));",
+    "replace": "return splitPaycheck(amount, 0, splitSettingsOf(this.#settings));",
+    "why": "[review] 3.2 the paycheck preview ignores what the mom reserve holds"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": " && entry.refunded === 0,\n          net: netOf(entry),",
+    "replace": ",\n          net: netOf(entry),",
+    "why": "[review] B73 a partly refunded payment can be marked for mom (facts)"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "partlyRefunded: entry.refunded > 0,",
+    "replace": "partlyRefunded: false,",
+    "why": "[review] 5.6 B74 a partly refunded purchase can be marked a transfer (facts)"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/book.ts",
+    "find": "countedAtSetup: entry.countedAtSetup > 0,",
+    "replace": "countedAtSetup: false,",
+    "why": "[review] 14.2 B74 a charge counted on setup day can be marked a transfer (facts)"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "gone: entry.dropped === true || entry.takenBack === true,",
+    "replace": "gone: false,",
+    "why": "[review] 4.10 what the bank took back can be marked a transfer (facts)"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "          pending: entry.pending,\n          partlyRefunded",
+    "replace": "          pending: false,\n          partlyRefunded",
+    "why": "[review] 5.6 B74 a pending charge can be marked a transfer (facts)"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "(account === 'checking' || account === 'savings'),\n          pending",
+    "replace": "true,\n          pending",
+    "why": "[review] 5.6 money charged to a card can be marked a transfer"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "txn.kind === 'transfer' || txn.kind === 'transfer-sent' ? txn.from : txn.account;",
+    "replace": "txn.kind === 'transfer' || txn.kind === 'transfer-sent' ? 'checking' : txn.account;",
+    "why": "[review] 5.2 a payment to the old card from savings is shown as from checking"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "fromSavings: txn.kind === 'savings-withdrawal',\n          account,",
+    "replace": "fromSavings: false,\n          account,",
+    "why": "[review] 4.9 money out of savings can get a rule (facts)"
+  },
+  {
+    "section": "20",
+    "file": "packages/money/src/book.ts",
+    "find": "likelyPurchases: txn.kind === 'refund' ? likelyPurchases(",
+    "replace": "likelyPurchases: false ? likelyPurchases(",
+    "why": "[review] 20d a refund lists no purchases"
+  },
+  {
+    "section": "20",
+    "file": "packages/money/src/book.ts",
+    "find": "if (e.kind !== 'spend' || e.spendingKind !== 'purchase' || e.txn.kind !== 'purchase') continue;",
+    "replace": "if (e.kind !== 'spend') continue;",
+    "why": "[review] 20d fees and payments to people can be what a refund belongs to"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "left: e.amount - e.refunded,",
+    "replace": "left: e.amount,",
+    "why": "[review] 4.5 what an earlier refund took back is still left to refund"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "t.heldForOthers, t.unsortedIn), t.unsortedOut);",
+    "replace": "t.heldForOthers, t.unsortedIn), 0);",
+    "why": "[review] 12.2 the app side ignores unsorted spending"
+  },
+  {
+    "section": "12",
+    "file": "packages/money/src/book.ts",
+    "find": "t.momReserve, t.heldForOthers, t.unsortedIn), t.unsortedOut);",
+    "replace": "t.momReserve, t.unsortedIn), t.unsortedOut);",
+    "why": "[review] 12.2 the app side ignores money held for others"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/review-options.ts",
+    "find": "match: f.reason === 'refund' ? [...f.likely] : [],",
+    "replace": "match: [],",
+    "why": "[review] [pre-merge] A18 no purchase is offered to match a refund to"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/review-options.ts",
+    "find": "match: f.reason === 'refund' ? [...f.likely] : [],",
+    "replace": "match: f.reason === 'refund' ? [...f.likely].slice(1) : [],",
+    "why": "[review] [pre-merge] A18 the most likely purchase is not offered"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if (target?.kind !== 'spend' || !this.#couldBelongTo(txn, target)) {",
+    "replace": "if (target?.kind !== 'spend') {",
+    "why": "[review] [pre-merge] A18 a refund can be matched to any spending"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "e.txn.account === refund.account &&",
+    "replace": "true &&",
+    "why": "[review] [pre-merge] A18 a refund can be matched to a purchase on another account"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "daysBetween(e.txn.date, refund.date) >= 0 &&",
+    "replace": "daysBetween(e.txn.date, refund.date) > 0 &&",
+    "why": "[review] [pre-merge] A18 a purchase made the same day as the refund cannot be matched"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "daysBetween(e.txn.date, refund.date) >= 0 &&",
+    "replace": "true &&",
+    "why": "[review] [pre-merge] A18 a refund can be matched to a purchase made after it"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "e.amount - e.refunded >= refund.amount",
+    "replace": "e.amount >= refund.amount",
+    "why": "[review] [pre-merge] A18 what was already refunded is forgotten when matching"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "e.amount - e.refunded >= refund.amount",
+    "replace": "e.amount - e.refunded > refund.amount",
+    "why": "[review] [pre-merge] A18 a refund of exactly what is left cannot be matched"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#remove(entry);\n      this.#applyRefund(txn, target);",
+    "replace": "      this.#remove(entry);",
+    "why": "[review] [pre-merge] A18 a matched refund vanishes instead of going back to the purchase"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#remove(entry);\n      this.#applyRefund(txn, target);",
+    "replace": "      this.#applyRefund(txn, target);",
+    "why": "[review] [pre-merge] A18 a matched refund also stays waiting, counted twice"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "        stillWaiting.push(id);",
+    "replace": "",
+    "why": "[review] [pre-merge] A19 the items a rule could not sort are not reported"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "        if (!(error instanceof MoneyError)) throw error;\n        stillWaiting.push(id);",
+    "replace": "        throw error;",
+    "why": "[review] [pre-merge] A19 a rule that cannot sort one item is refused whole, as before his answer"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      return { sticks: findRule(this.#rules, newRule.for, descriptions[0] ?? '')?.id === added.id, stillWaiting };",
+    "replace": "      return { sticks: findRule(this.#rules, newRule.for, descriptions[0] ?? '')?.id === added.id, stillWaiting: [] };",
+    "why": "[review] [pre-merge] A19 \"always do this\" does not say what it left waiting"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/review-options.ts",
+    "find": "f.account === 'checking' ? 'out-of-needs' : 'savings-or-needs'",
+    "replace": "f.account === 'checking' ? 'savings-or-needs' : 'out-of-needs'",
+    "why": "[review] [pre-merge] 5.2 5.6 the old card from checking and from savings are said the other way round"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/review-options.ts",
+    "find": "(to !== 'old-card' ? 'no-bucket-change'",
+    "replace": "(to === 'savings' ? 'no-bucket-change'",
+    "why": "[review] [pre-merge] 5.6 a transfer to the everyday card is said to come out of a bucket"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/review-options.ts",
+    "find": "transferOutcome: Object.fromEntries(transfer.map((a) => [a, 'no-bucket-change'])),",
+    "replace": "transferOutcome: Object.fromEntries(transfer.map((a) => [a, 'out-of-needs'])),",
+    "why": "[review] [pre-merge] 5.6 money coming in marked a transfer is said to come out of needs"
   }
 ]

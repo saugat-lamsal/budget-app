@@ -369,5 +369,390 @@
   "find": "      id: `${known.transactionId}-taken-back-${this.#in.sync}`,",
   "replace": "      id: `${known.transactionId}-taken-back`,",
   "why": "4.10 give two take-backs of the same item the same id (A14)"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "if (earlier.fingerprint === fingerprint) return { ok: true, replayed: true, done: earlier.done };",
+  "replace": "if (true) return { ok: true, replayed: true, done: earlier.done };",
+  "why": "[review] a different choice under the same decision number is taken for a repeat"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "    this.#done.set(request.id, { fingerprint, done });\n",
+  "replace": "",
+  "why": "[review] a repeat of a decision is not recognized"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "return refuse('not-waiting', 'That one was already dealt with.');",
+  "replace": "return refuse('refused', 'That one was already dealt with.');",
+  "why": "[review] an item already dealt with is reported as refused"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "if (isFinal(request, detail.options) && request.confirmed !== true) {",
+  "replace": "if (false) {",
+  "why": "[review] 6.1 B52 final choices do not ask first"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "if (request.always !== undefined || 'leftover' in c) return true;",
+  "replace": "if ('leftover' in c) return true;",
+  "why": "[review] 13.6 a rule does not ask first"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "if (request.always !== undefined || 'leftover' in c) return true;",
+  "replace": "if (request.always !== undefined) return true;",
+  "why": "[review] 3.4 a leftover answer does not ask first"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "return options.type === 'sort' && 'to' in c && options.picks.some((p) => p.to === c.to && p.final);",
+  "replace": "return false;",
+  "why": "[review] 6.1 B52 my paycheck does not ask first"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "return known === net ? parts : `The parts add up to ${formatDollars(known)}, but this is ${formatDollars(net)}`;",
+  "replace": "return parts;",
+  "why": "[review] 4.4 a split that does not add up is left to the book, in cents"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "if (left <= 0) {",
+  "replace": "if (left < 0) {",
+  "why": "[review] 4.4 a rest of exactly nothing is accepted"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "const left = subtractCents(net, known);",
+  "replace": "const left = subtractCents(known, net);",
+  "why": "[review] 4.4 the rest is worked out the wrong way round"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "if (error.code === 'not-cents') return 'That would make a total too large to keep exact';",
+  "replace": "",
+  "why": "[review] 0.1 a total too large to keep exact is not said in plain words"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "[...before].filter((id) => id !== request.item && !after.has(id)).length;",
+  "replace": "[...before].filter((id) => !after.has(id)).length;",
+  "why": "[review] 13.2 the item itself is counted as another one the rule sorted"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "{ id: `always-${request.id}`,",
+  "replace": "{ id: 'always',",
+  "why": "[review] 13.6 every rule gets the same id"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "request.always.contains }, today).sticks;",
+  "replace": "request.always.contains }, today).sticks || true;",
+  "why": "[review] 13.6 B49 it always says the rule will catch the next one"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "options.always.includes(c.to) ? null : \"A rule can't do that for this item.\";",
+  "replace": "options.always.includes(c.to) ? null : null;",
+  "why": "[review] 13.6 a rule for a choice rules cannot make is passed on"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "    if (request.always !== undefined) return \"A rule can't do that for this item.\";\n",
+  "replace": "",
+  "why": "[review] 13.6 a rule can split or mark a transfer"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "const unavailable = options.unavailable.find(",
+  "replace": "const unavailable = options.unavailable.filter(() => false).find(",
+  "why": "[review] B54 5.6 why a choice is not available is not said"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "/^[A-Za-z0-9_-]{8,64}$/",
+  "replace": "/^[A-Za-z0-9_-]{1,64}$/",
+  "why": "[review] a one-letter decision number is taken"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "/^[A-Za-z0-9_-]{8,64}$/",
+  "replace": "/^[A-Za-z0-9_-]{8,65}$/",
+  "why": "[review] a decision number one too long is taken"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "item.length > MAX_ITEM_LENGTH",
+  "replace": "item.length >= MAX_ITEM_LENGTH",
+  "why": "[review] an item id of exactly the longest length is not taken"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "contains.length > MAX_TEXT_LENGTH",
+  "replace": "contains.length >= MAX_TEXT_LENGTH",
+  "why": "[review] rule text of exactly the longest length is not taken"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "if (keys.length !== 1) return null;",
+  "replace": "if (keys.length < 1) return null;",
+  "why": "[review] a choice that says two things is taken"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "Number.isSafeInteger(amount) && amount > 0)",
+  "replace": "Number.isSafeInteger(amount) && amount >= 0)",
+  "why": "[review] a part of nothing is taken"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "value.length < 2 || value.length > SPLIT_BUCKETS.length",
+  "replace": "value.length < 1 || value.length > SPLIT_BUCKETS.length",
+  "why": "[review] a split of one part is taken"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "  if (new Set(parts.map((p) => p.bucket)).size !== parts.length) return null;\n",
+  "replace": "",
+  "why": "[review] a split with the same bucket twice is taken"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "  if (parts.filter((p) => p.amount === 'rest').length > 1) return null;\n",
+  "replace": "",
+  "why": "[review] a split with two rests is taken"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "if (d.item.id.length < 4) continue;",
+  "replace": "if (d.item.id.length < 0) continue;",
+  "why": "[review] a short id is cut out of the words of a reason"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "return text.charAt(0).toUpperCase() + text.slice(1);",
+  "replace": "return text;",
+  "why": "[review] a reason from the money math starts with a small letter"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/views/review.ts",
+  "find": "= ['leftover', 'money-in', 'spending', 'old-card-purchase'];",
+  "replace": "= ['money-in', 'leftover', 'spending', 'old-card-purchase'];",
+  "why": "[review] 3.4 payday questions do not come first"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/views/review.ts",
+  "find": "(a.item.date < b.item.date ? -1 : a.item.date > b.item.date ? 1 : 0)",
+  "replace": "(a.item.date > b.item.date ? -1 : a.item.date < b.item.date ? 1 : 0)",
+  "why": "[review] the newest of a kind comes first"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/views/review.ts",
+  "find": "heldBack: book.pots().unsortedOut",
+  "replace": "heldBack: book.pots().unsortedIn",
+  "why": "[review] 4.3 what is held back is the money waiting to come in"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/views/buckets.ts",
+  "find": "month.sent < month.target.low ? 'under'",
+  "replace": "month.sent <= month.target.low ? 'under'",
+  "why": "[review] 8.2 exactly the low end of the target is under it"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/views/buckets.ts",
+  "find": "month.sent > month.target.high ? 'over'",
+  "replace": "month.sent >= month.target.high ? 'over'",
+  "why": "[review] 8.2 exactly the high end of the target is over it"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/views/buckets.ts",
+  "find": "book.momSentInMonth(monthOf(today))",
+  "replace": "book.momSentInMonth('2026-10')",
+  "why": "[review] 8.2 mom's month is always October"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/views/buckets.ts",
+  "find": "total: book.appSide(),",
+  "replace": "total: book.pots().savings,",
+  "why": "[review] 12.2 the total is only savings"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/views/buckets.ts",
+  "find": "difference: self.difference }",
+  "replace": "difference: -self.difference }",
+  "why": "[review] 12.3 the difference is the wrong way round"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/views/buckets.ts",
+  "find": "moneyIn: pots.unsortedIn, spending: pots.unsortedOut }",
+  "replace": "moneyIn: pots.unsortedOut, spending: pots.unsortedIn }",
+  "why": "[review] 12.2 money coming in and going out are swapped"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/views/buckets.ts",
+  "find": "oldCard: book.oldCardDebt(),",
+  "replace": "oldCard: 0,",
+  "why": "[review] 12.4 the old card debt is not shown"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/views/buckets.ts",
+  "find": "needs: bar(pots.needs, started.needs),",
+  "replace": "needs: bar(pots.needs, started.wants),",
+  "why": "[review] 10.1 needs is measured against what wants started with"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/views/buckets.ts",
+  "find": "heldForOthers: book.othersMoney(),",
+  "replace": "heldForOthers: { heldForOthers: 0, meaning: 'settled' },",
+  "why": "[review] 7.3 money held for others is not shown"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/views/buckets.ts",
+  "find": "savings: pots.savings,",
+  "replace": "savings: pots.needs,",
+  "why": "[review] savings shows what is in needs"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/http/server.ts",
+  "find": "send(response, answer.ok ? 200 : 422,",
+  "replace": "send(response, 200,",
+  "why": "[review] a refused choice is answered as if it was done"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/http/server.ts",
+  "find": "const CHOICE_LIMIT = 4096;",
+  "replace": "const CHOICE_LIMIT = 40960;",
+  "why": "[review] a choice may be ten times as big"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/http/server.ts",
+  "find": "JSON.stringify(answer), 'no-store');",
+  "replace": "JSON.stringify(answer), 'public, max-age=3600');",
+  "why": "[review] safety: the answer to a choice is kept by the browser"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/http/server.ts",
+  "find": "      if (request.method !== 'POST') {\n        response.setHeader('Allow', 'POST');\n        send(response, 405, 'text/plain; charset=utf-8', 'Only POST.', 'no-store');\n        return;\n      }\n      await takeChoice(",
+  "replace": "      await takeChoice(",
+  "why": "[review] 0.4 a choice can be sent with GET"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/http/server.ts",
+  "find": "JSON.stringify(view), 'no-store');\n      return;\n    }\n    if (path.startsWith('/api/')) {",
+  "replace": "JSON.stringify(view), 'public, max-age=3600');\n      return;\n    }\n    if (path.startsWith('/api/')) {",
+  "why": "[review] safety: the Buckets and Review numbers are kept by the browser"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "of.length <= MAX_ITEM_LENGTH",
+  "replace": "of.length < MAX_ITEM_LENGTH",
+  "why": "[review] [pre-merge] A18 the longest purchase id allowed is not read"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "typeof of === 'string' && of !== '' &&",
+  "replace": "typeof of === 'string' &&",
+  "why": "[review] [pre-merge] A18 an empty purchase id is read"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "|| 'leftover' in c || 'refundOf' in c) return true;",
+  "replace": "|| 'leftover' in c) return true;",
+  "why": "[review] [pre-merge] A18 matching a refund does not ask first"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "return options.match.includes(c.refundOf) ? null :",
+  "replace": "return true ? null :",
+  "why": "[review] [pre-merge] A18 a purchase that is not offered is handed to the book"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "      if (request.always !== undefined) return \"A rule can't do that for this item.\";\n      if (detail.item.type",
+  "replace": "      if (detail.item.type",
+  "why": "[review] [pre-merge] A18 a rule that matches a refund is not refused up front"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "      if (detail.item.type !== 'money-in' || detail.item.reason !== 'refund') return no;\n",
+  "replace": "",
+  "why": "[review] [pre-merge] A18 matching something that is not a refund gets the refund reason"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "return { item: id, name: d === undefined ? 'An item' : nameOf(d) };",
+  "replace": "return { item: id, name: id };",
+  "why": "[review] [pre-merge] A19 what stays waiting is named by its id"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "const stillWaiting = applied.stillWaiting.map(",
+  "replace": "const stillWaiting = applied.stillWaiting.slice(1).map(",
+  "why": "[review] [pre-merge] A19 the first item left waiting is not named"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "            ? { refundOf: choice.refundOf }",
+  "replace": "            ? { to: 'wants' as const }",
+  "why": "[review] [pre-merge] A18 a matched refund is put in wants instead"
  }
 ]

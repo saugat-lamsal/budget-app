@@ -359,7 +359,7 @@ describe('13.6 a rule made from a correction beats the rule it corrects', () => 
     const b = book({ rules: [GROCER] });
     b.receive(purchase('e1', '2026-10-05', 4_000, 'MADE UP GROCER CAFE'));
     expect(b.purchases()[0]?.sortedTo).toEqual({ to: 'needs' });
-    expect(b.sortAlways('e1', { to: 'wants' }, { id: 'grocer-cafe', contains: 'GROCER CAFE' }, '2026-10-06')).toEqual({ sticks: true });
+    expect(b.sortAlways('e1', { to: 'wants' }, { id: 'grocer-cafe', contains: 'GROCER CAFE' }, '2026-10-06')).toEqual({ sticks: true, stillWaiting: [] });
     expect(b.purchases()[0]?.sortedTo).toEqual({ to: 'wants' });
     expect(b.rules().map((r) => r.id)).toEqual(['grocer-cafe', 'grocer']);
     b.receive(purchase('e2', '2026-10-07', 1_000, 'MADE UP GROCER CAFE'));
@@ -442,7 +442,7 @@ describe('13.6 a rule made from a correction beats the rule it corrects', () => 
 
   it('13.6 the bank changed the description when it posted: the new rule still goes ahead of the rule that sorted it', () => {
     const b = cafeVisit();
-    expect(b.sortAlways('e1', { to: 'needs' }, { id: 'joes', contains: 'JOES' }, '2026-10-08')).toEqual({ sticks: true });
+    expect(b.sortAlways('e1', { to: 'needs' }, { id: 'joes', contains: 'JOES' }, '2026-10-08')).toEqual({ sticks: true, stillWaiting: [] });
     expect(b.rules().map((r) => r.id)).toEqual(['joes', 'cafe']);
     b.receive(purchase('e2', '2026-10-12', 1_400, 'SQ *JOES CAFE', { pending: true }));
     expect(b.purchases().find((p) => p.id === 'e2')?.sortedTo).toEqual({ to: 'needs' });
@@ -451,13 +451,13 @@ describe('13.6 a rule made from a correction beats the rule it corrects', () => 
 
   it('13.6 text that matches only how it showed up while pending is accepted', () => {
     const b = cafeVisit();
-    expect(b.sortAlways('e1', { to: 'needs' }, { id: 'joes', contains: 'SQ *JOES' }, '2026-10-08')).toEqual({ sticks: true });
+    expect(b.sortAlways('e1', { to: 'needs' }, { id: 'joes', contains: 'SQ *JOES' }, '2026-10-08')).toEqual({ sticks: true, stillWaiting: [] });
     expect(b.purchases()[0]?.sortedTo).toEqual({ to: 'needs' });
   });
 
   it('13.6 text that matches only the posted description is accepted, but it says it will not catch the next pending one', () => {
     const b = cafeVisit();
-    expect(b.sortAlways('e1', { to: 'needs' }, { id: 'joes', contains: 'COFFEE LLC' }, '2026-10-08')).toEqual({ sticks: false });
+    expect(b.sortAlways('e1', { to: 'needs' }, { id: 'joes', contains: 'COFFEE LLC' }, '2026-10-08')).toEqual({ sticks: false, stillWaiting: [] });
     expect(b.rules().map((r) => r.id)).toEqual(['joes', 'cafe']);
     b.receive(purchase('e3', '2026-10-12', 1_400, 'JOES COFFEE LLC'));
     expect(b.purchases().find((p) => p.id === 'e3')?.sortedTo).toEqual({ to: 'needs' });

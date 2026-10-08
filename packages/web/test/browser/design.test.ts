@@ -1,48 +1,14 @@
 import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import type { Page } from 'playwright';
 import { describe, expect, it } from 'vitest';
+import { addStyle, axeViolations, tappable } from './design-helpers.js';
 import { ENGINES, IPHONE, IPHONE_INSETS, openScenario, phone, useEngine } from './harness.js';
 
 // The design rules (CLAUDE.md), checked in the browser: light and dark,
 // readable contrast, 44-point tap targets, the notch and the home bar, the
 // phone's text size and reduced-motion settings, and money written one way.
 
-const AXE = readFileSync(createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8');
-
 // Every screen state worth checking.
 const STATES = ['normal', 'mismatch', 'low', 'overspent', 'trouble', 'all-clear', 'not-set-up', 'error', 'big', 'took-back', 'bank-not-read'] as const;
-
-interface AxeViolation {
-  readonly id: string;
-  readonly nodes: readonly { readonly target: readonly string[]; readonly failureSummary?: string }[];
-}
-
-async function axeViolations(page: Page): Promise<string[]> {
-  await page.addScriptTag({ content: AXE });
-  const violations = await page.evaluate(async () => {
-    const axe = (window as unknown as { axe: { run: (context: Document, options: object) => Promise<{ violations: AxeViolation[] }> } }).axe;
-    const result = await axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] }, resultTypes: ['violations'] });
-    return result.violations;
-  });
-  return violations.flatMap((v) => v.nodes.map((n) => `${v.id}: ${n.target.join(' ')} ${n.failureSummary ?? ''}`));
-}
-
-// Everything a finger can tap.
-async function tappable(page: Page): Promise<{ readonly what: string; readonly x: number; readonly y: number; readonly width: number; readonly height: number }[]> {
-  return page.locator('a[href], button, [role="button"], input, select, summary').evaluateAll((elements) =>
-    elements
-      .filter((e) => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden')
-      .map((e) => {
-        const r = e.getBoundingClientRect();
-        return { what: `${e.tagName} ${e.getAttribute('data-testid') ?? e.textContent?.trim().slice(0, 30) ?? ''}`, x: r.x, y: r.y, width: r.width, height: r.height };
-      }),
-  );
-}
-
-async function addStyle(page: Page, css: string): Promise<void> {
-  await page.addStyleTag({ content: css });
-}
 
 describe('design rules in the style sheets', () => {
   const css = (file: string): string => readFileSync(new URL(`../../src/ui/${file}`, import.meta.url), 'utf8');

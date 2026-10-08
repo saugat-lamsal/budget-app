@@ -47,7 +47,87 @@ const SHOTS = [
   ['not-set-up', 'not-set-up', '/home'],
   ['error', 'error', '/home'],
   ['loading', 'slow', '/home', 'loading'],
-  ['review-tab', 'normal', '/review'],
+  // Buckets
+  ['buckets', 'normal', '/buckets'],
+  ['buckets-whole', 'normal', '/buckets', 'full'],
+  ['buckets-busy', 'buckets-busy', '/buckets', 'full'],
+  ['buckets-mismatch', 'mismatch', '/buckets'],
+  ['buckets-low', 'low', '/buckets'],
+  ['buckets-overspent', 'overspent', '/buckets'],
+  ['buckets-not-read', 'bank-not-read', '/buckets'],
+  ['buckets-empty', 'not-set-up', '/buckets'],
+  ['buckets-error', 'error', '/buckets', 'error'],
+  ['buckets-loading', 'slow', '/buckets', 'loading-buckets'],
+  // Review
+  ['review', 'normal', '/review'],
+  ['review-busy', 'review-busy', '/review'],
+  ['review-busy-whole', 'review-busy', '/review', 'full'],
+  ['review-refund', 'review-busy', '/review', async (page) => {
+    await page.getByTestId('item-busy-refund').scrollIntoViewIfNeeded();
+    await page.evaluate(() => window.scrollBy(0, -80));
+    return 'no-sheet';
+  }],
+  ['review-refund-confirm', 'review-busy', '/review', async (page) => {
+    await page.getByTestId('item-busy-refund').locator('[data-testid^="match-"]').first().click();
+  }],
+  ['review-transfer-old-card', 'review-busy', '/review', async (page) => {
+    await page.locator('article', { hasText: 'ZELLE TO MADE UP FRIEND' }).getByTestId('more').click();
+    await page.getByTestId('sheet-transfer').scrollIntoViewIfNeeded();
+  }],
+  ['review-transfer-from-savings', 'review-busy', '/review', async (page) => {
+    await page.getByTestId('item-busy-water').getByTestId('more').click();
+    await page.getByTestId('sheet-transfer').scrollIntoViewIfNeeded();
+  }],
+  ['review-pending-and-flag', 'review-busy', '/review', 'bottom'],
+  ['review-empty', 'all-clear', '/review'],
+  ['review-not-set-up', 'not-set-up', '/review'],
+  ['review-error', 'error', '/review', 'error'],
+  ['review-loading', 'slow', '/review', 'loading-review'],
+  ['review-one-tap', 'normal', '/review', async (page) => {
+    await page.locator('article', { hasText: 'CORNER STORE' }).getByTestId('pick-wants').click();
+    await page.getByTestId('notice').waitFor();
+    return 'no-sheet';
+  }],
+  ['review-sheet', 'normal', '/review', async (page) => {
+    await page.locator('article', { hasText: 'CORNER STORE' }).getByTestId('more').click();
+  }],
+  ['review-sheet-split', 'normal', '/review', async (page) => {
+    await page.locator('article', { hasText: 'CORNER STORE' }).getByTestId('more').click();
+    await page.getByTestId('split-needs').fill('4.00');
+    await page.getByTestId('review-sheet').evaluate((e) => e.scrollTo(0, e.scrollHeight));
+  }],
+  ['review-sheet-always', 'normal', '/review', async (page) => {
+    await page.locator('article', { hasText: 'CORNER STORE' }).getByTestId('more').click();
+    await page.getByTestId('always-toggle').click();
+    await page.getByTestId('always-text').fill('CORNER STORE');
+  }],
+  ['review-rule-confirm', 'normal', '/review', async (page) => {
+    await page.locator('article', { hasText: 'CORNER STORE' }).getByTestId('more').click();
+    await page.getByTestId('always-toggle').click();
+    await page.getByTestId('always-text').fill('CORNER STORE');
+    await page.getByTestId('choice-wants').click();
+  }],
+  ['review-refused', 'normal', '/review', async (page) => {
+    await page.locator('article', { hasText: 'CORNER STORE' }).getByTestId('more').click();
+    await page.getByTestId('split-needs').fill('11.50');
+    await page.getByTestId('split-submit').click();
+    await page.getByTestId('notice').waitFor();
+  }],
+  ['review-paycheck-confirm', 'review-busy', '/review', async (page) => {
+    await page.getByTestId('item-busy-early').getByTestId('pick-paycheck').click();
+  }],
+  ['review-leftover-confirm', 'review-busy', '/review', async (page) => {
+    await page.getByTestId('answer-move-to-savings').first().click();
+  }],
+  ['review-deposit-sheet', 'review-busy', '/review', async (page) => {
+    await page.getByTestId('item-busy-tax').getByTestId('more').click();
+  }],
+  ['review-person-split', 'review-busy', '/review', async (page) => {
+    await page.locator('article', { hasText: 'ZELLE TO MADE UP FRIEND' }).getByTestId('more').click();
+    await page.getByTestId('split-needs').fill('10.00');
+    await page.getByTestId('split-wants').fill('5.00');
+    await page.getByTestId('review-sheet').evaluate((e) => e.scrollTo(0, e.scrollHeight));
+  }],
 ];
 
 mkdirSync(out, { recursive: true });
@@ -71,12 +151,16 @@ try {
       if (address !== '/home') await page.goto(`${base}${address}`);
       await page.addStyleTag({ content: ':root { --safe-top: 59px !important; --safe-bottom: 34px !important; }' });
       if (step === 'loading') await page.getByTestId('home-loading').waitFor();
-      else await page.locator('[data-testid="home"][aria-busy="false"], [data-testid="review"]').waitFor();
+      else if (step === 'loading-buckets') await page.getByTestId('buckets-loading').waitFor();
+      else if (step === 'loading-review') await page.getByTestId('review-loading').waitFor();
+      else if (step === 'error') await page.locator('[data-testid$="-error"]').waitFor();
+      else await page.locator('main[aria-busy="false"]').waitFor();
       if (typeof step === 'function') {
-        await step(page);
-        await page.locator('dialog[open]').waitFor();
+        const result = await step(page);
+        if (result !== 'no-sheet') await page.locator('dialog[open]').waitFor();
         await page.waitForTimeout(400);
       }
+      if (step === 'full') await page.addStyleTag({ content: '.tabbar { position: static !important; } .screen { padding-bottom: var(--space-5) !important; }' });
       if (step === 'bottom') await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
       await page.screenshot({ path: `${out}/${name}-${scheme}.png`, fullPage: step === 'full', animations: 'disabled' });
       await page.close();
