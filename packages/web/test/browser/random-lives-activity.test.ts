@@ -2,7 +2,7 @@ import { MOVABLE_POTS, type Pot } from '@budget-app/money';
 import { describe, expect, it } from 'vitest';
 import { Random } from '../../../money/test/sim/random.js';
 import { activityOf, amountAt, numbersOf, pathOfPot, readActivity } from './activity-screens.js';
-import { ENGINES, close, phone, useEngine } from './harness.js';
+import { ENGINES, close, phone, untilQuiet, useEngine } from './harness.js';
 import { openLive, startLive } from './live.js';
 import { FIRST_SEED, LIVES, randomDay } from './random-day.js';
 import { watchChoices } from './screens.js';
@@ -130,7 +130,7 @@ describe.each(ENGINES)('random lives on the bucket lists and Payday in %s', (_na
         for (const id of w.ids()) ids.add(id);
         taps += 1;
         watch.posts.push(...w.posts);
-        await page.waitForLoadState('networkidle');
+        await untilQuiet(page);
         await page.close();
       }
       // Each tap was one decision, with a decision number of its own, however many requests it took.

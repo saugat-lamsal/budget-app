@@ -97,6 +97,25 @@ export function watchPage(page: Page): void {
   page.on('pageerror', (e) => watch.console.push(`page error: ${e.message}`));
 }
 
+// Waits until nothing the page asked for is still on its way, and nothing new
+// has started for a moment. A page closed (or left) with a request on its way
+// cancels it, and WebKit then loses the answer to the next request (see
+// CLAUDE.md, found on Linux CI Oct 7, and on Windows CI Oct 8). Waiting for
+// "network idle" is no use for this: it only waits the first time the page
+// goes idle. After a change the screens ask for their numbers again, and this
+// waits for those answers. The page must have been opened with watchPage.
+export async function untilQuiet(page: Page): Promise<void> {
+  const watch = pageWatch.get(page);
+  if (watch === undefined) throw new Error('untilQuiet needs a page opened with watchPage');
+  const deadline = Date.now() + 15_000;
+  let calm = 0;
+  while (calm < 3) {
+    if (Date.now() > deadline) throw new Error(`still waiting for: ${[...watch.pending.keys()].map((r) => `${r.method()} ${r.url()}`).join(', ')}`);
+    await page.waitForTimeout(60);
+    calm = watch.pending.size === 0 ? calm + 1 : 0;
+  }
+}
+
 async function stuckReport(page: Page, base: string): Promise<string> {
   const now = Date.now();
   const watch = pageWatch.get(page);

@@ -382,6 +382,12 @@ This applies to every phase and every session, cloud or local.
     watch for the moment itself (watchSheetsAfterAnAnswer in screens.ts)
     rather than depend on tap timing. The contrast test is one test per
     colour scheme now: both together came close to the 60-second limit.
+  - Found on Windows CI (Oct 8): a page closed with its refresh still on
+    its way made WebKit lose the answer to the next page's request (the same
+    thing as the Oct 7 note above). The tests that close or leave a page
+    after a change wait for what is on its way first: untilQuiet in
+    harness.ts. Waiting for "network idle" does not do it, since that only
+    waits the first time a page goes idle.
   - Break-it: new breaks are tagged "[activity]" (79). The existing breaks
     for code the refactor moved (49) were pointed at where it is now. Run
     for the sections changed (the testing bar): every one caught, none
