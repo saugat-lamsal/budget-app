@@ -161,12 +161,9 @@ This applies to every phase and every session, cloud or local.
     is read by a test.
   - Break-it check: `node scripts/break-it.mjs` (or with section numbers).
     The breaks are listed in packages/money/break-it.json; add new ones there
-    for each section. Do not edit source or test files while it runs: it
-    breaks the source on purpose. It first runs the tests with nothing
-    broken and stops if they fail. If a run is stopped partway, the test
-    suite fails until `node scripts/break-it.mjs --restore` puts the file
-    back. `--only <test file>` shows what one test file catches by itself,
-    and `--match <pattern>` runs only the breaks whose reason matches.
+    for each section. It never changes the project folder, so other work can
+    continue while it runs (edits made after it started are not tested).
+    See "Break-it runs in parallel" below.
 - CI: GitHub Actions runs `npm test` on Linux and Windows for every pull
   request (.github/workflows/test.yml).
 - Phase 2 (stress testing), part one, the simulated you: built Oct 6, 2026
@@ -430,8 +427,66 @@ This applies to every phase and every session, cloud or local.
     - Break-it, only for what this round changed (his OK to cut it down):
       the 21 new breaks, all caught. The full run is still at the end of
       Phase 4.
-  - Waiting on: his merge; A21 (the same undo for a payment marked from
-    savings) and B97 to B111 to check. The real server must keep decision
-    numbers with the book's history (B103, Phase 6).
+  - PR #9 merged (Oct 8, 2026). Waiting on: A21 (the same undo for a
+    payment marked from savings) and B97 to B111 to check. The real server
+    must keep decision numbers with the book's history (B103, Phase 6).
+- Break-it runs in parallel, and no longer touches the project folder (Oct 8,
+  2026, branch break-it-parallel). The command is the same,
+  `node scripts/break-it.mjs` (engine: scripts/break-it-lib.mjs).
+  - Each worker has its own copy of the code: a git worktree in the temp
+    folder (budget-app-break-it), made from the last commit plus whatever is
+    changed, staged, new, or deleted in the project folder when the run
+    starts. A break is applied only in that copy; the project folder is never
+    written, so other work can go on while it runs. Edits made after the run
+    started are not tested. Files git ignores are not copied, so a copy has no
+    .env (the one test that reads it skips itself there).
+  - `--workers N` sets the number of workers; the default is the number of
+    cores minus 2 (14 on this PC). `--workers 1` is one break at a time. The
+    nothing-broken check runs once, alone, in the first copy, before the other
+    copies are made and the workers start. The list comes out in the order of
+    the break lists whatever the order the workers finished in; progress and
+    the time taken go to stderr.
+  - What a copy shares and keeps: node_modules is made of directory links to
+    the project's, except that a package of this repo is linked to the copy's
+    own folder (a link to the project's would run the unbroken code and every
+    break would survive); .vite caches are not shared; the screens are built
+    in each copy. Each copy has its own TEMP, TMP, and TMPDIR, so no two
+    workers share a browser profile. The test servers listen on port 0, so the
+    system gives each its own free port. Each copy's vitest is given its share
+    of the cores (--maxWorkers).
+  - Clean-up: the copies are removed when the run ends and on Ctrl+C (the
+    links first, so nothing removing a copy can reach the project's
+    node_modules). The copies of a run that was killed are removed by the next
+    run, or by `node scripts/break-it.mjs --restore`, which also still puts
+    back any file an older version of the script left broken
+    (<file>.break-it-backup). The guard test (test/break-it-guard.test.ts) is
+    unchanged and still fails while such a backup exists.
+  - The number in "caught (N tests failed)" is not the same from run to run,
+    with any number of workers and also with the old one-at-a-time script: some
+    tests (fast-check properties without a fixed seed, the random lives) pick
+    random cases each run. What must match is which breaks are caught.
+  - Measured on this PC (Ryzen 7 9800X3D, 8 cores, 16 threads; 14 workers),
+    the old one-at-a-time script against this one on the same breaks:
+    sections 11 and 8 (19 breaks) 4 min 39 s against 2 min 4 s; the four
+    breaks in bank/amounts 1 min 40 s against 59 s; section 3 (45 breaks)
+    9 min 25 s against 3 min 26 s; two screens breaks 7 min 30 s against
+    5 min 55 s. Which breaks were caught was the same for all 70 (69 caught;
+    one could not be applied, in both). Part of every run is the
+    nothing-broken check, done once either way (about 40 s, or 2 min 30 s
+    when a screens break is in the list), so short lists gain little. One
+    break without browsers costs about 12 s one at a time and about 4 s in
+    parallel. A screens break gains almost nothing: its browser tests already
+    use the whole CPU, about 2 min 30 s each either way (13 at once took about
+    32 minutes). Some are slow by themselves: "the numbers disappear while
+    they are fetched again" (src/app/api.ts) took 13 minutes alone, with 98
+    tests failing, many of them waiting out timeouts. Use a smaller
+    `--workers` if the PC is needed for something else.
+  - The script's own tests: test/break-it.test.ts, on a made-up project (never
+    this one), 26 tests. They are skipped inside a break-it run
+    (BREAK_IT_RUN=1, like SKIP_BROWSER_TESTS): no break touches them. The
+    script itself was broken on purpose 44 ways (flip the links to the
+    project, skip the files changed since the commit, share the temp folder,
+    forget to put the file back, and so on) and every one is caught by those
+    tests.
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.

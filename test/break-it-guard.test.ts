@@ -3,11 +3,14 @@ import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-// scripts/break-it.mjs breaks a money source file on purpose and keeps the
-// untouched copy next to it as <file>.break-it-backup until it puts the file
-// back. A backup left behind means a run was stopped while that file was
-// broken. While break-it runs the tests, it names its own backup in
-// BREAK_IT_BACKUP, and only that one is let through.
+// Older versions of scripts/break-it.mjs broke a source file in this folder on
+// purpose and kept the untouched copy next to it as <file>.break-it-backup
+// until they put the file back. A backup left behind means such a run was
+// stopped while that file was broken: `node scripts/break-it.mjs --restore`
+// puts it back. The current version breaks files only in its own copies of
+// the code, outside this folder, and leaves no backup here. A run of an older
+// version names its own backup in BREAK_IT_BACKUP while it runs the tests,
+// and only that one is let through.
 const root = fileURLToPath(new URL('../', import.meta.url));
 
 function backupsUnder(dir: string): string[] {
