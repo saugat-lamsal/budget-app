@@ -96,6 +96,9 @@ export function watchPage(page: Page): void {
   pageWatch.set(page, watch);
   page.on('request', (r) => watch.pending.set(r, Date.now()));
   page.on('requestfinished', (r) => watch.pending.delete(r));
+  // Playwright reports "finished" only for answers it counts as loaded: an error
+  // answer (500) never says so. It is an answer all the same.
+  page.on('response', (r) => watch.pending.delete(r.request()));
   page.on('requestfailed', (r) => {
     watch.pending.delete(r);
     watch.failed.push(`${r.method()} ${r.url()}: ${r.failure()?.errorText ?? '?'}`);
@@ -198,6 +201,9 @@ export async function openScenario(context: BrowserContext, base: string, scenar
   }
   // Home, Buckets, and Review are ready once their numbers have loaded.
   await waitOrReport(page, base, 'main[aria-busy="false"], [data-testid="settings"]');
+  // Home's numbers are asked for on every screen: the page is handed over only
+  // once that is answered too, so a test that closes it cancels nothing.
+  await untilQuiet(page);
   return page;
 }
 
