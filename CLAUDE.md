@@ -47,7 +47,8 @@ This applies to every phase and every session, cloud or local.
 3. Break-it check. After a section passes, break the code on purpose in
    several ways (flip a sign, change a rounding, shift a boundary by one
    cent). Some test must fail each time. If none does, add the missing test.
-   Restore the code afterward.
+   Restore the code afterward. Run break-it only for the sections you
+   changed. Do one full run at the end of each phase.
 4. Random-scenario tests as soon as a section exists, for things that must
    always be true: paycheck parts add up exactly, no cent is created or
    lost, own-account transfers never change a bucket, the self-check holds.
