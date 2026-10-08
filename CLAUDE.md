@@ -366,8 +366,8 @@ This applies to every phase and every session, cloud or local.
   - Shared choosing for Review and the lists: screens/choose.tsx.
   - Demo lives added: activity-busy and payday-paid. Worked examples: money
     27 to 29, screens 12 to 14.
-  - Tests: 2,049 pass (425 more than PR #8 ended with): money 976, server
-    483, web 62, browser 513 (Chromium and WebKit). Random lives: 100
+  - Tests: 2,050 pass (426 more than PR #8 ended with): money 976, server
+    483, web 63, browser 513 (Chromium and WebKit). Random lives: 100
     simulated lives of 3 years with every check passing, including the new
     "every bucket's list adds up" check. Browser tests: bucket lists,
     moves, Payday, design rules (design-activity), random lives with random
@@ -386,8 +386,13 @@ This applies to every phase and every session, cloud or local.
     its way made WebKit lose the answer to the next page's request (the same
     thing as the Oct 7 note above). The tests that close or leave a page
     after a change wait for what is on its way first: untilQuiet in
-    harness.ts. Waiting for "network idle" does not do it, since that only
-    waits the first time a page goes idle.
+    harness.ts (it looks at the page's fetch and XHR requests only: its own
+    document was sometimes never reported finished on Windows). Waiting for
+    "network idle" does not do it, since that only waits the first time a
+    page goes idle. And the test servers answer every request with
+    Connection: close (harness.ts listen, test/test-server.test.ts), so
+    WebKit has no connection to reuse after a cancelled request or one the
+    server is closing.
   - Break-it: new breaks are tagged "[activity]" (79). The existing breaks
     for code the refactor moved (49) were pointed at where it is now. Run
     for the sections changed (the testing bar): every one caught, none
