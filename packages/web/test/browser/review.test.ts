@@ -2,7 +2,7 @@ import type { BankBalances, Book, IsoDate, ReviewDetail } from '@budget-app/mone
 import type { Browser, BrowserContext, Page, Route } from 'playwright';
 import type { Server } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { START_DATE, appSide, deposit, openTestBook, purchase, refund } from '../../../money/test/helpers.js';
+import { START_DATE, appSide, deposit, openTestBook, payPerson, purchase, refund } from '../../../money/test/helpers.js';
 import { demoScenario } from '../../../server/src/demo/scenarios.js';
 import { ENGINES, centsAt, close, openScenario, phone, readCents, textAt, useEngine } from './harness.js';
 import { openLive, startLive } from './live.js';
@@ -135,8 +135,8 @@ describe.each(ENGINES)('Review in %s', (_name, engine) => {
     const shown = await item(page, 'busy-refund').locator('li[data-testid^="likely-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')?.slice('likely-'.length) ?? ''));
     expect(shown).toEqual(refund.likelyPurchases.map((p) => p.id));
     const first = item(page, 'busy-refund').getByTestId(`likely-${refund.likelyPurchases[0]!.id}`);
-    expect((await first.innerText()).replace(/\s+/g, ' ')).toBe('ONLINE MARKETPLACE $23.17 Tue, Oct 6 · Not sorted yet · Same name · Same amount');
-    expect(await textAt(page, 'likely')).toContain('Put the refund back where the purchase came from.');
+    expect((await first.innerText()).replace(/\s+/g, ' ')).toBe('ONLINE MARKETPLACE $23.17 Tue, Oct 6 · Not sorted yet · Same name · Same amount This refund is for this one');
+    expect(await textAt(page, 'likely')).toContain('If you know which one it is for, tap it. The refund then goes back where that purchase came from.');
     await page.context().close();
   });
 
@@ -147,7 +147,98 @@ describe.each(ENGINES)('Review in %s', (_name, engine) => {
     await item(page, id).getByTestId('pick-wants').click();
     await item(page, id).waitFor({ state: 'detached' });
     const first = item(page, 'busy-refund').getByTestId(`likely-${id}`);
-    expect((await first.innerText()).replace(/\s+/g, ' ')).toBe('ONLINE MARKETPLACE $23.17 Tue, Oct 6 · In Wants · Same name · Same amount');
+    expect((await first.innerText()).replace(/\s+/g, ' ')).toBe('ONLINE MARKETPLACE $23.17 Tue, Oct 6 · In Wants · Same name · Same amount This refund is for this one');
+    await page.context().close();
+  });
+
+  it('A18 4.5 every likely purchase has "This refund is for this one", exactly the ones the money math offers', async () => {
+    const { book } = life('review-busy');
+    const refund = detailOf(book, 'busy-refund');
+    const o = refund.options;
+    if (o.type !== 'sort') throw new Error('not sortable');
+    expect(o.match.length).toBeGreaterThan(0);
+    const page = await openReview(await browser().newContext(phone()), base(), 'review-busy');
+    const buttons = await item(page, 'busy-refund').locator('[data-testid^="match-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')?.slice('match-'.length) ?? ''));
+    expect(buttons).toEqual(o.match);
+    // Nothing else waiting has one.
+    expect(await page.locator('[data-testid^="match-"]').count()).toBe(o.match.length);
+    await page.context().close();
+  });
+
+  it('A18 4.5 "this refund is for this one" asks first; Cancel sends nothing; yes counts it as if the bank had matched it', async () => {
+    const twin = life('review-busy');
+    const { book } = life('review-busy');
+    const of = detailOf(book, 'busy-refund').likelyPurchases[0]!.id;
+    const page = await openReview(await browser().newContext(phone()), base(), 'review-busy');
+    const watch = watchChoices(page);
+    await item(page, 'busy-refund').getByTestId(`match-${of}`).click();
+    expect(await textAt(page, 'confirm-title')).toBe('Match this refund?');
+    expect(await textAt(page, 'confirm-ask')).toBe('ONLINE MARKETPLACE REFUND, $23.17, is for ONLINE MARKETPLACE, $23.17, on Tue, Oct 6. It then counts as if the bank had matched it, and goes back where that purchase came from. This can\'t be undone here.');
+    await page.getByTestId('confirm-cancel').click();
+    expect(watch.posts).toHaveLength(0);
+    await page.keyboard.press('Escape');
+    await page.getByTestId('review-sheet').waitFor({ state: 'hidden' });
+    expect(await item(page, 'busy-refund').count()).toBe(1);
+
+    await item(page, 'busy-refund').getByTestId(`match-${of}`).click();
+    await page.getByTestId('confirm-yes').click();
+    await item(page, 'busy-refund').waitFor({ state: 'detached' });
+    twin.book.sort('busy-refund', { refundOf: of }, twin.today);
+    expect(await textAt(page, 'notice')).toBe('ONLINE MARKETPLACE REFUND matched to ONLINE MARKETPLACE, as if the bank had matched it. OK');
+    expect(watch.posts).toHaveLength(1);
+    expect(JSON.parse(watch.posts[0]!.postData() ?? '{}')).toMatchObject({ item: 'busy-refund', choice: { refundOf: of }, confirmed: true });
+    expect(await bucketsOnScreen(page)).toEqual(bucketsOf(twin.book));
+    expect([...(await listed(page))].sort()).toEqual(twin.book.reviewItems().map((i) => i.id).sort());
+    await page.context().close();
+  });
+
+  it('5.6 5.2 each "transfer between my accounts" row says what it does: to the old card from checking comes out of needs', async () => {
+    const mine = life('review-busy');
+    const twin = life('review-busy');
+    const id = idOf(mine.book, 'ZELLE TO MADE UP FRIEND');
+    const o = detailOf(mine.book, id).options;
+    if (o.type !== 'sort') throw new Error('not sortable');
+    expect(o.transferOutcome).toEqual({ savings: 'no-bucket-change', 'everyday-card': 'no-bucket-change', 'old-card': 'out-of-needs' });
+    const page = await openReview(await browser().newContext(phone()), base(), 'review-busy');
+    await item(page, id).getByTestId('more').click();
+    expect(await textAt(page, 'choice-transfer-savings')).toBe('To Savings No bucket changes. It is money moving between your accounts.');
+    expect(await textAt(page, 'choice-transfer-everyday-card')).toBe('To Everyday card No bucket changes. It is money moving between your accounts.');
+    expect(await textAt(page, 'choice-transfer-old-card')).toBe('To Old card A payment to the old card. It comes out of Needs.');
+    await page.getByTestId('choice-transfer-old-card').click();
+    await item(page, id).waitFor({ state: 'detached' });
+    const needsBefore = twin.book.pots().needs;
+    twin.book.sort(id, { transfer: 'old-card' }, twin.today);
+    expect(twin.book.pots().needs).toBe(needsBefore - detailOf(mine.book, id).item.amount);
+    expect(await textAt(page, 'notice')).toBe('ZELLE TO MADE UP FRIEND marked as a payment to the old card. It came out of Needs. OK');
+    expect(await bucketsOnScreen(page)).toEqual(bucketsOf(twin.book));
+    await page.context().close();
+  });
+
+  it('5.6 5.2 A4 to the old card from savings: the row and the answer say it comes back to pick savings or needs', async () => {
+    const mine = life('review-busy');
+    const twin = life('review-busy');
+    const id = 'busy-water';
+    const o = detailOf(mine.book, id).options;
+    if (o.type !== 'sort') throw new Error('not sortable');
+    expect(o.transferOutcome['old-card']).toBe('savings-or-needs');
+    const page = await openReview(await browser().newContext(phone()), base(), 'review-busy');
+    await item(page, id).getByTestId('more').click();
+    expect(await textAt(page, 'choice-transfer-checking')).toBe('To Checking No bucket changes. It is money moving between your accounts.');
+    expect(await textAt(page, 'choice-transfer-old-card')).toBe('To Old card A payment to the old card from savings. It comes back here for you to pick Savings or Needs.');
+    await page.getByTestId('choice-transfer-old-card').click();
+    await page.getByTestId('notice').waitFor();
+    twin.book.sort(id, { transfer: 'old-card' }, twin.today);
+    expect(await textAt(page, 'notice')).toBe('BILL PAY WATER UTILITY marked as a payment to the old card. It is waiting again, for you to pick Savings or Needs. OK');
+    expect(detailOf(twin.book, id).item).toMatchObject({ type: 'spending', reason: 'old-card-from-savings' });
+    await item(page, id).locator('[data-testid="pick-savings"]').waitFor();
+    expect(await bucketsOnScreen(page)).toEqual(bucketsOf(twin.book));
+    await page.context().close();
+  });
+
+  it('5.6 money coming in marked as a transfer: no bucket changes', async () => {
+    const page = await openReview(await browser().newContext(phone()), base(), 'review-busy');
+    await item(page, 'busy-tax').getByTestId('more').click();
+    expect(await textAt(page, 'choice-transfer-savings')).toBe('From Savings No bucket changes. It is money moving between your accounts.');
     await page.context().close();
   });
 
@@ -867,6 +958,46 @@ describe.each(ENGINES)('Review, books made for the test, in %s', (_name, engine)
     await context.close();
   });
 
+  it('A19 13.2 a rule sorts what it can, leaves waiting what it cannot, and says which', async () => {
+    const book = openTestBook({ pots: { momReserve: 150_000 } });
+    book.receive(payPerson('a', START_DATE, 4_000, 'MADE UP FRIEND'));
+    book.receive(payPerson('b', START_DATE, 4_000, 'MADE UP FRIEND'));
+    book.receive(payPerson('c', START_DATE, 2_500, 'MADE UP FRIEND'));
+    book.receive(refund('r', START_DATE, 1_000, 'b', 'checking'));
+    const { page, context } = await show(book);
+    await item(page, 'a').getByTestId('more').click();
+    await page.getByTestId('always-toggle').click();
+    await page.getByTestId('always-text').fill('MADE UP FRIEND');
+    await page.getByTestId('choice-mom').click();
+    expect(await textAt(page, 'confirm-ask')).toBe('From now on, payments to people whose description contains “MADE UP FRIEND” are sorted as: For mom. Anything waiting that matches is sorted now too, if it can be.');
+    await page.getByTestId('confirm-yes').click();
+    await item(page, 'a').waitFor({ state: 'detached' });
+    await item(page, 'c').waitFor({ state: 'detached' });
+    expect(await textAt(page, 'notice')).toBe('ZELLE TO MADE UP FRIEND marked for mom. 1 other waiting item matched and was sorted too. 1 that matched could not take it, so it is still waiting: ZELLE TO MADE UP FRIEND. From now on it goes there by itself. OK');
+    expect(await listed(page)).toEqual(['b']);
+    expect(book.reviewItems().map((i) => i.id)).toEqual(['b']);
+    expect(book.pots().momReserve).toBe(150_000 - 6_500);
+    await context.close();
+  });
+
+  it('A18 a refund matched to a purchase that is gone by the time he taps: refused in plain words, and nothing changes', async () => {
+    const book = openTestBook({ pots: { needs: 100_000, wants: 100_000 } });
+    book.receive(purchase('hw', '2026-10-01', 9_000, 'HARDWARE SUPERSTORE'));
+    book.sort('hw', { to: 'wants' }, START_DATE);
+    book.receive({ ...refund('r1', START_DATE, 9_000, undefined, 'everyday-card'), description: 'HARDWARE SUPERSTORE' });
+    const { page, context } = await show(book);
+    await item(page, 'r1').getByTestId('match-hw').click();
+    // Meanwhile the bank takes the purchase back.
+    book.receive({ kind: 'taken-back', id: 'tb', takenId: 'hw', date: START_DATE, description: 'MADE UP CORRECTION' });
+    const before = JSON.stringify(book.pots());
+    await page.getByTestId('confirm-yes').click();
+    await page.getByTestId('review-sheet').getByTestId('notice').waitFor();
+    expect(await textAt(page, 'notice')).toBe("That purchase isn't one this refund can belong to. Nothing was changed. OK");
+    expect(JSON.stringify(book.pots())).toBe(before);
+    expect(book.reviewItems().map((i) => i.id)).toContain('r1');
+    await context.close();
+  });
+
   it('4.5 20d a split purchase is listed with how it was split', async () => {
     const book = openTestBook({ pots: { needs: 100_000, wants: 100_000 } });
     book.receive(purchase('hw', '2026-10-01', 9_000, 'HARDWARE SUPERSTORE'));
@@ -874,7 +1005,7 @@ describe.each(ENGINES)('Review, books made for the test, in %s', (_name, engine)
     book.receive({ ...refund('r1', START_DATE, 9_000, undefined, 'everyday-card'), description: 'HARDWARE SUPERSTORE' });
     const { page, context } = await show(book);
     const text = (await item(page, 'r1').getByTestId('likely-hw').innerText()).replace(/\s+/g, ' ');
-    expect(text).toBe('HARDWARE SUPERSTORE $90.00 Thu, Oct 1 · Split: Needs $60.00, Wants $30.00 · Same name · Same amount');
+    expect(text).toBe('HARDWARE SUPERSTORE $90.00 Thu, Oct 1 · Split: Needs $60.00, Wants $30.00 · Same name · Same amount This refund is for this one');
     await context.close();
   });
 

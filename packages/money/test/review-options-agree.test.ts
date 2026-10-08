@@ -20,7 +20,7 @@ interface Attempt {
 }
 
 // Every way the screens could answer this item, whether it is offered or not.
-function attempts(d: ReviewDetail, all: readonly ReviewDetail[]): Attempt[] {
+function attempts(d: ReviewDetail): Attempt[] {
   const id = d.item.id;
   const found: Attempt[] = [];
   const o = d.options;
@@ -50,13 +50,15 @@ function attempts(d: ReviewDetail, all: readonly ReviewDetail[]): Attempt[] {
   });
   found.push({ name: 'split needs/savings', offered: false, run: (b) => b.sort(id, { split: [{ bucket: 'needs', amount: 1 }, { bucket: 'savings' as never, amount: net - 1 }] }, TODAY) });
   for (const account of ACCOUNTS) found.push({ name: `transfer with ${account}`, offered: o.transfer.includes(account), run: (b) => b.sort(id, { transfer: account }, TODAY) });
+  // A18: a refund matched to each purchase offered; and to something that is not one.
+  for (const of of o.match) found.push({ name: `match to ${of}`, offered: true, run: (b) => b.sort(id, { refundOf: of }, TODAY) });
+  found.push({ name: 'match to nothing', offered: false, run: (b) => b.sort(id, { refundOf: 'nothing-like-this' }, TODAY) });
+  found.push({ name: 'match to itself', offered: false, run: (b) => b.sort(id, { refundOf: id }, TODAY) });
   const text = d.item.type === 'spending' || d.item.type === 'money-in' ? d.item.description : '';
-  // A new rule also sorts every other waiting item it matches (13.2), and
-  // the whole rule is refused if one of those cannot take the choice (a
-  // partly refunded payment cannot be for mom: QUESTIONS.md A19). So the
-  // rule's text must match this item alone.
-  const alone = text !== '' && !all.some((other) => other.item.id !== id && other.item.type !== 'leftover' && other.item.type !== 'old-card-purchase' && other.item.description.toLowerCase().includes(text.toLowerCase()));
-  if (alone) {
+  // A new rule also sorts every other waiting item it matches (13.2); one
+  // that cannot take the choice stays waiting (QUESTIONS.md A19), so the
+  // rule is accepted whenever this item itself can take it.
+  if (text !== '') {
     for (const to of PICKS) {
       found.push({ name: `always ${to}`, offered: o.always.includes(to), run: (b) => void b.sortAlways(id, { to }, { id: 'rule-from-review', contains: text }, TODAY) });
     }
@@ -86,7 +88,7 @@ function disagreements(make: () => Book, where: string, onePerKind: boolean): st
     return true;
   });
   for (const d of sample) {
-    for (const a of attempts(d, all)) {
+    for (const a of attempts(d)) {
       const b = make();
       const before = snapshot(b);
       let accepted = true;

@@ -81,9 +81,23 @@ describe.each(ENGINES)('Buckets in %s', (_name, engine) => {
     expect(await centsAt(page, 'mom-sent')).toBe(month.sent);
     expect(await centsAt(page, 'mom-target-low')).toBe(month.target.low);
     expect(await centsAt(page, 'mom-target-high')).toBe(month.target.high);
-    expect(await textAt(page, 'mom')).toBe('Mom reserve $2,200.00 Sent in October: $500.00. Target $2,000.00 to $3,000.00. Under target');
+    expect(await textAt(page, 'mom-month')).toBe('Sent to mom October so far $500.00 Target $2,000.00 to $3,000.00 a month. Under target');
     expect(await page.getByTestId('mom').getAttribute('data-position')).toBe('under');
     expect(await page.getByTestId('mom').locator('[data-status="under-target"] [data-icon]').count()).toBe(1);
+    await page.context().close();
+  });
+
+  it('8.1 8.2 the mom reserve and what was sent this month are shown apart, each with its own name', async () => {
+    const { book } = life('normal');
+    const page = await openScenario(await browser().newContext(phone()), base(), 'normal', '/buckets');
+    // What the reserve holds: a row of its own, with the other reserves.
+    expect(await textAt(page, 'row-mom-reserve')).toBe('Mom reserve Set aside from each paycheck. What you send her comes out of it. $2,200.00');
+    expect(await centsAt(page, 'mom-reserve')).toBe(book.pots().momReserve);
+    expect(await page.getByTestId('reserves').getByTestId('mom-reserve').count()).toBe(1);
+    // The bar is what was sent, in its own card, and the reserve is not in it.
+    expect(await page.getByTestId('mom-month').getByTestId('mom').count()).toBe(1);
+    expect(await page.getByTestId('mom').getByTestId('mom-reserve').count()).toBe(0);
+    expect(await page.getByTestId('reserves').locator('.bar').count()).toBe(0);
     await page.context().close();
   });
 

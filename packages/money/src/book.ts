@@ -106,8 +106,14 @@ export interface SplitPart {
 
 // How you sort something in review, or re-sort it later (4.7). transfer
 // names your other account, for spending or money in that was really a
-// transfer between your accounts (5.6).
-export type SortChoice = MoneyInChoice | PersonPaymentChoice | { readonly split: readonly SplitPart[] } | { readonly transfer: AccountId };
+// transfer between your accounts (5.6). refundOf names the purchase a refund
+// waiting in review belongs to (4.5, QUESTIONS.md A18).
+export type SortChoice =
+  | MoneyInChoice
+  | PersonPaymentChoice
+  | { readonly split: readonly SplitPart[] }
+  | { readonly transfer: AccountId }
+  | { readonly refundOf: string };
 
 export type SpendingSort =
   | { readonly to: 'unsorted' }
@@ -1318,6 +1324,13 @@ export class Book {
     if (target?.kind !== 'spend' || target.spendingKind === 'debt-payoff' || txn.amount > target.amount - target.refunded) {
       return this.#holdMoneyIn(txn, 'refund');
     }
+    this.#applyRefund(txn, target);
+    return { id: txn.id, outcome: 'sorted' };
+  }
+
+  // A refund counted on the purchase it belongs to (4.5): whether the bank
+  // said which one, or you did (A18).
+  #applyRefund(txn: Refund, target: SpendEntry): void {
     const refunded = addCents(target.refunded, txn.amount);
     const before = { refunded: target.refunded, sortedTo: target.sortedTo, splitChanged: target.splitChanged };
     const entry: RefundEntry = { kind: 'refund', id: txn.id, txn, of: target.id, effect: {} };
@@ -1331,7 +1344,6 @@ export class Book {
       this.#forget(entry.id);
       throw error;
     }
-    return { id: txn.id, outcome: 'sorted' };
   }
 
   // Works out what a purchase does to the buckets now. A split that no
@@ -1472,6 +1484,7 @@ export class Book {
     // Taken back by the bank (4.10): only what is left of it, if anything, waits to be sorted.
     if (this.#gone(entry) && !this.#review.has(entry.id)) throw new MoneyError('not-sortable', `the bank took back ${id}`);
     if (typeof choice === 'object' && choice !== null && 'transfer' in choice) return this.#markAsTransfer(entry, choice.transfer);
+    if (typeof choice === 'object' && choice !== null && 'refundOf' in choice) return this.#matchRefund(entry, choice.refundOf);
     // Marked as a transfer by hand (5.6): sorting it any other way makes it
     // what the bank sent again first. A payment to the old card from savings
     // still takes savings or needs, like any (5.2, A4).
@@ -1501,6 +1514,37 @@ export class Book {
       default:
         throw new MoneyError('not-sortable', `${id} is a ${entry.kind} and cannot be sorted`);
     }
+  }
+
+  // 4.5, QUESTIONS.md A18: a refund the bank did not match, matched by you to
+  // the purchase it belongs to. It then counts exactly as if the bank had
+  // matched it, and like a matched refund it cannot be sorted again. A
+  // refund already put back into a bucket can still be matched; that is
+  // undone first.
+  #matchRefund(entry: Entry, purchaseId: unknown): void {
+    if (entry.kind !== 'money-in' || entry.txn.kind !== 'refund') throw new MoneyError('bad-choice', `only a store refund can be matched to a purchase, and ${entry.id} is not one`);
+    const txn = entry.txn;
+    const target = typeof purchaseId === 'string' ? this.#entries.get(this.#aliases.get(purchaseId) ?? purchaseId) : undefined;
+    if (target?.kind !== 'spend' || !this.#couldBelongTo(txn, target)) {
+      throw new MoneyError('bad-choice', 'that is not a purchase this refund can belong to: it must be on the same account, on or before the refund, with at least the refund left to refund');
+    }
+    this.#atomically(() => {
+      this.#remove(entry);
+      this.#applyRefund(txn, target);
+    });
+  }
+
+  // 4.5: a purchase a refund can belong to: on the same account, made on or
+  // before the day of the refund, with at least the refund's amount not yet
+  // refunded. One the bank took back or dropped has nothing left.
+  #couldBelongTo(refund: Refund, e: SpendEntry): boolean {
+    return (
+      e.spendingKind === 'purchase' &&
+      e.txn.kind === 'purchase' &&
+      e.txn.account === refund.account &&
+      daysBetween(e.txn.date, refund.date) >= 0 &&
+      e.amount - e.refunded >= refund.amount
+    );
   }
 
   // 5.6: spending or money in that was really a transfer between your own
@@ -1761,12 +1805,14 @@ export class Book {
 
   // 13.2: a new or changed rule applies to new transactions and to those
   // waiting in review. Anything already sorted stays put.
-  addRule(rule: SortingRule, date: IsoDate): void {
+  // stillWaiting: the waiting items the rule matched but that cannot take
+  // what it says (QUESTIONS.md A19); they wait for you.
+  addRule(rule: SortingRule, date: IsoDate): { readonly stillWaiting: readonly string[] } {
     assertIsoDate(date);
-    this.#atomically(() => {
+    return this.#atomically(() => {
       this.#rules = checkRules([...this.#rules, rule]);
       this.#log.push(Object.freeze({ date, kind: 'rule-added', rule: this.#ruleById(rule.id) }));
-      this.#sortWaitingByRules(rule.id);
+      return { stillWaiting: this.#sortWaitingByRules(rule.id) };
     });
   }
 
@@ -1777,7 +1823,7 @@ export class Book {
   // matches it, the new rule goes at the end. The rule's text must match the
   // item one way or the other. sticks says whether the next item arriving
   // the way this one did will now go where you sorted this one.
-  sortAlways(id: string, choice: SortChoice, rule: { readonly id: string; readonly contains: string }, date: IsoDate): { readonly sticks: boolean } {
+  sortAlways(id: string, choice: SortChoice, rule: { readonly id: string; readonly contains: string }, date: IsoDate): { readonly sticks: boolean; readonly stillWaiting: readonly string[] } {
     assertIsoDate(date);
     const entry = this.#entries.get(this.#aliases.get(id) ?? id);
     if (entry === undefined) throw new MoneyError('unknown-item', `no item ${id}`);
@@ -1787,6 +1833,7 @@ export class Book {
     // 4.9: money leaving savings always waits in review, so no rule can sort it.
     const fromSavings = entry.kind === 'spend' && entry.txn.kind === 'savings-withdrawal';
     if ('transfer' in choice) throw new MoneyError('bad-choice', 'a sorting rule cannot mark transfers; the bank rules in settings do that');
+    if ('refundOf' in choice) throw new MoneyError('bad-choice', 'a sorting rule cannot match a refund to a purchase');
     if (entry.kind === 'spend' && entry.spendingKind === 'purchase' && !fromSavings) {
       if ('split' in choice || !isSpendingBucket(choice.to)) throw new MoneyError('bad-choice', 'a rule picks needs or wants; it cannot split');
       newRule = { id: rule.id, for: 'purchase', contains: rule.contains, bucket: choice.to };
@@ -1814,18 +1861,18 @@ export class Book {
       this.sort(entry.id, choice, date);
       const added = this.#ruleById(newRule.id);
       this.#log.push(Object.freeze({ date, kind: 'rule-added-from-correction', rule: added, correcting: entry.id, aheadOf: corrected?.id ?? null }));
-      this.#sortWaitingByRules(added.id);
-      return { sticks: findRule(this.#rules, newRule.for, descriptions[0] ?? '')?.id === added.id };
+      const stillWaiting = this.#sortWaitingByRules(added.id);
+      return { sticks: findRule(this.#rules, newRule.for, descriptions[0] ?? '')?.id === added.id, stillWaiting };
     });
   }
 
-  changeRule(rule: SortingRule, date: IsoDate): void {
+  changeRule(rule: SortingRule, date: IsoDate): { readonly stillWaiting: readonly string[] } {
     assertIsoDate(date);
     const before = this.#ruleById(rule.id);
-    this.#atomically(() => {
+    return this.#atomically(() => {
       this.#rules = checkRules(this.#rules.map((r) => (r.id === rule.id ? rule : r)));
       this.#log.push(Object.freeze({ date, kind: 'rule-changed', before, after: this.#ruleById(rule.id) }));
-      this.#sortWaitingByRules(rule.id);
+      return { stillWaiting: this.#sortWaitingByRules(rule.id) };
     });
   }
 
@@ -1846,23 +1893,36 @@ export class Book {
   // now the first match for. It never lets another, older rule sort them:
   // an item an older rule matches is waiting for a reason (a split that
   // stopped adding up, a difference from setup day), and is yours to decide.
-  #sortWaitingByRules(ruleId: string): void {
+  // QUESTIONS.md A19: an item the rule matches but that cannot take what it
+  // says (a partly refunded payment cannot be for mom, B73) stays waiting,
+  // exactly as it was. Returns those items.
+  #sortWaitingByRules(ruleId: string): string[] {
+    const stillWaiting: string[] = [];
     for (const id of [...this.#review]) {
       const entry = this.#entry(id);
       const unsortedSpending = entry.kind === 'spend' && 'to' in entry.sortedTo && entry.sortedTo.to === 'unsorted';
       // 4.9: money leaving savings is never sorted by a rule.
       const fromSavings = entry.kind === 'spend' && entry.txn.kind === 'savings-withdrawal';
+      let apply: (() => void) | undefined;
       if (unsortedSpending && entry.spendingKind === 'purchase' && !fromSavings) {
         const rule = this.#firstMatchIfIt(ruleId, 'purchase', (entry.postedTxn ?? entry.txn).description);
-        if (rule !== undefined) this.#sortSpending(entry, { to: rule.bucket });
+        if (rule !== undefined) apply = () => this.#sortSpending(entry, { to: rule.bucket });
       } else if (unsortedSpending && entry.spendingKind === 'person-payment') {
         const rule = this.#firstMatchIfIt(ruleId, 'person', entry.txn.description);
-        if (rule !== undefined) this.#sortSpending(entry, rule.choice);
+        if (rule !== undefined) apply = () => this.#sortSpending(entry, rule.choice);
       } else if (entry.kind === 'money-in' && entry.reason === 'deposit' && entry.sortedTo === 'unsorted') {
         const rule = this.#firstMatchIfIt(ruleId, 'deposit', entry.txn.description);
-        if (rule !== undefined) this.#sortMoneyIn(entry, rule.choice);
+        if (rule !== undefined) apply = () => this.#sortMoneyIn(entry, rule.choice);
+      }
+      if (apply === undefined) continue;
+      try {
+        this.#atomically(apply);
+      } catch (error) {
+        if (!(error instanceof MoneyError)) throw error;
+        stillWaiting.push(id);
       }
     }
+    return stillWaiting;
   }
 
   // The first rule of this kind that matches, but only if it is the rule
@@ -2019,13 +2079,14 @@ export class Book {
         const txn = entry.txn;
         // 3.7, B54: a deposit older than the last paycheck cannot start a pay period.
         const older = txn.kind === 'deposit' && daysBetween(this.#lastPaycheckDate, txn.date) < 0;
-        const facts: ReviewFacts = { type: 'money-in', reason: entry.reason, account: txn.account, olderThanLastPaycheck: older };
+        const likely = txn.kind === 'refund' ? likelyPurchases({ account: txn.account, date: txn.date, amount: txn.amount, description: txn.description }, this.#purchaseCandidates()) : [];
+        const facts: ReviewFacts = { type: 'money-in', reason: entry.reason, account: txn.account, olderThanLastPaycheck: older, likely: likely.map((p) => p.id) };
         return {
           item,
           account: txn.account,
           pending: false,
           options: reviewOptions(facts),
-          likelyPurchases: txn.kind === 'refund' ? likelyPurchases({ account: txn.account, date: txn.date, amount: txn.amount, description: txn.description }, this.#purchaseCandidates()) : [],
+          likelyPurchases: likely,
           paycheckPreview: txn.kind === 'deposit' && !older ? this.#splitIfPaycheck(txn.amount) : null,
         };
       }

@@ -17,6 +17,11 @@ export interface ReviewPick {
   readonly final: boolean;
 }
 
+// What marking an item as a transfer with an account does: nothing to any
+// bucket (5.1, 5.3); a payment to the old card from checking comes out of
+// needs (5.2); one from savings waits for you to pick savings or needs (A4).
+export type TransferOutcome = 'no-bucket-change' | 'out-of-needs' | 'savings-or-needs';
+
 // A choice that exists for this kind of item but cannot be made right now.
 export interface Unavailable {
   readonly what: 'paycheck' | 'transfer';
@@ -35,6 +40,10 @@ export type ReviewOptions =
       // Which picks "always do this" can make a rule for (13.6); empty when none.
       readonly always: readonly PickTo[];
       readonly unavailable: readonly Unavailable[];
+      // A18: the purchases a refund can be matched to (its likely purchases, 20d). Matching is final.
+      readonly match: readonly string[];
+      // What marking it a transfer with each account does (5.6 with 5.1 to 5.3).
+      readonly transferOutcome: Readonly<Partial<Record<AccountId, TransferOutcome>>>;
     }
   // 3.4
   | { readonly type: 'leftover'; readonly answers: readonly LeftoverAnswer[] }
@@ -49,6 +58,8 @@ export type ReviewFacts =
       readonly account: 'checking' | 'savings' | 'everyday-card' | 'old-card';
       // B54: older than the last paycheck, so it cannot start a pay period.
       readonly olderThanLastPaycheck: boolean;
+      // 20d: for a refund, the purchases it likely belongs to.
+      readonly likely: readonly string[];
     }
   | {
       readonly type: 'spending';
@@ -98,12 +109,16 @@ function moneyInOptions(f: Extract<ReviewFacts, { type: 'money-in' }>): ReviewOp
     picks.push(plain('other-income'));
   }
   picks.push(...BUCKET_PAYBACKS.map(plain), plain('not-mine'));
+  // 5.6: money arrives from checking or savings.
+  const transfer = (['checking', 'savings'] as const).filter((a) => a !== f.account);
   return {
     type: 'sort',
     picks,
     split: null,
-    // 5.6: money arrives from checking or savings.
-    transfer: (['checking', 'savings'] as const).filter((a) => a !== f.account),
+    transfer,
+    transferOutcome: Object.fromEntries(transfer.map((a) => [a, 'no-bucket-change'])),
+    // A18: a refund can be matched to a purchase it likely belongs to (4.5).
+    match: f.reason === 'refund' ? [...f.likely] : [],
     // 6.2, B17, B55: a deposit rule can pick anything but my paycheck, and an
     // early paycheck or a refund never gets a rule.
     always: f.reason === 'deposit' ? ['other-income', ...BUCKET_PAYBACKS, 'not-mine'] : [],
@@ -113,7 +128,7 @@ function moneyInOptions(f: Extract<ReviewFacts, { type: 'money-in' }>): ReviewOp
 
 function spendingOptions(f: Extract<ReviewFacts, { type: 'spending' }>): ReviewOptions {
   // 5.2, A4: a payment to the old card from savings comes out of savings or needs.
-  if (f.kind === 'debt-payoff') return { type: 'sort', picks: [plain('savings'), plain('needs')], split: null, transfer: [], always: [], unavailable: [] };
+  if (f.kind === 'debt-payoff') return { type: 'sort', picks: [plain('savings'), plain('needs')], split: null, transfer: [], transferOutcome: {}, always: [], unavailable: [], match: [] };
 
   const person = f.kind === 'person-payment';
   const picks: ReviewPick[] = [plain('needs'), plain('wants')];
@@ -143,5 +158,9 @@ function spendingOptions(f: Extract<ReviewFacts, { type: 'spending' }>): ReviewO
   if (f.kind === 'purchase' && !f.fromSavings) always = ['needs', 'wants'];
   if (person) always = picks.map((p) => p.to);
 
-  return { type: 'sort', picks, split, transfer, always, unavailable };
+  // 5.6: as the half of a transfer that left: to the old card it is a payment
+  // to the old card (5.2); anywhere else no bucket changes (5.1, 5.3).
+  const outcome = (to: AccountId): TransferOutcome => (to !== 'old-card' ? 'no-bucket-change' : f.account === 'checking' ? 'out-of-needs' : 'savings-or-needs');
+  const transferOutcome = Object.fromEntries(transfer.map((a) => [a, outcome(a)]));
+  return { type: 'sort', picks, split, transfer, transferOutcome, always, unavailable, match: [] };
 }

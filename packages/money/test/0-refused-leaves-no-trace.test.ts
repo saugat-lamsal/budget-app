@@ -194,31 +194,50 @@ describe('0.1 a refused change of several steps leaves no trace (found in the re
     expect(b.period().number).toBe(2);
   });
 
-  it('0.1 a new rule refused part way through sorting what is waiting changes nothing (13.2)', () => {
+  // QUESTIONS.md A19: a waiting item a new rule cannot sort (here, a total too
+  // large to keep exact) is left exactly as it was, and the rule still sorts
+  // the ones it can. Before his answer the whole rule was refused.
+  it('0.1 A19 a new rule leaves an item it cannot sort exactly as it was, and sorts the others (13.2)', () => {
     const b = openTestBook({ pots: { wants: MAX - 11_000 } });
     b.receive(deposit('d1', '2026-10-05', 1_000, 'MADE UP GIFT'));
     b.receive(deposit('d2', '2026-10-05', 1_000_000, 'MADE UP GIFT'));
-    const before = state(b);
-    expect(codeOf(() => b.addRule({ id: 'gift', for: 'deposit', contains: 'GIFT', choice: { to: 'other-income' } }, '2026-10-06'))).toBe('not-cents');
-    expect(state(b)).toEqual(before);
+    const d2 = b.reviewItems().find((i) => i.id === 'd2');
+    expect(b.addRule({ id: 'gift', for: 'deposit', contains: 'GIFT', choice: { to: 'other-income' } }, '2026-10-06')).toEqual({ stillWaiting: ['d2'] });
+    expect(b.reviewItems()).toEqual([d2]);
+    expect(b.pots().unsortedIn).toBe(1_000_000);
+    expect(b.pots().wants).toBe(MAX - 11_000 + 200);
+    expect(b.rules().map((r) => r.id)).toEqual(['gift']);
     expect(b.recountPots()).toEqual(b.pots());
   });
 
-  it('0.1 a changed rule refused part way through sorting what is waiting changes nothing (13.2)', () => {
+  it('0.1 A19 a changed rule does the same (13.2)', () => {
     const b = openTestBook({ pots: { wants: MAX - 11_000 }, rules: [{ id: 'gift', for: 'deposit', contains: 'NOTHING LIKE IT', choice: { to: 'wants' } }] });
     b.receive(deposit('d1', '2026-10-05', 1_000, 'MADE UP GIFT'));
     b.receive(deposit('d2', '2026-10-05', 1_000_000, 'MADE UP GIFT'));
-    const before = state(b);
-    expect(codeOf(() => b.changeRule({ id: 'gift', for: 'deposit', contains: 'GIFT', choice: { to: 'wants' } }, '2026-10-06'))).toBe('not-cents');
-    expect(state(b)).toEqual(before);
+    const d2 = b.reviewItems().find((i) => i.id === 'd2');
+    expect(b.changeRule({ id: 'gift', for: 'deposit', contains: 'GIFT', choice: { to: 'wants' } }, '2026-10-06')).toEqual({ stillWaiting: ['d2'] });
+    expect(b.reviewItems()).toEqual([d2]);
+    expect(b.pots()).toMatchObject({ wants: MAX - 10_000, unsortedIn: 1_000_000 });
+    expect(b.recountPots()).toEqual(b.pots());
   });
 
-  it('0.1 "always do this" refused part way through changes nothing, not even the item you corrected (13.6)', () => {
+  it('0.1 A19 "always do this" sorts the item you corrected and leaves the one it cannot sort exactly as it was (13.6)', () => {
     const b = openTestBook({ pots: { wants: MAX - 11_000 } });
     b.receive(deposit('d1', '2026-10-05', 1_000, 'MADE UP GIFT'));
     b.receive(deposit('d2', '2026-10-05', 1_000_000, 'MADE UP GIFT'));
+    const d2 = b.reviewItems().find((i) => i.id === 'd2');
+    expect(b.sortAlways('d1', { to: 'other-income' }, { id: 'gift', contains: 'GIFT' }, '2026-10-06')).toEqual({ sticks: true, stillWaiting: ['d2'] });
+    expect(b.reviewItems()).toEqual([d2]);
+    expect(b.pots().unsortedIn).toBe(1_000_000);
+    expect(b.recountPots()).toEqual(b.pots());
+  });
+
+  it('0.1 "always do this" for an item that itself cannot take it changes nothing at all (13.6)', () => {
+    const b = openTestBook({ pots: { wants: MAX - 11_000 } });
+    b.receive(deposit('d2', '2026-10-05', 1_000_000, 'MADE UP GIFT'));
+    b.receive(deposit('d1', '2026-10-05', 1_000, 'MADE UP GIFT'));
     const before = state(b);
-    expect(codeOf(() => b.sortAlways('d1', { to: 'other-income' }, { id: 'gift', contains: 'GIFT' }, '2026-10-06'))).toBe('not-cents');
+    expect(codeOf(() => b.sortAlways('d2', { to: 'other-income' }, { id: 'gift', contains: 'GIFT' }, '2026-10-06'))).toBe('not-cents');
     expect(state(b)).toEqual(before);
   });
 });

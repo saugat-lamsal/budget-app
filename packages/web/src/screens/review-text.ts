@@ -1,4 +1,4 @@
-import type { AccountId, PickTo, ReviewDetail, SpendingSort } from '@budget-app/money';
+import type { AccountId, PickTo, ReviewDetail, SpendingSort, TransferOutcome } from '@budget-app/money';
 import type { ChoiceOf, Done } from '@budget-app/server/views';
 import { moneyText } from '../ui/money-format.js';
 
@@ -99,11 +99,31 @@ export function sortedWords(sorted: SpendingSort): string {
   }
 }
 
-// What was done, said back to him (after "Done" from the server).
-export function doneText(label: string, kind: 'money-in' | 'spending' | 'leftover' | 'old-card-purchase', done: Done): string {
+// 5.6: what marking it a transfer with this account does, from the money
+// math (5.1, 5.2, 5.3).
+export function transferWords(outcome: TransferOutcome | undefined): { readonly row: string; readonly done: string } {
+  switch (outcome) {
+    case 'out-of-needs':
+      return { row: 'A payment to the old card. It comes out of Needs.', done: 'marked as a payment to the old card. It came out of Needs.' };
+    case 'savings-or-needs':
+      return {
+        row: 'A payment to the old card from savings. It comes back here for you to pick Savings or Needs.',
+        done: 'marked as a payment to the old card. It is waiting again, for you to pick Savings or Needs.',
+      };
+    default:
+      return { row: 'No bucket changes. It is money moving between your accounts.', done: '' };
+  }
+}
+
+// What was done, said back to him (after "Done" from the server). about
+// names what the choice pointed at: the purchase a refund was matched to, or
+// what a transfer did.
+export function doneText(label: string, kind: 'money-in' | 'spending' | 'leftover' | 'old-card-purchase', done: Done, about?: string): string {
   const c: ChoiceOf = done.choice;
   let text: string;
-  if ('to' in c) {
+  if ('refundOf' in c) {
+    text = `${label} matched to ${about ?? 'the purchase'}, as if the bank had matched it.`;
+  } else if ('to' in c) {
     if (c.to === 'paycheck') text = `${label} is your paycheck. A new pay period started.`;
     else if (c.to === 'other-income') text = `${label} counted as other income.`;
     else if (c.to === 'not-mine') text = kind === 'money-in' ? `${label} is held for others.` : `${label} marked not mine.`;
@@ -114,13 +134,16 @@ export function doneText(label: string, kind: 'money-in' | 'spending' | 'leftove
   } else if ('split' in c) {
     text = `${label} split: ${c.split.map((p) => `${BUCKET_NAMES[p.bucket] ?? p.bucket} ${p.amount === 'rest' ? 'the rest' : moneyText(p.amount)}`).join(', ')}.`;
   } else if ('transfer' in c) {
-    text = `${label} marked as a transfer with ${ACCOUNT_NAMES[c.transfer]}.`;
+    text = about === undefined || about === '' ? `${label} marked as a transfer with ${ACCOUNT_NAMES[c.transfer]}.` : `${label} ${about}`;
   } else if ('leftover' in c) {
     text = c.leftover === 'roll-over' ? `${label} kept for this pay period.` : `${label} moved to Savings.`;
   } else {
     text = `Seen: ${label}.`;
   }
   if (done.alsoSorted > 0) text += ` ${done.alsoSorted} other waiting ${done.alsoSorted === 1 ? 'item' : 'items'} matched and ${done.alsoSorted === 1 ? 'was' : 'were'} sorted too.`;
+  // A19: what the rule matched but could not sort stays waiting, by name.
+  const still = done.stillWaiting;
+  if (still.length > 0) text += ` ${still.length} that matched could not take it, so ${still.length === 1 ? 'it is' : 'they are'} still waiting: ${still.map((s) => s.name).join(', ')}.`;
   if (done.sticks === true) text += ' From now on it goes there by itself.';
   if (done.sticks === false) text += ' The text only matches how it looked after it posted, so a new one may still wait while it is pending.';
   return text;

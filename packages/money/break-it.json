@@ -2777,5 +2777,117 @@
     "find": "t.momReserve, t.heldForOthers, t.unsortedIn), t.unsortedOut);",
     "replace": "t.momReserve, t.unsortedIn), t.unsortedOut);",
     "why": "[review] 12.2 the app side ignores money held for others"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/review-options.ts",
+    "find": "match: f.reason === 'refund' ? [...f.likely] : [],",
+    "replace": "match: [],",
+    "why": "[review] [pre-merge] A18 no purchase is offered to match a refund to"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/review-options.ts",
+    "find": "match: f.reason === 'refund' ? [...f.likely] : [],",
+    "replace": "match: f.reason === 'refund' ? [...f.likely].slice(1) : [],",
+    "why": "[review] [pre-merge] A18 the most likely purchase is not offered"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if (target?.kind !== 'spend' || !this.#couldBelongTo(txn, target)) {",
+    "replace": "if (target?.kind !== 'spend') {",
+    "why": "[review] [pre-merge] A18 a refund can be matched to any spending"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "e.txn.account === refund.account &&",
+    "replace": "true &&",
+    "why": "[review] [pre-merge] A18 a refund can be matched to a purchase on another account"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "daysBetween(e.txn.date, refund.date) >= 0 &&",
+    "replace": "daysBetween(e.txn.date, refund.date) > 0 &&",
+    "why": "[review] [pre-merge] A18 a purchase made the same day as the refund cannot be matched"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "daysBetween(e.txn.date, refund.date) >= 0 &&",
+    "replace": "true &&",
+    "why": "[review] [pre-merge] A18 a refund can be matched to a purchase made after it"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "e.amount - e.refunded >= refund.amount",
+    "replace": "e.amount >= refund.amount",
+    "why": "[review] [pre-merge] A18 what was already refunded is forgotten when matching"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "e.amount - e.refunded >= refund.amount",
+    "replace": "e.amount - e.refunded > refund.amount",
+    "why": "[review] [pre-merge] A18 a refund of exactly what is left cannot be matched"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#remove(entry);\n      this.#applyRefund(txn, target);",
+    "replace": "      this.#remove(entry);",
+    "why": "[review] [pre-merge] A18 a matched refund vanishes instead of going back to the purchase"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#remove(entry);\n      this.#applyRefund(txn, target);",
+    "replace": "      this.#applyRefund(txn, target);",
+    "why": "[review] [pre-merge] A18 a matched refund also stays waiting, counted twice"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "        stillWaiting.push(id);",
+    "replace": "",
+    "why": "[review] [pre-merge] A19 the items a rule could not sort are not reported"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "        if (!(error instanceof MoneyError)) throw error;\n        stillWaiting.push(id);",
+    "replace": "        throw error;",
+    "why": "[review] [pre-merge] A19 a rule that cannot sort one item is refused whole, as before his answer"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      return { sticks: findRule(this.#rules, newRule.for, descriptions[0] ?? '')?.id === added.id, stillWaiting };",
+    "replace": "      return { sticks: findRule(this.#rules, newRule.for, descriptions[0] ?? '')?.id === added.id, stillWaiting: [] };",
+    "why": "[review] [pre-merge] A19 \"always do this\" does not say what it left waiting"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/review-options.ts",
+    "find": "f.account === 'checking' ? 'out-of-needs' : 'savings-or-needs'",
+    "replace": "f.account === 'checking' ? 'savings-or-needs' : 'out-of-needs'",
+    "why": "[review] [pre-merge] 5.2 5.6 the old card from checking and from savings are said the other way round"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/review-options.ts",
+    "find": "(to !== 'old-card' ? 'no-bucket-change'",
+    "replace": "(to === 'savings' ? 'no-bucket-change'",
+    "why": "[review] [pre-merge] 5.6 a transfer to the everyday card is said to come out of a bucket"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/review-options.ts",
+    "find": "transferOutcome: Object.fromEntries(transfer.map((a) => [a, 'no-bucket-change'])),",
+    "replace": "transferOutcome: Object.fromEntries(transfer.map((a) => [a, 'out-of-needs'])),",
+    "why": "[review] [pre-merge] 5.6 money coming in marked a transfer is said to come out of needs"
   }
 ]

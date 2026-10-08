@@ -20,7 +20,10 @@ export type ChoiceOf =
   // The leftover question at payday (3.4).
   | { readonly leftover: LeftoverAnswer }
   // Seen the flag for a new purchase on the old card (5.4).
-  | { readonly acknowledge: true };
+  | { readonly acknowledge: true }
+  // "This refund is for this one" (4.5, QUESTIONS.md A18): one of the likely
+  // purchases offered for a refund.
+  | { readonly refundOf: string };
 
 export interface ChoiceRequest {
   // Made once on the phone for this decision, and sent again, the same, on a
@@ -44,6 +47,9 @@ export interface Done {
   readonly choice: ChoiceOf;
   // With "always do this": other waiting items the new rule sorted too (13.2).
   readonly alsoSorted: number;
+  // With "always do this": waiting items the rule matched but could not sort,
+  // left exactly as they were (13.2, QUESTIONS.md A19). Empty otherwise.
+  readonly stillWaiting: readonly { readonly item: string; readonly name: string }[];
   // With "always do this": whether the next one arriving the same way will go
   // here by itself (13.6, B49). Null without "always do this".
   readonly sticks: boolean | null;

@@ -691,5 +691,68 @@
   "find": "JSON.stringify(view), 'no-store');\n      return;\n    }\n    if (path.startsWith('/api/')) {",
   "replace": "JSON.stringify(view), 'public, max-age=3600');\n      return;\n    }\n    if (path.startsWith('/api/')) {",
   "why": "[review] safety: the Buckets and Review numbers are kept by the browser"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "of.length <= MAX_ITEM_LENGTH",
+  "replace": "of.length < MAX_ITEM_LENGTH",
+  "why": "[review] [pre-merge] A18 the longest purchase id allowed is not read"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "typeof of === 'string' && of !== '' &&",
+  "replace": "typeof of === 'string' &&",
+  "why": "[review] [pre-merge] A18 an empty purchase id is read"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "|| 'leftover' in c || 'refundOf' in c) return true;",
+  "replace": "|| 'leftover' in c) return true;",
+  "why": "[review] [pre-merge] A18 matching a refund does not ask first"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "return options.match.includes(c.refundOf) ? null :",
+  "replace": "return true ? null :",
+  "why": "[review] [pre-merge] A18 a purchase that is not offered is handed to the book"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "      if (request.always !== undefined) return \"A rule can't do that for this item.\";\n      if (detail.item.type",
+  "replace": "      if (detail.item.type",
+  "why": "[review] [pre-merge] A18 a rule that matches a refund is not refused up front"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "      if (detail.item.type !== 'money-in' || detail.item.reason !== 'refund') return no;\n",
+  "replace": "",
+  "why": "[review] [pre-merge] A18 matching something that is not a refund gets the refund reason"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "return { item: id, name: d === undefined ? 'An item' : nameOf(d) };",
+  "replace": "return { item: id, name: id };",
+  "why": "[review] [pre-merge] A19 what stays waiting is named by its id"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "const stillWaiting = applied.stillWaiting.map(",
+  "replace": "const stillWaiting = applied.stillWaiting.slice(1).map(",
+  "why": "[review] [pre-merge] A19 the first item left waiting is not named"
+ },
+ {
+  "section": "review",
+  "file": "packages/server/src/choices.ts",
+  "find": "            ? { refundOf: choice.refundOf }",
+  "replace": "            ? { to: 'wants' as const }",
+  "why": "[review] [pre-merge] A18 a matched refund is put in wants instead"
  }
 ]

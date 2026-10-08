@@ -67,6 +67,17 @@ const SHOTS = [
     await page.evaluate(() => window.scrollBy(0, -80));
     return 'no-sheet';
   }],
+  ['review-refund-confirm', 'review-busy', '/review', async (page) => {
+    await page.getByTestId('item-busy-refund').locator('[data-testid^="match-"]').first().click();
+  }],
+  ['review-transfer-old-card', 'review-busy', '/review', async (page) => {
+    await page.locator('article', { hasText: 'ZELLE TO MADE UP FRIEND' }).getByTestId('more').click();
+    await page.getByTestId('sheet-transfer').scrollIntoViewIfNeeded();
+  }],
+  ['review-transfer-from-savings', 'review-busy', '/review', async (page) => {
+    await page.getByTestId('item-busy-water').getByTestId('more').click();
+    await page.getByTestId('sheet-transfer').scrollIntoViewIfNeeded();
+  }],
   ['review-pending-and-flag', 'review-busy', '/review', 'bottom'],
   ['review-empty', 'all-clear', '/review'],
   ['review-not-set-up', 'not-set-up', '/review'],

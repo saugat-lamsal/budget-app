@@ -2,7 +2,8 @@ import type { Book } from '@budget-app/money';
 import { describe, expect, it } from 'vitest';
 import { busyBook } from '../../money/test/busy-book.js';
 import { START_DATE, deposit, openTestBook, payPerson, paycheck, posted, purchase, refund, transfer, withdrawal, type TestBookOptions } from '../../money/test/helpers.js';
-import { ChoiceDesk, parseChoiceRequest } from '../src/choices.js';
+import { MoneyError } from '@budget-app/money';
+import { ChoiceDesk, explainRefusal, parseChoiceRequest } from '../src/choices.js';
 import type { ChoiceRequest, ChoiceResponse } from '../src/views/choice.js';
 
 // How a tap reaches the books: the screen sends the choice, the money math
@@ -354,17 +355,6 @@ describe('a refused choice changes nothing and says why', () => {
     expect(snapshot(book)).toBe(before);
   });
 
-  it('A19 a rule that would also sort a waiting item that cannot take it is refused whole', () => {
-    const { book, desk } = setup();
-    book.receive(payPerson('zel_first_0001', START_DATE, 4_000, 'MADE UP FRIEND'));
-    book.receive(payPerson('zel_second_0002', START_DATE, 4_000, 'MADE UP FRIEND'));
-    book.receive(refund('ref_part_0003', START_DATE, 1_000, 'zel_second_0002', 'checking'));
-    const before = snapshot(book);
-    const r = refused(desk.decide(ask({ item: 'zel_first_0001', choice: { to: 'mom' }, always: { contains: 'MADE UP FRIEND' }, confirmed: true })));
-    expect(r.code).toBe('refused');
-    expect(r.why).toContain('Nothing was changed');
-    expect(snapshot(book)).toBe(before);
-  });
 
   it('B55 B17 4.9 13.6 a rule that cannot be made says so, rather than something the book said', () => {
     const { book, desk } = setup();
@@ -393,12 +383,17 @@ describe('a refused choice changes nothing and says why', () => {
   });
 
   it('the words that say what an id was never cut the reason into pieces: short ids are left alone', () => {
-    const { book, desk } = setup();
+    const { book } = setup();
     book.receive(payPerson('a', START_DATE, 4_000, 'MADE UP FRIEND'));
     book.receive(payPerson('b', START_DATE, 4_000, 'MADE UP FRIEND'));
     book.receive(refund('c', START_DATE, 1_000, 'b', 'checking'));
-    const r = refused(desk.decide(ask({ item: 'a', choice: { to: 'mom' }, always: { contains: 'MADE UP FRIEND' }, confirmed: true })));
-    expect(r.why).toBe('B cannot be for mom: part of it was refunded. Nothing was changed.');
+    expect(explainRefusal(new MoneyError('bad-choice', 'b cannot be for mom: part of it was refunded'), book.reviewDetails())).toBe('B cannot be for mom: part of it was refunded');
+  });
+
+  it('the words that say what an id was name a waiting item by its description', () => {
+    const { book } = setup();
+    book.receive(payPerson('zel_aabbccddee', START_DATE, 4_000, 'MADE UP FRIEND'));
+    expect(explainRefusal(new MoneyError('bad-choice', 'zel_aabbccddee cannot be for mom: part of it was refunded'), book.reviewDetails())).toBe('"ZELLE TO MADE UP FRIEND" cannot be for mom: part of it was refunded');
   });
 
   it('a choice that is not one of the choices for that kind of item is refused', () => {
@@ -458,7 +453,7 @@ describe('a refused choice changes nothing and says why', () => {
       ask({ item: idLike, choice: { to: 'paycheck' }, confirmed: true }),
       ask({ item: 'pur_77aa11bb22cc', choice: { transfer: 'savings' } }),
       ask({ item: 'pur_77aa11bb22cc', choice: { split: [{ bucket: 'needs', amount: 5 }, { bucket: 'wants', amount: 5 }] } }),
-      ask({ item: 'zel_5566778899', choice: { to: 'mom' }, always: { contains: 'MADE UP FRIEND' }, confirmed: true }),
+      ask({ item: 'zel_5566778899', choice: { refundOf: 'pur_77aa11bb22cc' }, confirmed: true }),
       ask({ item: 'pur_77aa11bb22cc', choice: { to: 'wants' }, always: { contains: 'NOT THERE' }, confirmed: true }),
     ]) {
       why.push(refused(desk.decide(request)).why);
@@ -529,6 +524,148 @@ describe('13.6 "always do this"', () => {
   });
 });
 
+describe('QUESTIONS.md A19 a rule leaves waiting what it cannot sort, and says which', () => {
+  it('A19 13.2 "always do this" sorts this one and the others it can; one that cannot take it stays waiting, by name', () => {
+    const { book, desk } = setup();
+    book.receive(payPerson('zel_first_0001', START_DATE, 4_000, 'MADE UP FRIEND'));
+    book.receive(payPerson('zel_second_0002', START_DATE, 4_000, 'MADE UP FRIEND'));
+    book.receive(payPerson('zel_third_0004', START_DATE, 2_500, 'MADE UP FRIEND'));
+    book.receive(refund('ref_part_0003', START_DATE, 1_000, 'zel_second_0002', 'checking'));
+    const twin = setup().book;
+    twin.receive(payPerson('zel_first_0001', START_DATE, 4_000, 'MADE UP FRIEND'));
+    twin.receive(payPerson('zel_second_0002', START_DATE, 4_000, 'MADE UP FRIEND'));
+    twin.receive(payPerson('zel_third_0004', START_DATE, 2_500, 'MADE UP FRIEND'));
+    twin.receive(refund('ref_part_0003', START_DATE, 1_000, 'zel_second_0002', 'checking'));
+    const request = ask({ item: 'zel_first_0001', choice: { to: 'mom' }, always: { contains: 'MADE UP FRIEND' }, confirmed: true });
+    const r = done(desk.decide(request));
+    expect(r.done.alsoSorted).toBe(1);
+    expect(r.done.stillWaiting).toEqual([{ item: 'zel_second_0002', name: 'ZELLE TO MADE UP FRIEND' }]);
+    expect(book.reviewItems().map((i) => i.id)).toEqual(['zel_second_0002']);
+    expect(book.pots().momReserve).toBe(150_000 - 6_500);
+    // The same as the book on its own.
+    twin.sortAlways('zel_first_0001', { to: 'mom' }, { id: `always-${request.id}`, contains: 'MADE UP FRIEND' }, TODAY);
+    expect(snapshot(book)).toBe(snapshot(twin));
+    // A repeat says the same and changes nothing.
+    const after = snapshot(book);
+    const again = done(desk.decide(request));
+    expect(again.replayed).toBe(true);
+    expect(again.done.stillWaiting).toEqual(r.done.stillWaiting);
+    expect(snapshot(book)).toBe(after);
+  });
+
+  it('A19 with nothing left waiting, or without "always do this", the list is empty', () => {
+    const { book, desk } = setup();
+    book.receive(purchase('p1', START_DATE, 1_150, 'CORNER STORE #12'));
+    book.receive(purchase('p2', START_DATE, 400, 'CORNER STORE #9'));
+    book.receive(purchase('p3', START_DATE, 400, 'SOMETHING ELSE'));
+    expect(done(desk.decide(ask({ item: 'p3', choice: { to: 'wants' } }))).done.stillWaiting).toEqual([]);
+    expect(done(desk.decide(ask({ item: 'p1', choice: { to: 'wants' }, always: { contains: 'CORNER STORE' }, confirmed: true }))).done.stillWaiting).toEqual([]);
+  });
+
+  it('A19 "always do this" for an item that itself cannot take it is refused, and nothing changes', () => {
+    const { book, desk } = setup();
+    book.receive(payPerson('zel_first_0001', START_DATE, 4_000, 'MADE UP FRIEND'));
+    book.receive(payPerson('zel_second_0002', START_DATE, 4_000, 'MADE UP FRIEND'));
+    book.receive(refund('ref_part_0003', START_DATE, 1_000, 'zel_second_0002', 'checking'));
+    const before = snapshot(book);
+    const r = refused(desk.decide(ask({ item: 'zel_second_0002', choice: { to: 'mom' }, always: { contains: 'MADE UP FRIEND' }, confirmed: true })));
+    expect(r.code).toBe('refused');
+    expect(r.why).not.toMatch(/zel_/);
+    expect(snapshot(book)).toBe(before);
+  });
+});
+
+describe('QUESTIONS.md A18 4.5 "this refund is for this one"', () => {
+  // A refund the bank did not match, with two purchases it could be for.
+  function refundBook() {
+    const made = setup();
+    made.book.receive(purchase('pur_shoes_0001', START_DATE, 6_000, 'MADE UP SHOE SHOP'));
+    made.book.sort('pur_shoes_0001', { to: 'wants' }, TODAY);
+    made.book.receive(purchase('pur_mixed_0002', START_DATE, 5_000, 'MADE UP SHOE SHOP'));
+    made.book.sort('pur_mixed_0002', { split: [{ bucket: 'needs', amount: 2_000 }, { bucket: 'wants', amount: 3_000 }] }, TODAY);
+    made.book.receive(refund('ref_back_0003', '2026-10-10', 5_000, undefined, 'everyday-card'));
+    return made;
+  }
+
+  it('A18 the purchases offered are the likely ones', () => {
+    const { book } = refundBook();
+    const detail = book.reviewDetails().find((d) => d.item.id === 'ref_back_0003')!;
+    expect(detail.options.type === 'sort' && detail.options.match).toEqual(detail.likelyPurchases.map((p) => p.id));
+    expect(detail.likelyPurchases.map((p) => p.id).sort()).toEqual(['pur_mixed_0002', 'pur_shoes_0001']);
+  });
+
+  it('A18 it is final, so it asks first, and nothing changes until he says yes', () => {
+    const { book, desk } = refundBook();
+    const before = snapshot(book);
+    const r = refused(desk.decide(ask({ item: 'ref_back_0003', choice: { refundOf: 'pur_mixed_0002' } })));
+    expect(r.code).toBe('needs-confirmation');
+    expect(snapshot(book)).toBe(before);
+  });
+
+  it('A18 matched, it counts exactly as if the bank had matched it: a full refund of a split goes back as it was split', () => {
+    const { book, desk } = refundBook();
+    const twin = refundBook().book;
+    const r = done(desk.decide(ask({ item: 'ref_back_0003', choice: { refundOf: 'pur_mixed_0002' }, confirmed: true })));
+    expect(r.done.choice).toEqual({ refundOf: 'pur_mixed_0002' });
+    expect(r.done.stillWaiting).toEqual([]);
+    twin.sort('ref_back_0003', { refundOf: 'pur_mixed_0002' }, TODAY);
+    expect(snapshot(book)).toBe(snapshot(twin));
+    expect(book.pots()).toMatchObject({ needs: 50_000, wants: 30_000 - 6_000, unsortedIn: 0 });
+    expect(book.reviewItems()).toEqual([]);
+  });
+
+  it('A18 matched to a purchase in one bucket, it goes back into that bucket', () => {
+    const { book, desk } = refundBook();
+    done(desk.decide(ask({ item: 'ref_back_0003', choice: { refundOf: 'pur_shoes_0001' }, confirmed: true })));
+    expect(book.pots()).toMatchObject({ needs: 50_000 - 2_000, wants: 30_000 - 3_000 - 6_000 + 5_000, unsortedIn: 0 });
+  });
+
+  it('A18 sent twice, it is matched once', () => {
+    const { book, desk } = refundBook();
+    const request = ask({ item: 'ref_back_0003', choice: { refundOf: 'pur_shoes_0001' }, confirmed: true });
+    done(desk.decide(request));
+    const after = snapshot(book);
+    expect(done(desk.decide(request)).replayed).toBe(true);
+    expect(refused(desk.decide(ask({ item: 'ref_back_0003', choice: { refundOf: 'pur_shoes_0001' }, confirmed: true }))).code).toBe('not-waiting');
+    expect(snapshot(book)).toBe(after);
+  });
+
+  it('A18 a purchase that is not offered is refused, in plain words, and nothing changes', () => {
+    const { book, desk } = refundBook();
+    book.receive(purchase('pur_late_0004', '2026-10-12', 9_000, 'MADE UP SHOE SHOP'));
+    book.receive(purchase('pur_debit_0005', START_DATE, 9_000, 'MADE UP SHOE SHOP', { account: 'checking' }));
+    book.receive(deposit('dep_gift_0006', START_DATE, 5_000, 'MADE UP GIFT'));
+    const before = snapshot(book);
+    for (const of of ['pur_late_0004', 'pur_debit_0005', 'nothing-like-this', 'ref_back_0003', 'dep_gift_0006']) {
+      const r = refused(desk.decide(ask({ item: 'ref_back_0003', choice: { refundOf: of }, confirmed: true })));
+      expect(r.code, of).toBe('refused');
+      expect(r.why, of).toBe("That purchase isn't one this refund can belong to. Nothing was changed.");
+    }
+    expect(snapshot(book)).toBe(before);
+  });
+
+  it('A18 a refund with nothing left to match says which reason, not just "not a choice"', () => {
+    const { book, desk } = setup();
+    book.receive(refund('ref_alone_0008', START_DATE, 5_000, undefined, 'everyday-card'));
+    const detail = book.reviewDetails().find((d) => d.item.id === 'ref_alone_0008')!;
+    expect(detail.options.type === 'sort' && detail.options.match).toEqual([]);
+    const before = snapshot(book);
+    expect(refused(desk.decide(ask({ item: 'ref_alone_0008', choice: { refundOf: 'pur_gone_0009' }, confirmed: true }))).why).toBe("That purchase isn't one this refund can belong to. Nothing was changed.");
+    expect(snapshot(book)).toBe(before);
+  });
+
+  it('A18 only a refund can be matched, and a rule cannot match one', () => {
+    const { book, desk } = refundBook();
+    book.receive(deposit('dep_gift_0006', START_DATE, 5_000, 'MADE UP GIFT'));
+    book.receive(purchase('pur_new_0007', START_DATE, 1_000, 'MADE UP SHOE SHOP'));
+    const before = snapshot(book);
+    expect(refused(desk.decide(ask({ item: 'dep_gift_0006', choice: { refundOf: 'pur_shoes_0001' }, confirmed: true }))).why).toBe("That isn't one of the choices for this item. Nothing was changed.");
+    expect(refused(desk.decide(ask({ item: 'pur_new_0007', choice: { refundOf: 'pur_shoes_0001' }, confirmed: true }))).why).toBe("That isn't one of the choices for this item. Nothing was changed.");
+    expect(refused(desk.decide(ask({ item: 'ref_back_0003', choice: { refundOf: 'pur_shoes_0001' }, always: { contains: 'MADE UP' }, confirmed: true }))).why).toBe("A rule can't do that for this item. Nothing was changed.");
+    expect(snapshot(book)).toBe(before);
+  });
+});
+
 describe('parsing what the phone sends', () => {
   const good = { id: 'abcd1234', item: 'p1', choice: { to: 'wants' } };
 
@@ -539,6 +676,7 @@ describe('parsing what the phone sends', () => {
     expect(parseChoiceRequest({ ...good, choice: { transfer: 'savings' } })).not.toBeNull();
     expect(parseChoiceRequest({ ...good, item: 'leftover:pay:needs', choice: { leftover: 'roll-over' } })).not.toBeNull();
     expect(parseChoiceRequest({ ...good, choice: { acknowledge: true } })).not.toBeNull();
+    expect(parseChoiceRequest({ ...good, choice: { refundOf: 'pur_1' } })).toEqual({ ...good, choice: { refundOf: 'pur_1' } });
     for (const to of ['paycheck', 'other-income', 'savings', 'needs', 'wants', 'momReserve', 'not-mine', 'mom']) expect(parseChoiceRequest({ ...good, choice: { to } }), to).not.toBeNull();
   });
 
@@ -552,6 +690,9 @@ describe('parsing what the phone sends', () => {
     expect(at({ item: 'x'.repeat(201) })).toBeNull();
     expect(at({ always: { contains: 'x'.repeat(200) } })).not.toBeNull();
     expect(at({ always: { contains: 'x'.repeat(201) } })).toBeNull();
+    expect(at({ choice: { refundOf: 'x' } })).not.toBeNull();
+    expect(at({ choice: { refundOf: 'x'.repeat(200) } })).not.toBeNull();
+    expect(at({ choice: { refundOf: 'x'.repeat(201) } })).toBeNull();
     expect(at({ choice: { split: [{ bucket: 'needs', amount: 1 }, { bucket: 'wants', amount: Number.MAX_SAFE_INTEGER }] } })).not.toBeNull();
     expect(at({ choice: { split: [{ bucket: 'needs', amount: 1 }, { bucket: 'wants', amount: 1 }, { bucket: 'not-mine', amount: 'rest' }] } })).not.toBeNull();
   });
@@ -579,6 +720,11 @@ describe('parsing what the phone sends', () => {
       { ...good, choice: { transfer: 'mattress' } },
       { ...good, choice: { leftover: 'burn' } },
       { ...good, choice: { acknowledge: false } },
+      { ...good, choice: { refundOf: '' } },
+      { ...good, choice: { refundOf: 7 } },
+      { ...good, choice: { refundOf: null } },
+      { ...good, choice: { refundOf: ['pur_1'] } },
+      { ...good, choice: { refundOf: 'pur_1', to: 'wants' } },
       { ...good, choice: { split: [] } },
       { ...good, choice: { split: [{ bucket: 'needs', amount: 5 }] } },
       { ...good, choice: { split: [{ bucket: 'needs', amount: 0 }, { bucket: 'wants', amount: 5 }] } },
@@ -605,7 +751,7 @@ describe('parsing what the phone sends', () => {
 });
 
 describe('the busy book: every offered choice, through the desk, does what the book does', () => {
-  it('6.1 4.4 5.6 7.6 13.6 every offered pick, transfer, and leftover answer', () => {
+  it('6.1 4.4 4.5 5.6 7.6 13.6 A18 every offered pick, transfer, match, and leftover answer', () => {
     const problems: string[] = [];
     for (const detail of busyBook().reviewDetails()) {
       const o = detail.options;
@@ -614,7 +760,7 @@ describe('the busy book: every offered choice, through the desk, does what the b
           ? o.answers.map((leftover) => ({ leftover }))
           : o.type === 'acknowledge'
             ? [{ acknowledge: true }]
-            : [...o.picks.map((p) => ({ to: p.to })), ...o.transfer.map((transfer) => ({ transfer }))];
+            : [...o.picks.map((p) => ({ to: p.to })), ...o.transfer.map((transfer) => ({ transfer })), ...o.match.map((refundOf) => ({ refundOf }))];
       for (const choice of choices) {
         const viaDesk = busyBook();
         const direct = busyBook();
@@ -622,7 +768,7 @@ describe('the busy book: every offered choice, through the desk, does what the b
         try {
           if ('leftover' in choice) direct.answerLeftover(detail.item.id, choice.leftover, TODAY);
           else if ('acknowledge' in choice) direct.acknowledge(detail.item.id, TODAY);
-          else direct.sort(detail.item.id, 'transfer' in choice ? { transfer: choice.transfer } : { to: (choice as { to: never }).to }, TODAY);
+          else direct.sort(detail.item.id, 'transfer' in choice ? { transfer: choice.transfer } : 'refundOf' in choice ? { refundOf: choice.refundOf } : { to: (choice as { to: never }).to }, TODAY);
         } catch (error) {
           problems.push(`${detail.item.id} ${JSON.stringify(choice)}: the book refused it (${String(error)}) but it was offered`);
           continue;

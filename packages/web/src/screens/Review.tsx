@@ -5,7 +5,7 @@ import { newDecisionId, sendChoice, type Load, type Reload } from '../app/api.js
 import { BottomSheet, Button, ButtonRow, Card, Decision, Hero, HeroCount, ListRow, MadeUpPill, Money, Notice, Skeleton, StateMessage, TextField, ToggleRow } from '../ui/blocks.js';
 import { longDate, shortDate } from '../ui/dates.js';
 import { moneyText } from '../ui/money-format.js';
-import { ACCOUNT_NAMES, BUCKET_NAMES, doneText, groupTitle, pickLabel, reasonText, sortedWords, titleOf } from './review-text.js';
+import { ACCOUNT_NAMES, BUCKET_NAMES, doneText, groupTitle, pickLabel, reasonText, sortedWords, titleOf, transferWords } from './review-text.js';
 
 // Review: everything waiting for him to decide, one tap each. Every choice
 // shown is one the money math offers for that kind of item (the server sends
@@ -69,7 +69,18 @@ interface Pending {
   readonly confirmed?: boolean;
   // What the confirm step says.
   readonly ask?: ReactNode;
+  // What the choice pointed at, for the answer (doneText).
+  readonly about?: string;
 }
+
+// What comes with a choice: a rule, what "are you sure" says, and what it pointed at.
+interface Extra {
+  readonly always?: { readonly contains: string };
+  readonly ask?: ReactNode;
+  readonly final?: boolean;
+  readonly about?: string;
+}
+type Choose = (detail: ReviewDetail, choice: ChoiceOf, extra?: Extra) => void;
 
 type Sheet = { readonly item: string; readonly step: 'choose' } | { readonly item: string; readonly step: 'confirm'; readonly pending: Pending };
 
@@ -123,7 +134,7 @@ function ReviewReady({ view, reload, onChanged }: { readonly view: Tracking; rea
         setSending(false);
         if (answer.ok) {
           setSheet(null);
-          setSaid({ tone: 'ok', text: doneText(pending.label, pending.kind, answer.done) });
+          setSaid({ tone: 'ok', text: doneText(pending.label, pending.kind, answer.done, pending.about) });
         } else if (answer.code === 'not-waiting') {
           setSheet(null);
           setSaid({ tone: 'warning', text: `${pending.label}: ${answer.why}` });
@@ -145,7 +156,7 @@ function ReviewReady({ view, reload, onChanged }: { readonly view: Tracking; rea
   };
 
   // A choice is made: final ones ask first, the rest are sent at once.
-  const choose = (detail: ReviewDetail, choice: ChoiceOf, extra: { always?: { contains: string }; ask?: ReactNode; final?: boolean } = {}): void => {
+  const choose = (detail: ReviewDetail, choice: ChoiceOf, extra: Extra = {}): void => {
     const pending: Pending = {
       id: newDecisionId(),
       item: detail.item.id,
@@ -154,6 +165,7 @@ function ReviewReady({ view, reload, onChanged }: { readonly view: Tracking; rea
       choice,
       ...(extra.always === undefined ? {} : { always: extra.always }),
       ...(extra.ask === undefined ? {} : { ask: extra.ask }),
+      ...(extra.about === undefined ? {} : { about: extra.about }),
     };
     if (extra.final === true || extra.always !== undefined) {
       setSaid(null);
@@ -280,7 +292,7 @@ function ItemCard({
 }: {
   readonly detail: ReviewDetail;
   readonly busy: boolean;
-  readonly onChoose: (detail: ReviewDetail, choice: ChoiceOf, extra?: { always?: { contains: string }; ask?: ReactNode; final?: boolean }) => void;
+  readonly onChoose: Choose;
   readonly onSend: (pending: Pending) => void;
   readonly onMore: () => void;
 }) {
@@ -377,7 +389,7 @@ function ItemCard({
           </>
         }
       >
-        {item.type === 'money-in' && item.reason === 'refund' && <LikelyPurchases detail={detail} />}
+        {item.type === 'money-in' && item.reason === 'refund' && <LikelyPurchases detail={detail} busy={busy} onChoose={onChoose} />}
       </Decision>
     );
   }
@@ -417,9 +429,12 @@ function askFor(detail: ReviewDetail, to: PickTo): ReactNode {
   );
 }
 
-// 20d, A15: the purchases a refund likely belongs to.
-function LikelyPurchases({ detail }: { readonly detail: ReviewDetail }) {
+// 20d, A15: the purchases a refund likely belongs to. A18: each one the
+// money math offers can be picked as the one it is for; that is final, so it
+// asks first.
+function LikelyPurchases({ detail, busy, onChoose }: { readonly detail: ReviewDetail; readonly busy: boolean; readonly onChoose: Choose }) {
   const list = detail.likelyPurchases;
+  const offered = detail.options.type === 'sort' ? detail.options.match : [];
   return (
     <div className="likely" data-testid="likely">
       <p className="likely__title">Likely purchases</p>
@@ -441,10 +456,27 @@ function LikelyPurchases({ detail }: { readonly detail: ReviewDetail }) {
                   {p.sameName ? ' · Same name' : ''}
                   {p.sameAmount ? ' · Same amount' : ''}
                 </span>
+                {offered.includes(p.id) && (
+                  <Button
+                    variant="secondary"
+                    wide
+                    disabled={busy}
+                    testId={`match-${p.id}`}
+                    onClick={() =>
+                      onChoose(detail, { refundOf: p.id }, {
+                        final: true,
+                        about: p.description,
+                        ask: `${titleOf(detail.item)}, ${moneyText(detail.item.type === 'money-in' ? detail.item.amount : 0)}, is for ${p.description}, ${moneyText(p.amount)}, on ${shortDate(p.date)}. It then counts as if the bank had matched it, and goes back where that purchase came from. This can't be undone here.`,
+                      })
+                    }
+                  >
+                    This refund is for this one
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
-          <p className="likely__more">Put the refund back where the purchase came from.</p>
+          <p className="likely__more">{offered.length > 0 ? 'If you know which one it is for, tap it. The refund then goes back where that purchase came from.' : 'Put the refund back where the purchase came from.'}</p>
         </>
       )}
     </div>
@@ -453,7 +485,7 @@ function LikelyPurchases({ detail }: { readonly detail: ReviewDetail }) {
 
 // ----- All the choices, in a sheet -----
 
-function Choices({ detail, busy, onChoose }: { readonly detail: ReviewDetail; readonly busy: boolean; readonly onChoose: (detail: ReviewDetail, choice: ChoiceOf, extra?: { always?: { contains: string }; ask?: ReactNode; final?: boolean }) => void }) {
+function Choices({ detail, busy, onChoose }: { readonly detail: ReviewDetail; readonly busy: boolean; readonly onChoose: Choose }) {
   const { item, options } = detail;
   const [always, setAlways] = useState(false);
   const [text, setText] = useState(item.type === 'spending' || item.type === 'money-in' ? item.description : '');
@@ -523,17 +555,21 @@ function Choices({ detail, busy, onChoose }: { readonly detail: ReviewDetail; re
 
       {!always && options.transfer.length > 0 && (
         <Card title="Transfer between my accounts" testId="sheet-transfer">
-          {options.transfer.map((account) => (
-            <ListRow
-              key={account}
-              title={kind === 'money-in' ? `From ${ACCOUNT_NAMES[account]}` : `To ${ACCOUNT_NAMES[account]}`}
-              detail="No bucket changes. It is money moving between your accounts."
-              onClick={() => {
-                if (!busy) onChoose(detail, { transfer: account });
-              }}
-              testId={`choice-transfer-${account}`}
-            />
-          ))}
+          {options.transfer.map((account) => {
+            // What it does comes from the money math (5.1 to 5.3).
+            const words = transferWords(options.transferOutcome[account]);
+            return (
+              <ListRow
+                key={account}
+                title={kind === 'money-in' ? `From ${ACCOUNT_NAMES[account]}` : `To ${ACCOUNT_NAMES[account]}`}
+                detail={words.row}
+                onClick={() => {
+                  if (!busy) onChoose(detail, { transfer: account }, words.done === '' ? {} : { about: words.done });
+                }}
+                testId={`choice-transfer-${account}`}
+              />
+            );
+          })}
         </Card>
       )}
 
@@ -546,7 +582,7 @@ function Choices({ detail, busy, onChoose }: { readonly detail: ReviewDetail; re
 function ruleSentence(detail: ReviewDetail, text: string, label: string): string {
   const item = detail.item;
   const what = item.type === 'money-in' ? 'deposits' : item.type === 'spending' && item.reason === 'person-payment' ? 'payments to people' : 'purchases';
-  return `From now on, ${what} whose description contains “${text}” are sorted as: ${label}. Anything waiting that matches is sorted now too.`;
+  return `From now on, ${what} whose description contains “${text}” are sorted as: ${label}. Anything waiting that matches is sorted now too, if it can be.`;
 }
 
 function SplitForm({
@@ -558,7 +594,7 @@ function SplitForm({
   readonly detail: ReviewDetail;
   readonly buckets: readonly ('needs' | 'wants' | 'not-mine')[];
   readonly busy: boolean;
-  readonly onChoose: (detail: ReviewDetail, choice: ChoiceOf, extra?: { always?: { contains: string }; ask?: ReactNode; final?: boolean }) => void;
+  readonly onChoose: Choose;
 }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const rest = buckets[buckets.length - 1];
@@ -631,9 +667,19 @@ function Confirm({ pending, busy, onYes, onBack }: { readonly pending: Pending; 
           : 'Yes, move it to savings'
         : 'to' in c && c.to === 'paycheck'
           ? 'Yes, this is my paycheck'
-          : 'Yes, do it';
+          : 'refundOf' in c
+            ? "Yes, it's for this one"
+            : 'Yes, do it';
   const title =
-    pending.always !== undefined ? 'Make this a rule?' : 'leftover' in c ? 'Answer for good?' : 'to' in c && c.to === 'paycheck' ? 'Start a new pay period?' : 'Are you sure?';
+    pending.always !== undefined
+      ? 'Make this a rule?'
+      : 'leftover' in c
+        ? 'Answer for good?'
+        : 'to' in c && c.to === 'paycheck'
+          ? 'Start a new pay period?'
+          : 'refundOf' in c
+            ? 'Match this refund?'
+            : 'Are you sure?';
   return (
     <>
       <p className="sheet__title" data-testid="confirm-title">

@@ -167,10 +167,14 @@ A17. ANSWERED Oct 7, built. When Home shows a card payment that is due.
      and a bill due in 5 days still does.
 
 
-## Part A, added with the Buckets and Review screens (Phase 4, Oct 7). Waiting on your answer.
+## Part A, added with the Buckets and Review screens (Phase 4, Oct 7).
 
-A18. A refund in review, and the purchase it belongs to (4.5, 6.1, A15).
-     Review lists the purchases a refund likely belongs to (20d), but
+A18. ANSWERED Oct 7, built. A refund in review, and the purchase it
+     belongs to. Your answer: option 2. Each likely purchase has "This
+     refund is for this one"; the refund is then matched exactly as if the
+     bank had matched it. It asks first, since it cannot be undone in
+     review. Rulebook 4.5, 6.1 and 22a.
+     The question was: Review lists the purchases a refund likely belongs to (20d), but
      rulebook 6.1 gives a refund only two choices: payback into a bucket,
      or not mine. So today, tapping "Into Wants" puts the money in Wants and
      leaves the purchase as it was: the purchase does not count as
@@ -187,8 +191,11 @@ A18. A refund in review, and the purchase it belongs to (4.5, 6.1, A15).
      Recommendation: option 2. A refund that follows its purchase cannot end
      up in the wrong bucket later.
 
-A19. A new rule that cannot sort everything it matches (13.2, 7.6, B73).
-     Making "always do this" also sorts every waiting item the new rule is
+A19. ANSWERED Oct 7, built. A new rule that cannot sort everything it
+     matches. Your answer: option 2. The rule is made, the waiting items
+     that can take it are sorted, and the others stay waiting, exactly as
+     they were; the answer names them. Rulebook 13.2 and 22b.
+     The question was: Making "always do this" also sorts every waiting item the new rule is
      the first match for (13.2). If one of those cannot take the choice,
      the whole rule is refused, nothing changes, and the screen says so.
      Example: "always for mom" for ZELLE TO A FRIEND, while another waiting

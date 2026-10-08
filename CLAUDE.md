@@ -137,12 +137,14 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 10. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 11. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
   Phase 3 questions (A12 to A16, B4, B20), section 21 his answers to the
-  Phase 4 questions (A17, B82, B84: rules 0.5, 9.6, 10.6).
+  Phase 4 questions (A17, B82, B84: rules 0.5, 9.6, 10.6), section 22
+  his answers to the Buckets and Review questions (A18, A19: rules 4.5,
+  6.1, 13.2).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -286,8 +288,8 @@ This applies to every phase and every session, cloud or local.
   stop, for his feedback.
   - Buckets (packages/web/src/screens/Buckets.tsx, packages/server/src/views/buckets.ts):
     everything in the buckets as the one main number (12.2), needs and
-    wants bars, savings, the mom reserve with this month against the target
-    (8.2), held for others (7.3), what waits in review, the old card debt
+    wants bars, savings, the mom reserve, what was sent to mom this month
+    against the target (8.2), held for others (7.3), what waits in review, the old card debt
     (12.4), and the same "totals do not match the bank" banner as Home.
   - Review (Review.tsx, views/review.ts): every waiting item with exactly
     the choices the money math offers for it. The money package decides what
@@ -319,7 +321,16 @@ This applies to every phase and every session, cloud or local.
     section "home" and run the browser tests; use --only to judge them by
     one test file, --file to take only the breaks in some files, and the
     environment variable BROWSER_ENGINE=chromium to judge by one engine).
-  - Waiting on: his feedback on the look, A18 and A19, and B88 to B96 to
-    check.
+  - His review before merging (Oct 7): A18 option 2 and A19 option 2,
+    built. A refund in review can be matched to a likely purchase
+    (Book.sort with { refundOf }, final, so it asks first); a new rule
+    sorts what it can and leaves the rest waiting (addRule, changeRule and
+    sortAlways return stillWaiting; the desk names them). "Transfer between
+    my accounts" now says what each account does, from the money math
+    (ReviewOptions.transferOutcome): to the old card from checking comes
+    out of needs (5.2); from savings it comes back to pick savings or
+    needs. Buckets shows the mom reserve as its own row, and what was sent
+    this month in its own card, "Sent to mom".
+  - Waiting on: his merge of PR #8, and B88 to B96 to check.
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.

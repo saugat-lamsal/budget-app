@@ -28,7 +28,7 @@ const REVIEW: ReviewView = { state: 'not-set-up', madeUpData: true };
 let failBuckets = false;
 // What the screens sent as a choice, and what the made-up desk answers.
 const choices: unknown[] = [];
-const DONE: ChoiceResponse = { ok: true, replayed: false, done: { item: 'p1', choice: { to: 'wants' }, alsoSorted: 0, sticks: null } };
+const DONE: ChoiceResponse = { ok: true, replayed: false, done: { item: 'p1', choice: { to: 'wants' }, alsoSorted: 0, stillWaiting: [], sticks: null } };
 let nextAnswer: ChoiceResponse = DONE;
 
 beforeAll(async () => {

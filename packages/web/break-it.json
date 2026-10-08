@@ -866,5 +866,82 @@
     "find": ".row--trailing .row__text {\n  flex: 1 1 8rem;\n}",
     "replace": ".row--trailing .row__text {\n  flex: 1;\n}",
     "why": "[review] a row never gives its amount a line of its own"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Review.tsx",
+    "find": "const words = transferWords(options.transferOutcome[account]);",
+    "replace": "const words = transferWords(undefined);",
+    "why": "[review] [pre-merge] 5.2 5.6 every transfer row says no bucket changes, the old card too"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/review-text.ts",
+    "find": "done: 'marked as a payment to the old card. It came out of Needs.'",
+    "replace": "done: ''",
+    "why": "[review] [pre-merge] 5.2 the answer does not say a payment to the old card came out of needs"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/review-text.ts",
+    "find": "    case 'savings-or-needs':\n",
+    "replace": "",
+    "why": "[review] [pre-merge] 5.2 A4 to the old card from savings is said to change no bucket"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Review.tsx",
+    "find": "{offered.includes(p.id) && (",
+    "replace": "{false && (",
+    "why": "[review] [pre-merge] A18 no button to match a refund"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Review.tsx",
+    "find": "                        final: true,\n                        about: p.description,",
+    "replace": "                        about: p.description,",
+    "why": "[review] [pre-merge] A18 matching a refund does not ask first"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Review.tsx",
+    "find": "onChoose(detail, { refundOf: p.id }, {",
+    "replace": "onChoose(detail, { refundOf: list.at(-1)!.id }, {",
+    "why": "[review] [pre-merge] A18 the button matches the wrong purchase"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/review-text.ts",
+    "find": "matched to ${about ?? 'the purchase'}, as if",
+    "replace": "matched to the purchase, as if",
+    "why": "[review] [pre-merge] A18 the answer does not name the purchase"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/review-text.ts",
+    "find": "if (still.length > 0) text +=",
+    "replace": "if (still.length > 1) text +=",
+    "why": "[review] [pre-merge] A19 one item left waiting is not mentioned"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Review.tsx",
+    "find": "            ? 'Match this refund?'",
+    "replace": "            ? 'Are you sure?'",
+    "why": "[review] [pre-merge] A18 the question does not say what it is about"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Buckets.tsx",
+    "find": "amount={<Money cents={momReserve.sent} testId=\"mom-sent\" />}",
+    "replace": "amount={<Money cents={momReserve.amount} testId=\"mom-sent\" />}",
+    "why": "[review] [pre-merge] 8.2 the sent-to-mom bar shows the reserve"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Buckets.tsx",
+    "find": "trailing={<Money cents={momReserve.amount} testId=\"mom-reserve\" />}",
+    "replace": "trailing={<Money cents={momReserve.sent} testId=\"mom-reserve\" />}",
+    "why": "[review] [pre-merge] 8.1 the mom reserve row shows what was sent"
   }
 ]

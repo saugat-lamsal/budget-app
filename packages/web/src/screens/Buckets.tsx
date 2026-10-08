@@ -106,20 +106,12 @@ function BucketsReady({ view }: { readonly view: Tracking }) {
 
       <Card title="Savings and reserves" testId="reserves">
         <ListRow icon="bank" title="Savings" trailing={<Money cents={view.savings} testId="savings" />} testId="row-savings" />
-        <TargetBar
-          testId="mom"
-          name="Mom reserve"
-          amount={<Money cents={momReserve.amount} testId="mom-reserve" />}
-          caption={
-            <>
-              Sent in {monthName(momReserve.month)}: <Money cents={momReserve.sent} testId="mom-sent" />. Target <Money cents={momReserve.target.low} testId="mom-target-low" /> to{' '}
-              <Money cents={momReserve.target.high} testId="mom-target-high" />.
-            </>
-          }
-          sent={momReserve.sent}
-          low={momReserve.target.low}
-          high={momReserve.target.high}
-          position={momReserve.position}
+        <ListRow
+          icon="heart"
+          title="Mom reserve"
+          detail="Set aside from each paycheck. What you send her comes out of it."
+          trailing={<Money cents={momReserve.amount} testId="mom-reserve" />}
+          testId="row-mom-reserve"
         />
         <ListRow
           icon="people"
@@ -127,6 +119,24 @@ function BucketsReady({ view }: { readonly view: Tracking }) {
           detail={HELD_WORDS[heldForOthers.meaning]}
           trailing={<Money cents={heldForOthers.heldForOthers} testId="held-for-others" />}
           testId="row-held"
+        />
+      </Card>
+
+      {/* 8.2: what was sent this month, apart from what the reserve holds. */}
+      <Card title="Sent to mom" testId="mom-month">
+        <TargetBar
+          testId="mom"
+          name={`${monthName(momReserve.month)} so far`}
+          amount={<Money cents={momReserve.sent} testId="mom-sent" />}
+          caption={
+            <>
+              Target <Money cents={momReserve.target.low} testId="mom-target-low" /> to <Money cents={momReserve.target.high} testId="mom-target-high" /> a month.
+            </>
+          }
+          sent={momReserve.sent}
+          low={momReserve.target.low}
+          high={momReserve.target.high}
+          position={momReserve.position}
         />
       </Card>
 

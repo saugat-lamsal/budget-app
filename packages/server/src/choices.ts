@@ -66,6 +66,10 @@ function parseChoice(value: unknown): ChoiceOf | null {
   if ('leftover' in value) return value['leftover'] === 'roll-over' || value['leftover'] === 'move-to-savings' ? { leftover: value['leftover'] } : null;
   if ('acknowledge' in value) return value['acknowledge'] === true ? { acknowledge: true } : null;
   if ('split' in value) return parseSplit(value['split']);
+  if ('refundOf' in value) {
+    const of = value['refundOf'];
+    return typeof of === 'string' && of !== '' && of.length <= MAX_ITEM_LENGTH ? { refundOf: of } : null;
+  }
   return null;
 }
 
@@ -120,7 +124,7 @@ export class ChoiceDesk {
     if (detail === undefined) return refuse('not-waiting', 'That one was already dealt with.');
 
     // Only what the rulebook gives for this kind of item.
-    const notOffered = this.#notOffered(request, detail.options);
+    const notOffered = this.#notOffered(request, detail);
     if (notOffered !== null) return refuse('refused', notOffered);
 
     // Anything final asks first.
@@ -137,29 +141,42 @@ export class ChoiceDesk {
     }
 
     const before = new Set(this.#book.reviewItems().map((i) => i.id));
-    let sticks: boolean | null = null;
+    let applied: Applied;
     try {
-      sticks = this.#apply(request, choice);
+      applied = this.#apply(request, choice);
     } catch (error) {
-      if (error instanceof MoneyError) return refuse('refused', explain(error, details));
+      if (error instanceof MoneyError) return refuse('refused', explainRefusal(error, details));
       throw error;
     }
     const after = new Set(this.#book.reviewItems().map((i) => i.id));
     // 13.2: the other waiting items the new rule sorted.
     const alsoSorted = request.always === undefined ? 0 : [...before].filter((id) => id !== request.item && !after.has(id)).length;
-    const done: Done = { item: request.item, choice, alsoSorted, sticks };
+    // A19: the ones it matched but left waiting, by name.
+    const stillWaiting = applied.stillWaiting.map((id) => {
+      const d = details.find((x) => x.item.id === id);
+      return { item: id, name: d === undefined ? 'An item' : nameOf(d) };
+    });
+    const done: Done = { item: request.item, choice, alsoSorted, stillWaiting, sticks: applied.sticks };
     this.#done.set(request.id, { fingerprint, done });
     return { ok: true, replayed: false, done };
   }
 
   // The choice is one the money math offers for this item (review-options.ts).
   // The book still has the last word; this gives the plain reason up front.
-  #notOffered(request: ChoiceRequest, options: ReviewOptions): string | null {
+  #notOffered(request: ChoiceRequest, detail: ReviewDetail): string | null {
     const c = request.choice;
+    const options = detail.options;
     const no = "That isn't one of the choices for this item.";
     if ('leftover' in c) return options.type === 'leftover' && options.answers.includes(c.leftover) && request.always === undefined ? null : no;
     if ('acknowledge' in c) return options.type === 'acknowledge' && request.always === undefined ? null : no;
     if (options.type !== 'sort') return no;
+    // A18: only one of the likely purchases offered, only for a refund, and
+    // never by a rule.
+    if ('refundOf' in c) {
+      if (request.always !== undefined) return "A rule can't do that for this item.";
+      if (detail.item.type !== 'money-in' || detail.item.reason !== 'refund') return no;
+      return options.match.includes(c.refundOf) ? null : "That purchase isn't one this refund can belong to.";
+    }
     const unavailable = options.unavailable.find((u) => ('to' in c && c.to === 'paycheck' && u.what === 'paycheck') || ('transfer' in c && u.what === 'transfer'));
     if (unavailable !== undefined) return unavailable.why;
     if ('to' in c) {
@@ -173,27 +190,41 @@ export class ChoiceDesk {
   }
 
   // Hands the choice to the money math. Returns whether "always do this"
-  // will catch the next one, or null when it was not asked for.
-  #apply(request: ChoiceRequest, choice: ChoiceOf): boolean | null {
+  // will catch the next one (null when it was not asked for), and what the
+  // rule left waiting.
+  #apply(request: ChoiceRequest, choice: ChoiceOf): Applied {
     const book = this.#book;
     const today = this.#today();
     const item = request.item;
+    const once: Applied = { sticks: null, stillWaiting: [] };
     if ('leftover' in choice) {
       book.answerLeftover(item, choice.leftover as LeftoverAnswer, today);
-      return null;
+      return once;
     }
     if ('acknowledge' in choice) {
       book.acknowledge(item, today);
-      return null;
+      return once;
     }
-    const sort: SortChoice = 'to' in choice ? { to: choice.to } : 'transfer' in choice ? { transfer: choice.transfer } : { split: choice.split.map((p): SplitPart => ({ bucket: p.bucket, amount: p.amount as Cents })) };
+    const sort: SortChoice =
+      'to' in choice
+        ? { to: choice.to }
+        : 'transfer' in choice
+          ? { transfer: choice.transfer }
+          : 'refundOf' in choice
+            ? { refundOf: choice.refundOf }
+            : { split: choice.split.map((p): SplitPart => ({ bucket: p.bucket, amount: p.amount as Cents })) };
     if (request.always === undefined) {
       book.sort(item, sort, today);
-      return null;
+      return once;
     }
     // The rule's number comes from the decision number, so it is made once.
-    return book.sortAlways(item, sort, { id: `always-${request.id}`, contains: request.always.contains }, today).sticks;
+    return book.sortAlways(item, sort, { id: `always-${request.id}`, contains: request.always.contains }, today);
   }
+}
+
+interface Applied {
+  readonly sticks: boolean | null;
+  readonly stillWaiting: readonly string[];
 }
 
 function refuse(code: RefusalCode, why: string): ChoiceResponse {
@@ -202,10 +233,11 @@ function refuse(code: RefusalCode, why: string): ChoiceResponse {
 
 // 3.4, 6.1, 13.6: what cannot be taken back here asks first. A leftover
 // answer cannot be asked again; "this is my paycheck" starts a pay period
-// (B52); a rule keeps applying to everything that comes after.
+// (B52); a rule keeps applying to everything that comes after; a refund
+// matched to a purchase is matched for good, like one the bank matched (A18).
 function isFinal(request: ChoiceRequest, options: ReviewOptions): boolean {
   const c = request.choice;
-  if (request.always !== undefined || 'leftover' in c) return true;
+  if (request.always !== undefined || 'leftover' in c || 'refundOf' in c) return true;
   return options.type === 'sort' && 'to' in c && options.picks.some((p) => p.to === c.to && p.final);
 }
 
@@ -229,7 +261,7 @@ function resolveSplit(parts: readonly ChoicePart[], detail: ReviewDetail): reado
 
 // A refusal from the money math in plain words: the ids of the items waiting
 // are replaced with what they are, and a total too large to keep exact says so.
-function explain(error: MoneyError, details: readonly ReviewDetail[]): string {
+export function explainRefusal(error: MoneyError, details: readonly ReviewDetail[]): string {
   if (error.code === 'not-cents') return 'That would make a total too large to keep exact';
   let text = error.message;
   // The longest ids first, so one id inside another is not cut in two.
