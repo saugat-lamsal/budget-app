@@ -24,6 +24,8 @@ export const EXAMPLE_LIVES: Readonly<Record<number, string>> = {
   13: 'normal',
   14: 'payday-paid',
   15: 'activity-marked',
+  16: 'settings-busy',
+  17: 'settings-first-sync',
 };
 
 // Which screen each example is about.
@@ -34,6 +36,7 @@ export const ACTIVITY_EXAMPLES: readonly number[] = [12];
 export const MOVES_EXAMPLES: readonly number[] = [13];
 export const PAYDAY_EXAMPLES: readonly number[] = [14];
 export const MARKED_EXAMPLES: readonly number[] = [15];
+export const SETTINGS_EXAMPLES: readonly number[] = [16, 17];
 
 export function checksOf(number: number): Map<string, number> {
   const block = text.split(/^EXAMPLE /m).find((b) => b.startsWith(`${number}.`));

@@ -2,12 +2,12 @@ import type { Pot } from '@budget-app/money';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityScreen, type Back } from '../screens/Activity.js';
 import { BucketsScreen } from '../screens/Buckets.js';
-import { ComingNext } from '../screens/ComingNext.js';
 import { HomeScreen } from '../screens/Home.js';
 import { PaydayScreen } from '../screens/Payday.js';
 import { ReviewScreen } from '../screens/Review.js';
+import { SettingsScreen } from '../screens/Settings.js';
 import { TabBar } from '../ui/TabBar.js';
-import { useActivity, useBuckets, useHome, usePayday, useReview, type Reload } from './api.js';
+import { useActivity, useBuckets, useHome, usePayday, useReview, useSettings, type Reload } from './api.js';
 import { backTarget, pathOfRoute, routeLabel, routeOf, routeTitle, tabOfRoute, type Route, type Tab } from './routes.js';
 
 // Each of these loads its numbers when its screen opens, so it is always fresh.
@@ -21,6 +21,11 @@ function BucketsTab({ onChanged }: { readonly onChanged: Reload }) {
 function ReviewTab({ onChanged }: { readonly onChanged: Reload }) {
   const [load, reload] = useReview();
   return <ReviewScreen load={load} onRetry={reload} onChanged={onChanged} />;
+}
+
+function SettingsTab({ onChanged }: { readonly onChanged: Reload }) {
+  const [load, reload] = useSettings();
+  return <SettingsScreen load={load} onRetry={reload} onChanged={onChanged} />;
 }
 
 function ActivityTab({ pot, onChanged, back }: { readonly pot: Pot; readonly onChanged: Reload; readonly back: Back }) {
@@ -113,7 +118,7 @@ export function App() {
       ) : route.tab === 'review' ? (
         <ReviewTab onChanged={retryHome} />
       ) : (
-        <ComingNext tab={route.tab} />
+        <SettingsTab onChanged={retryHome} />
       )}
       <TabBar current={tabOfRoute(route)} onGo={(tab: Tab) => go({ screen: 'tab', tab })} waitingInReview={waiting} />
     </div>

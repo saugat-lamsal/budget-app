@@ -6,7 +6,8 @@ import { homeView } from '../../server/src/views/home.js';
 import { reviewView } from '../../server/src/views/review.js';
 import { activityView } from '../../server/src/views/activity.js';
 import { paydayView } from '../../server/src/views/payday.js';
-import { ACTIVITY_EXAMPLES, BUCKETS_EXAMPLES, EXAMPLE_LIVES, HOME_EXAMPLES, MARKED_EXAMPLES, MOVES_EXAMPLES, PAYDAY_EXAMPLES, REVIEW_EXAMPLES, checksOf, exampleNumbers } from './worked-examples.js';
+import { settingsView } from '../../server/src/views/settings.js';
+import { ACTIVITY_EXAMPLES, BUCKETS_EXAMPLES, EXAMPLE_LIVES, HOME_EXAMPLES, MARKED_EXAMPLES, MOVES_EXAMPLES, PAYDAY_EXAMPLES, REVIEW_EXAMPLES, SETTINGS_EXAMPLES, checksOf, exampleNumbers } from './worked-examples.js';
 
 // Every example in packages/web/worked-examples.txt, against what the server
 // sends Home for the same made-up life.
@@ -21,7 +22,7 @@ function homeOf(number: number) {
 
 describe('worked examples: the Home screen', () => {
   it('every example in the file has a made-up life', () => {
-    expect(exampleNumbers()).toEqual([...HOME_EXAMPLES, ...BUCKETS_EXAMPLES, ...REVIEW_EXAMPLES, ...ACTIVITY_EXAMPLES, ...MOVES_EXAMPLES, ...PAYDAY_EXAMPLES, ...MARKED_EXAMPLES]);
+    expect(exampleNumbers()).toEqual([...HOME_EXAMPLES, ...BUCKETS_EXAMPLES, ...REVIEW_EXAMPLES, ...ACTIVITY_EXAMPLES, ...MOVES_EXAMPLES, ...PAYDAY_EXAMPLES, ...MARKED_EXAMPLES, ...SETTINGS_EXAMPLES]);
     for (const n of exampleNumbers()) expect(EXAMPLE_LIVES[n], `example ${n}`).toBeDefined();
   });
 
@@ -273,5 +274,57 @@ describe('worked examples: the bucket lists, moving money, and Payday', () => {
     }
     // The leftover questions are the ones about what was left at payday.
     expect(v.report.leftovers.map((l) => [l.leftAtPayday, l.outcome])).toEqual([[93_075, 'waiting'], [65_711, 'waiting']]);
+  });
+
+  it('example 16: every Check line is what Settings is sent', () => {
+    const { book, bank, today } = lifeOf(16);
+    const v = settingsView({ today, book, bank, madeUpData: true });
+    if (v.state !== 'tracking' || !v.payoff.on) throw new Error('not tracking, or no countdown');
+    const got: Record<string, number | undefined> = {
+      'reserve this pay period': v.split.thisPayPeriod.momReservePerPaycheck,
+      'reserve from next paycheck': v.split.fromNextPaycheck.momReservePerPaycheck,
+      cap: v.split.fromNextPaycheck.momReserveCap,
+      owed: v.payoff.owed,
+      'per payday': v.payoff.perPayday,
+      paydays: v.payoff.paydaysLeft,
+      'log lines': v.log.length,
+    };
+    for (const [label, expected] of checksOf(16)) {
+      expect(label in got, `example 16: unknown check "${label}"`).toBe(true);
+      expect(got[label], `example 16: ${label}`).toBe(expected);
+    }
+    expect(v.split.thisPayPeriod.split).toEqual({ savings: 50, needs: 30, wants: 20 });
+    expect(v.split.fromNextPaycheck.split).toEqual({ savings: 40, needs: 40, wants: 20 });
+    expect(v.split.waiting).toEqual(['split', 'momReservePerPaycheck']);
+    expect(v.split.nextPayday.date).toBe('2026-10-16');
+  });
+
+  it('example 17: every Check line is what the desk answers, and then does', () => {
+    const { book, today } = lifeOf(17);
+    const desk = new ChoiceDesk(book, () => today);
+    expect(book.reviewItems()).toHaveLength(4);
+    const asked = desk.settings({ id: 'example-17-paycheck', settings: { paycheckRule: { contains: 'MADE UP EMPLOYER PAYROLL' } } });
+    if (asked.ok || asked.preview === undefined) throw new Error('expected the paycheck rule to ask first');
+    expect(asked.preview.items.map((i) => [i.id, i.kind])).toEqual([['demo-pay', 'paycheck']]);
+    const yes = desk.settings({ id: 'example-17-paycheck', settings: { paycheckRule: { contains: 'MADE UP EMPLOYER PAYROLL' } }, confirmed: true, seen: asked.preview.key });
+    expect(yes.ok).toBe(true);
+    expect(book.pots()).toEqual(asked.preview.potsAfter);
+    const mom = desk.settings({ id: 'example-17-mom-rule', settings: { momRule: { contains: 'MADE UP MOM' } } });
+    if (mom.ok || mom.preview === undefined) throw new Error('expected the mom rule to ask first');
+    expect(desk.settings({ id: 'example-17-mom-rule', settings: { momRule: { contains: 'MADE UP MOM' } }, confirmed: true, seen: mom.preview.key }).ok).toBe(true);
+    const after = asked.preview.potsAfter;
+    const got: Record<string, number | undefined> = {
+      'after savings': after.savings,
+      'after needs': after.needs,
+      'after wants': after.wants,
+      'after mom reserve': after.momReserve,
+      'waiting after': asked.preview.waitingAfter,
+      'mom reserve after the mom rule': book.pots().momReserve,
+      'waiting after the mom rule': book.reviewItems().length,
+    };
+    for (const [label, expected] of checksOf(17)) {
+      expect(label in got, `example 17: unknown check "${label}"`).toBe(true);
+      expect(got[label], `example 17: ${label}`).toBe(expected);
+    }
   });
 });

@@ -310,7 +310,8 @@ export type MoveResult =
 
 // Rule 13.5: every change and every manual move, with its date.
 export type ChangeLogEntry =
-  | { readonly date: IsoDate; readonly kind: 'settings-changed'; readonly changes: Partial<Settings> }
+  // changes: the new value of each setting changed; before: what it was.
+  | { readonly date: IsoDate; readonly kind: 'settings-changed'; readonly changes: Partial<Settings>; readonly before: Partial<Settings> }
   | { readonly date: IsoDate; readonly kind: 'rule-added'; readonly rule: SortingRule }
   // 13.6: added by correcting an item, ahead of the rule it corrects (null
   // when no rule had sorted that item).
@@ -326,6 +327,38 @@ export type ChangeLogEntry =
   | { readonly date: IsoDate; readonly kind: 'money-moved'; readonly from: Pot; readonly to: Pot; readonly amount: Cents }
   // 4.10: the bank took back a transaction the app had counted.
   | { readonly date: IsoDate; readonly kind: 'bank-took-back'; readonly id: string; readonly description: string; readonly amount: Cents };
+
+// QUESTIONS.md A9: a waiting item a new paycheck rule or mom rule handles.
+// A deposit becomes a paycheck (3.1), with its split, or, less than 10 days
+// after the last paycheck or older than it, waits as an early paycheck (3.7,
+// B54). A payment to a person comes out of the mom reserve (8.1); what the
+// reserve cannot cover waits in review (8.3).
+export type RecheckedItem =
+  | { readonly kind: 'paycheck'; readonly id: string; readonly date: IsoDate; readonly amount: Cents; readonly description: string; readonly split: PaycheckSplit }
+  | { readonly kind: 'early-paycheck'; readonly id: string; readonly date: IsoDate; readonly amount: Cents; readonly description: string }
+  | {
+      readonly kind: 'mom';
+      readonly id: string;
+      readonly date: IsoDate;
+      readonly amount: Cents;
+      readonly description: string;
+      readonly fromReserve: Cents;
+      readonly difference: Cents;
+    };
+
+// What a change to the settings would do, worked out before it is done (A9):
+// the waiting items it would handle, oldest first, and every bucket and the
+// number of items waiting, before and after.
+export interface SettingsPreview {
+  readonly items: readonly RecheckedItem[];
+  readonly potsBefore: Pots;
+  readonly potsAfter: Pots;
+  readonly waitingBefore: number;
+  readonly waitingAfter: number;
+}
+
+// Thrown to undo a change that was only being tried out (see previewSettingsChange).
+const DRY_RUN: unique symbol = Symbol('dry run');
 
 export interface SavingsTransfer {
   readonly shouldBeInSavings: Cents;
@@ -549,9 +582,10 @@ function sameRoute(a: TransferSent | TransferArrived, b: TransferSent | Transfer
   return a.from === b.from && a.to === b.to && a.amount === b.amount;
 }
 
+// 13.1: the settings a pay period keeps from its paycheck (FROM_NEXT_PAYCHECK).
 function splitSettingsOf(settings: Settings): SplitSettings {
   const { split, momReservePerPaycheck, momReserveCap } = settings;
-  return { split, momReservePerPaycheck, momReserveCap };
+  return Object.freeze({ split, momReservePerPaycheck, momReserveCap });
 }
 
 function potsOf(totals: Record<TotalName, Cents>): Pots {
@@ -709,6 +743,14 @@ export class Book {
 
   rules(): readonly SortingRule[] {
     return this.#rules;
+  }
+
+  // 13.1: the split and mom reserve in force this pay period: the settings
+  // the paycheck that began it was worked out with (setup day's before the
+  // first paycheck). A change to them is the setting at once, but waits here
+  // until the next paycheck.
+  splitInForce(): SplitSettings {
+    return this.#periodSplit;
   }
 
   period(): Period {
@@ -2168,19 +2210,21 @@ export class Book {
   // 13.1: a change to the split or the mom reserve applies from the next
   // paycheck; everything else applies right away. 0.3: nothing already
   // worked out is redone.
-  changeSettings(patch: Partial<Settings>, date: IsoDate): void {
+  changeSettings(patch: Partial<Settings>, date: IsoDate): { readonly rechecked: readonly RecheckedItem[] } {
     assertIsoDate(date);
     const next = applySettingsChange(this.#settings, patch);
     const before = this.#settings;
     try {
-      this.#atomically(() => {
+      return this.#atomically(() => {
         this.#settings = next;
-        const changes = Object.fromEntries(Object.keys(patch).map((key) => [key, next[key as keyof Settings]]));
-        this.#log.push(Object.freeze({ date, kind: 'settings-changed', changes }));
+        const keys = Object.keys(patch) as (keyof Settings)[];
+        const changes = Object.freeze(Object.fromEntries(keys.map((key) => [key, next[key]])));
+        const was = Object.freeze(Object.fromEntries(keys.map((key) => [key, before[key]])));
+        this.#log.push(Object.freeze({ date, kind: 'settings-changed', changes, before: was }));
         // QUESTIONS.md A9: a new paycheck rule or mom rule also checks what is
         // waiting in review, the way a new sorting rule does (13.2).
-        if ('paycheckRule' in patch) this.#recheckForPaychecks();
-        if ('momRule' in patch) this.#recheckForMom();
+        const rechecked = [...('paycheckRule' in patch ? this.#recheckForPaychecks() : []), ...('momRule' in patch ? this.#recheckForMom() : [])];
+        return Object.freeze({ rechecked: Object.freeze(rechecked) });
       });
     } catch (error) {
       this.#settings = before;
@@ -2188,37 +2232,78 @@ export class Book {
     }
   }
 
+  // A9: what changeSettings would do, without doing it. The change is made,
+  // looked at, and undone in full (#atomically), so the preview is exactly
+  // what the change itself does, and a change that would be refused is
+  // refused here too.
+  previewSettingsChange(patch: Partial<Settings>, date: IsoDate): SettingsPreview {
+    const settings = this.#settings;
+    const potsBefore = this.pots();
+    const waitingBefore = this.#review.size;
+    let preview: SettingsPreview | undefined;
+    try {
+      this.#atomically(() => {
+        const { rechecked } = this.changeSettings(patch, date);
+        preview = Object.freeze({ items: rechecked, potsBefore, potsAfter: this.pots(), waitingBefore, waitingAfter: this.#review.size });
+        throw DRY_RUN;
+      });
+    } catch (error) {
+      if (error !== DRY_RUN) throw error;
+    } finally {
+      this.#settings = settings;
+    }
+    if (preview === undefined) throw new MoneyError('broken-book', 'the preview of a settings change was not made');
+    return preview;
+  }
+
   // A9: waiting deposits that match the paycheck rule, oldest first. Each
   // starts a pay period like any paycheck (3.1), unless it is less than 10
   // days after the last paycheck, or older than it (3.7, B54); then it waits
   // as an early paycheck, with the same choices (6.1).
-  #recheckForPaychecks(): void {
+  #recheckForPaychecks(): RecheckedItem[] {
     const matching = [...this.#review]
       .map((id) => this.#entry(id))
       .filter((entry): entry is MoneyInEntry & { txn: Deposit } => {
         return entry.kind === 'money-in' && entry.reason === 'deposit' && entry.txn.kind === 'deposit' && matchesTextRule(this.#settings.paycheckRule, entry.txn.description);
       })
       .sort((a, b) => daysBetween(b.txn.date, a.txn.date));
+    const handled: RecheckedItem[] = [];
     for (const entry of matching) {
-      if (daysBetween(this.#lastPaycheckDate, entry.txn.date) < this.#settings.earlyPaycheckDays) entry.reason = 'early-paycheck';
-      else this.#makePaycheck(entry, entry.txn);
+      const { id, date, amount, description } = entry.txn;
+      if (daysBetween(this.#lastPaycheckDate, date) < this.#settings.earlyPaycheckDays) {
+        entry.reason = 'early-paycheck';
+        handled.push(Object.freeze({ kind: 'early-paycheck', id, date, amount, description }));
+      } else {
+        this.#makePaycheck(entry, entry.txn);
+        const record = this.#paychecks[this.#paychecks.length - 1];
+        if (record?.id !== id) throw new MoneyError('broken-book', `${id} did not become a paycheck`);
+        const split = Object.freeze({ ...record.split, detail: Object.freeze({ ...record.split.detail }) });
+        handled.push(Object.freeze({ kind: 'paycheck', id, date, amount, description, split }));
+      }
     }
+    return handled;
   }
 
   // A9: waiting payments to a person that match the mom rule come out of the
   // mom reserve, oldest first (8.1); what the reserve cannot cover waits in
   // review (8.3).
-  #recheckForMom(): void {
+  #recheckForMom(): RecheckedItem[] {
     const matching = [...this.#review]
       .map((id) => this.#entry(id))
       .filter((entry): entry is SpendEntry & { txn: PersonPayment } => {
         return entry.kind === 'spend' && entry.spendingKind === 'person-payment' && entry.txn.kind === 'payment-to-person' && matchesTextRule(this.#settings.momRule, entry.txn.description);
       })
       .sort((a, b) => daysBetween(b.txn.date, a.txn.date));
+    const handled: RecheckedItem[] = [];
     for (const entry of matching) {
       this.#remove(entry);
       this.#payMom(entry.txn, 'mom-rule');
+      const mom = this.#entry(entry.txn.id);
+      if (mom.kind !== 'mom') throw new MoneyError('broken-book', `${entry.txn.id} did not come out of the mom reserve`);
+      const { id, date, amount, description } = entry.txn;
+      handled.push(Object.freeze({ kind: 'mom', id, date, amount, description, fromReserve: mom.fromReserve, difference: amount - mom.fromReserve }));
     }
+    return handled;
   }
 
   // 13.2: a new or changed rule applies to new transactions and to those

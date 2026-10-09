@@ -329,7 +329,7 @@ describe('13.5 every change and every manual move is logged with the date', () =
     b.moveMoney({ from: 'savings', to: 'needs', amount: 700 }, '2026-10-10');
     b.moveMoney({ from: 'savings', to: 'needs', amount: 700, confirmed: true }, '2026-10-10');
     expect(b.changeLog()).toEqual([
-      { date: '2026-10-05', kind: 'settings-changed', changes: { payScheduleDays: 7 } },
+      { date: '2026-10-05', kind: 'settings-changed', changes: { payScheduleDays: 7 }, before: { payScheduleDays: 14 } },
       { date: '2026-10-06', kind: 'rule-added', rule: { id: 'grocer', for: 'purchase', contains: 'GROCER', bucket: 'needs' } },
       {
         date: '2026-10-07',

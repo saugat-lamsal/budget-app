@@ -507,6 +507,59 @@ const examples: Record<number, () => Record<string, Cents>> = {
       'wants kept less since payday': kept.lessSincePayday,
     };
   },
+  32: () => {
+    const book = openTestBook();
+    book.receive(paycheck('pay1', '2026-10-09', parseDollars('3,000.00')));
+    book.changeSettings({ split: { savings: 40, needs: 40, wants: 20 }, momReservePerPaycheck: parseDollars('1,000.00') }, '2026-10-12');
+    // Settings shows both: this pay period's, and what comes from the next paycheck (13.1).
+    expect(book.splitInForce()).toEqual({ split: { savings: 50, needs: 30, wants: 20 }, momReservePerPaycheck: parseDollars('1,500.00'), momReserveCap: parseDollars('3,000.00') });
+    expect(book.settings()).toMatchObject({ split: { savings: 40, needs: 40, wants: 20 }, momReservePerPaycheck: parseDollars('1,000.00'), momReserveCap: parseDollars('3,000.00') });
+    book.receive(deposit('side', '2026-10-13', parseDollars('200.00'), 'MADE UP SIDE JOB'));
+    const needsBefore = book.pots().needs;
+    book.sort('side', { to: 'other-income' }, '2026-10-13');
+    const otherIncomeNeeds = book.pots().needs - needsBefore;
+    book.receive(paycheck('pay2', '2026-10-23', parseDollars('3,000.00')));
+    expect(book.splitInForce().split).toEqual({ savings: 40, needs: 40, wants: 20 });
+    const [first, second] = book.paychecks();
+    return {
+      ...buckets(book),
+      'first paycheck needs': first!.split.needs,
+      'other income needs': otherIncomeNeeds,
+      'second paycheck needs': second!.split.needs,
+      'second paycheck mom reserve': second!.split.momReserve,
+    };
+  },
+  33: () => {
+    const book = openTestBook({
+      pots: { savings: parseDollars('1,000.00'), needs: parseDollars('500.00'), wants: parseDollars('300.00') },
+      settings: { paycheckRule: null, momRule: null, leftoverAtPayday: { needs: 'roll-over', wants: 'roll-over' } },
+    });
+    book.receive(paycheck('pay', '2026-10-09', parseDollars('2,500.00')));
+    book.receive(payPerson('mom', '2026-10-10', parseDollars('300.00'), MOM_NAME));
+    book.receive({ ...paycheck('bonus', '2026-10-12', parseDollars('400.00')), description: 'ACME PAYROLL BONUS' });
+    expect(book.reviewItems().map((i) => i.id)).toEqual(['pay', 'mom', 'bonus']);
+    const preview = book.previewSettingsChange({ paycheckRule: { contains: 'ACME PAYROLL' } }, '2026-10-13');
+    expect(preview.items.map((i) => [i.id, i.kind])).toEqual([
+      ['pay', 'paycheck'],
+      ['bonus', 'early-paycheck'],
+    ]);
+    const paid = preview.items[0]!;
+    if (paid.kind !== 'paycheck') throw new Error('expected a paycheck');
+    book.changeSettings({ paycheckRule: { contains: 'ACME PAYROLL' } }, '2026-10-13');
+    expect(book.pots()).toEqual(preview.potsAfter);
+    expect(book.previewSettingsChange({ momRule: { contains: MOM_NAME } }, '2026-10-13').items).toMatchObject([{ id: 'mom', fromReserve: parseDollars('300.00'), difference: 0 }]);
+    book.changeSettings({ momRule: { contains: MOM_NAME } }, '2026-10-13');
+    return {
+      ...buckets(book),
+      'paycheck needs': paid.split.needs,
+      'preview mom reserve': preview.potsAfter.momReserve,
+      'preview savings': preview.potsAfter.savings,
+      'preview needs': preview.potsAfter.needs,
+      'preview wants': preview.potsAfter.wants,
+      'preview unsorted money in': preview.potsAfter.unsortedIn,
+      'preview unsorted spending': preview.potsAfter.unsortedOut,
+    };
+  },
 };
 
 describe('worked examples (worked-examples.txt)', () => {

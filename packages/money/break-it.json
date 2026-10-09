@@ -72,8 +72,8 @@
   {
     "section": "0",
     "file": "packages/money/src/settings.ts",
-    "find": "s.split.savings + s.split.needs + s.split.wants === 100",
-    "replace": "s.split.savings + s.split.needs + s.split.wants <= 100",
+    "find": "check(sum === 100, ",
+    "replace": "check(sum <= 100, ",
     "why": "0.2 allow a split under 100"
   },
   {
@@ -1066,7 +1066,7 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "    this.#log.push(Object.freeze({ date, kind: 'settings-changed', changes }));\n",
+    "find": "        this.#log.push(Object.freeze({ date, kind: 'settings-changed', changes, before: was }));\n",
     "replace": "",
     "why": "13.5 forget to log a settings change"
   },
@@ -1885,22 +1885,22 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "        if ('paycheckRule' in patch) this.#recheckForPaychecks();\n",
-    "replace": "",
+    "find": "...('paycheckRule' in patch ? this.#recheckForPaychecks() : [])",
+    "replace": "...([] as RecheckedItem[])",
     "why": "13.2 ignore what is waiting when the paycheck rule is set (A9)"
   },
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "        if ('momRule' in patch) this.#recheckForMom();\n",
-    "replace": "",
+    "find": "...('momRule' in patch ? this.#recheckForMom() : [])",
+    "replace": "...([] as RecheckedItem[])",
     "why": "13.2 ignore what is waiting when the mom rule is set (A9)"
   },
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "      if (daysBetween(this.#lastPaycheckDate, entry.txn.date) < this.#settings.earlyPaycheckDays) entry.reason = 'early-paycheck';\n      else this.#makePaycheck(entry, entry.txn);",
-    "replace": "      this.#makePaycheck(entry, entry.txn);",
+    "find": "      if (daysBetween(this.#lastPaycheckDate, date) < this.#settings.earlyPaycheckDays) {\n        entry.reason = 'early-paycheck';",
+    "replace": "      if (false) {\n        entry.reason = 'early-paycheck';",
     "why": "13.2 skip the 10-day check when a new paycheck rule matches (A9)"
   },
   {
@@ -3253,5 +3253,124 @@
     "find": "    entry.answer = answer;\n    entry.answeredFor = amount;",
     "replace": "    entry.answer = answer;",
     "why": "[activity] 3.4 B111 an answer does not remember what the question asked"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "  splitInForce(): SplitSettings {\n    return this.#periodSplit;",
+    "replace": "  splitInForce(): SplitSettings {\n    return splitSettingsOf(this.#settings);",
+    "why": "[settings] 13.1 show the new split as in force before the next paycheck"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "const was = Object.freeze(Object.fromEntries(keys.map((key) => [key, before[key]])));",
+    "replace": "const was = Object.freeze(Object.fromEntries(keys.map((key) => [key, next[key]])));",
+    "why": "[settings] 13.5 log the new value as what it was before"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "kind: 'settings-changed', changes, before: was }",
+    "replace": "kind: 'settings-changed', changes }",
+    "why": "[settings] 13.5 forget what a setting was before"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "        throw DRY_RUN;\n",
+    "replace": "",
+    "why": "[settings] A9 the preview keeps the change it only meant to try"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "potsAfter: this.pots(), waitingBefore",
+    "replace": "potsAfter: potsBefore, waitingBefore",
+    "why": "[settings] A9 the preview says the buckets stay as they are"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "waitingBefore, waitingAfter: this.#review.size });",
+    "replace": "waitingBefore, waitingAfter: waitingBefore });",
+    "why": "[settings] A9 the preview says as much still waits as before"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (daysBetween(this.#lastPaycheckDate, date) < this.#settings.earlyPaycheckDays) {",
+    "replace": "      if (daysBetween(this.#lastPaycheckDate, date) <= this.#settings.earlyPaycheckDays) {",
+    "why": "[settings] A9 3.7 a deposit exactly 10 days after the last paycheck waits"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "        handled.push(Object.freeze({ kind: 'early-paycheck', id, date, amount, description }));\n",
+    "replace": "",
+    "why": "[settings] A9 leave an early paycheck out of what the change does"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "fromReserve: mom.fromReserve, difference: amount - mom.fromReserve }",
+    "replace": "fromReserve: mom.fromReserve, difference: 0 }",
+    "why": "[settings] A9 8.3 say nothing of a mom payment waits when the reserve cannot cover it"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "fromReserve: mom.fromReserve, difference: amount - mom.fromReserve }",
+    "replace": "fromReserve: amount, difference: amount - mom.fromReserve }",
+    "why": "[settings] A9 8.1 say all of a mom payment comes out of the reserve"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "const rechecked = [...('paycheckRule' in patch ? this.#recheckForPaychecks() : []), ...('momRule' in patch ? this.#recheckForMom() : [])];",
+    "replace": "const rechecked = [...('momRule' in patch ? this.#recheckForMom() : []), ...('paycheckRule' in patch ? this.#recheckForPaychecks() : [])];",
+    "why": "[settings] A9 list the mom payments before the paychecks"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "  check(sum === 100, `split must add up to 100, not ${sum}`);",
+    "replace": "  check(sum === 100, `split must add up to 100, not ${sum - 1}`);",
+    "why": "[settings] 0.2 say the wrong sum when the split does not add up"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "check(Object.hasOwn(DEFAULT_SETTINGS, key), ",
+    "replace": "check(key !== '', ",
+    "why": "[settings] 0.2 accept a setting that does not exist"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/settings.ts",
+    "find": "export const FROM_NEXT_PAYCHECK = Object.freeze(['split', 'momReservePerPaycheck', 'momReserveCap'] as const);",
+    "replace": "export const FROM_NEXT_PAYCHECK = Object.freeze(['split', 'momReservePerPaycheck'] as const);",
+    "why": "[settings] 13.1 forget that the mom reserve cap waits for the next paycheck"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/rules.ts",
+    "find": "  deposit: Object.freeze(['other-income', 'savings', 'needs', 'wants', 'momReserve', 'not-mine'] as const),",
+    "replace": "  deposit: Object.freeze(['other-income', 'savings', 'needs', 'wants', 'not-mine'] as const),",
+    "why": "[settings] 6.2 a deposit rule cannot pick the mom reserve"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/rules.ts",
+    "find": "  person: Object.freeze(['needs', 'wants', 'not-mine', 'mom'] as const),",
+    "replace": "  person: Object.freeze(['needs', 'wants', 'not-mine', 'mom', 'savings'] as const),",
+    "why": "[settings] 7.4 offer savings to a rule for a person"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/rules.ts",
+    "find": "  purchase: Object.freeze(['needs', 'wants'] as const),",
+    "replace": "  purchase: Object.freeze(['wants', 'needs'] as const),",
+    "why": "[settings] 4.2 offer wants before needs"
   }
 ]

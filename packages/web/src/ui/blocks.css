@@ -973,3 +973,127 @@ a.bucket:active {
   font-size: var(--text-sub);
   color: var(--text-2);
 }
+
+/* ----- Compare table: this pay period next to what comes next ----- */
+
+.compare {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.compare th,
+.compare td {
+  padding: var(--space-2) var(--space-4);
+  text-align: right;
+  vertical-align: top;
+  /* At the largest text size an enormous amount wraps rather than leave the screen. */
+  overflow-wrap: anywhere;
+}
+
+.compare thead th {
+  font-size: var(--text-sub);
+  font-weight: var(--weight-medium);
+  color: var(--text-2);
+}
+
+.compare tbody th {
+  text-align: left;
+  font-weight: var(--weight-regular);
+  color: var(--text-2);
+}
+
+.compare tbody tr + tr {
+  border-top: 1px solid var(--separator);
+}
+
+.compare td .status {
+  margin-top: 2px;
+}
+
+.compare__value {
+  display: block;
+}
+
+/* The table is as wide as the card it is in; the card is the container. */
+.compare-wrap {
+  container-type: inline-size;
+}
+
+/* With the text large (the card narrower than 21 times the text size), the
+   columns cannot sit side by side: each row stacks, and each value says which
+   column it is. */
+@container (max-width: 21em) {
+  .compare thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .compare,
+  .compare tbody,
+  .compare tr,
+  .compare th,
+  .compare td {
+    display: block;
+  }
+
+  .compare tbody th {
+    padding-bottom: 0;
+  }
+
+  .compare td {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0 var(--space-3);
+    padding-top: var(--space-1);
+    padding-bottom: var(--space-1);
+  }
+
+  .compare td::before {
+    content: attr(data-label);
+    color: var(--text-2);
+    text-align: left;
+  }
+
+  .compare td .status {
+    margin-top: 0;
+  }
+}
+
+/* ----- A rule's position in its list: the first that matches wins ----- */
+
+.position {
+  display: inline-block;
+  min-width: 1.5em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+
+/* ----- A sentence inside a card, and a heading for part of a card ----- */
+
+.card__note {
+  padding: var(--space-3) var(--space-4) 0;
+  font-size: var(--text-sub);
+  color: var(--text-2);
+}
+
+.card__note:last-child {
+  padding-bottom: var(--space-3);
+}
+
+.card__subtitle {
+  padding: var(--space-4) var(--space-4) var(--space-1);
+  font-size: var(--text-sub);
+  font-weight: var(--weight-bold);
+  color: var(--text-2);
+}
+
+.compare__sub {
+  display: block;
+  font-weight: var(--weight-regular);
+}

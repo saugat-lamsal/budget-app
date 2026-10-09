@@ -1,4 +1,4 @@
-// npm run screenshots [-- --out <folder>]
+// npm run screenshots [-- --out <folder>] [-- --only <name prefix>]
 //
 // iPhone-size pictures of the screens on the demo's made-up lives, in light
 // and dark mode, for pull requests. Taken in WebKit (iPhone Safari's
@@ -14,6 +14,9 @@ const path = (p) => fileURLToPath(new URL(p, root));
 const args = process.argv.slice(2);
 const outAt = args.indexOf('--out');
 const out = outAt === -1 ? path('screenshots') : args[outAt + 1];
+// Only the pictures whose names start with this, such as "settings".
+const onlyAt = args.indexOf('--only');
+const only = onlyAt === -1 ? undefined : args[onlyAt + 1];
 const port = 5199;
 
 const built = spawnSync(process.execPath, [path('scripts/demo.mjs'), '--build-only'], { stdio: 'inherit' });
@@ -226,6 +229,80 @@ const SHOTS = [
   ['payday-not-set-up', 'not-set-up', '/payday'],
   ['payday-error', 'error', '/payday', 'error'],
   ['payday-loading', 'slow', '/payday', 'loading-payday'],
+  // Settings
+  ['settings', 'settings-busy', '/settings'],
+  ['settings-whole', 'settings-busy', '/settings', 'full'],
+  ['settings-normal-whole', 'normal', '/settings', 'full'],
+  ['settings-first-sync-whole', 'settings-first-sync', '/settings', 'full'],
+  ['settings-log', 'settings-busy', '/settings', 'bottom'],
+  ['settings-mismatch', 'mismatch', '/settings'],
+  ['settings-big', 'big', '/settings', 'full'],
+  ['settings-not-set-up', 'not-set-up', '/settings'],
+  ['settings-error', 'error', '/settings', 'error'],
+  ['settings-loading', 'slow', '/settings', 'loading-settings'],
+  ['settings-split-sheet', 'normal', '/settings', async (page) => {
+    await page.getByTestId('row-split').click();
+  }],
+  ['settings-split-refused', 'normal', '/settings', async (page) => {
+    await page.getByTestId('row-split').click();
+    await page.getByTestId('field-needs').fill('40');
+    await page.getByTestId('field-wants').fill('30');
+    await page.getByTestId('sheet-save').click();
+    await page.getByTestId('sheet-problem').waitFor();
+  }],
+  ['settings-split-done', 'normal', '/settings', async (page) => {
+    await page.getByTestId('row-split').click();
+    await page.getByTestId('field-savings').fill('40');
+    await page.getByTestId('field-needs').fill('40');
+    await page.getByTestId('sheet-save').click();
+    await page.getByTestId('notice').waitFor();
+    await page.getByTestId('split-savings').getByText('Changes').waitFor();
+    return 'no-sheet';
+  }],
+  ['settings-reserve-sheet', 'normal', '/settings', async (page) => {
+    await page.getByTestId('row-reserve').click();
+  }],
+  ['settings-paycheck-rule-preview', 'settings-first-sync', '/settings', async (page) => {
+    await page.getByTestId('row-paycheck-rule').click();
+    await page.getByTestId('field-paycheck-rule').fill('MADE UP EMPLOYER PAYROLL');
+    await page.getByTestId('sheet-save').click();
+    await page.getByTestId('preview').waitFor();
+  }],
+  ['settings-paycheck-rule-preview-bottom', 'settings-first-sync', '/settings', async (page) => {
+    await page.getByTestId('row-paycheck-rule').click();
+    await page.getByTestId('field-paycheck-rule').fill('MADE UP EMPLOYER PAYROLL');
+    await page.getByTestId('sheet-save').click();
+    await page.getByTestId('preview').waitFor();
+    await page.getByTestId('settings-sheet').evaluate((e) => e.scrollTo(0, e.scrollHeight));
+  }],
+  ['settings-mom-rule-preview', 'settings-first-sync', '/settings', async (page) => {
+    await page.getByTestId('row-mom-rule').click();
+    await page.getByTestId('field-mom-rule').fill('MADE UP MOM');
+    await page.getByTestId('sheet-save').click();
+    await page.getByTestId('preview').waitFor();
+  }],
+  ['settings-rule-add', 'normal', '/settings', async (page) => {
+    await page.getByTestId('row-add-rule').click();
+    await page.getByTestId('field-rule-text').fill('CORNER STORE');
+  }],
+  ['settings-rule-added', 'normal', '/settings', async (page) => {
+    await page.getByTestId('row-add-rule').click();
+    await page.getByTestId('field-rule-text').fill('CORNER STORE');
+    await page.getByTestId('sheet-save').click();
+    await page.getByTestId('notice').waitFor();
+    return 'no-sheet';
+  }],
+  ['settings-rule-remove-confirm', 'normal', '/settings', async (page) => {
+    await page.getByTestId('rule-streaming').click();
+    await page.getByTestId('sheet-remove').click();
+    await page.getByTestId('confirm-yes').waitFor();
+  }],
+  ['settings-promo-sheet', 'normal', '/settings', async (page) => {
+    await page.getByTestId('row-promo').click();
+  }],
+  ['settings-leftover-sheet', 'normal', '/settings', async (page) => {
+    await page.getByTestId('row-leftover').click();
+  }],
 ];
 
 mkdirSync(out, { recursive: true });
@@ -243,7 +320,7 @@ try {
       // Only to draw the iPhone's notch and home bar areas (safe areas).
       bypassCSP: true,
     });
-    for (const [name, life, address, step] of SHOTS) {
+    for (const [name, life, address, step] of SHOTS.filter(([name]) => only === undefined || name.startsWith(only))) {
       const page = await context.newPage();
       await page.goto(`${base}/demo/${life}`);
       if (address !== '/home') await page.goto(`${base}${address}`);
@@ -253,6 +330,7 @@ try {
       else if (step === 'loading-review') await page.getByTestId('review-loading').waitFor();
       else if (step === 'loading-activity') await page.getByTestId('activity-loading').waitFor();
       else if (step === 'loading-payday') await page.getByTestId('payday-loading').waitFor();
+      else if (step === 'loading-settings') await page.getByTestId('settings-loading').waitFor();
       else if (step === 'error') await page.locator('[data-testid$="-error"]').waitFor();
       else await page.locator('main[aria-busy="false"]').waitFor();
       if (typeof step === 'function') {
@@ -271,4 +349,4 @@ try {
   await browser.close();
   demo.kill();
 }
-console.log(`Saved ${SHOTS.length * 2} pictures to ${out}`);
+console.log(`Saved ${SHOTS.filter(([name]) => only === undefined || name.startsWith(only)).length * 2} pictures to ${out}`);

@@ -52,7 +52,12 @@ export const DEFAULT_SETTINGS: Settings = deepFreeze({
 
 const LEFTOVER_CHOICES: readonly LeftoverChoice[] = ['ask', 'roll-over', 'move-to-savings'];
 
+// Rule 13.1: a change to these waits for the next paycheck; every other
+// setting applies right away (QUESTIONS.md B38).
+export const FROM_NEXT_PAYCHECK = Object.freeze(['split', 'momReservePerPaycheck', 'momReserveCap'] as const);
+
 export function changeSettings(current: Settings, patch: Partial<Settings>): Settings {
+  for (const key of Object.keys(patch)) check(Object.hasOwn(DEFAULT_SETTINGS, key), `there is no setting called ${key}`);
   return validateSettings({ ...current, ...patch });
 }
 
@@ -63,7 +68,8 @@ export function validateSettings(settings: Settings): Settings {
     [s.split.savings, s.split.needs, s.split.wants].every((p) => Number.isInteger(p) && p >= 0 && p <= 100),
     'split percentages must be whole numbers from 0 to 100',
   );
-  check(s.split.savings + s.split.needs + s.split.wants === 100, 'split must add up to 100');
+  const sum = s.split.savings + s.split.needs + s.split.wants;
+  check(sum === 100, `split must add up to 100, not ${sum}`);
   checkCents(s.momReservePerPaycheck, 'mom reserve per paycheck');
   checkCents(s.momReserveCap, 'mom reserve cap');
   checkCents(s.momMonthlyTarget.low, 'mom monthly target low end');

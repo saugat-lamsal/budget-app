@@ -1,7 +1,10 @@
+import { createHash } from 'node:crypto';
 import {
   ACCOUNTS,
+  FROM_NEXT_PAYCHECK,
   MOVABLE_POTS,
   MoneyError,
+  RULE_CHOICES,
   addCents,
   formatDollars,
   subtractCents,
@@ -11,15 +14,39 @@ import {
   type ConfirmReason,
   type IsoDate,
   type LeftoverAnswer,
+  type LeftoverChoice,
   type PickTo,
   type Pot,
   type ReviewDetail,
   type ReviewOptions,
+  type Settings,
+  type SettingsPreview,
   type SortChoice,
   type SortedNow,
+  type SortingRule,
   type SplitPart,
+  type TextRule,
 } from '@budget-app/money';
-import type { ChoiceOf, ChoicePart, ChoiceRequest, ChoiceResponse, Done, MoveRequest, MoveResponse, Moved, RefusalCode } from './views/choice.js';
+import type {
+  ChoiceOf,
+  ChoicePart,
+  ChoiceRequest,
+  ChoiceResponse,
+  Done,
+  MoveRequest,
+  MoveResponse,
+  Moved,
+  RefusalCode,
+  RuleDone,
+  RuleRequest,
+  RuleResponse,
+  RuleSpec,
+  RuleView,
+  SettingsDone,
+  SettingsRequest,
+  SettingsResponse,
+} from './views/choice.js';
+import { ruleViewOf } from './views/settings.js';
 
 // How a tap reaches the books (Phase 4). The screen sends the choice it was
 // offered; the money math decides. Three promises:
@@ -31,10 +58,11 @@ import type { ChoiceOf, ChoicePart, ChoiceRequest, ChoiceResponse, Done, MoveReq
 //   and says why, in words.
 // - Anything final asks first: it is not done without his OK in the request.
 //
-// Three kinds of tap come through here: a choice for an item waiting in
+// Five kinds of tap come through here: a choice for an item waiting in
 // review; the same for an item sorted already, from the list of what went in
-// and out of a bucket (4.7, QUESTIONS.md B100 to B102); and moving money
-// between buckets by hand (13.3, 13.4, B103).
+// and out of a bucket (4.7, QUESTIONS.md B100 to B102); moving money between
+// buckets by hand (13.3, 13.4, B103); a change to the settings (section 2,
+// 13.1); and adding, changing, or removing a sorting rule (13.2).
 
 const PICKS: readonly PickTo[] = ['paycheck', 'other-income', 'savings', 'needs', 'wants', 'momReserve', 'not-mine', 'mom'];
 const SPLIT_BUCKETS: readonly ChoicePart['bucket'][] = ['needs', 'wants', 'not-mine'];
@@ -81,9 +109,133 @@ export function parseMoveRequest(value: unknown): MoveRequest | null {
   return { id, move: { from, to, amount }, ...(confirmed === undefined ? {} : { confirmed }) };
 }
 
-// Whatever the phone sent: a move if it says move, otherwise a choice.
-export function parseRequest(value: unknown): ChoiceRequest | MoveRequest | null {
-  return isRecord(value) && 'move' in value ? parseMoveRequest(value) : parseChoiceRequest(value);
+// Whatever the phone sent: a move, a settings change, or a rule change if it
+// says so, otherwise a choice.
+export function parseRequest(value: unknown): ChoiceRequest | MoveRequest | SettingsRequest | RuleRequest | null {
+  if (!isRecord(value)) return null;
+  if ('move' in value) return parseMoveRequest(value);
+  if ('settings' in value) return parseSettingsRequest(value);
+  if ('rule' in value) return parseRuleRequest(value);
+  return parseChoiceRequest(value);
+}
+
+// ----- Settings and sorting rules (section 2) -----
+
+const LEFTOVER_CHOICES: readonly LeftoverChoice[] = ['ask', 'roll-over', 'move-to-savings'];
+// More reminder days than this is not a setting, it is a mistake.
+const MAX_REMINDER_DAYS = 30;
+const PREVIEW_KEY = /^[0-9a-f]{1,64}$/;
+
+const isWhole = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value);
+const whole = (value: unknown): number | undefined => (isWhole(value) ? value : undefined);
+
+function textRule(value: unknown): TextRule | null | undefined {
+  if (value === null) return null;
+  if (!isRecord(value) || !onlyKeys(value, ['contains']) || typeof value['contains'] !== 'string') return undefined;
+  const contains = value['contains'].trim();
+  return contains === '' || contains.length > MAX_TEXT_LENGTH ? undefined : { contains };
+}
+
+// How each setting is read: exactly the shape the money math keeps, or
+// undefined. Whether the value makes sense (a split adding up to 100, a real
+// date) is the money math's to say, in words.
+const SETTING_READERS: { readonly [K in keyof Settings]: (value: unknown) => Settings[K] | undefined } = {
+  split: (v) => {
+    if (!isRecord(v) || Object.keys(v).length !== 3 || !onlyKeys(v, ['savings', 'needs', 'wants'])) return undefined;
+    const { savings, needs, wants } = v;
+    return isWhole(savings) && isWhole(needs) && isWhole(wants) ? { savings, needs, wants } : undefined;
+  },
+  momReservePerPaycheck: whole,
+  momReserveCap: whole,
+  momMonthlyTarget: (v) => {
+    if (!isRecord(v) || Object.keys(v).length !== 2 || !onlyKeys(v, ['low', 'high'])) return undefined;
+    const { low, high } = v;
+    return isWhole(low) && isWhole(high) ? { low, high } : undefined;
+  },
+  lowBucketAlertPercent: whole,
+  cardReminderDaysBefore: (v) => (Array.isArray(v) && v.length <= MAX_REMINDER_DAYS && v.every(isWhole) ? [...(v as number[])] : undefined),
+  dailyReviewTime: (v) => (typeof v === 'string' && v.length <= 5 ? v : undefined),
+  leftoverAtPayday: (v) => {
+    if (!isRecord(v) || Object.keys(v).length !== 2 || !onlyKeys(v, ['needs', 'wants'])) return undefined;
+    const { needs, wants } = v;
+    const ok = (c: unknown): c is LeftoverChoice => (LEFTOVER_CHOICES as readonly unknown[]).includes(c);
+    return ok(needs) && ok(wants) ? { needs, wants } : undefined;
+  },
+  oldCardPromoEndDate: (v) => (v === null || (typeof v === 'string' && v.length <= 10) ? v : undefined),
+  paycheckRule: textRule,
+  payScheduleDays: whole,
+  momRule: textRule,
+  earlyPaycheckDays: whole,
+};
+
+// A change to one or more settings, exactly as the money math keeps them; otherwise null.
+export function parseSettingsRequest(value: unknown): SettingsRequest | null {
+  if (!isRecord(value) || !onlyKeys(value, ['id', 'settings', 'confirmed', 'seen'])) return null;
+  const { id, settings, confirmed, seen } = value;
+  if (typeof id !== 'string' || !ID_FORMAT.test(id)) return null;
+  if (!isRecord(settings) || Object.keys(settings).length === 0) return null;
+  const patch: Record<string, unknown> = {};
+  for (const [key, sent] of Object.entries(settings)) {
+    if (!Object.hasOwn(SETTING_READERS, key)) return null;
+    const read = SETTING_READERS[key as keyof Settings](sent);
+    if (read === undefined) return null;
+    patch[key] = read;
+  }
+  if (confirmed !== undefined && typeof confirmed !== 'boolean') return null;
+  if (seen !== undefined && (typeof seen !== 'string' || !PREVIEW_KEY.test(seen))) return null;
+  return { id, settings: patch as Partial<Settings>, ...(confirmed === undefined ? {} : { confirmed }), ...(seen === undefined ? {} : { seen }) };
+}
+
+// A sorting rule as the phone sends it: a kind, some text, and one of the
+// choices the money math gives that kind (RULE_CHOICES); otherwise null.
+function parseRuleSpec(value: unknown, withId: boolean): (RuleSpec & { readonly id?: string }) | null {
+  if (!isRecord(value) || !onlyKeys(value, withId ? ['id', 'for', 'contains', 'to'] : ['for', 'contains', 'to'])) return null;
+  const { for: kind, contains, to } = value;
+  if (kind !== 'purchase' && kind !== 'deposit' && kind !== 'person') return null;
+  if (typeof contains !== 'string') return null;
+  const text = contains.trim();
+  if (text === '' || text.length > MAX_TEXT_LENGTH) return null;
+  if (!(RULE_CHOICES[kind] as readonly unknown[]).includes(to)) return null;
+  const spec = { for: kind, contains: text, to } as RuleSpec;
+  if (!withId) return spec;
+  const id = value['id'];
+  if (typeof id !== 'string' || id === '' || id.length > MAX_ITEM_LENGTH) return null;
+  return { id, ...spec };
+}
+
+// Adding, changing, or removing one sorting rule; otherwise null.
+export function parseRuleRequest(value: unknown): RuleRequest | null {
+  if (!isRecord(value) || !onlyKeys(value, ['id', 'rule', 'confirmed'])) return null;
+  const { id, rule, confirmed } = value;
+  if (typeof id !== 'string' || !ID_FORMAT.test(id)) return null;
+  if (!isRecord(rule) || Object.keys(rule).length !== 1) return null;
+  if (confirmed !== undefined && typeof confirmed !== 'boolean') return null;
+  const yes = confirmed === undefined ? {} : { confirmed };
+  if ('add' in rule) {
+    const spec = parseRuleSpec(rule['add'], false);
+    return spec === null ? null : { id, rule: { add: spec }, ...yes };
+  }
+  if ('change' in rule) {
+    const spec = parseRuleSpec(rule['change'], true);
+    return spec === null || spec.id === undefined ? null : { id, rule: { change: spec as RuleView }, ...yes };
+  }
+  if ('remove' in rule) {
+    const which = rule['remove'];
+    return typeof which === 'string' && which !== '' && which.length <= MAX_ITEM_LENGTH ? { id, rule: { remove: which }, ...yes } : null;
+  }
+  return null;
+}
+
+// The money math's sorting rule for what the phone sent.
+function sortingRuleOf(id: string, spec: RuleSpec): SortingRule {
+  switch (spec.for) {
+    case 'purchase':
+      return { id, for: 'purchase', contains: spec.contains, bucket: spec.to };
+    case 'deposit':
+      return { id, for: 'deposit', contains: spec.contains, choice: { to: spec.to } };
+    case 'person':
+      return { id, for: 'person', contains: spec.contains, choice: { to: spec.to } };
+  }
 }
 
 function isPot(value: unknown): value is Pot {
@@ -150,6 +302,7 @@ export class ChoiceDesk {
   // demo); the real server keeps it with the book's history.
   readonly #done = new Map<string, { readonly fingerprint: string; readonly done: Done }>();
   readonly #moved = new Map<string, { readonly fingerprint: string; readonly moved: Moved }>();
+  readonly #changed = new Map<string, { readonly fingerprint: string } & ({ readonly settings: SettingsDone } | { readonly rule: RuleDone })>();
 
   constructor(book: Book, today: () => IsoDate) {
     this.#book = book;
@@ -163,7 +316,7 @@ export class ChoiceDesk {
       if (earlier.fingerprint === fingerprint) return { ok: true, replayed: true, done: earlier.done };
       return refuse('id-reused', 'That decision number was already used for a different choice.');
     }
-    if (this.#moved.has(request.id)) return refuse('id-reused', 'That decision number was already used for a different choice.');
+    if (this.#moved.has(request.id) || this.#changed.has(request.id)) return refuse('id-reused', 'That decision number was already used for a different choice.');
 
     const details = this.#book.reviewDetails();
     const detail = details.find((d) => d.item.id === request.item);
@@ -234,7 +387,7 @@ export class ChoiceDesk {
       if (earlier.fingerprint === fingerprint) return { ok: true, replayed: true, moved: earlier.moved };
       return refuse('id-reused', 'That decision number was already used for a different move.');
     }
-    if (this.#done.has(request.id)) return refuse('id-reused', 'That decision number was already used for a different choice.');
+    if (this.#done.has(request.id) || this.#changed.has(request.id)) return refuse('id-reused', 'That decision number was already used for a different choice.');
 
     const { from, to, amount } = request.move;
     if (from === to) return refuse('refused', 'Pick two different buckets to move money between');
@@ -251,6 +404,123 @@ export class ChoiceDesk {
     const moved: Moved = { from, to, amount };
     this.#moved.set(request.id, { fingerprint, moved });
     return { ok: true, replayed: false, moved };
+  }
+
+  // A change to the settings (section 2). Only the settings that change are
+  // changed and logged; the money math checks each and says why it refuses.
+  // 13.1: the split and the mom reserve wait for the next paycheck, and the
+  // answer says so. A9: the paycheck rule and the mom rule sort what is
+  // waiting for good, so they ask first, with what they would do (the money
+  // math's preview). His yes must name the preview he saw: if what it would
+  // do has changed since, it asks again.
+  settings(request: SettingsRequest): SettingsResponse {
+    const fingerprint = canonical(request);
+    const earlier = this.#changed.get(request.id);
+    if (earlier !== undefined) {
+      if (earlier.fingerprint === fingerprint && 'settings' in earlier) return { ok: true, replayed: true, done: earlier.settings };
+      return refuse('id-reused', 'That decision number was already used for a different change.');
+    }
+    if (this.#done.has(request.id) || this.#moved.has(request.id)) return refuse('id-reused', 'That decision number was already used for a different choice.');
+
+    const current = this.#book.settings();
+    const patch = Object.fromEntries(Object.entries(request.settings).filter(([key, value]) => canonical(value) !== canonical(current[key as keyof Settings]))) as Partial<Settings>;
+    const keys = Object.keys(patch) as (keyof Settings)[];
+    if (keys.length === 0) return refuse('refused', 'That is already the setting');
+    const today = this.#today();
+    const explain = (error: unknown): SettingsResponse => {
+      if (error instanceof MoneyError) return refuse('refused', explainRefusal(error, []));
+      throw error;
+    };
+
+    if ('paycheckRule' in patch || 'momRule' in patch) {
+      let preview: SettingsPreview;
+      try {
+        preview = this.#book.previewSettingsChange(patch, today);
+      } catch (error) {
+        return explain(error);
+      }
+      const key = previewKey(preview);
+      if (request.confirmed !== true || request.seen !== key) {
+        const why = request.confirmed === true && request.seen !== undefined ? 'What it would do has changed since you looked. Check it again' : askingAboutRules(patch);
+        return { ...refuse('needs-confirmation', why), preview: { ...preview, key } };
+      }
+    }
+
+    let rechecked: SettingsDone['rechecked'];
+    try {
+      ({ rechecked } = this.#book.changeSettings(patch, today));
+    } catch (error) {
+      return explain(error);
+    }
+    const done: SettingsDone = { changed: keys, fromNextPaycheck: keys.some((key) => (FROM_NEXT_PAYCHECK as readonly string[]).includes(key)), rechecked };
+    this.#changed.set(request.id, { fingerprint, settings: done });
+    return { ok: true, replayed: false, done };
+  }
+
+  // Adding, changing, or removing a sorting rule (13.2). A new rule goes to
+  // the end of the list; a changed one keeps its place. Either sorts what is
+  // waiting that it is now the first match for, and leaves waiting what it
+  // cannot sort, by name (A19). Removing a rule asks first; what it sorted
+  // stays where it is.
+  rule(request: RuleRequest): RuleResponse {
+    const fingerprint = canonical(request);
+    const earlier = this.#changed.get(request.id);
+    if (earlier !== undefined) {
+      if (earlier.fingerprint === fingerprint && 'rule' in earlier) return { ok: true, replayed: true, done: earlier.rule };
+      return refuse('id-reused', 'That decision number was already used for a different change.');
+    }
+    if (this.#done.has(request.id) || this.#moved.has(request.id)) return refuse('id-reused', 'That decision number was already used for a different choice.');
+
+    const book = this.#book;
+    const today = this.#today();
+    const edit = request.rule;
+    const details = book.reviewDetails();
+    const before = new Set(book.reviewItems().map((i) => i.id));
+    const existing = (id: string): SortingRule | undefined => book.rules().find((r) => r.id === id);
+    let action: RuleDone['action'];
+    let ruleId: string;
+    let stillWaiting: readonly string[] = [];
+    let removed: SortingRule | undefined;
+    try {
+      if ('add' in edit) {
+        // The rule's name comes from the decision number, so it is made once.
+        ruleId = `rule-${request.id}`;
+        ({ stillWaiting } = book.addRule(sortingRuleOf(ruleId, edit.add), today));
+        action = 'added';
+      } else if ('change' in edit) {
+        ruleId = edit.change.id;
+        const was = existing(ruleId);
+        if (was === undefined) return refuse('not-waiting', 'That rule is not there any more');
+        const next = sortingRuleOf(ruleId, edit.change);
+        if (canonical(next) === canonical(was)) return refuse('refused', 'The rule already says that');
+        ({ stillWaiting } = book.changeRule(next, today));
+        action = 'changed';
+      } else {
+        ruleId = edit.remove;
+        removed = existing(ruleId);
+        if (removed === undefined) return refuse('not-waiting', 'That rule is not there any more');
+        if (request.confirmed !== true) return refuse('needs-confirmation', `Removing the rule "${removed.contains}" needs your OK first. What it already sorted stays where it is`);
+        book.removeRule(ruleId, today);
+        action = 'removed';
+      }
+    } catch (error) {
+      if (error instanceof MoneyError) return refuse('refused', explainRefusal(error, details));
+      throw error;
+    }
+    const now = removed ?? existing(ruleId);
+    if (now === undefined) throw new Error(`the rule ${ruleId} went missing`);
+    const after = new Set(book.reviewItems().map((i) => i.id));
+    const done: RuleDone = {
+      action,
+      rule: ruleViewOf(now),
+      alsoSorted: [...before].filter((id) => !after.has(id)).length,
+      stillWaiting: stillWaiting.map((id) => {
+        const d = details.find((x) => x.item.id === id);
+        return { item: id, name: d === undefined ? 'An item' : nameOf(d) };
+      }),
+    };
+    this.#changed.set(request.id, { fingerprint, rule: done });
+    return { ok: true, replayed: false, done };
   }
 
   // The choice is one the money math offers for this item (review-options.ts).
@@ -323,6 +593,27 @@ type Refusal = Extract<ChoiceResponse, { ok: false }>;
 
 function refuse(code: RefusalCode, why: string): Refusal {
   return { ok: false, code, why: `${why.replace(/\s*\.?\s*$/, '')}. Nothing was changed.` };
+}
+
+// A9: why a change to the paycheck rule or the mom rule asks first.
+function askingAboutRules(patch: Partial<Settings>): string {
+  const named = (['paycheckRule', 'momRule'] as const).filter((key) => key in patch);
+  const names = named.map((key) => (key === 'paycheckRule' ? 'the paycheck rule' : 'the mom rule')).join(' and ');
+  const cleared = named.filter((key) => patch[key] === null);
+  if (cleared.length === 0) return `Setting ${names} sorts what is waiting for good, so it needs your OK first`;
+  if (cleared.length === named.length) {
+    if (named.length === 2) return 'Clearing the paycheck rule and the mom rule needs your OK first: what they find will wait in review until you set them again';
+    return named[0] === 'paycheckRule'
+      ? 'Clearing the paycheck rule needs your OK first: paychecks will wait in review until you set it again'
+      : 'Clearing the mom rule needs your OK first: payments to her will wait in review until you set it again';
+  }
+  return `Changing ${names} needs your OK first`;
+}
+
+// A name for exactly this preview: the same preview always gets the same key,
+// and a different one, a different key.
+function previewKey(preview: SettingsPreview): string {
+  return createHash('sha256').update(canonical(preview)).digest('hex').slice(0, 32);
 }
 
 // 13.4: why a move asks first, in his words: what it takes out of, and

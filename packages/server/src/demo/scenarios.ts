@@ -88,6 +88,15 @@ interface Story {
   // leftover questions are open and the new paycheck's share is not in the
   // savings account yet.
   readonly secondPaycheck?: boolean;
+  // Plenty on Settings: settings changed along the way, sorting rules added,
+  // changed, removed, and made from a correction, a hand move, a promo end
+  // date (made up), and a new split and mom reserve that wait for the next
+  // paycheck (13.1). Each on its own day, in order, so the log reads as it
+  // happened.
+  readonly settingsBusy?: boolean;
+  // The first sync: no paycheck rule and no mom rule yet, so the paycheck
+  // and the payment to mom wait in review (for Settings, A9).
+  readonly firstSync?: boolean;
 }
 
 // When the bank was last read and matched, in the "bank-not-read" life:
@@ -101,9 +110,10 @@ function story(s: Story): HomeInput {
     pots: { savings: x(820_000), needs: x(31_250), wants: x(18_400), momReserve: x(120_000), heldForOthers: 0 },
     oldCardDebt: x(298_000),
     lastPaycheckDate: '2026-09-18',
-    settings: SETTINGS,
+    settings: s.firstSync === true ? changeSettings(SETTINGS, { paycheckRule: null, momRule: null }) : SETTINGS,
     rules: RULES,
   });
+  const busy = s.settingsBusy === true;
   let n = 0;
   const buy = (date: IsoDate, amount: Cents, description: string, account: Purchase['account'] = 'everyday-card', pending = false): string => {
     const id = `demo-${(n += 1)}`;
@@ -113,10 +123,17 @@ function story(s: Story): HomeInput {
 
   buy('2026-09-22', 6_412, 'GROCERY OUTLET #12', 'checking');
   buy('2026-09-26', 575, 'BLUE DOOR COFFEE');
+  if (busy) {
+    book.changeSettings({ cardReminderDaysBefore: [10, 3], dailyReviewTime: '21:00' }, '2026-09-27');
+    book.addRule({ id: 'pharmacy', for: 'purchase', contains: 'PHARMACY', bucket: 'needs' }, '2026-09-28');
+    book.addRule({ id: 'roommate', for: 'deposit', contains: 'MADE UP ROOMMATE', choice: { to: 'not-mine' } }, '2026-09-29');
+    book.addRule({ id: 'landlord', for: 'person', contains: 'MADE UP LANDLORD', choice: { to: 'needs' } }, '2026-09-30');
+    book.changeSettings({ lowBucketAlertPercent: 25 }, '2026-10-01');
+  }
   // A coffee still pending the day before payday, which posts after it with a tip.
   const pendingCoffee = s.activityBusy === true ? buy('2026-10-01', 450, 'BLUE DOOR COFFEE', 'everyday-card', true) : '';
   book.receive({ kind: 'deposit', id: 'demo-pay', account: 'checking', date: PAYDAY, amount: x(420_000), description: `${EMPLOYER} DIR DEP` });
-  for (const item of book.reviewItems()) {
+  for (const item of s.firstSync === true ? [] : book.reviewItems()) {
     // On the busy lists, needs' leftover is moved to savings, so that row is there to see.
     const answer = s.activityBusy === true && item.type === 'leftover' && item.bucket === 'needs' ? 'move-to-savings' : 'roll-over';
     if (item.type === 'leftover' && s.reviewBusy !== true) book.answerLeftover(item.id, answer, PAYDAY);
@@ -124,7 +141,13 @@ function story(s: Story): HomeInput {
   book.receive({ kind: 'payment-to-person', id: 'demo-mom', account: 'checking', date: '2026-10-03', amount: x(50_000), description: `ZELLE TO ${MOM}` });
   const groceryRun = buy('2026-10-03', 8_643, 'GROCERY OUTLET #12', 'checking');
   const gasRun = buy('2026-10-04', 4_120, 'CORNER GAS STATION');
-  buy('2026-10-05', 3_890, 'MAIN ST RESTAURANT');
+  if (busy) book.changeRule({ id: 'pharmacy', for: 'purchase', contains: 'PHARMACY #', bucket: 'needs' }, '2026-10-04');
+  const lunch = buy('2026-10-05', 3_890, 'MAIN ST RESTAURANT');
+  if (busy) {
+    book.moveMoney({ from: 'wants', to: 'needs', amount: x(2_500) }, '2026-10-05');
+    // A work lunch, really needs: "always do this" goes just ahead of the restaurant rule (13.6).
+    book.sortAlways(lunch, { to: 'needs' }, { id: 'work-lunch', contains: 'MAIN ST RESTAURANT' }, '2026-10-05');
+  }
   if (s.chargedTwice === true) {
     const copy = buy('2026-10-05', 3_890, 'MAIN ST RESTAURANT');
     book.receive({ kind: 'taken-back', id: 'demo-correction', takenId: copy, date: '2026-10-06', description: 'CORRECTION' });
@@ -132,6 +155,13 @@ function story(s: Story): HomeInput {
   buy('2026-10-05', 1_599, 'STREAMING SERVICE');
   if (s.eatingOut !== undefined) buy('2026-10-06', s.eatingOut, 'HARBOR RESTAURANT');
   const unsorted = [buy('2026-10-06', 2_317, 'ONLINE MARKETPLACE'), buy('2026-10-06', 1_150, 'CORNER STORE')];
+  if (busy) {
+    book.removeRule('pharmacy', '2026-10-06');
+    // A made-up promo end date: the payoff countdown is on (9.5).
+    book.changeSettings({ oldCardPromoEndDate: '2027-06-30' }, '2026-10-06');
+    // A new split and mom reserve: they wait for the next paycheck (13.1).
+    book.changeSettings({ split: { savings: 40, needs: 40, wants: 20 }, momReservePerPaycheck: x(125_000) }, DEMO_TODAY);
+  }
   // What the extras take out of the savings account and put on the everyday card.
   let savingsOut = 0;
   let cardExtra = 0;
@@ -279,6 +309,8 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   { name: 'activity-busy', title: 'Activity: every kind of row on the lists of what went in and out', input: () => story({ activityBusy: true }) },
   { name: 'activity-marked', title: 'Activity: the same, and a purchase marked as a payment to the old card, to undo', input: () => story({ activityBusy: true, markedOldCard: true }) },
   { name: 'payday-paid', title: 'Payday: the second paycheck just came in, two leftover questions open', input: () => story({ today: '2026-10-16', secondPaycheck: true, allDone: true, statements: [] }) },
+  { name: 'settings-busy', title: 'Settings: changes along the way, a new split waiting for the next paycheck, a promo end date', input: () => story({ settingsBusy: true, chargedTwice: true }) },
+  { name: 'settings-first-sync', title: 'Settings: no paycheck rule or mom rule yet, the paycheck and mom waiting in review', input: () => story({ firstSync: true }) },
   {
     name: 'not-set-up',
     title: 'Before setup day',

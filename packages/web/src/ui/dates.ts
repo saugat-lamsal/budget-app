@@ -32,3 +32,8 @@ export function asOfText(at: string, timeZone?: string): string {
 export function monthName(month: string): string {
   return utc(`${month}-01`).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
 }
+
+// "Jun 30, 2027": a day that may be in another year, such as the old card's promo end date.
+export function dayWithYear(date: IsoDate): string {
+  return utc(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+}

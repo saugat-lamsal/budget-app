@@ -1,6 +1,21 @@
 import type { Pot } from '@budget-app/money';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ActivityView, BucketsView, ChoiceRequest, ChoiceResponse, HomeView, MoveRequest, MoveResponse, PaydayView, ReviewView } from '@budget-app/server/views';
+import type {
+  ActivityView,
+  BucketsView,
+  ChoiceRequest,
+  ChoiceResponse,
+  HomeView,
+  MoveRequest,
+  MoveResponse,
+  PaydayView,
+  ReviewView,
+  RuleRequest,
+  RuleResponse,
+  SettingsRequest,
+  SettingsResponse,
+  SettingsView,
+} from '@budget-app/server/views';
 
 // The screens' numbers, from the server. The screens never work money out
 // themselves: every amount comes from the money math on the server.
@@ -14,6 +29,7 @@ const READS = {
   '/api/buckets': () => fetch('/api/buckets', READ),
   '/api/review': () => fetch('/api/review', READ),
   '/api/payday': () => fetch('/api/payday', READ),
+  '/api/settings': () => fetch('/api/settings', READ),
   '/api/activity/savings': () => fetch('/api/activity/savings', READ),
   '/api/activity/needs': () => fetch('/api/activity/needs', READ),
   '/api/activity/wants': () => fetch('/api/activity/wants', READ),
@@ -50,15 +66,18 @@ export async function markTakeBackSeen(id: string): Promise<void> {
   if (!response.ok) throw new Error(`marking it seen answered ${response.status}`);
 }
 
-// His choice for an item (waiting in review, or sorted already), or a move
-// of money between buckets by hand. The money math on the server decides; a
+// His choice for an item (waiting in review, or sorted already), a move of
+// money between buckets by hand, or a change to the settings or a sorting
+// rule. All go to the same address. The money math on the server decides; a
 // refusal comes back as an answer with the reason (nothing was changed).
 // Anything else, such as no signal, throws: the same request, with the same
 // decision number, can be sent again and changes nothing twice. It changes
 // the app's books, never the bank (0.4).
 export async function sendChoice(request: ChoiceRequest): Promise<ChoiceResponse>;
 export async function sendChoice(request: MoveRequest): Promise<MoveResponse>;
-export async function sendChoice(request: ChoiceRequest | MoveRequest): Promise<ChoiceResponse | MoveResponse> {
+export async function sendChoice(request: SettingsRequest): Promise<SettingsResponse>;
+export async function sendChoice(request: RuleRequest): Promise<RuleResponse>;
+export async function sendChoice(request: ChoiceRequest | MoveRequest | SettingsRequest | RuleRequest): Promise<ChoiceResponse | MoveResponse | SettingsResponse | RuleResponse> {
   const response = await fetch('/api/choice', {
     method: 'POST',
     cache: 'no-store',
@@ -66,7 +85,7 @@ export async function sendChoice(request: ChoiceRequest | MoveRequest): Promise<
     body: JSON.stringify(request),
   });
   if (response.status !== 200 && response.status !== 422) throw new Error(`sending the choice answered ${response.status}`);
-  const answer = (await response.json()) as ChoiceResponse | MoveResponse;
+  const answer = (await response.json()) as ChoiceResponse | MoveResponse | SettingsResponse | RuleResponse;
   if (typeof answer !== 'object' || answer === null || typeof answer.ok !== 'boolean') throw new Error('the choice was answered with something unexpected');
   return answer;
 }
@@ -159,4 +178,5 @@ export const useHome = (): [Load<HomeView>, Reload] => useView<HomeView>('/api/h
 export const useBuckets = (): [Load<BucketsView>, Reload] => useView<BucketsView>('/api/buckets');
 export const useReview = (): [Load<ReviewView>, Reload] => useView<ReviewView>('/api/review');
 export const usePayday = (): [Load<PaydayView>, Reload] => useView<PaydayView>('/api/payday');
+export const useSettings = (): [Load<SettingsView>, Reload] => useView<SettingsView>('/api/settings');
 export const useActivity = (pot: Pot): [Load<ActivityView>, Reload] => useView<ActivityView>(ACTIVITY_URL[pot]);

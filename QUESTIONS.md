@@ -256,6 +256,69 @@ A21. Undoing a payment you marked as going to the old card FROM SAVINGS
      wrong. It is its own button, so nothing changes meaning.
 
 
+## Part A, added with Settings (Phase 4, Oct 9). Waiting on your answer.
+
+A22. The order of the sorting rules (4.2, B9). The first rule that matches
+     wins, so the order matters, but nothing lets you change it. Today a new
+     rule goes to the end of its list (B39), a changed rule keeps its place,
+     and "always do this" puts its rule just ahead of the rule it corrects
+     (13.6). Settings numbers each list (purchases, money in, payments to
+     people; only rules of the same kind compete) and says "the first rule
+     that matches wins".
+     Option 1: no reordering. To move a rule to the end, remove it and add it
+     again.
+     Option 2: "Move up" and "Move down" on each rule's sheet. Each move is in
+     the change log (13.5). After a move, what is waiting in Review that the
+     rule is now the first match for is sorted, as after a changed rule
+     (13.2); what is already sorted stays where it is.
+     Option 3: drag the rules into order. Harder to use with a large text
+     size, and harder to make work with VoiceOver.
+     Option 4: no order at all: the rule with the longest matching text wins
+     ("MAIN ST RESTAURANT" beats "RESTAURANT"). Changes 4.2 and B9.
+     Recommendation: option 2. Built: option 1, as the rulebook has it, until
+     you answer.
+
+A23. Bank rules on Settings (section 2, A12). They tell the bank connection
+     which bank items are transfers between your accounts, payments to
+     people, and card fees or interest. They live in the server's database,
+     not in the book (the money math), and the demo has no database, so
+     Settings does not show them yet. Three things to settle:
+     a. Where: on Settings now, or with Setup day (the next chunk), where they
+        are first set and suggested from the bank's own labels?
+     b. Does a change to a bank rule go in the change log (13.5)?
+     c. What does a changed bank rule do to items the bank connection has
+        already read?
+     Option 1: build them with Setup day; Settings then shows the same list
+     and can change it. (b) Yes: every change is in the change log, like the
+     others. (c) A changed bank rule reads what the bank sends from then on;
+     what was already read stays as it is (like 13.2, and 0.3), and one item
+     read wrong is fixed in Review with "transfer between my accounts" (5.6).
+     Option 2: as option 1, but (c) a changed bank rule also reads again what
+     is still waiting in Review.
+     Option 3: put them on Settings now, in the demo only, made up and kept
+     in memory, before Setup day exists.
+     Recommendation: option 1. Reading items again (option 2) means the bank
+     connection redoing what it already decided, on items already in the
+     book, which risks counting something twice; 5.6 already fixes one item
+     at a time. Option 3 is a mock-up that Setup day would replace. Not built.
+
+A24. What is in force this pay period (13.1). The book gave out only the
+     settings as they are now, so Settings could not show this pay period's
+     split next to the next paycheck's. The book had always kept the split
+     and the mom reserve in force for the pay period (other income uses them,
+     B38); it now gives them out (Book.splitInForce).
+     Option 1: only the split and the two mom reserve numbers (per paycheck,
+     and the cap) have a "this pay period" and a "from next paycheck", shown
+     side by side; every other setting applies right away (B38) and is shown
+     once. The leftover setting says it is used at the next payday.
+     Option 2: the book keeps every setting as it was when each pay period
+     began, and Settings shows both columns for all of them (Payday could
+     then also show the old ones for a past pay period).
+     Recommendation: option 1. It is what 13.1 says, and nothing else waits
+     for a paycheck. Built: option 1, since this chunk asks Settings to show
+     both; option 2 would go on top of it, with nothing built thrown away.
+
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 B1. Paycheck smaller than the mom reserve (3.2).
@@ -987,3 +1050,80 @@ B111. A kept leftover is what the question asked. If late spending (B4)
       moved to savings, with what was taken off shown beside it (B109).
       Nothing moves when you roll over, so no bucket changed; only what
       the Payday screen said.
+
+
+## Part B, added with Settings (Phase 4, Oct 9). Tell me if any is wrong.
+
+B112. What asks first on Settings. Setting, changing, or clearing the
+      paycheck rule or the mom rule always asks first, and shows what it would
+      do to what is waiting in Review, from the money math (A9): each item it
+      would handle, and every bucket and the number waiting, now and after.
+      Removing a sorting rule asks first. Nothing else asks: a new split or
+      reserve waits for the next paycheck and can be changed back before
+      then, and the other settings can be changed back at any time. Adding or
+      changing a sorting rule does not ask (in Review, "always do this" does,
+      B91): on Settings the rule is what he set out to make, it can be changed
+      or removed right there, and whatever it sorted can be sorted again
+      (4.7). The answer says what it sorted, and names what it could not
+      (A19).
+
+B113. His yes to the paycheck rule or the mom rule names the preview he saw.
+      If what the change would do is no longer that (something arrived in the
+      meantime, so an item or a bucket after it would differ), nothing
+      happens and it asks again, with what it would do now. The yes uses the
+      same decision number as the question, so a retry is still one change
+      (B92).
+
+B114. Only what changes is changed. A sheet sends all of its fields (the
+      reserve with its cap, say); a setting sent as it already is, is left out,
+      so the change log names only what changed. If nothing changes, it says
+      "That is already the setting" and nothing is logged (like B101). A rule
+      changed to what it already says is the same.
+
+B115. The sorting rules on Settings. A new rule goes to the end of its list
+      (B39); a changed rule keeps its place, and can even change kind
+      (purchases, money in, payments to people). Each kind is numbered on its
+      own, since only rules of the same kind compete (B9). Each kind offers
+      only what the money math lets that kind of rule pick (RULE_CHOICES): a
+      purchase rule needs or wants (4.2), a money-in rule other income, a
+      bucket, or not mine, never "this is my paycheck" (B55), a rule for a
+      person needs, wants, not mine, or for mom (7.6). Fees, money out of
+      savings, and paychecks have no rules (4.8, 4.9, B55); Settings says so.
+
+B116. The change log on Settings shows every line the book keeps: settings,
+      rules (with a rule made from a correction, and the rule it went ahead
+      of, as that rule was then, 13.6), hand moves, and the bank taking
+      something back (4.10). A settings change that changed several settings
+      is one line for each. Newest first; on the same day, the one made last
+      first. Each line has its day (13.5 says "with the date"; no time of
+      day). A split or reserve change says "from the next paycheck".
+
+B117. "This pay period" on Settings is what the paycheck that began it was
+      worked out with (setup day's settings before the first paycheck); "From
+      next paycheck" is the setting now, with the day of the next payday from
+      the pay schedule. A row that differs says "Changes", in words. A
+      paycheck the bank takes back keeps what it put in force, like its pay
+      period (B71). See A24.
+
+B118. Changes that apply right away, as B38 says: a new pay schedule moves
+      the next payday at once, on Home too (11.2 counts from the last
+      paycheck); a new low-bucket percent changes the level of this pay
+      period's buckets at once; a new 10-day number applies to the next
+      paycheck-looking deposit; a new leftover setting is used at the next
+      payday (this payday's questions stay as they are).
+
+B119. Card reminder days can be any whole days, in any order, or none (then
+      no reminder comes, and Home shows a card only once it is overdue,
+      9.4). A day listed twice reminds once. The promo end date can be any
+      real date, even one already past (then all of the old card debt is due
+      now, 9.5); "Clear the date" turns the countdown off.
+
+B120. Amounts on Settings are typed in dollars and cents ("1,500.00",
+      "1500", "$1,500.00"), read as whole cents, never through a
+      floating-point number (0.1); percentages and days are whole numbers.
+      What cannot be read is said on the sheet and Save waits. Whether a value
+      makes sense (a split adding up to 100, a target's low end not above its
+      high end, a real date) is the money math's to say; a refusal says why,
+      in words, with what the split adds up to, and changes nothing.
+
+B121. Before setup day there are no settings to change: Settings says so.

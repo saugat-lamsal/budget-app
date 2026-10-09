@@ -79,9 +79,12 @@ describe.each(ENGINES)('tabs in %s', (_name, engine) => {
     await page.context().close();
   });
 
-  it('screens that come next say so', async () => {
+  it('Settings is a screen of its own now, with its numbers, at its own address', async () => {
     const page = await openScenario(await browser().newContext(phone()), base(), 'normal', '/settings');
-    expect(await page.getByTestId('coming-next').innerText()).toContain('Coming next');
+    await page.locator('main[aria-busy="false"]').waitFor();
+    expect(new URL(page.url()).pathname).toBe('/settings');
+    expect(await page.getByTestId('split-table').isVisible()).toBe(true);
+    expect(await page.getByTestId('coming-next').count()).toBe(0);
     await page.context().close();
   });
 });

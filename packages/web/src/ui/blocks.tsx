@@ -131,7 +131,7 @@ export function Button({
 
 // ----- Status label: a word and an icon, so color is never the only signal -----
 
-export type Status = 'low' | 'empty' | 'overdue' | 'pending' | 'under-target' | 'in-target' | 'over-target';
+export type Status = 'low' | 'empty' | 'overdue' | 'pending' | 'under-target' | 'in-target' | 'over-target' | 'changes';
 
 const STATUS: Readonly<Record<Status, { readonly word: string; readonly icon: IconName; readonly tone: Tone }>> = {
   low: { word: 'Low', icon: 'low', tone: 'warning' },
@@ -141,6 +141,7 @@ const STATUS: Readonly<Record<Status, { readonly word: string; readonly icon: Ic
   'under-target': { word: 'Under target', icon: 'low', tone: 'info' },
   'in-target': { word: 'In the target', icon: 'check', tone: 'info' },
   'over-target': { word: 'Over target', icon: 'alert', tone: 'warning' },
+  changes: { word: 'Changes', icon: 'swap', tone: 'info' },
 };
 
 export function StatusLabel({ status }: { readonly status: Status }) {
@@ -392,6 +393,7 @@ export function TextField({
   onChange,
   hint,
   money = false,
+  kind = 'text',
   testId,
 }: {
   readonly label: string;
@@ -400,9 +402,13 @@ export function TextField({
   readonly hint?: string;
   // An amount in dollars: the phone shows the number pad.
   readonly money?: boolean;
+  // A whole number (the phone shows the digits), or a date or a time (the
+  // phone's own picker). Plain text otherwise.
+  readonly kind?: 'text' | 'whole' | 'date' | 'time';
   readonly testId?: string | undefined;
 }) {
   const id = useId();
+  const picker = kind === 'date' || kind === 'time';
   return (
     <div className="field">
       <label htmlFor={id} className="field__label">
@@ -410,11 +416,11 @@ export function TextField({
       </label>
       <input
         id={id}
-        className={`field__input${money ? ' field__input--money' : ''}`}
-        type="text"
-        inputMode={money ? 'decimal' : 'text'}
+        className={`field__input${money || kind === 'whole' ? ' field__input--money' : ''}`}
+        type={picker ? kind : 'text'}
+        inputMode={picker ? undefined : money ? 'decimal' : kind === 'whole' ? 'numeric' : 'text'}
         autoComplete="off"
-        autoCapitalize={money ? 'off' : 'characters'}
+        autoCapitalize={money || kind !== 'text' ? 'off' : 'characters'}
         spellCheck={false}
         value={value}
         onChange={(event) => onChange(event.currentTarget.value)}
@@ -458,6 +464,63 @@ export function SelectField({
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+// ----- Compare table: two columns of the same things, such as this pay period and the next -----
+
+// Each row has a name and a value in each column; a row whose values differ
+// says so in words ("Changes"), so color is never the only signal. When the
+// text is large the columns no longer fit side by side, so each row stacks,
+// every value with its column's name (blocks.css).
+export interface CompareColumn {
+  readonly name: string;
+  readonly sub?: string;
+}
+
+export function CompareTable({
+  caption,
+  columns,
+  rows,
+  testId,
+}: {
+  readonly caption: string;
+  readonly columns: readonly [CompareColumn, CompareColumn];
+  readonly rows: readonly { readonly label: string; readonly first: ReactNode; readonly second: ReactNode; readonly differs: boolean; readonly testId: string }[];
+  readonly testId?: string | undefined;
+}) {
+  const label = (c: CompareColumn): string => (c.sub === undefined ? c.name : `${c.name}, ${c.sub}`);
+  return (
+    <div className="compare-wrap">
+      <table className="compare" data-testid={testId}>
+        <caption className="sr-only">{caption}</caption>
+        <thead>
+          <tr>
+            <td />
+            {columns.map((c) => (
+              <th key={c.name} scope="col">
+                {c.name}
+                {c.sub !== undefined && <span className="compare__sub">{c.sub}</span>}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.testId} data-testid={row.testId} data-differs={row.differs}>
+              <th scope="row">{row.label}</th>
+              <td data-testid={`${row.testId}-first`} data-label={label(columns[0])}>
+                <span className="compare__value">{row.first}</span>
+              </td>
+              <td data-testid={`${row.testId}-second`} data-label={label(columns[1])}>
+                <span className="compare__value">{row.second}</span>
+                {row.differs && <StatusLabel status="changes" />}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

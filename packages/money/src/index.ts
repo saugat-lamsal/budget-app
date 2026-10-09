@@ -13,6 +13,7 @@ export {
 export { addDays, assertIsoDate, daysBetween, monthOf, type IsoDate } from './dates.js';
 export {
   DEFAULT_SETTINGS,
+  FROM_NEXT_PAYCHECK,
   changeSettings,
   matchesTextRule,
   validateSettings,
@@ -38,7 +39,7 @@ export type {
   TransferSent,
 } from './transactions.js';
 export { BUCKETS, SPENDING_BUCKETS, type Bucket, type SplitBucket } from './buckets.js';
-export type { DepositRuleChoice, MoneyInChoice, PersonPaymentChoice, SortingRule } from './rules.js';
+export { RULE_CHOICES, checkRules, type DepositRuleChoice, type MoneyInChoice, type PersonPaymentChoice, type SortingRule } from './rules.js';
 export { ACTIVITY_KINDS, type ActivityKind, type ActivityRow, type ActivityWhat, type BucketActivity, type PeriodSummary } from './activity.js';
 export type { LeftoverReport, PaycheckReport, PaydayReport } from './payday-report.js';
 export type { ResortDetail, SortedNow } from './resort.js';
@@ -61,6 +62,8 @@ export {
   type PurchaseView,
   type Received,
   type ReceiveOutcome,
+  type RecheckedItem,
+  type SettingsPreview,
   type ReviewDetail,
   type ReviewItem,
   type CheckedSafeToSpend,
