@@ -4,7 +4,7 @@ import type { Browser, BrowserContext } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAppServer } from '../../../server/src/http/server.js';
 import { homeView, type HomeInput } from '../../../server/src/views/home.js';
-import { ENGINES, WEB_ROOT, centsAt, close, listen, phone, waitOrReport, watchPage } from './harness.js';
+import { ENGINES, launch, WEB_ROOT, centsAt, close, listen, phone, waitOrReport, watchPage } from './harness.js';
 import { FIRST_SEED, LIVES, randomDay } from './random-day.js';
 
 // Random made-up lives (the Phase 2 simulator), each stopped on a random day
@@ -37,7 +37,7 @@ describe.each(ENGINES)('random lives on Home in %s', (_name, engine) => {
       },
     });
     base = await listen(server);
-    browser = await engine.launch();
+    browser = await launch(engine);
     context = await browser.newContext(phone());
   });
   afterAll(async () => {
@@ -56,9 +56,9 @@ describe.each(ENGINES)('random lives on Home in %s', (_name, engine) => {
     // A stuck wait names what it waited for, well inside the test's own limit.
     page.setDefaultTimeout(15_000);
     try {
-      watchPage(page);
+      await watchPage(page);
       await page.goto(`${base}/home?life=${seed}`);
-      await waitOrReport(page, base, '[data-testid="safe-to-spend"], [data-testid="mismatch"], [data-testid="home-error"]');
+      await waitOrReport(page, '[data-testid="safe-to-spend"], [data-testid="mismatch"], [data-testid="home-error"]');
       expect(await page.getByTestId('home-error').count(), `${where}: Home could not load`).toBe(0);
 
       // The simulator's bank always agrees with the book (section 12).

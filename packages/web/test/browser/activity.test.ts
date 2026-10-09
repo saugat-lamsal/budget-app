@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { START_DATE, appSide, openTestBook, purchase, refund, takenBack } from '../../../money/test/helpers.js';
 import { demoScenario } from '../../../server/src/demo/scenarios.js';
 import { activityOf, amountAt, numbersOf, pathOfPot, readActivity, rowOf } from './activity-screens.js';
-import { ENGINES, close, openScenario, phone, textAt, useEngine } from './harness.js';
+import { ENGINES, close, openScenario, phone, textAt, useEngine, launch } from './harness.js';
 import { openLive, startLive } from './live.js';
 import { sheetGapsAfterAnAnswer, watchChoices, watchSheetsAfterAnAnswer } from './screens.js';
 
@@ -414,7 +414,7 @@ describe.each(ENGINES)('sorting again: books made for the test, in %s', (_name, 
   let browser: Browser;
   const servers: Server[] = [];
   beforeAll(async () => {
-    browser = await engine.launch();
+    browser = await launch(engine);
   });
   afterAll(async () => {
     await browser?.close();

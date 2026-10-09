@@ -6,7 +6,7 @@ import { START_DATE, appSide, openTestBook, paycheck, purchase, takenBack } from
 import { demoScenario } from '../../../server/src/demo/scenarios.js';
 import { moneyText } from '../../src/ui/money-format.js';
 import { amountAt } from './activity-screens.js';
-import { ENGINES, close, openScenario, phone, textAt, useEngine } from './harness.js';
+import { ENGINES, launch, close, openScenario, phone, textAt, useEngine } from './harness.js';
 import { openLive, startLive } from './live.js';
 import { sheetGapsAfterAnAnswer, watchChoices, watchSheetsAfterAnAnswer } from './screens.js';
 
@@ -291,7 +291,7 @@ describe.each(ENGINES)('Payday: books made for the test, in %s', (_name, engine)
   let browser: Browser;
   const servers: Server[] = [];
   beforeAll(async () => {
-    browser = await engine.launch();
+    browser = await launch(engine);
   });
   afterAll(async () => {
     await browser?.close();

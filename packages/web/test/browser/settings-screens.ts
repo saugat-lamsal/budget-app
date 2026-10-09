@@ -9,7 +9,7 @@ import { openScenario, readCents, untilAnswered, waitOrReport } from './harness.
 // to be; the real screen is ready once it is no longer busy.)
 export async function openSettings(context: BrowserContext, base: string, life: string): Promise<Page> {
   const page = await openScenario(context, base, life, '/settings');
-  await waitOrReport(page, base, 'main[aria-busy="false"]');
+  await waitOrReport(page, 'main[aria-busy="false"]');
   await untilAnswered(page);
   return page;
 }

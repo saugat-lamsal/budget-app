@@ -4,7 +4,7 @@ import type { Server } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { START_DATE, appSide, deposit, openTestBook, payPerson, purchase, refund } from '../../../money/test/helpers.js';
 import { demoScenario } from '../../../server/src/demo/scenarios.js';
-import { ENGINES, centsAt, close, openScenario, phone, readCents, textAt, useEngine } from './harness.js';
+import { ENGINES, launch, centsAt, close, openScenario, phone, readCents, textAt, useEngine } from './harness.js';
 import { openLive, startLive } from './live.js';
 import { bucketsOf, bucketsOnScreen, item, listed, watchChoices } from './screens.js';
 
@@ -890,7 +890,7 @@ describe.each(ENGINES)('Review, books made for the test, in %s', (_name, engine)
   let browser: Browser;
   const servers: Server[] = [];
   beforeAll(async () => {
-    browser = await engine.launch();
+    browser = await launch(engine);
   });
   afterAll(async () => {
     await browser?.close();

@@ -48,9 +48,9 @@ export async function startLive(life: LiveLife): Promise<{ readonly server: Serv
 export async function openLive(context: BrowserContext, base: string, path: string): Promise<Page> {
   const page = await context.newPage();
   page.setDefaultTimeout(15_000);
-  watchPage(page);
+  await watchPage(page);
   await page.goto(`${base}${path}`);
-  await waitOrReport(page, base, 'main[aria-busy="false"]');
+  await waitOrReport(page, 'main[aria-busy="false"]');
   // Home's numbers are asked for on every screen: the page is handed over only
   // once that is answered too, so a test that closes it cancels nothing.
   await untilAnswered(page);

@@ -4,7 +4,7 @@ import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { MOM_NAME, START_DATE, appSide, openTestBook, payPerson, purchase, refund } from '../../../money/test/helpers.js';
 import { demoScenario } from '../../../server/src/demo/scenarios.js';
-import { ENGINES, centsAt, close, openScenario, phone, textAt, useEngine } from './harness.js';
+import { ENGINES, launch, centsAt, close, openScenario, phone, textAt, useEngine } from './harness.js';
 import { openLive, startLive } from './live.js';
 
 // Buckets, used in a browser like a person would, with every number it shows
@@ -240,7 +240,7 @@ describe.each(ENGINES)('Buckets, books made for the test, in %s', (_name, engine
   let browser: Browser;
   const servers: Server[] = [];
   beforeAll(async () => {
-    browser = await engine.launch();
+    browser = await launch(engine);
   });
   afterAll(async () => {
     await browser?.close();
@@ -322,7 +322,7 @@ describe.each(ENGINES)('Buckets, the target bar, in %s', (_name, engine) => {
   let custom: Browser;
   const servers: Server[] = [];
   beforeAll(async () => {
-    custom = await engine.launch();
+    custom = await launch(engine);
   });
   afterAll(async () => {
     await custom?.close();

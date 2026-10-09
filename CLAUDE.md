@@ -614,5 +614,71 @@ This applies to every phase and every session, cloud or local.
       row says what it does: to the old card from checking comes out of
       needs" (Chromium, a timeout waiting for the notice; not touched, left
       as is).
+  - PR #13 merged (Oct 9, 2026).
+- Browser tests failing on CI for no reason (Oct 9, 2026, branch
+  ci-flaky-browser-tests). 5 of 8 CI attempts on PRs 11 to 13 had failed in
+  browser tests the change had not touched. Only the browser tests' helpers
+  and their tests changed (packages/web/test), not the app and not .github.
+  - What the CI machines are (measured on them, Oct 9): 2 cores, 8 GB, one
+    test file at a time. The same code runs up to 45% slower on one runner
+    than another. Windows: 16,384 ports for outgoing connections (about
+    16,150 usable), and a closed connection keeps its port for 121 s. Linux
+    reuses those ports on 127.0.0.1. This PC is not like them: 16 threads,
+    64,511 ports, and 30 s (it was tuned), so it is hard to make CI's
+    failures happen here.
+  - Found: page-quiet.test.ts checked that Home's request was answered by
+    counting Playwright's "request finished" events right after the helper
+    returned. Those events can arrive after the page has moved on, so it
+    failed for that alone (Linux WebKit: asked 2, answered 1; Windows
+    Chromium: asked 1, answered 0). It now reads what the page has had
+    answered in full from the browser's own record (Resource Timing).
+  - Found in the helpers: the in-page count of fetches on their way was added
+    without waiting (void page.addInitScript) right before the page opened,
+    so a page could open with nothing counting and untilAnswered would wait
+    15 s for nothing; it counted a fetch as answered when its headers came,
+    not its body; and untilQuiet decided from Playwright's events, so it
+    could return while the screen was about to ask again, and the close that
+    followed cancelled that request. Now: the count is put on each context
+    before it has a page (watchContext; launch(engine) does it for every
+    context of every browser the tests start), an answer counts once its
+    body is in, untilQuiet and untilAnswered wait on the count inside the
+    page, and a page with no count is said at once.
+  - Leaving a page with a request on its way cancels it, and the browsers
+    then sometimes lose the next request (Oct 7, Oct 8 twice). The two Linux
+    failures (untilAnswered timing out in openLive in
+    random-lives-activity) and a Linux WebKit page that never loaded in
+    buckets.test.ts (Oct 8) each came on the page opened right after a
+    close. The tests used to guard against it one at a time. Now a launched
+    browser's contexts never close, go to another address, reload, or go
+    back while the page has a request of its own on its way
+    (leaveOnlyWhenQuiet in harness.ts). It costs about 4 s of 154 here. A
+    test that holds a request on purpose must let it go before it leaves.
+  - Ruled out: running out of ports with Connection: close. The most the
+    tests ever had waiting for their port to be freed was 1,165 on Windows
+    (938 on Linux), against about 16,000; and running out gives EADDRINUSE,
+    not ERR_NO_BUFFER_SPACE. Keeping connections open instead passed on both
+    (215 waiting on Windows), but Connection: close stays: it is what keeps
+    WebKit from reusing a connection it had cancelled, and nothing showed it
+    doing harm.
+  - Not explained: the one net::ERR_NO_BUFFER_SPACE (Windows, Chromium, the
+    first connection to a new test server, right after the test closed the
+    last one), and two Windows Chromium screens that showed their error
+    state (Home without its card, Review without its notice), which is what
+    a request failing outright looks like. If it happens again, the report
+    says more: when a browser test fails, every page still open is reported
+    (what it shows, its requests on their way, what failed, its console, what
+    its server was asked and answered) with the machine's connections on
+    127.0.0.1 by state.
+  - Found on this PC, not CI: a test server was given port 3659, which
+    browsers refuse to open (their lists of such ports all end at 10080), and
+    every test on it failed with net::ERR_UNSAFE_PORT. This PC hands out
+    ports from 1024 up, one after another; CI starts at 32768 or 49152. A
+    test server given such a port now listens again (listen in harness.ts;
+    test/test-server.test.ts).
+  - Tests: page-quiet.test.ts (22, both engines), test-server.test.ts.
+    Break-it: 9 breaks of the helpers, tagged "[ci]", all caught (node
+    scripts/break-it.mjs --match "\[ci\]" --only
+    test/browser/page-quiet.test.ts for the 8 in section home; node
+    scripts/break-it.mjs ci for the port).
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.
