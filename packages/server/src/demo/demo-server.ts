@@ -6,6 +6,7 @@ import { bucketsView } from '../views/buckets.js';
 import { homeView, type HomeInput } from '../views/home.js';
 import { paydayView } from '../views/payday.js';
 import { reviewView } from '../views/review.js';
+import { settingsView } from '../views/settings.js';
 import { DEMO_SCENARIOS, demoScenario, type DemoScenario } from './scenarios.js';
 
 // The screens on made-up data only (Phase 4). /demo lists the made-up
@@ -65,6 +66,21 @@ export function createDemoServer(options: { readonly webRoot: string; readonly o
     payday: async (request) => {
       const { input } = await wait(scenarioOf(request));
       return paydayView({ today: input.today, book: input.book, bank: input.bank, madeUpData: input.madeUpData });
+    },
+    settings: async (request) => {
+      const { input } = await wait(scenarioOf(request));
+      return settingsView({ today: input.today, book: input.book, bank: input.bank, madeUpData: input.madeUpData });
+    },
+    settingsChange: (request, change) => {
+      const { desk } = liveOf(scenarioOf(request));
+      // Before setup day there are no settings in the book to change.
+      if (desk === null) return { ok: false, code: 'refused', why: 'There is nothing to change before setup day. Nothing was changed.' };
+      return desk.settings(change);
+    },
+    ruleChange: (request, change) => {
+      const { desk } = liveOf(scenarioOf(request));
+      if (desk === null) return { ok: false, code: 'refused', why: 'There is nothing to change before setup day. Nothing was changed.' };
+      return desk.rule(change);
     },
     seen: (request, what) => {
       const live = liveOf(scenarioOf(request));

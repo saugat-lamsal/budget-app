@@ -45,10 +45,9 @@
 // or if the tests fail before anything is broken.
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defaultWorkDir, defaultWorkers, formatResults, loadBreaks, parseArgs, removeStaleRuns, restoreLeftovers, runBreakIt, selectBreaks, vitestRunner } from './break-it-lib.mjs';
+import { BREAK_LISTS, defaultWorkDir, defaultWorkers, formatResults, loadBreaks, parseArgs, removeStaleRuns, restoreLeftovers, runBreakIt, selectBreaks, vitestRunner } from './break-it-lib.mjs';
 
 const root = resolve(fileURLToPath(new URL('../', import.meta.url)));
-const lists = ['packages/money/break-it.json', 'packages/server/break-it.json', 'packages/web/break-it.json'];
 
 let options;
 try {
@@ -58,7 +57,7 @@ try {
   process.exit(2);
 }
 
-const breaks = loadBreaks(root, lists);
+const breaks = loadBreaks(root, BREAK_LISTS);
 restoreLeftovers(root, breaks);
 if (options.restore) {
   removeStaleRuns(root, defaultWorkDir());

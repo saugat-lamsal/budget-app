@@ -513,6 +513,20 @@ function Choices({ subject, busy, onChoose }: { readonly subject: Subject; reado
         </Card>
       )}
 
+      {/* A21: its own choice, so Needs keeps meaning "out of Needs" (A4). */}
+      {!always && options.unmark && (
+        <Card title="Not a payment to the old card?" testId="sheet-unmark">
+          <ListRow
+            title="It was not a payment to the old card"
+            detail="It becomes what the bank sent again, and waits in Review for you to sort it. The old card owes what it did before."
+            onClick={() => {
+              if (!busy) onChoose(target, { unmark: true });
+            }}
+            testId="choice-unmark"
+          />
+        </Card>
+      )}
+
       {always && <p className="sheet__note">A rule picks one bucket. It can't split a purchase or mark a transfer.</p>}
     </>
   );

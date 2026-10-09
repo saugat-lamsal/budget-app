@@ -40,6 +40,8 @@ function attempts(d: Sortable): Attempt[] {
   found.push({ name: 'split needs/savings', offered: false, run: (b) => b.sort(id, { split: [{ bucket: 'needs', amount: 1 }, { bucket: 'savings' as never, amount: d.amount - 1 }] }, TODAY) });
   for (const account of ACCOUNTS) found.push({ name: `transfer with ${account}`, offered: o.transfer.includes(account), run: (b) => b.sort(id, { transfer: account }, TODAY) });
   for (const of of o.match) found.push({ name: `match to ${of}`, offered: true, run: (b) => b.sort(id, { refundOf: of }, TODAY) });
+  // A21: "It was not a payment to the old card", only for one marked from savings.
+  found.push({ name: 'unmark', offered: o.unmark, run: (b) => b.sort(id, { unmark: true }, TODAY) });
   found.push({ name: 'match to nothing', offered: false, run: (b) => b.sort(id, { refundOf: 'nothing-like-this' }, TODAY) });
   found.push({ name: 'match to itself', offered: false, run: (b) => b.sort(id, { refundOf: id }, TODAY) });
   // A new rule also sorts every other waiting item it matches (13.2); one

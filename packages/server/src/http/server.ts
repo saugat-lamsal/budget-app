@@ -5,10 +5,11 @@ import type { Pot } from '@budget-app/money';
 import { parseRequest } from '../choices.js';
 import { POT_SLUGS, potOfSlug, type ActivityView } from '../views/activity.js';
 import type { BucketsView } from '../views/buckets.js';
-import type { ChoiceRequest, ChoiceResponse, MoveRequest, MoveResponse } from '../views/choice.js';
+import type { ChoiceRequest, ChoiceResponse, MoveRequest, MoveResponse, RuleRequest, RuleResponse, SettingsRequest, SettingsResponse } from '../views/choice.js';
 import type { HomeView } from '../views/home.js';
 import type { PaydayView } from '../views/payday.js';
 import type { ReviewView } from '../views/review.js';
+import type { SettingsView } from '../views/settings.js';
 
 // The web server for the screens (Phase 4): the built app from packages/web,
 // and its numbers as JSON. It only reads. Hosting and login come later
@@ -48,16 +49,33 @@ export interface AppServerOptions {
   // What went in and out of one bucket (QUESTIONS.md B97), and the Payday screen's numbers.
   readonly activity?: (request: IncomingMessage, pot: Pot) => ActivityView | Promise<ActivityView>;
   readonly payday?: (request: IncomingMessage) => PaydayView | Promise<PaydayView>;
+  // The Settings screen's numbers (section 2, 13.1, 13.5).
+  readonly settings?: (request: IncomingMessage) => SettingsView | Promise<SettingsView>;
+  // His change to the settings, or to a sorting rule. The money math decides,
+  // and says when it needs his yes first. Without them, none can be sent.
+  readonly settingsChange?: SettingsHandler;
+  readonly ruleChange?: RuleHandler;
 }
 
 export type Seen = { readonly kind: 'bank-took-back'; readonly id: string };
 export type SeenHandler = (request: IncomingMessage, what: Seen) => boolean | Promise<boolean>;
 export type ChoiceHandler = (request: IncomingMessage, choice: ChoiceRequest) => ChoiceResponse | Promise<ChoiceResponse>;
 export type MoveHandler = (request: IncomingMessage, move: MoveRequest) => MoveResponse | Promise<MoveResponse>;
+export type SettingsHandler = (request: IncomingMessage, change: SettingsRequest) => SettingsResponse | Promise<SettingsResponse>;
+export type RuleHandler = (request: IncomingMessage, change: RuleRequest) => RuleResponse | Promise<RuleResponse>;
+
+// What handles each kind of request sent to /api/choice.
+interface ChoiceHandlers {
+  readonly choice: ChoiceHandler | undefined;
+  readonly move: MoveHandler | undefined;
+  readonly settingsChange: SettingsHandler | undefined;
+  readonly ruleChange: RuleHandler | undefined;
+}
 
 // The most a "seen" request may carry; the real one is under 100 bytes.
 const SEEN_LIMIT = 1024;
-// A choice is small too: even a three-way split is under 400 bytes.
+// A choice is small too: even a three-way split is under 400 bytes, and a
+// change to every setting at once under 1,000.
 const CHOICE_LIMIT = 4096;
 
 // Reads what the app's own page sent: JSON (which another site cannot send
@@ -118,7 +136,7 @@ async function markSeen(request: IncomingMessage, response: ServerResponse, seen
 // His choice for an item in review. A malformed request is a bad request;
 // anything well formed gets an answer: done, or refused with why (nothing
 // changed). A repeat of the same decision gets the first answer again.
-async function takeChoice(request: IncomingMessage, response: ServerResponse, handlers: { readonly choice: ChoiceHandler | undefined; readonly move: MoveHandler | undefined }): Promise<void> {
+async function takeChoice(request: IncomingMessage, response: ServerResponse, handlers: ChoiceHandlers): Promise<void> {
   const sent = await readOwnJson(request, response, CHOICE_LIMIT);
   if (response.writableEnded || response.headersSent) return;
   const parsed = parseRequest(sent);
@@ -126,9 +144,17 @@ async function takeChoice(request: IncomingMessage, response: ServerResponse, ha
     send(response, 400, 'text/plain; charset=utf-8', 'Not a choice that can be made.', 'no-store');
     return;
   }
-  // A hand move or a choice for an item: each goes to what handles it, and
-  // when nothing does, it is as if the address were not there.
-  const answer = 'move' in parsed ? await handlers.move?.(request, parsed) : await handlers.choice?.(request, parsed);
+  // A hand move, a settings change, a rule change, or a choice for an item:
+  // each goes to what handles it, and when nothing does, it is as if the
+  // address were not there.
+  const answer =
+    'move' in parsed
+      ? await handlers.move?.(request, parsed)
+      : 'settings' in parsed
+        ? await handlers.settingsChange?.(request, parsed)
+        : 'rule' in parsed
+          ? await handlers.ruleChange?.(request, parsed)
+          : await handlers.choice?.(request, parsed);
   if (answer === undefined) {
     send(response, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'not-found' }), 'no-store');
     return;
@@ -197,14 +223,16 @@ export function createAppServer(options: AppServerOptions): Server {
       await markSeen(request, response, options.seen);
       return;
     }
-    // His choice for an item in review: it changes the app's books, never the bank (0.4).
-    if (path === '/api/choice' && (options.choice !== undefined || options.move !== undefined)) {
+    // His choices, moves, and changes to the settings: they change the app's
+    // books, never the bank (0.4).
+    const handlers: ChoiceHandlers = { choice: options.choice, move: options.move, settingsChange: options.settingsChange, ruleChange: options.ruleChange };
+    if (path === '/api/choice' && Object.values(handlers).some((handler) => handler !== undefined)) {
       if (request.method !== 'POST') {
         response.setHeader('Allow', 'POST');
         send(response, 405, 'text/plain; charset=utf-8', 'Only POST.', 'no-store');
         return;
       }
-      await takeChoice(request, response, { choice: options.choice, move: options.move });
+      await takeChoice(request, response, handlers);
       return;
     }
     if (request.method !== 'GET' && request.method !== 'HEAD') {
@@ -228,9 +256,10 @@ export function createAppServer(options: AppServerOptions): Server {
     for (const [name, make] of [
       ['buckets', options.buckets],
       ['review', options.review],
+      ['settings', options.settings],
     ] as const) {
       if (path !== `/api/${name}` || make === undefined) continue;
-      let view: BucketsView | ReviewView;
+      let view: BucketsView | ReviewView | SettingsView;
       try {
         view = await make(request);
       } catch (error) {

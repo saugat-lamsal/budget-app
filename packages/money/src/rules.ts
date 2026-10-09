@@ -32,6 +32,19 @@ export function isPersonPaymentChoice(choice: unknown): choice is PersonPaymentC
   return choice.to === 'not-mine' || choice.to === 'mom' || isSpendingBucket(choice.to);
 }
 
+// What each kind of sorting rule can pick, in the order to offer them: a
+// purchase needs or wants (4.2), money in anything but "this is my paycheck"
+// (6.2, B55), a payment to a person needs, wants, not mine, or for mom (7.6).
+export const RULE_CHOICES: {
+  readonly purchase: readonly SplitBucket[];
+  readonly deposit: readonly DepositRuleChoice['to'][];
+  readonly person: readonly PersonPaymentChoice['to'][];
+} = Object.freeze({
+  purchase: Object.freeze(['needs', 'wants'] as const),
+  deposit: Object.freeze(['other-income', 'savings', 'needs', 'wants', 'momReserve', 'not-mine'] as const),
+  person: Object.freeze(['needs', 'wants', 'not-mine', 'mom'] as const),
+});
+
 // Your sorting rules (4.2, 6.2, 7.4). A rule matches a bank description that
 // contains its text, ignoring case. When several rules match, the first one
 // in the list wins.

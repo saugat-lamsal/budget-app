@@ -8,6 +8,7 @@ import { bucketsView } from '../../../server/src/views/buckets.js';
 import { homeView } from '../../../server/src/views/home.js';
 import { paydayView } from '../../../server/src/views/payday.js';
 import { reviewView } from '../../../server/src/views/review.js';
+import { settingsView } from '../../../server/src/views/settings.js';
 import { WEB_ROOT, listen, untilAnswered, waitOrReport, watchPage } from './harness.js';
 
 // One book, served live: every screen's numbers are worked out from it, and
@@ -32,6 +33,9 @@ export function liveServer(life: LiveLife): Server {
     move: (_request, move) => desk.move(move),
     activity: (_request, pot) => activityView({ today: life.today, book: life.book, pot, madeUpData: true }),
     payday: () => paydayView({ today: life.today, book: life.book, bank: life.bank, madeUpData: true }),
+    settings: () => settingsView({ today: life.today, book: life.book, bank: life.bank, madeUpData: true }),
+    settingsChange: (_request, change) => desk.settings(change),
+    ruleChange: (_request, change) => desk.rule(change),
   });
 }
 

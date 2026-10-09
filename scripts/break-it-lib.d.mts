@@ -21,7 +21,10 @@ export interface Options {
 }
 
 export function parseArgs(argv: readonly string[]): Options;
+export const BREAK_LISTS: readonly string[];
 export function loadBreaks(root: string, lists: readonly string[]): BreakSpec[];
+// The breaks whose text is not in their file exactly once; found is null when the file is gone.
+export function staleBreaks(root: string, breaks: readonly BreakSpec[]): (BreakSpec & { readonly found: number | null })[];
 export function selectBreaks(breaks: readonly BreakSpec[], options: Pick<Options, 'sections' | 'match' | 'file'>): BreakSpec[];
 export function restoreLeftovers(root: string, breaks: readonly BreakSpec[], log?: (line: string) => void): string[];
 export function removeStaleRuns(root: string, workDir: string, log?: (line: string) => void): void;

@@ -1,4 +1,17 @@
-import type { AccountId, Cents, ConfirmReason, LeftoverAnswer, PickTo, Pot } from '@budget-app/money';
+import type {
+  AccountId,
+  Cents,
+  ConfirmReason,
+  DepositRuleChoice,
+  LeftoverAnswer,
+  PersonPaymentChoice,
+  PickTo,
+  Pot,
+  RecheckedItem,
+  Settings,
+  SettingsPreview,
+  SplitBucket,
+} from '@budget-app/money';
 
 // How a tap reaches the books. The screen sends the choice it was offered;
 // the server hands it to the money math, which decides. Types only, so the
@@ -23,7 +36,10 @@ export type ChoiceOf =
   | { readonly acknowledge: true }
   // "This refund is for this one" (4.5, QUESTIONS.md A18): one of the likely
   // purchases offered for a refund.
-  | { readonly refundOf: string };
+  | { readonly refundOf: string }
+  // "It was not a payment to the old card" (QUESTIONS.md A21): for one marked
+  // from savings, it becomes what the bank sent again.
+  | { readonly unmark: true };
 
 export interface ChoiceRequest {
   // Made once on the phone for this decision, and sent again, the same, on a
@@ -96,3 +112,74 @@ export type MoveResponse =
   // Nothing was changed. With needs-confirmation, reasons says why it asks
   // (the money math's, 13.4).
   | { readonly ok: false; readonly code: RefusalCode; readonly why: string; readonly reasons?: readonly ConfirmReason[] };
+
+// ----- Settings and sorting rules (section 2; 13.1, 13.2, 13.5) -----
+
+// A sorting rule as the phone sends it and sees it: what kind of item it is
+// for, the text the bank's description contains, and what it does (one of
+// RULE_CHOICES for that kind, from the money math).
+export type RuleSpec =
+  | { readonly for: 'purchase'; readonly contains: string; readonly to: SplitBucket }
+  | { readonly for: 'deposit'; readonly contains: string; readonly to: DepositRuleChoice['to'] }
+  | { readonly for: 'person'; readonly contains: string; readonly to: PersonPaymentChoice['to'] };
+
+export type RuleView = RuleSpec & { readonly id: string };
+
+export interface SettingsRequest {
+  // As for a choice: made once, sent again, the same, on a retry.
+  readonly id: string;
+  // The settings to change and their new values, as the money math has them:
+  // amounts in whole cents, percentages and days in whole numbers.
+  readonly settings: Partial<Settings>;
+  // His yes, for a change that asks first: the paycheck rule or the mom rule,
+  // which sort what is waiting for good (QUESTIONS.md A9).
+  readonly confirmed?: boolean;
+  // With his yes: the key of the preview he was shown. If what the change
+  // would do is not that any more, it asks again with what it would do now.
+  readonly seen?: string;
+}
+
+export interface RuleRequest {
+  readonly id: string;
+  readonly rule:
+    | { readonly add: RuleSpec }
+    | { readonly change: RuleView }
+    | { readonly remove: string }
+    // A22: one place up or down among the rules of its kind.
+    | { readonly move: { readonly id: string; readonly direction: 'up' | 'down' } };
+  // His yes, for removing a rule.
+  readonly confirmed?: boolean;
+}
+
+// What a change to the paycheck rule or the mom rule would do (A9), from the
+// money math, and a key that names exactly this preview.
+export type SettingsPreviewView = SettingsPreview & { readonly key: string };
+
+export interface SettingsDone {
+  // The settings that changed (the ones sent that were already so are left alone).
+  readonly changed: readonly (keyof Settings)[];
+  // 13.1: some of them wait for the next paycheck.
+  readonly fromNextPaycheck: boolean;
+  // A9: what a new paycheck rule or mom rule did to what was waiting.
+  readonly rechecked: readonly RecheckedItem[];
+}
+
+export type SettingsResponse =
+  | { readonly ok: true; readonly replayed: boolean; readonly done: SettingsDone }
+  // Nothing was changed. With needs-confirmation for the paycheck rule or the
+  // mom rule, preview says what it would do.
+  | { readonly ok: false; readonly code: RefusalCode; readonly why: string; readonly preview?: SettingsPreviewView };
+
+export interface RuleDone {
+  readonly action: 'added' | 'changed' | 'removed' | 'moved-up' | 'moved-down';
+  // The rule as it is now; for a removal, as it was.
+  readonly rule: RuleView;
+  // 13.2: the waiting items the rule sorted.
+  readonly alsoSorted: number;
+  // A19: waiting items it matched but could not sort, left exactly as they were.
+  readonly stillWaiting: readonly { readonly item: string; readonly name: string }[];
+}
+
+export type RuleResponse =
+  | { readonly ok: true; readonly replayed: boolean; readonly done: RuleDone }
+  | { readonly ok: false; readonly code: RefusalCode; readonly why: string };

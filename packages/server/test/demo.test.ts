@@ -10,6 +10,7 @@ import type { BucketsView } from '../src/views/buckets.js';
 import type { ChoiceResponse } from '../src/views/choice.js';
 import { homeView, type HomeView } from '../src/views/home.js';
 import type { ReviewView } from '../src/views/review.js';
+import { settingsView, type SettingsView } from '../src/views/settings.js';
 
 // The demo: the screens on made-up lives only. It must never reach the bank
 // or the database, so it is safe to open over wifi.
@@ -54,6 +55,37 @@ describe('the made-up lives', () => {
     expect(viewOf('bank-not-read').safeToSpend).toEqual({ shown: false, why: 'bank-not-read', lastChecked: { amount: 62_244 + 625, at: '2026-10-07T07:15:00-05:00' } });
     expect(homeView(demoScenario('not-set-up')!.input!())).toEqual({ state: 'not-set-up', madeUpData: true });
     expect(demoScenario('error')!.input).toBeNull();
+  });
+});
+
+describe('the made-up lives for Settings', () => {
+  function settingsOf(name: string): Extract<SettingsView, { state: 'tracking' }> {
+    const input = demoScenario(name)!.input!();
+    const view = settingsView({ today: input.today, book: input.book, bank: input.bank, madeUpData: input.madeUpData });
+    if (view.state !== 'tracking') throw new Error(`${name} is not tracking`);
+    return view;
+  }
+
+  it('13.1 13.5 9.5 "settings-busy" has a new split waiting for the next paycheck, a made-up promo date, and every kind of log line, in date order', () => {
+    const v = settingsOf('settings-busy');
+    expect(v.split.waiting).toEqual(['split', 'momReservePerPaycheck']);
+    expect(v.split.thisPayPeriod.split).toEqual({ savings: 50, needs: 30, wants: 20 });
+    expect(v.split.fromNextPaycheck).toMatchObject({ split: { savings: 40, needs: 40, wants: 20 }, momReservePerPaycheck: 125_000 });
+    expect(v.payoff).toMatchObject({ on: true, promoEndDate: '2027-06-30' });
+    expect(new Set(v.log.map((r) => r.kind))).toEqual(new Set(['setting', 'rule-added', 'rule-changed', 'rule-removed', 'money-moved', 'bank-took-back']));
+    expect(v.log.some((r) => r.kind === 'rule-added' && r.fromCorrection && r.aheadOf?.contains === 'RESTAURANT')).toBe(true);
+    expect(v.log.length).toBeGreaterThanOrEqual(12);
+    // Newest first, and never a later day below an earlier one.
+    const dates = v.log.map((r) => r.date);
+    expect([...dates].sort().reverse()).toEqual(dates);
+    expect(Object.values(v.rules).every((list) => list.length > 0)).toBe(true);
+  });
+
+  it('A9 "settings-first-sync" has no paycheck rule or mom rule, and the paycheck and mom waiting', () => {
+    const input = demoScenario('settings-first-sync')!.input!();
+    expect(input.book!.settings()).toMatchObject({ paycheckRule: null, momRule: null });
+    expect(input.book!.reviewItems().map((i) => i.id)).toEqual(['demo-pay', 'demo-mom', 'demo-7', 'demo-8']);
+    expect(input.book!.paychecks()).toEqual([]);
   });
 });
 
@@ -225,6 +257,50 @@ describe('the demo server', () => {
     expect(ok.status).toBe(200);
   });
 
+  it('section 2 Settings is served for every made-up life', async () => {
+    for (const s of DEMO_SCENARIOS) {
+      if (s.input === null || s.delayMs !== undefined) continue;
+      expect((await json<SettingsView>('/api/settings', `demo=${s.name}`)).state, s.name).toBe(s.name === 'not-set-up' ? 'not-set-up' : 'tracking');
+    }
+  });
+
+  it('13.1 A9 a settings change stays made until the life is picked again; the paycheck rule asks first', async () => {
+    const cookie = 'demo=settings-first-sync';
+    await fetch(`${base}/demo/settings-first-sync`, { redirect: 'manual' });
+    const split = await choose(cookie, { id: 'demo-change-1', settings: { split: { savings: 40, needs: 40, wants: 20 } } });
+    expect(split.status).toBe(200);
+    const asked = await choose(cookie, { id: 'demo-change-2', settings: { paycheckRule: { contains: 'MADE UP EMPLOYER PAYROLL' } } });
+    expect(asked.status).toBe(422);
+    const question = (await asked.json()) as { code: string; preview: { key: string; items: { id: string; kind: string }[] } };
+    expect(question.code).toBe('needs-confirmation');
+    expect(question.preview.items).toMatchObject([{ id: 'demo-pay', kind: 'paycheck' }]);
+    const yes = await choose(cookie, { id: 'demo-change-2', settings: { paycheckRule: { contains: 'MADE UP EMPLOYER PAYROLL' } }, confirmed: true, seen: question.preview.key });
+    expect(yes.status).toBe(200);
+    const after = await json<SettingsView>('/api/settings', cookie);
+    // The paycheck that was waiting started the pay period with the new split (13.1, 6.1).
+    expect(after.state === 'tracking' && after.split.thisPayPeriod.split).toEqual({ savings: 40, needs: 40, wants: 20 });
+    expect(after.state === 'tracking' && after.log.map((r) => r.kind)).toEqual(['setting', 'setting']);
+    await fetch(`${base}/demo/settings-first-sync`, { redirect: 'manual' });
+    const again = await json<SettingsView>('/api/settings', cookie);
+    expect(again.state === 'tracking' && again.log).toEqual([]);
+  });
+
+  it('13.2 a rule added from Settings sorts what it matches in Review', async () => {
+    const cookie = 'demo=normal';
+    await fetch(`${base}/demo/normal`, { redirect: 'manual' });
+    const res = await choose(cookie, { id: 'demo-change-3', rule: { add: { for: 'purchase', contains: 'CORNER STORE', to: 'needs' } } });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { done: { alsoSorted: number } }).done.alsoSorted).toBe(1);
+    const review = await json<ReviewView>('/api/review', cookie);
+    expect(review.state === 'tracking' && review.items.map((d) => ('description' in d.item ? d.item.description : d.item.id))).toEqual(['ONLINE MARKETPLACE']);
+    await fetch(`${base}/demo/normal`, { redirect: 'manual' });
+  });
+
+  it('a settings change before setup day finds nothing to change', async () => {
+    expect((await choose('demo=not-set-up', { id: 'demo-change-4', settings: { payScheduleDays: 7 } })).status).toBe(422);
+    expect((await choose('demo=not-set-up', { id: 'demo-change-5', rule: { remove: 'grocery' }, confirmed: true })).status).toBe(422);
+  });
+
   it('a choice before setup day finds nothing to choose from', async () => {
     const res = await choose('demo=not-set-up', { id: 'demo-decision-4', item: 'anything', choice: { to: 'wants' } });
     expect(res.status).toBe(422);
@@ -279,8 +355,10 @@ describe('the demo is made-up data only', () => {
       'views/home.ts',
       'views/payday.ts',
       'views/review.ts',
+      'views/settings.ts',
     ]);
-    expect([...packages].sort()).toEqual(['@budget-app/money', 'node:fs/promises', 'node:http', 'node:os', 'node:path', 'node:url']);
+    // node:crypto only names a preview of a settings change (choices.ts, previewKey).
+    expect([...packages].sort()).toEqual(['@budget-app/money', 'node:crypto', 'node:fs/promises', 'node:http', 'node:os', 'node:path', 'node:url']);
   });
 
   it('it reads no keys or secrets from the environment', () => {

@@ -513,8 +513,8 @@
   {
     "section": "review",
     "file": "packages/server/src/choices.ts",
-    "find": "contains.length > MAX_TEXT_LENGTH",
-    "replace": "contains.length >= MAX_TEXT_LENGTH",
+    "find": "if (contains === '' || contains.length > MAX_TEXT_LENGTH) return null;",
+    "replace": "if (contains === '' || contains.length >= MAX_TEXT_LENGTH) return null;",
     "why": "[review] rule text of exactly the longest length is not taken"
   },
   {
@@ -737,8 +737,8 @@
   {
     "section": "review",
     "file": "packages/server/src/choices.ts",
-    "find": "return { item: id, name: d === undefined ? 'An item' : nameOf(d) };",
-    "replace": "return { item: id, name: id };",
+    "find": "\n      return { item: id, name: d === undefined ? 'An item' : nameOf(d) };",
+    "replace": "\n      return { item: id, name: id };",
     "why": "[review] [pre-merge] A19 what stays waiting is named by its id"
   },
   {
@@ -814,8 +814,8 @@
   {
     "section": "review",
     "file": "packages/server/src/choices.ts",
-    "find": "    if (this.#done.has(request.id)) return refuse('id-reused', 'That decision number was already used for a different choice.');\n\n    const { from, to, amount } = request.move;",
-    "replace": "    const { from, to, amount } = request.move;",
+    "find": "    if (this.#done.has(request.id) || this.#changed.has(request.id)) return refuse('id-reused', 'That decision number was already used for a different choice.');\n\n    const { from, to, amount } = request.move;",
+    "replace": "    if (this.#changed.has(request.id)) return refuse('id-reused', 'That decision number was already used for a different choice.');\n\n    const { from, to, amount } = request.move;",
     "why": "[activity] B103 a decision number used for a choice can be used for a move"
   },
   {
@@ -849,8 +849,8 @@
   {
     "section": "review",
     "file": "packages/server/src/http/server.ts",
-    "find": "const answer = 'move' in parsed ? await handlers.move?.(request, parsed) : await handlers.choice?.(request, parsed);",
-    "replace": "const answer = 'move' in parsed ? await handlers.choice?.(request, parsed as never) : await handlers.move?.(request, parsed as never);",
+    "find": "'move' in parsed\n      ? await handlers.move?.(request, parsed)\n      : 'settings' in parsed\n        ? await handlers.settingsChange?.(request, parsed)\n        : 'rule' in parsed\n          ? await handlers.ruleChange?.(request, parsed)\n          : await handlers.choice?.(request, parsed);",
+    "replace": "'move' in parsed\n      ? await handlers.choice?.(request, parsed as never)\n      : 'settings' in parsed\n        ? await handlers.settingsChange?.(request, parsed)\n        : 'rule' in parsed\n          ? await handlers.ruleChange?.(request, parsed)\n          : await handlers.move?.(request, parsed as never);",
     "why": "[activity] B103 moves and choices go to each other's handler"
   },
   {
@@ -887,5 +887,264 @@
     "find": "filter((d) => d.item.type === 'leftover')",
     "replace": "filter((d) => d.item.type !== 'leftover')",
     "why": "[activity] 3.4 the questions on Payday are everything but the payday questions"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "if (earlier.fingerprint === fingerprint && 'settings' in earlier) return",
+    "replace": "if ('settings' in earlier) return",
+    "why": "[settings] a different settings change under the same decision number is taken for a repeat"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "    this.#changed.set(request.id, { fingerprint, settings: done });\n",
+    "replace": "",
+    "why": "[settings] a repeat of a settings change is not recognized"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "    this.#changed.set(request.id, { fingerprint, rule: done });\n",
+    "replace": "",
+    "why": "[settings] a repeat of a rule change is not recognized"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": ".filter(([key, value]) => canonical(value) !== canonical(current[key as keyof Settings]))",
+    "replace": ".filter(() => true)",
+    "why": "[settings] 13.5 a setting sent as it already is is changed and logged"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "    if (keys.length === 0) return refuse('refused', 'That is already the setting');\n",
+    "replace": "",
+    "why": "[settings] B101 a change to what it already is goes through"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "      if (request.confirmed !== true || request.seen !== key) {",
+    "replace": "      if (request.confirmed !== true) {",
+    "why": "[settings] A9 a yes to a preview that is out of date goes through"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "    if ('paycheckRule' in patch || 'momRule' in patch) {",
+    "replace": "    if ('paycheckRule' in patch) {",
+    "why": "[settings] A9 the mom rule does not ask first"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "fromNextPaycheck: keys.some((key) => (FROM_NEXT_PAYCHECK as readonly string[]).includes(key)), rechecked };",
+    "replace": "fromNextPaycheck: false, rechecked };",
+    "why": "[settings] 13.1 the answer does not say the split waits for the next paycheck"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "        if (request.confirmed !== true) return refuse('needs-confirmation', `Removing the rule",
+    "replace": "        if (false) return refuse('needs-confirmation', `Removing the rule",
+    "why": "[settings] 13.2 removing a rule does not ask first"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "        if (canonical(next) === canonical(was)) return refuse('refused', 'The rule already says that');\n",
+    "replace": "",
+    "why": "[settings] B101 a rule changed to what it already says is logged as a change"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "      alsoSorted: [...before].filter((id) => !after.has(id)).length,",
+    "replace": "      alsoSorted: 0,",
+    "why": "[settings] 13.2 the answer says a new rule sorted nothing"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "      stillWaiting: stillWaiting.map((id) => {",
+    "replace": "      stillWaiting: [].map((id) => {",
+    "why": "[settings] A19 the answer does not name what a new rule left waiting"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "return isWhole(savings) && isWhole(needs) && isWhole(wants) ? { savings, needs, wants } : undefined;",
+    "replace": "return isWhole(savings) && isWhole(needs) ? { savings, needs, wants } as never : undefined;",
+    "why": "[settings] 0.2 a split with a part missing is read"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "  if (!(RULE_CHOICES[kind] as readonly unknown[]).includes(to)) return null;\n",
+    "replace": "",
+    "why": "[settings] 4.2 a rule that picks what that kind of rule cannot is read"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "    if (!Object.hasOwn(SETTING_READERS, key)) return null;",
+    "replace": "    if (!Object.hasOwn(SETTING_READERS, key)) continue;",
+    "why": "[settings] 0.2 a setting that does not exist is quietly dropped"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "  const contains = value['contains'].trim();",
+    "replace": "  const contains = value['contains'];",
+    "why": "[settings] 2 the text of the paycheck rule is not trimmed"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "  if (cleared.length === 0) return `Setting",
+    "replace": "  if (cleared.length >= 0) return `Setting",
+    "why": "[settings] A9 clearing the paycheck rule is described as setting it"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": ".update(canonical(preview)).digest('hex')",
+    "replace": ".update(canonical(preview.items)).digest('hex')",
+    "why": "[settings] A9 the preview key ignores what the buckets would hold after"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/views/settings.ts",
+    "find": "  const waiting = FROM_NEXT_PAYCHECK.filter((key) => JSON.stringify(thisPayPeriod[key]) !== JSON.stringify(fromNextPaycheck[key]));",
+    "replace": "  const waiting = FROM_NEXT_PAYCHECK.filter(() => false);",
+    "why": "[settings] 13.1 nothing is shown as waiting for the next paycheck"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/views/settings.ts",
+    "find": "  const thisPayPeriod = book.splitInForce();",
+    "replace": "  const thisPayPeriod: SplitSettings = { split: settings.split, momReservePerPaycheck: settings.momReservePerPaycheck, momReserveCap: settings.momReserveCap };",
+    "why": "[settings] 13.1 the new split is shown as in force this pay period"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/views/settings.ts",
+    "find": "      .map((r, i) => ({ ...ruleViewOf(r), position: i + 1 }));",
+    "replace": "      .map((r, i) => ({ ...ruleViewOf(r), position: i }));",
+    "why": "[settings] 4.2 rules are numbered from 0"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/views/settings.ts",
+    "find": "      .filter((r) => r.for === kind)\n",
+    "replace": "      .filter((r) => r.for === kind)\n      .reverse()\n",
+    "why": "[settings] 4.2 B9 rules are shown last first"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/views/settings.ts",
+    "find": "  return [...byEntry.values()].reverse().flat();",
+    "replace": "  return [...byEntry.values()].flat();",
+    "why": "[settings] 13.5 the change log is oldest first"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/views/settings.ts",
+    "find": "before: entry.before[name], after: entry.changes[name]",
+    "replace": "before: entry.changes[name], after: entry.before[name]",
+    "why": "[settings] 13.5 the log swaps what a setting was and what it became"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/views/settings.ts",
+    "find": "rows.push({ key: key(j), date, kind: 'setting', change, fromNextPaycheck: (FROM_NEXT_PAYCHECK as readonly string[]).includes(name) });",
+    "replace": "rows.push({ key: key(j), date, kind: 'setting', change, fromNextPaycheck: false });",
+    "why": "[settings] 13.1 the log does not say a split change waits for the next paycheck"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/views/settings.ts",
+    "find": "        return side === 'then' ? entry.after : entry.before;",
+    "replace": "        return entry.after;",
+    "why": "[settings] 13.6 the rule a correction went ahead of is shown as it is now, not as it was"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/views/settings.ts",
+    "find": "    payoff: payoffCountdown(book, today),",
+    "replace": "    payoff: payoffCountdown(book, book.period().startDate),",
+    "why": "[settings] 9.5 the payoff countdown counts from the start of the pay period"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/views/settings.ts",
+    "find": "    check = self.ok ? { state: 'matches' } : { state: 'does-not-match', difference: self.difference };",
+    "replace": "    check = { state: 'matches' };",
+    "why": "[settings] 0.5 Settings never says the totals do not match"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/views/settings.ts",
+    "find": "nextPayday: { date: safe.nextPayday, days: safe.daysToPayday }",
+    "replace": "nextPayday: { date: safe.nextPayday, days: -safe.daysToPayday }",
+    "why": "[settings] 11.2 the days to payday count the wrong way"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/http/server.ts",
+    "find": "        ? await handlers.settingsChange?.(request, parsed)",
+    "replace": "        ? await handlers.ruleChange?.(request, parsed as never)",
+    "why": "[settings] a settings change is handed to the rule handler"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      ['settings', options.settings],\n",
+    "replace": "",
+    "why": "[settings] the Settings numbers are not served"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "  if ('unmark' in value) return value['unmark'] === true ? { unmark: true } : null;",
+    "replace": "  if ('unmark' in value) return { unmark: true };",
+    "why": "[a21] unmark: false is read as unmark"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "    if ('unmark' in c) return options.unmark && request.always === undefined ? null : no;",
+    "replace": "    if ('unmark' in c) return null;",
+    "why": "[a21] unmark is taken for any item"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "        : 'unmark' in choice\n          ? { unmark: true }\n",
+    "replace": "        : 'unmark' in choice\n          ? { to: 'needs' }\n",
+    "why": "[a21] unmark is handed to the book as needs"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "    if (typeof which !== 'string' || which === '' || which.length > MAX_ITEM_LENGTH || (direction !== 'up' && direction !== 'down')) return null;",
+    "replace": "    if (typeof which !== 'string' || which === '' || which.length > MAX_ITEM_LENGTH) return null;",
+    "why": "[a22] a move in any direction is read"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "        if (edit.move.direction === 'up' && place === 0) return refuse('refused', 'It is already the first rule of its kind');\n",
+    "replace": "",
+    "why": "[a22] moving the first rule up is not refused in words"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "        action = edit.move.direction === 'up' ? 'moved-up' : 'moved-down';",
+    "replace": "        action = 'moved-up';",
+    "why": "[a22] the answer says a rule moved up when it moved down"
   }
 ]

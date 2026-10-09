@@ -737,8 +737,8 @@
   {
     "section": "home",
     "file": "packages/web/src/ui/blocks.tsx",
-    "find": "inputMode={money ? 'decimal' : 'text'}",
-    "replace": "inputMode=\"text\"",
+    "find": "money ? 'decimal' : kind === 'whole' ? 'numeric' : 'text'",
+    "replace": "money ? 'text' : kind === 'whole' ? 'numeric' : 'text'",
     "why": "[review] an amount does not bring up the number pad"
   },
   {
@@ -1146,5 +1146,243 @@
     "find": "'You marked this as a payment to the old card, so it comes out of Needs. Pick what it was, and it counts as the purchase the bank sent instead.'",
     "replace": "'You marked this as a payment to the old card.'",
     "why": "[activity] 5.6 A20 the note does not say what picking something does"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "              second: `${split.fromNextPaycheck.split[bucket]}%`,",
+    "replace": "              second: `${split.thisPayPeriod.split[bucket]}%`,",
+    "why": "[settings] 13.1 the table shows this pay period's split as the next paycheck's"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "              differs: split.thisPayPeriod.split[bucket] !== split.fromNextPaycheck.split[bucket],",
+    "replace": "              differs: false,",
+    "why": "[settings] 13.1 a changed split is not marked as changing"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "              differs: split.waiting.includes('momReservePerPaycheck'),",
+    "replace": "              differs: false,",
+    "why": "[settings] 13.1 a changed mom reserve is not marked as changing"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "{split.waiting.length > 0 ? `Your changes start",
+    "replace": "{split.waiting.length === 0 ? `Your changes start",
+    "why": "[settings] 13.1 the note says changes wait when none do"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "      return { value: { split: { savings, needs, wants } } };",
+    "replace": "      return { value: { split: { savings: needs, needs: savings, wants } } };",
+    "why": "[settings] 0.2 savings and needs are sent the wrong way round"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "      return { value: { momReservePerPaycheck: perPaycheck, momReserveCap: cap } };",
+    "replace": "      return { value: { momReservePerPaycheck: cap, momReserveCap: perPaycheck } };",
+    "why": "[settings] 0.2 the reserve and its cap are sent the wrong way round"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "      const parts = get('days').split(/[\\s,]+/).filter((p) => p !== '');",
+    "replace": "      const parts = get('days').split(',').filter((p) => p !== '');",
+    "why": "[settings] 9.1 reminder days typed with spaces cannot be read"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "            <Button wide disabled={sending} testId=\"confirm-yes\" onClick={() => send(asked.change, asked.preview === null ? {} : { seen: asked.preview.key })}>",
+    "replace": "            <Button wide disabled={sending} testId=\"confirm-yes\" onClick={() => send(asked.change, {})}>",
+    "why": "[settings] A9 the yes does not say which preview he saw"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "    const id = attempt.current?.key === key ? attempt.current.id : newDecisionId();",
+    "replace": "    const id = newDecisionId();",
+    "why": "[settings] B92 the yes is sent as a new decision"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "            <Button variant=\"secondary\" wide disabled={sending} testId=\"sheet-clear\" onClick={() => send({ settings: e.what === 'paycheck-rule' ? { paycheckRule: null } : { momRule: null } })}>",
+    "replace": "            <Button variant=\"secondary\" wide disabled={sending} testId=\"sheet-clear\" onClick={() => send({ settings: e.what === 'paycheck-rule' ? { momRule: null } : { paycheckRule: null } })}>",
+    "why": "[settings] A9 clearing the paycheck rule clears the mom rule"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "                      <span className=\"position\">{rule.position}.</span> “{rule.contains}”",
+    "replace": "                      <span className=\"position\">{rule.position - 1}.</span> “{rule.contains}”",
+    "why": "[settings] 4.2 the rules are numbered from 0 on the screen"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "      return <ListRow icon=\"settings\" title={SETTING_NAMES[change.key]} detail={`${before} → ${after} · ${when}",
+    "replace": "      return <ListRow icon=\"settings\" title={SETTING_NAMES[change.key]} detail={`${after} → ${before} · ${when}",
+    "why": "[settings] 13.5 the log line says the change backwards"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "                    : `${payoff.paydaysLeft} ${payoff.paydaysLeft === 1",
+    "replace": "                    : `${payoff.paydaysLeft + 1} ${payoff.paydaysLeft === 1",
+    "why": "[settings] 9.5 the countdown says one payday more than there are"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "          reload('after');\n          onChanged('after');\n        }}\n      />",
+    "replace": "          onChanged('after');\n        }}\n      />",
+    "why": "[settings] Settings does not show a change it made"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "      {check.state === 'does-not-match' && (",
+    "replace": "      {false && (",
+    "why": "[settings] 0.5 Settings hides that the totals do not match the bank"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "              {row.differs && <StatusLabel status=\"changes\" />}",
+    "replace": "",
+    "why": "[settings] 13.1 what changes is shown by nothing but the numbers"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": "@container (max-width: 21em) {",
+    "replace": "@container (max-width: 1em) {",
+    "why": "[settings] the table does not stack when the text is large"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/api.ts",
+    "find": "  '/api/settings': () => fetch('/api/settings', READ),",
+    "replace": "  '/api/settings': () => fetch('/api/review', READ),",
+    "why": "[settings] Settings asks for the wrong numbers"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/App.tsx",
+    "find": "        <SettingsTab onChanged={retryHome} />",
+    "replace": "        <SettingsTab onChanged={() => undefined} />",
+    "why": "[settings] Home is not asked again after a change on Settings"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "  return `${hours % 12 === 0 ? 12 : hours % 12}:${match[2]} ${hours < 12 ? 'AM' : 'PM'}`;",
+    "replace": "  return `${hours % 12 === 0 ? 12 : hours % 12}:${match[2]} ${hours <= 12 ? 'AM' : 'PM'}`;",
+    "why": "[settings] noon is written as AM"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "  return `${hours % 12 === 0 ? 12 : hours % 12}:${match[2]} ${hours < 12 ? 'AM' : 'PM'}`;",
+    "replace": "  return `${hours % 12}:${match[2]} ${hours < 12 ? 'AM' : 'PM'}`;",
+    "why": "[settings] midnight is written as 0:00"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "  return `${list} ${days.length === 1 && days[0] === 1 ? 'day' : 'days'} before`;",
+    "replace": "  return `${list} days before`;",
+    "why": "[settings] one reminder day is written as days"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "  if (days.length === 0) return 'None';",
+    "replace": "",
+    "why": "[settings] no reminders is written as nothing"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "    case 'lowBucketAlertPercent':\n      return `${String(v)}%`;",
+    "replace": "    case 'lowBucketAlertPercent':\n      return String(v);",
+    "why": "[settings] the low-bucket alert is written without its percent sign"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "  const parts = [done.fromNextPaycheck ? `Saved. It starts at your next paycheck, ${shortDate(nextPayday)}.` : 'Saved.'];",
+    "replace": "  const parts = ['Saved.'];",
+    "why": "[settings] 13.1 the answer does not say a change waits for the next paycheck"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "        : `${moneyText(item.fromReserve)} comes out of the mom reserve. The other ${moneyText(item.difference)} waits",
+    "replace": "        : `${moneyText(item.amount)} comes out of the mom reserve. The other ${moneyText(item.difference)} waits",
+    "why": "[settings] 8.3 the preview says all of a mom payment comes out of the reserve"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "      return 'Still waits in Review: part of it was refunded, so it cannot come out of the mom reserve. Sort it there.';",
+    "replace": "      return 'Comes out of the mom reserve.';",
+    "why": "[settings] 13.2 B73 the preview says a refunded payment comes out of the reserve"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "  if (still.length > 0) parts.push(",
+    "replace": "  if (false) parts.push(",
+    "why": "[settings] 13.2 B73 the answer does not name what still waits"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "              {rule.position > 1 && (",
+    "replace": "              {rule.position > 0 && (",
+    "why": "[a22] the first rule has a Move up"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "onClick={() => send({ rule: { move: { id: rule.id, direction: 'up' } } })}>",
+    "replace": "onClick={() => send({ rule: { move: { id: rule.id, direction: 'down' } } })}>",
+    "why": "[a22] Move up moves the rule down"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "`${RULE_KINDS[line.rule.for]}: ${ruleText(line.rule)}, now number ${line.position},",
+    "replace": "`${RULE_KINDS[line.rule.for]}: ${ruleText(line.rule)}, now number ${line.position + 1},",
+    "why": "[a22] the log line gives the wrong place"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "      {!always && options.unmark && (",
+    "replace": "      {false && options.unmark && (",
+    "why": "[a21] the choice is not shown"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "              if (!busy) onChoose(target, { unmark: true });",
+    "replace": "              if (!busy) onChoose(target, { to: 'needs' });",
+    "why": "[a21] the choice sends needs"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "{textRow('reminders', 'Card reminders',",
+    "replace": "{row('reminders', 'Card reminders',",
+    "why": "[settings] the Card reminders arrow drops to its own line"
   }
 ]

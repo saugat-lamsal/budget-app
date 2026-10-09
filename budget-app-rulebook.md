@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 11)
+# Budget App Rulebook (draft 12)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -43,7 +43,10 @@ number so a test can point at it. Nothing gets coded until you approve this.
   payments to people, and card fees or interest. Each is text the bank's
   description contains, on one account (set after the first sync; the
   setup screen also suggests some from the bank's own labels, for you to
-  confirm)
+  confirm). They can be changed later in Settings, and each change is
+  logged (13.5). A changed bank rule reads what the bank sends from then
+  on; what was already read stays as it was, and one item read wrong is
+  fixed in review (5.6).
 
 
 ## 3. Payday
@@ -138,7 +141,11 @@ number so a test can point at it. Nothing gets coded until you approve this.
      a transfer. It then counts as that transfer's half: no bucket changes
      (5.1, 5.3), it is in transit until its other half shows (12.5), and a
      payment to the old card counts as one (5.2). Sorting it another way
-     later makes it what the bank sent again.
+     later makes it what the bank sent again. One you marked as a payment
+     to the old card from savings takes savings or needs (5.2), or has its
+     own choice, "It was not a payment to the old card": it is then what
+     the bank sent again (money leaving savings waits in review, 4.9), and
+     the old card owes what it did before.
 
 
 ## 6. Deposits that are not a paycheck
@@ -280,7 +287,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
 ## 13. Changing things on the fly
 
 13.1  A change to the split or the mom reserve applies from the next
-      paycheck.
+      paycheck. Settings shows the split and the mom reserve in force this
+      pay period next to what the next paycheck will use. Every other
+      setting applies right away.
 13.2  A new or changed sorting rule applies to new and unsorted transactions.
       Already-sorted ones stay put unless you re-sort them. Setting the
       paycheck rule or the mom rule does the same with what is waiting: a
@@ -289,6 +298,10 @@ number so a test can point at it. Nothing gets coded until you approve this.
       out of the mom reserve (8.1). A waiting item the rule matches but
       cannot sort (a partly refunded payment cannot be for mom, for
       example) stays waiting exactly as it was, and you are told which.
+      You can move a sorting rule up or down in its list (only rules of
+      the same kind compete, so the first of them that matches wins). Each
+      move is logged (13.5), and what is waiting in review that a moved rule
+      is now the first match for is sorted, as after a changed rule.
 13.3  You can move money between buckets by hand at any time.
 13.4  Moving money out of savings or the mom reserve asks you to confirm
       first. So does any move that would leave the bucket it comes out of
@@ -456,3 +469,20 @@ a.  A purchase you marked as a payment to the old card (5.6) can be undone
 b.  A payday question that spending from before payday made smaller (3.4,
     B4) says why on its card: what the bucket held at payday, less what
     was spent before payday and has shown up since (QUESTIONS.md B109).
+
+
+## 24. Answers after the Settings screen (Oct 9, 2026)
+
+a.  A payment you marked as going to the old card from savings can be
+    unmarked with its own choice, "It was not a payment to the old card",
+    in review and from its bucket's list. It becomes what the bank sent
+    again, and the old card owes what it did before (5.6, QUESTIONS.md
+    A21).
+b.  Sorting rules can be moved up or down in their list, and each move is
+    logged (13.2, 13.5, A22).
+c.  Bank rules come with setup day and can be changed in Settings. Each
+    change is logged; a changed bank rule reads what comes from then on,
+    and what was already read stays as it was (section 2, A23).
+d.  Only the split and the mom reserve wait for the next paycheck.
+    Settings shows them for this pay period next to the next paycheck's;
+    every other setting applies right away (13.1, A24).

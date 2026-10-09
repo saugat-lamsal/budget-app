@@ -1,10 +1,11 @@
-WORKED EXAMPLES: THE SCREENS (HOME, BUCKETS, REVIEW, THE BUCKET LISTS, PAYDAY)
+WORKED EXAMPLES: THE SCREENS (HOME, BUCKETS, REVIEW, THE BUCKET LISTS, PAYDAY, SETTINGS)
 
 Made-up numbers, worked out step by step, so you can check by hand what
 the screens show. These are the demo's made-up lives (npm run demo, then
 /demo). Every amount is in dollars and cents. Examples 1 to 6 are Home,
 7 and 8 are Buckets, 9 to 11 are Review, 12 is the list of what went in and
-out of a bucket, 13 is moving money by hand, and 14 is Payday.
+out of a bucket, 13 is moving money by hand, 14 is Payday, 15 is undoing
+a payment marked as going to the old card, and 16 and 17 are Settings.
 
 Each example is also a test. packages/web/test/worked-examples.test.ts
 reads the "Check:" lines straight from this file and compares them with
@@ -436,3 +437,68 @@ Step 2. It was the landlord, not the old card. He taps the row. The sheet
 
 Check: now 637.07 | rows 9
 Check: now after wants 722.07 | rows after wants 8
+
+
+========================================================================
+EXAMPLE 16. Settings, with a new split waiting for the next paycheck (demo
+            life "settings-busy"; rules 13.1, 9.5, 13.5)
+========================================================================
+
+This is the life of example 1, and on the way he changed some settings.
+Today, Wed Oct 7, he changed the split to 40/40/20 and the mom reserve to
+1,250.00 a paycheck. The pay period started with the paycheck of Fri Oct 2,
+and the next payday is Fri Oct 16 (every 14 days).
+
+Step 1. The table on Settings (13.1):
+                            This pay period     From next paycheck
+        Savings                   50%                 40%   Changes
+        Needs                     30%                 40%   Changes
+        Wants                     20%                 20%
+        Mom reserve          1,500.00            1,250.00   Changes
+        Reserve cap          3,000.00            3,000.00
+        This pay period keeps what it started with; nothing moved today.
+Step 2. The payoff countdown (9.5). He entered a made-up promo end date,
+        Jun 30, 2027. The old card owes 2,980.00. Paydays after today and
+        before Jun 30, 2027: Oct 16, then every 14 days. From Oct 16 to Jun 30
+        is 257 days; 14 x 18 = 252, so the last one is Jun 25, 2027, and
+        there are 18 + 1 = 19 paydays.
+        2,980.00 / 19 = 156.842..., rounded up to the cent: 156.85 a payday.
+        (The last one comes out smaller: 2,980.00 - 18 x 156.85 = 156.70.)
+Step 3. The change log (13.5), newest first: 12 changes, two of which
+        changed two settings each (today's, and the card reminders with the
+        review time on Sep 27), so 14 lines.
+
+Check: reserve this pay period 1,500.00 | reserve from next paycheck 1,250.00 | cap 3,000.00
+Check: owed 2,980.00 | per payday 156.85 | paydays 19 | log lines 14
+
+
+========================================================================
+EXAMPLE 17. Setting the paycheck rule and the mom rule after the first
+            sync (demo life "settings-first-sync"; rules 13.2, 3.1, 3.2,
+            3.3, 8.1; QUESTIONS.md A9)
+========================================================================
+
+The life of example 1, but the paycheck rule and the mom rule were never
+set. So the paycheck of Fri Oct 2, 4,200.00, and the 500.00 sent to mom on
+Oct 3 wait in review, with the two purchases of Oct 6: 4 waiting.
+Buckets now: Savings 8,200.00, Needs 120.75, Wants 117.11, Mom reserve
+1,200.00.
+
+Step 1. He types the paycheck rule MADE UP EMPLOYER PAYROLL and saves. It
+        asks first, and shows what it would do:
+        The Oct 2 deposit is 14 days after the last paycheck (Sep 18), so it
+        becomes his paycheck, and a pay period starts Oct 2.
+        The reserve takes 1,500.00; there is room for 3,000.00 - 1,200.00 =
+        1,800.00, so all of it goes in: 1,200.00 + 1,500.00 = 2,700.00.
+        The rest, 4,200.00 - 1,500.00 = 2,700.00, is split 50/30/20:
+        Savings 1,350.00, Needs 810.00, Wants 540.00.
+        Buckets after: Savings 8,200.00 + 1,350.00 = 9,550.00,
+        Needs 120.75 + 810.00 = 930.75, Wants 117.11 + 540.00 = 657.11.
+        Waiting after: 4 - 1 + 2 = 5 (the paycheck asks the two payday
+        questions, about the 120.75 and the 117.11 there now).
+        He says yes, and that is what happens.
+Step 2. He types the mom rule MADE UP MOM. The 500.00 of Oct 3 comes out
+        of the reserve: 2,700.00 - 500.00 = 2,200.00. Waiting: 5 - 1 = 4.
+
+Check: after savings 9,550.00 | after needs 930.75 | after wants 657.11 | after mom reserve 2,700.00 | waiting after 5
+Check: mom reserve after the mom rule 2,200.00 | waiting after the mom rule 4

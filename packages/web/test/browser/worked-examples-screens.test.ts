@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { EXAMPLE_LIVES, checksOf } from '../worked-examples.js';
 import { amountAt } from './activity-screens.js';
-import { ENGINES, centsAt, openScenario, phone, useEngine } from './harness.js';
+import { ENGINES, centsAt, openScenario, phone, readCents, untilQuiet, useEngine } from './harness.js';
+import { openSettings } from './settings-screens.js';
 
 // Examples 12 to 14 in packages/web/worked-examples.txt, against what the
 // screen shows a person for the same made-up life: what went in and out of
@@ -114,6 +115,51 @@ describe.each(ENGINES)('worked examples on the screen, the lists, moves and Payd
       if (testId === undefined) throw new Error(`example 14: no way to read "${label}" off Payday`);
       expect(await amountAt(page, testId), label).toBe(expected);
     }
+    await page.context().close();
+  });
+
+  it('example 16: Settings shows this pay period next to the next paycheck, the countdown, and the log, as worked out by hand', async () => {
+    const page = await openSettings(await browser().newContext(phone()), base(), EXAMPLE_LIVES[16] ?? '');
+    const checks = checksOf(16);
+    const cell = async (testId: string): Promise<number> => readCents(await page.getByTestId(testId).locator('.compare__value').innerText());
+    expect(await cell('split-reserve-first'), 'reserve this pay period').toBe(checks.get('reserve this pay period'));
+    expect(await cell('split-reserve-second'), 'reserve from next paycheck').toBe(checks.get('reserve from next paycheck'));
+    expect(await cell('split-cap-second'), 'cap').toBe(checks.get('cap'));
+    expect(await centsAt(page, 'payoff-per-payday'), 'per payday').toBe(checks.get('per payday'));
+    expect(await page.getByTestId('payoff-text').innerText()).toBe(`${checks.get('paydays')} paydays left before Jun 30, 2027`);
+    expect(await page.getByTestId('log').locator('[data-testid^="log-"]').count(), 'log lines').toBe(checks.get('log lines'));
+    for (const bucket of ['savings', 'needs'] as const) expect(await page.getByTestId(`split-${bucket}-second`).innerText()).toContain('Changes');
+    await page.getByTestId('tab-buckets').click();
+    await page.getByTestId('old-card-debt').waitFor();
+    expect(await centsAt(page, 'old-card-debt'), 'owed').toBe(checks.get('owed'));
+    await page.context().close();
+  });
+
+  it('example 17: setting the paycheck rule, then the mom rule, as a person does it, with the numbers worked out by hand', async () => {
+    const page = await openSettings(await browser().newContext(phone()), base(), EXAMPLE_LIVES[17] ?? '');
+    const checks = checksOf(17);
+    await page.getByTestId('row-paycheck-rule').click();
+    await page.getByTestId('field-paycheck-rule').fill('MADE UP EMPLOYER PAYROLL');
+    await page.getByTestId('sheet-save').click();
+    await page.getByTestId('preview').waitFor();
+    for (const [label, testId] of [['after savings', 'preview-after-savings'], ['after needs', 'preview-after-needs'], ['after wants', 'preview-after-wants'], ['after mom reserve', 'preview-after-momReserve']] as const) {
+      expect(await centsAt(page, testId), label).toBe(checks.get(label));
+    }
+    expect(Number(await page.getByTestId('preview-after-waiting').innerText()), 'waiting after').toBe(checks.get('waiting after'));
+    await page.getByTestId('confirm-yes').click();
+    await page.getByTestId('notice').waitFor();
+    await untilQuiet(page);
+    await page.getByTestId('notice-dismiss').click();
+    await page.getByTestId('row-mom-rule').click();
+    await page.getByTestId('field-mom-rule').fill('MADE UP MOM');
+    await page.getByTestId('sheet-save').click();
+    await page.getByTestId('confirm-yes').click();
+    await page.getByTestId('notice').waitFor();
+    await untilQuiet(page);
+    await expect.poll(async () => page.getByTestId('review-badge').innerText(), { message: 'waiting after the mom rule' }).toBe(String(checks.get('waiting after the mom rule')));
+    await page.getByTestId('tab-buckets').click();
+    await page.getByTestId('mom-reserve').waitFor();
+    await expect.poll(async () => centsAt(page, 'mom-reserve'), { message: 'mom reserve after the mom rule' }).toBe(checks.get('mom reserve after the mom rule'));
     await page.context().close();
   });
 });

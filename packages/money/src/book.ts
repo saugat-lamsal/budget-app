@@ -116,7 +116,10 @@ export type SortChoice =
   | PersonPaymentChoice
   | { readonly split: readonly SplitPart[] }
   | { readonly transfer: AccountId }
-  | { readonly refundOf: string };
+  | { readonly refundOf: string }
+  // QUESTIONS.md A21: "It was not a payment to the old card", for one you
+  // marked from savings: it becomes what the bank sent again.
+  | { readonly unmark: true };
 
 export type SpendingSort =
   | { readonly to: 'unsorted' }
@@ -310,7 +313,8 @@ export type MoveResult =
 
 // Rule 13.5: every change and every manual move, with its date.
 export type ChangeLogEntry =
-  | { readonly date: IsoDate; readonly kind: 'settings-changed'; readonly changes: Partial<Settings> }
+  // changes: the new value of each setting changed; before: what it was.
+  | { readonly date: IsoDate; readonly kind: 'settings-changed'; readonly changes: Partial<Settings>; readonly before: Partial<Settings> }
   | { readonly date: IsoDate; readonly kind: 'rule-added'; readonly rule: SortingRule }
   // 13.6: added by correcting an item, ahead of the rule it corrects (null
   // when no rule had sorted that item).
@@ -323,9 +327,48 @@ export type ChangeLogEntry =
     }
   | { readonly date: IsoDate; readonly kind: 'rule-changed'; readonly before: SortingRule; readonly after: SortingRule }
   | { readonly date: IsoDate; readonly kind: 'rule-removed'; readonly rule: SortingRule }
+  // A22: a rule moved one place up or down among the rules of its kind, past
+  // another; position is its place among them now, from 1.
+  | { readonly date: IsoDate; readonly kind: 'rule-moved'; readonly rule: SortingRule; readonly past: SortingRule; readonly direction: 'up' | 'down'; readonly position: number }
   | { readonly date: IsoDate; readonly kind: 'money-moved'; readonly from: Pot; readonly to: Pot; readonly amount: Cents }
   // 4.10: the bank took back a transaction the app had counted.
   | { readonly date: IsoDate; readonly kind: 'bank-took-back'; readonly id: string; readonly description: string; readonly amount: Cents };
+
+// QUESTIONS.md A9: a waiting item a new paycheck rule or mom rule handles.
+// A deposit becomes a paycheck (3.1), with its split, or, less than 10 days
+// after the last paycheck or older than it, waits as an early paycheck (3.7,
+// B54). A payment to a person comes out of the mom reserve (8.1); what the
+// reserve cannot cover waits in review (8.3).
+export type RecheckedItem =
+  | { readonly kind: 'paycheck'; readonly id: string; readonly date: IsoDate; readonly amount: Cents; readonly description: string; readonly split: PaycheckSplit }
+  | { readonly kind: 'early-paycheck'; readonly id: string; readonly date: IsoDate; readonly amount: Cents; readonly description: string }
+  | {
+      readonly kind: 'mom';
+      readonly id: string;
+      readonly date: IsoDate;
+      readonly amount: Cents;
+      readonly description: string;
+      readonly fromReserve: Cents;
+      readonly difference: Cents;
+    }
+  // 13.2, B73: a payment the new mom rule matches but that cannot come out of
+  // the mom reserve, because part of it was refunded. It stays waiting
+  // exactly as it was; amount is what waits.
+  | { readonly kind: 'still-waiting'; readonly id: string; readonly date: IsoDate; readonly amount: Cents; readonly description: string; readonly why: 'partly-refunded' };
+
+// What a change to the settings would do, worked out before it is done (A9):
+// the waiting items it would handle, oldest first, and every bucket and the
+// number of items waiting, before and after.
+export interface SettingsPreview {
+  readonly items: readonly RecheckedItem[];
+  readonly potsBefore: Pots;
+  readonly potsAfter: Pots;
+  readonly waitingBefore: number;
+  readonly waitingAfter: number;
+}
+
+// Thrown to undo a change that was only being tried out (see previewSettingsChange).
+const DRY_RUN: unique symbol = Symbol('dry run');
 
 export interface SavingsTransfer {
   readonly shouldBeInSavings: Cents;
@@ -549,9 +592,10 @@ function sameRoute(a: TransferSent | TransferArrived, b: TransferSent | Transfer
   return a.from === b.from && a.to === b.to && a.amount === b.amount;
 }
 
+// 13.1: the settings a pay period keeps from its paycheck (FROM_NEXT_PAYCHECK).
 function splitSettingsOf(settings: Settings): SplitSettings {
   const { split, momReservePerPaycheck, momReserveCap } = settings;
-  return { split, momReservePerPaycheck, momReserveCap };
+  return Object.freeze({ split, momReservePerPaycheck, momReserveCap });
 }
 
 function potsOf(totals: Record<TotalName, Cents>): Pots {
@@ -709,6 +753,14 @@ export class Book {
 
   rules(): readonly SortingRule[] {
     return this.#rules;
+  }
+
+  // 13.1: the split and mom reserve in force this pay period: the settings
+  // the paycheck that began it was worked out with (setup day's before the
+  // first paycheck). A change to them is the setting at once, but waits here
+  // until the next paycheck.
+  splitInForce(): SplitSettings {
+    return this.#periodSplit;
   }
 
   period(): Period {
@@ -1096,7 +1148,7 @@ export class Book {
         const txn = entry.txn;
         // Sorting it again can pick another bucket or split it, but a rule or a transfer starts
         // from a payment waiting to be sorted, not one already counted for mom.
-        const options = reviewOptions({ type: 'spending', kind: 'person-payment', fromSavings: false, account: txn.account, leavesAnAccount: false, pending: false, partlyRefunded: false, countedAtSetup: false, gone: false, canBeForMom: true, net: txn.amount });
+        const options = reviewOptions({ type: 'spending', kind: 'person-payment', fromSavings: false, account: txn.account, leavesAnAccount: false, pending: false, partlyRefunded: false, countedAtSetup: false, gone: false, canBeForMom: true, markedFromSavings: false, net: txn.amount });
         if (options.type !== 'sort') throw new MoneyError('broken-book', 'a payment to a person has no choices');
         return Object.freeze({
           resortable: true,
@@ -1194,6 +1246,7 @@ export class Book {
       countedAtSetup: false,
       gone: false,
       canBeForMom: person,
+      markedFromSavings: false,
       net: entry.amount,
     };
     const options = reviewOptions(facts);
@@ -1234,6 +1287,7 @@ export class Book {
       countedAtSetup: entry.countedAtSetup > 0,
       gone: entry.dropped === true || entry.takenBack === true,
       canBeForMom: entry.spendingKind === 'person-payment' && txn.kind === 'payment-to-person' && entry.refunded === 0,
+      markedFromSavings: this.#markedFromSavings(entry),
       net: netOf(entry),
     };
   }
@@ -1891,6 +1945,12 @@ export class Book {
     if (entry === undefined) throw new MoneyError('unknown-item', `no item ${id}`);
     // Taken back by the bank (4.10): only what is left of it, if anything, waits to be sorted.
     if (this.#gone(entry) && !this.#review.has(entry.id)) throw new MoneyError('not-sortable', `the bank took back ${id}`);
+    if (typeof choice === 'object' && choice !== null && 'unmark' in choice) return this.#unmark(entry, choice.unmark);
+    // A21: one you marked from savings takes savings or needs (A4), or is unmarked; to be
+    // anything else, unmark it first. One tap cannot mean both.
+    if (entry.kind === 'spend' && this.#markedFromSavings(entry) && !(typeof choice === 'object' && choice !== null && 'to' in choice && (choice.to === 'savings' || choice.to === 'needs'))) {
+      throw new MoneyError('bad-choice', `${id} is marked as a payment to the old card from savings: it comes out of savings or needs, or say it was not one`);
+    }
     if (typeof choice === 'object' && choice !== null && 'transfer' in choice) return this.#markAsTransfer(entry, choice.transfer);
     if (typeof choice === 'object' && choice !== null && 'refundOf' in choice) return this.#matchRefund(entry, choice.refundOf);
     // Marked as a transfer by hand (5.6): sorting it any other way makes it
@@ -2021,6 +2081,24 @@ export class Book {
     if (other === txn.account) refuse('a transfer comes from another of your accounts');
     const half: TransferArrived = { kind: 'transfer-arrived', id: entry.id, from: other as 'checking' | 'savings', to: txn.account, date: txn.date, amount: txn.amount, description: txn.description };
     return { original: txn, posted: null, half };
+  }
+
+  // A21: a payment to the old card from savings that you marked by hand
+  // (5.6): not one the bank sent as such.
+  #markedFromSavings(entry: SpendEntry): boolean {
+    const txn = entry.txn;
+    return entry.spendingKind === 'debt-payoff' && entry.original !== undefined && (txn.kind === 'transfer' || txn.kind === 'transfer-sent') && txn.from === 'savings';
+  }
+
+  // QUESTIONS.md A21: "It was not a payment to the old card". One you marked
+  // from savings becomes what the bank sent again, taken as the bank sent it
+  // (money leaving savings waits in review, 4.9); the old card owes what it
+  // did before. Whatever bucket it was sorted to gets its money back.
+  #unmark(entry: Entry, yes: unknown): void {
+    if (yes !== true || entry.kind !== 'spend' || !this.#markedFromSavings(entry)) {
+      throw new MoneyError('bad-choice', `${entry.id} is not a payment you marked as going to the old card from savings`);
+    }
+    this.#atomically(() => this.#restore(entry));
   }
 
   // Undoes a transfer you marked by hand and gives the book what the bank
@@ -2168,19 +2246,21 @@ export class Book {
   // 13.1: a change to the split or the mom reserve applies from the next
   // paycheck; everything else applies right away. 0.3: nothing already
   // worked out is redone.
-  changeSettings(patch: Partial<Settings>, date: IsoDate): void {
+  changeSettings(patch: Partial<Settings>, date: IsoDate): { readonly rechecked: readonly RecheckedItem[] } {
     assertIsoDate(date);
     const next = applySettingsChange(this.#settings, patch);
     const before = this.#settings;
     try {
-      this.#atomically(() => {
+      return this.#atomically(() => {
         this.#settings = next;
-        const changes = Object.fromEntries(Object.keys(patch).map((key) => [key, next[key as keyof Settings]]));
-        this.#log.push(Object.freeze({ date, kind: 'settings-changed', changes }));
+        const keys = Object.keys(patch) as (keyof Settings)[];
+        const changes = Object.freeze(Object.fromEntries(keys.map((key) => [key, next[key]])));
+        const was = Object.freeze(Object.fromEntries(keys.map((key) => [key, before[key]])));
+        this.#log.push(Object.freeze({ date, kind: 'settings-changed', changes, before: was }));
         // QUESTIONS.md A9: a new paycheck rule or mom rule also checks what is
         // waiting in review, the way a new sorting rule does (13.2).
-        if ('paycheckRule' in patch) this.#recheckForPaychecks();
-        if ('momRule' in patch) this.#recheckForMom();
+        const rechecked = [...('paycheckRule' in patch ? this.#recheckForPaychecks() : []), ...('momRule' in patch ? this.#recheckForMom() : [])];
+        return Object.freeze({ rechecked: Object.freeze(rechecked) });
       });
     } catch (error) {
       this.#settings = before;
@@ -2188,37 +2268,86 @@ export class Book {
     }
   }
 
+  // A9: what changeSettings would do, without doing it. The change is made,
+  // looked at, and undone in full (#atomically), so the preview is exactly
+  // what the change itself does, and a change that would be refused is
+  // refused here too.
+  previewSettingsChange(patch: Partial<Settings>, date: IsoDate): SettingsPreview {
+    const settings = this.#settings;
+    const potsBefore = this.pots();
+    const waitingBefore = this.#review.size;
+    let preview: SettingsPreview | undefined;
+    try {
+      this.#atomically(() => {
+        const { rechecked } = this.changeSettings(patch, date);
+        preview = Object.freeze({ items: rechecked, potsBefore, potsAfter: this.pots(), waitingBefore, waitingAfter: this.#review.size });
+        throw DRY_RUN;
+      });
+    } catch (error) {
+      if (error !== DRY_RUN) throw error;
+    } finally {
+      this.#settings = settings;
+    }
+    if (preview === undefined) throw new MoneyError('broken-book', 'the preview of a settings change was not made');
+    return preview;
+  }
+
   // A9: waiting deposits that match the paycheck rule, oldest first. Each
   // starts a pay period like any paycheck (3.1), unless it is less than 10
   // days after the last paycheck, or older than it (3.7, B54); then it waits
   // as an early paycheck, with the same choices (6.1).
-  #recheckForPaychecks(): void {
+  #recheckForPaychecks(): RecheckedItem[] {
     const matching = [...this.#review]
       .map((id) => this.#entry(id))
       .filter((entry): entry is MoneyInEntry & { txn: Deposit } => {
         return entry.kind === 'money-in' && entry.reason === 'deposit' && entry.txn.kind === 'deposit' && matchesTextRule(this.#settings.paycheckRule, entry.txn.description);
       })
       .sort((a, b) => daysBetween(b.txn.date, a.txn.date));
+    const handled: RecheckedItem[] = [];
     for (const entry of matching) {
-      if (daysBetween(this.#lastPaycheckDate, entry.txn.date) < this.#settings.earlyPaycheckDays) entry.reason = 'early-paycheck';
-      else this.#makePaycheck(entry, entry.txn);
+      const { id, date, amount, description } = entry.txn;
+      if (daysBetween(this.#lastPaycheckDate, date) < this.#settings.earlyPaycheckDays) {
+        entry.reason = 'early-paycheck';
+        handled.push(Object.freeze({ kind: 'early-paycheck', id, date, amount, description }));
+      } else {
+        this.#makePaycheck(entry, entry.txn);
+        const record = this.#paychecks[this.#paychecks.length - 1];
+        if (record?.id !== id) throw new MoneyError('broken-book', `${id} did not become a paycheck`);
+        const split = Object.freeze({ ...record.split, detail: Object.freeze({ ...record.split.detail }) });
+        handled.push(Object.freeze({ kind: 'paycheck', id, date, amount, description, split }));
+      }
     }
+    return handled;
   }
 
   // A9: waiting payments to a person that match the mom rule come out of the
   // mom reserve, oldest first (8.1); what the reserve cannot cover waits in
   // review (8.3).
-  #recheckForMom(): void {
+  #recheckForMom(): RecheckedItem[] {
     const matching = [...this.#review]
       .map((id) => this.#entry(id))
       .filter((entry): entry is SpendEntry & { txn: PersonPayment } => {
         return entry.kind === 'spend' && entry.spendingKind === 'person-payment' && entry.txn.kind === 'payment-to-person' && matchesTextRule(this.#settings.momRule, entry.txn.description);
       })
       .sort((a, b) => daysBetween(b.txn.date, a.txn.date));
+    const handled: RecheckedItem[] = [];
     for (const entry of matching) {
+      // 13.2, B73: a payment partly refunded cannot be for mom. Taking it out
+      // and paying mom from what the bank first sent would lose the refund.
+      // (One the bank took back waits only for money back, so it has a refund too.)
+      if (entry.refunded > 0) {
+        const { id, date, description } = entry.txn;
+        handled.push(Object.freeze({ kind: 'still-waiting', id, date, amount: netOf(entry), description, why: 'partly-refunded' }));
+        continue;
+      }
       this.#remove(entry);
       this.#payMom(entry.txn, 'mom-rule');
+      const mom = this.#entry(entry.txn.id);
+      if (mom.kind !== 'mom') throw new MoneyError('broken-book', `${entry.txn.id} did not come out of the mom reserve`);
+      const { id, date, amount, description } = entry.txn;
+      handled.push(Object.freeze({ kind: 'mom', id, date, amount, description, fromReserve: mom.fromReserve, difference: amount - mom.fromReserve }));
     }
+    return handled;
   }
 
   // 13.2: a new or changed rule applies to new transactions and to those
@@ -2255,6 +2384,7 @@ export class Book {
     const was = entry.kind === 'spend' ? this.#wasBeforeMarked(entry) : undefined;
     if ('transfer' in choice) throw new MoneyError('bad-choice', 'a sorting rule cannot mark transfers; the bank rules in settings do that');
     if ('refundOf' in choice) throw new MoneyError('bad-choice', 'a sorting rule cannot match a refund to a purchase');
+    if ('unmark' in choice) throw new MoneyError('bad-choice', 'a sorting rule cannot unmark a transfer');
     if (was?.kind === 'purchase' || (entry.kind === 'spend' && was === undefined && entry.spendingKind === 'purchase' && !fromSavings)) {
       if ('split' in choice || !isSpendingBucket(choice.to)) throw new MoneyError('bad-choice', 'a rule picks needs or wants; it cannot split');
       newRule = { id: rule.id, for: 'purchase', contains: rule.contains, bucket: choice.to };
@@ -2302,6 +2432,34 @@ export class Book {
     const rule = this.#ruleById(id);
     this.#rules = checkRules(this.#rules.filter((r) => r.id !== id));
     this.#log.push(Object.freeze({ date, kind: 'rule-removed', rule }));
+  }
+
+  // 13.2, QUESTIONS.md A22: moves a rule one place up or down among the
+  // rules of its kind (only those compete, B9), past the next one of its kind;
+  // rules of other kinds stay where they are. What waits in review that
+  // either rule is now the first match for is sorted, as after a changed
+  // rule; what is sorted already stays where it is. Returns the waiting items
+  // they matched but could not sort (A19).
+  moveRule(id: string, direction: 'up' | 'down', date: IsoDate): { readonly stillWaiting: readonly string[] } {
+    assertIsoDate(date);
+    if (direction !== 'up' && direction !== 'down') throw new MoneyError('bad-rule', `a rule moves up or down, not ${String(direction)}`);
+    const rule = this.#ruleById(id);
+    const at = this.#rules.indexOf(rule);
+    const ofItsKind = this.#rules.flatMap((r, i) => (r.for === rule.for ? [i] : []));
+    const k = ofItsKind.indexOf(at);
+    const other = ofItsKind[direction === 'up' ? k - 1 : k + 1];
+    if (other === undefined) throw new MoneyError('bad-rule', `${id} is already ${direction === 'up' ? 'first' : 'last'} of its kind`);
+    const past = this.#rules[other] as SortingRule;
+    return this.#atomically(() => {
+      const next = [...this.#rules];
+      next[at] = past;
+      next[other] = rule;
+      this.#rules = checkRules(next);
+      const position = (direction === 'up' ? k - 1 : k + 1) + 1;
+      this.#log.push(Object.freeze({ date, kind: 'rule-moved', rule: this.#ruleById(id), past: this.#ruleById(past.id), direction, position }));
+      const stillWaiting = [...this.#sortWaitingByRules(id), ...this.#sortWaitingByRules(past.id)];
+      return { stillWaiting: [...new Set(stillWaiting)] };
+    });
   }
 
   #ruleById(id: string): SortingRule {

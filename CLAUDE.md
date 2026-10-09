@@ -138,7 +138,7 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 11. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 12. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
@@ -146,7 +146,9 @@ This applies to every phase and every session, cloud or local.
   Phase 4 questions (A17, B82, B84: rules 0.5, 9.6, 10.6), section 22
   his answers to the Buckets and Review questions (A18, A19: rules 4.5,
   6.1, 13.2), section 23 his answers after the bucket lists, hand moves
-  and Payday review (A20: rule 5.6; the Payday card's reason: rule 3.4).
+  and Payday review (A20: rule 5.6; the Payday card's reason: rule 3.4),
+  section 24 his answers after the Settings screen (A21 to A24: rules
+  5.6, 13.1, 13.2, and the bank rules in section 2).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -499,5 +501,118 @@ This applies to every phase and every session, cloud or local.
     project, skip the files changed since the commit, share the temp folder,
     forget to put the file back, pin nothing at the start, and so on) and
     every one is caught by those tests.
+  - Merged as PR #10, with every copy made from the same start as PR #12, and
+    the B4 break pointed at the code again as PR #11 (Oct 8, 2026).
+- A stale break now fails the tests (Oct 9, 2026, branch phase-4-settings,
+  its own commit). test/break-it-lists.test.ts, in npm test: every break in
+  the three lists (BREAK_LISTS in scripts/break-it-lib.mjs) finds its text
+  exactly once in its file. It skips itself inside a break-it run, where the
+  break being judged has replaced its text. Six breaks had gone stale and
+  were never tried (13.6 fees, 13.6 posted and arrived descriptions, 4.9
+  always-do-this from savings, [activity] 5.2 and 4.7); each is pointed at
+  the code again with the same mistake, and all six are caught. When code
+  moves, the test names the breaks to point again.
+- Phase 4, step 6, Settings and the change log: built Oct 9, 2026 on branch
+  phase-4-settings, on made-up data only. Then stop, for his feedback.
+  - Settings (packages/web/src/screens/Settings.tsx, the words in
+    settings-text.ts; packages/server/src/views/settings.ts): every setting in
+    rulebook section 2 but the bank rules (A23), each with a sheet to change
+    it; the sorting rules by kind, numbered, with add, change, and remove;
+    the payoff countdown (9.5), on once a promo end date is entered (the demo's
+    is made up); the change log (13.5), newest first; and the same "totals do
+    not match the bank" banner as Home and Buckets.
+  - 13.1: a table of this pay period's split and mom reserve next to the next
+    paycheck's, with "Changes" on what differs. The book gives out what is in
+    force (Book.splitInForce, which it always kept for other income); which
+    settings wait is FROM_NEXT_PAYCHECK in the money package. A24 asks if
+    that is enough.
+  - The money math checks and applies every change. New in the money
+    package: Book.splitInForce; the settings-changed log line keeps what each
+    setting was before; Book.previewSettingsChange (A9: what a new paycheck
+    rule or mom rule would do to what is waiting, worked out by making the
+    change and undoing it in full, so it is exactly what the change does);
+    changeSettings returns what it handled; RULE_CHOICES (what each kind of
+    rule can pick); a setting that does not exist is refused; a split that
+    does not add up says what it adds up to.
+  - Taps go through the same desk and the same address, POST /api/choice,
+    with decision numbers: { settings } and { rule: { add | change | remove } }
+    (choices.ts: ChoiceDesk.settings and ChoiceDesk.rule, parsed strictly).
+    The screens still write only /api/seen and /api/choice (read-only.test.ts
+    unchanged). The numbers are read from GET /api/settings, like every other
+    screen. Only the settings that change are changed and logged; the same
+    value again says "That is already the setting" (B114).
+  - What asks first: the paycheck rule and the mom rule (set, changed, or
+    cleared), with the money math's preview, and removing a rule (B112). His
+    yes carries the key of the preview he saw; if what it would do has
+    changed since, it asks again with the new one (B113).
+  - Shared blocks added: CompareTable (two columns side by side; with a large
+    text size each row stacks, by a container query in em), the "Changes"
+    status, and TextField for whole numbers, dates, and times. The sheet is
+    made anew on each opening, so it opens, filled in, in the same step as
+    the tap.
+  - Demo lives added: settings-busy (changes along the way, a new split
+    waiting, a made-up promo end date, every kind of log line) and
+    settings-first-sync (no paycheck rule or mom rule yet; the paycheck and
+    a payment to mom waiting). Worked examples: money 32 and 33, screens 16
+    and 17. npm run screenshots -- --only settings takes only the Settings
+    pictures.
+  - Tests: money 13-settings.test.ts (with 300 random books: the preview
+    changes nothing and is exactly what the change does, and no cent is made
+    or lost); server choices-settings, views-settings, http-settings, demo;
+    web settings-text; browser settings (every setting shown against the
+    book, every change against a twin), design-settings (contrast light and
+    dark, 44-point taps, the notch and home bar, text size, reduced motion,
+    money format, words not color), random-lives-settings (random lives,
+    random changes, some refused, against a twin), worked examples 16 and 17.
+  - Break-it: the new breaks are tagged "[settings]"; the screen's are
+    section "home" (browser tests), the words' section "settings". Only the
+    sections changed were run, in parallel; the screen's in Chromium
+    (BROWSER_ENGINE=chromium). Edits in this chunk made 10 older breaks stale;
+    the new test named them, and each was pointed at the code again.
+  - His review of PR #13 (Oct 9): one money bug, his answers to A21 to A24
+    (rulebook section 24, with his OK), and the Card reminders arrow. All on
+    the same branch and pull request.
+    - The bug (B124): setting the mom rule while a payment to her waited,
+      partly refunded, paid mom from what the bank first sent and lost the
+      refund. Book.#recheckForMom now leaves such a payment waiting exactly as
+      it was and names it: RecheckedItem 'still-waiting', in the preview, the
+      answer, and on Settings. Worked example 34. The random preview test now
+      refunds some waiting payments (it finds the bug on its own with the fix
+      off). Looked for the same mistake wherever a waiting item is taken out
+      and made again from what the bank first sent; none other (B124).
+    - The simulated life now clears the mom rule now and then and sets it
+      again a few days later, while payments to mom wait (some refunded by
+      the bank meanwhile), and clears the paycheck rule on a payday morning
+      and sets it that evening. It works out from the rulebook what setting
+      the rule must do, and checks the preview, the change, the buckets and
+      the month's mom total. 400 lives of 5 years passed (1,553 mom rules and
+      2,052 paycheck rules set again while things waited).
+    - A21 (B123): "It was not a payment to the old card" (SortChoice
+      { unmark: true }, ReviewOptions.unmark), only for a payment marked from
+      savings, in review and on its bucket's list; it restores what the bank
+      sent. Such a payment now takes exactly savings, needs, or this (the book
+      used to take wants or a split for it quietly; a test found it). Demo
+      life: review-marked-savings. Worked example 35.
+    - A22 (B122): Book.moveRule(id, 'up' | 'down', date) moves a rule one place
+      among the rules of its kind, logs 'rule-moved' (with the rule it passed
+      and its place now), and sorts what waits that either rule now matches
+      first. The desk takes { rule: { move: { id, direction } } }; Settings
+      has Move up and Move down on the rule's sheet. Worked example 36.
+    - Card reminders: the days are now on the row's second line, so its arrow
+      stays on the row; a design test checks every arrow on Settings sits at
+      the right edge of its row.
+    - Break-it: new breaks tagged "[a21]" and "[a22]", and the bug's under
+      "[settings]". Only the sections changed were run.
+    - CI on PR #13 (Oct 9): the Windows job failed once in buckets.test.ts,
+      "8.2 exactly the low end and exactly the high end are both within"
+      (Chromium, net::ERR_NO_BUFFER_SPACE: Windows ran out of socket buffer
+      space). A test not touched in this chunk, so it was rerun once, unchanged.
+      On the rerun two others failed on Windows: this chunk's own
+      design-settings "loading state" test (it left Home while Home's slow
+      numbers were on their way; it now waits for them first, as openScenario
+      does), and review.test.ts "5.6 5.2 each 'transfer between my accounts'
+      row says what it does: to the old card from checking comes out of
+      needs" (Chromium, a timeout waiting for the notice; not touched, left
+      as is).
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.
