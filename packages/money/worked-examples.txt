@@ -1073,3 +1073,75 @@ Oct 6.  MADE UP BIG STORE, 25.00: "BIG STORE" matches first now, so Wants:
         460.00 - 10.00 = 450.00.
 
 Check: needs 450.00 | wants 275.00
+
+
+========================================================================
+EXAMPLE 37. Setup day with charges pending and transfers on their way (rules 14.1, 14.2, 14.3, 12.1, 12.4, 12.5; QUESTIONS.md A10, B42, B48)
+========================================================================
+
+What the bank shows on Wednesday, Oct 7 (posted), and what is still pending:
+
+Checking                                         3,214.56
+  less GROCERY OUTLET #12, pending                 -86.43
+                                                 3,128.13
+Savings                                          8,000.00
+  less BILL PAY WATER UTILITY, pending             -64.10
+                                                 7,935.90
+Everyday card owes                                 612.48
+  plus CORNER GAS STATION, pending                 +41.20
+  plus BLUE DOOR COFFEE, pending                    +6.25
+                                                   659.93
+A store refund of 25.00 still pending into checking does not count until it
+posts (B36).
+
+Step 1. The bank side (12.1): checking + savings - everyday card.
+        3,128.13 + 7,935.90 - 659.93 = 10,404.10
+
+Step 2. Transfers with only one side showing (B48). He says all three are
+        on their way.
+        300.00 left checking for the everyday card, not arrived: +300.00
+        150.00 arrived in savings, checking does not show it leaving yet
+        (checking still holds it):                                -150.00
+        200.00 left checking for the old card: the old card is not part
+        of the starting money (12.4):                                0.00
+        Starting money: 10,404.10 + 300.00 - 150.00 = 10,554.10
+        In transit: 300.00 - 150.00 = 150.00
+
+Step 3. The old card, apart (12.4): owes 2,980.00, plus a 19.99 charge
+        pending (A10): debt 2,999.99.
+
+Step 4. His last paycheck was Oct 2 (B42). Paydays are every 14 days, so
+        the next is Oct 16, 9 days away (11.2).
+
+Step 5. He hands it out (14.2): Savings 8,000.00, Mom reserve 1,200.00,
+        Wants 400.00, Held for others 0.00, and Needs 954.09.
+        8,000.00 + 1,200.00 + 400.00 + 954.09 = 10,554.09
+        One cent is left to assign, so tracking does not start (14.3).
+        Needs 954.10 instead: 10,554.10, nothing left. It starts.
+
+Step 6. The self-check on day one (12.3, 12.5): the bank side 10,404.10
+        plus 150.00 in transit = 10,554.10, the buckets added up. It passes.
+        Safe to spend (11.1): Wants 400.00, nothing unsorted: 400.00.
+        Savings and the mom reserve should be in the savings account
+        (3.8): 8,000.00 + 1,200.00 = 9,200.00. It holds 7,935.90, so
+        1,264.10 is still to move.
+
+Check: starting money 10,554.10 | bank side 10,404.10 | in transit 150.00 | old card debt 2,999.99
+Check: one cent short left 0.01 | left to assign 0.00 | needs 954.10 | safe to spend 400.00 | still to move 1,264.10
+
+
+========================================================================
+EXAMPLE 38. Setup day when the everyday card owes more than he has (rules 14.2, 14.3, 11.1; QUESTIONS.md B34, B43)
+========================================================================
+
+Checking 412.30, savings 150.00, the everyday card owes 2,318.77. Nothing
+is pending and nothing is on its way.
+
+Starting money: 412.30 + 150.00 - 2,318.77 = -1,756.47
+
+He keeps Savings at 150.00 and puts Needs at -1,500.00. Wants gets what is
+left: -1,756.47 - 150.00 - (-1,500.00) = -406.47.
+150.00 - 1,500.00 - 406.47 = -1,756.47, to the cent, so tracking starts.
+Safe to spend is Wants, below zero (B34): -406.47.
+
+Check: starting money -1,756.47 | savings 150.00 | needs -1,500.00 | wants -406.47 | safe to spend -406.47

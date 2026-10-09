@@ -3470,5 +3470,47 @@
     "find": "unavailable: [], match: [], unmark: f.markedFromSavings };",
     "replace": "unavailable: [], match: [], unmark: false };",
     "why": "[a21] 5.6 unmark is not offered"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "  if (half.to === 'old-card') return 0;",
+    "replace": "  if (half.to === 'old-card' && half.kind === 'transfer-sent') return 0;",
+    "why": "[setup] B48 12.4 count a landing on the old card in the starting money"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "return addCents(oldCardBalance, ...pendingCharges.filter((c) => c.account === 'old-card').map((c) => c.amount));",
+    "replace": "return addCents(oldCardBalance, ...pendingCharges.map((c) => c.amount));",
+    "why": "[setup] 12.4 add every pending charge to the old card debt"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "const assigned = addCents(a.savings, a.needs, a.wants, a.momReserve, a.heldForOthers);",
+    "replace": "const assigned = addCents(a.savings, a.needs, a.wants, a.momReserve);",
+    "why": "[setup] 14.2 leave held for others out of what is assigned"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "if (daysBetween(input.lastPaycheckDate, input.date) < 0) {",
+    "replace": "if (daysBetween(input.lastPaycheckDate, input.date) <= 0) {",
+    "why": "[setup] B42 refuse a last paycheck on setup day itself"
+  },
+  {
+    "section": "14",
+    "file": "packages/money/src/setup.ts",
+    "find": "if (daysBetween(input.lastPaycheckDate, input.date) < 0) {",
+    "replace": "if (daysBetween(input.lastPaycheckDate, input.date) < -1) {",
+    "why": "[setup] B42 let a last paycheck dated the day after setup day through"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/payday.ts",
+    "find": "const next = addDays(lastPaycheckDate, payScheduleDays);",
+    "replace": "const next = addDays(today, payScheduleDays);",
+    "why": "[setup] 11.2 count the pay schedule from today, not from the last paycheck"
   }
 ]

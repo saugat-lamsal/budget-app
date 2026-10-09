@@ -1447,5 +1447,47 @@
     "find": ".port <= HIGHEST_PORT_A_BROWSER_REFUSES) {",
     "replace": ".port < 0) {",
     "why": "[ci] a test server keeps a port the browsers refuse (3659, 6000, ...)"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Setup.tsx",
+    "find": "const id = attempt.current?.key === key ? attempt.current.id : newDecisionId();",
+    "replace": "const id = newDecisionId();",
+    "why": "[setup] B92 a retry of a setup answer gets a new decision number"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Setup.tsx",
+    "find": "        <Money cents={view.startingMoney} hero testId=\"starting-money\" />\n      </Hero>\n      {view.halves.length === 0",
+    "replace": "        <Money cents={view.bankSide} hero testId=\"starting-money\" />\n      </Hero>\n      {view.halves.length === 0",
+    "why": "[setup] B48 the starting money on Transfers leaves out what is on its way"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Setup.tsx",
+    "find": "onClick={() => start({ seen: asked.key })}",
+    "replace": "onClick={() => start({ seen: '0' })}",
+    "why": "[setup] 14.3 the yes names no last look"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/routes.ts",
+    "find": "return { screen: 'setup', step: step as SetupStepName };",
+    "replace": "return { screen: 'setup', step: 'bank' };",
+    "why": "[setup] every setup address opens the first step"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/home-text.ts",
+    "find": "  if (paycheck) return { title: 'Still to set: the paycheck rule', detail: 'Until then your paycheck waits in Review. Set it in Settings.' };\n",
+    "replace": "",
+    "why": "[setup] Home names the mom rule when only the paycheck rule is still to set"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Setup.tsx",
+    "find": "<LinkButton href={setupPath(next)} wide testId=\"next\">",
+    "replace": "<LinkButton href={setupPath(SETUP_STEPS[0])} wide testId=\"next\">",
+    "why": "[setup] Next goes back to the first step"
   }
 ]

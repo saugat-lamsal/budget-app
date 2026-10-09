@@ -502,3 +502,50 @@ Step 2. He types the mom rule MADE UP MOM. The 500.00 of Oct 3 comes out
 
 Check: after savings 9,550.00 | after needs 930.75 | after wants 657.11 | after mom reserve 2,700.00 | waiting after 5
 Check: mom reserve after the mom rule 2,200.00 | waiting after the mom rule 4
+
+
+========================================================================
+EXAMPLE 18. Setup day, step by step (demo life "setup-day"; rules 14.1,
+            14.2, 14.3, 12.1, 12.4, 12.5, 3.8, 11.1; QUESTIONS.md A10, B42,
+            B48)
+========================================================================
+
+The same bank as example 37 of the money math, on Wednesday, Oct 7.
+
+What the bank shows. Checking 3,214.56, less 86.43 pending: 3,128.13.
+        Savings 8,000.00, less 64.10 pending: 7,935.90. The everyday card
+        owes 612.48, plus 47.45 pending (41.20 + 6.25): 659.93.
+        Starting money: 3,128.13 + 7,935.90 - 659.93 = 10,404.10.
+        The old card, apart: 2,980.00 + 19.99 pending = 2,999.99.
+Transfers on their way. Three show one side only. He taps "On its way"
+        on each: +300.00, -150.00, and 0.00 for the old card's.
+        Starting money: 10,404.10 + 300.00 - 150.00 = 10,554.10.
+Your last paycheck. He picks Oct 2: the next payday is Fri, Oct 16, in 9
+        days.
+Hand out your starting money. Savings 8,000.00, Mom reserve 1,200.00,
+        Wants 400.00, and "Put what is left here" on Needs:
+        10,554.10 - 8,000.00 - 1,200.00 - 400.00 = 954.10. Left: 0.00.
+A last look. The self-check passes: 10,404.10 + 150.00 = 10,554.10. He taps
+        Start tracking, it asks first, and he says yes.
+Home. Safe to spend is Wants: 400.00. "Move 1,264.10 to savings":
+        8,000.00 + 1,200.00 = 9,200.00 should be in the savings account,
+        which holds 7,935.90. And "Still to set: the paycheck rule and the mom
+        rule", with a way to Settings.
+
+Check: bank side 10,404.10 | old card debt 2,999.99 | starting money 10,554.10 | needs 954.10 | left to assign 0.00
+Check: safe to spend 400.00 | still to move 1,264.10 | days to payday 9
+
+
+========================================================================
+EXAMPLE 19. Setup day below zero (demo life "setup-owes-more"; rules 14.2,
+            14.3, 11.1; QUESTIONS.md B34, B43)
+========================================================================
+
+The same bank as example 38 of the money math. Starting money:
+412.30 + 150.00 - 2,318.77 = -1,756.47, shown with a minus sign.
+He types 150.00 for Savings and -1,500.00 for Needs, and puts what is left
+on Wants: -1,756.47 - 150.00 + 1,500.00 = -406.47. Left: 0.00. He starts
+tracking. Home: safe to spend -406.47, with a minus sign, and Wants says
+Empty in words.
+
+Check: starting money -1,756.47 | wants -406.47 | left to assign 0.00 | safe to spend -406.47

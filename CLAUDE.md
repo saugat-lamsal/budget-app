@@ -686,5 +686,53 @@ This applies to every phase and every session, cloud or local.
     test/browser/page-quiet.test.ts for the 8 in section home; node
     scripts/break-it.mjs ci for the port).
   - PR #14 merged (Oct 9, 2026).
+- Phase 4, step 7, the Setup day screens: built Oct 9, 2026 on branch
+  phase-4-setup-day, on made-up data only (rulebook section 14 with A10,
+  B42, B43, B48, B64). Then stop, for his feedback. Its own first commit:
+  CI runs Linux only on pull requests, Windows by hand (see CI above).
+  - The setup logic works on the bank history handed to it
+    (packages/server/src/setup-history.ts: BankHistory, halvesInTransitIn,
+    setupPreviewOf, planSetup, bankRuleOf, notReadyWhy). It reads nothing
+    and saves nothing; setup-day.ts is the thin database wrapper (same
+    exports as before, every older test passes untouched). StoredAccount
+    moved to bank/stored-account.ts so nothing the demo loads touches db/.
+  - Money: inTransitEffect (B48), startingDebt (12.4, A10), checkAssignment
+    (what is left to assign), nextPayday (11.2, the book uses it too), and
+    startTracking refuses a last paycheck after setup day (B42).
+  - The setup desk (src/setup-desk.ts) keeps his answers until tracking
+    starts: each half on its way or not, the last paycheck, an amount per
+    bucket or "the rest" (worked out by the money math). Through POST
+    /api/choice ({ setup: ... }, parsed strictly in choices.ts), with
+    decision numbers. Starting asks first and the yes names the last look's
+    key (like B113); it is refused unless every half is answered, the date
+    is in, it adds up to the cent and the self-check passes; then never
+    again. The screens' numbers come from GET /api/setup (setup-view.ts
+    builds them; views/setup.ts has only the types the phone shares). The
+    screens still write only /api/seen and /api/choice.
+  - Screens: packages/web/src/screens/Setup.tsx (words in setup-text.ts),
+    /setup/bank, transfers, paycheck, assign, check (SETUP_PATHS on the
+    server, SETUP_ROUTES on the phone, their own lists). Home before setup
+    day has "Start setup day"; after it, Needs attention says what is still
+    to set (the paycheck rule and the mom rule) with a way to Settings
+    (B130). New shared block: LinkButton.
+  - Demo: SETUP_SCENARIOS, kept apart from the other lives (each has a
+    made-up bank history, src/demo/made-up-bank.ts and setup-lives.ts, not a
+    book): setup-day (charges pending on four accounts, a refund pending, a
+    card payment on its way, money that landed first, a payment to the old
+    card on its way) and setup-owes-more (starting money -1,756.47).
+    demoSetupDesk makes a life's desk; tests make their twin with it. The
+    demo still never loads the database (its import guard lists the new
+    files). How far back halves are asked about is 10 days, fixed in the
+    demo, until A25 is answered.
+  - Tests: money 14-setup-day-screens (with 1,000 random banks and
+    assignments); server setup-history (the pure logic and the database
+    agree), setup-desk, views-setup, setup-random (300 random banks, the
+    starting money worked out by hand in the test), demo-setup,
+    views-home-still-to-set; browser setup, design-setup, random-setup
+    (random banks through the screens, WEB_LIVES), worked-examples-setup.
+    Worked examples: money 37 and 38, screens 18 and 19.
+  - Break-it: new breaks tagged "[setup]" (money sections 11 and 14, server
+    section "setup", screens section "home"); 17 older breaks whose code
+    moved were pointed at it again.
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.

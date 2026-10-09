@@ -33,6 +33,32 @@ for (let tries = 0; ; tries += 1) {
 }
 
 // name, made-up life, address, and what to do before the picture.
+// Setup day's answers for the pictures of the last look and after it, sent
+// the way the screens send them (POST /api/choice, with decision numbers),
+// then the screen is opened again to show them.
+const SETUP_ANSWERS = [
+  { onItsWay: { half: 'su-old-left', answer: true } },
+  { onItsWay: { half: 'su-card-left', answer: true } },
+  { onItsWay: { half: 'su-sav-landed', answer: true } },
+  { lastPaycheck: '2026-10-02' },
+  { assign: { pot: 'savings', amount: 800_000 } },
+  { assign: { pot: 'momReserve', amount: 120_000 } },
+  { assign: { pot: 'wants', amount: 40_000 } },
+  { assign: { pot: 'needs', rest: true } },
+];
+
+async function setupAnswers(page, answers) {
+  await page.evaluate(async (all) => {
+    let n = 0;
+    for (const setup of all) {
+      n += 1;
+      await fetch('/api/choice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: `screenshot-setup-${n}`, setup }) });
+    }
+  }, answers);
+  await page.reload();
+  await page.locator('main[aria-busy="false"]').waitFor();
+}
+
 const SHOTS = [
   ['home', 'normal', '/home'],
   ['home-whole', 'normal', '/home', 'full'],
@@ -325,6 +351,69 @@ const SHOTS = [
   ['settings-leftover-sheet', 'normal', '/settings', async (page) => {
     await page.getByTestId('row-leftover').click();
   }],
+  // Setup day (section 14), on the made-up lives not set up yet.
+  ['setup-home', 'setup-day', '/home'],
+  ['setup-bank', 'setup-day', '/setup/bank'],
+  ['setup-bank-whole', 'setup-day', '/setup/bank', 'full'],
+  ['setup-transfers-whole', 'setup-day', '/setup/transfers', 'full'],
+  ['setup-transfers-answered', 'setup-day', '/setup/transfers', async (page) => {
+    for (const half of ['su-old-left', 'su-card-left', 'su-sav-landed']) {
+      await page.getByTestId(`half-${half}`).getByTestId('on-its-way').click();
+      await page.getByTestId(`half-${half}`).getByTestId('answer').filter({ hasText: 'on its way' }).waitFor();
+    }
+    await page.evaluate(() => window.scrollTo(0, 0));
+    return 'no-sheet';
+  }],
+  ['setup-paycheck-sheet', 'setup-day', '/setup/paycheck', async (page) => {
+    await page.getByTestId('last-paycheck').click();
+    await page.getByTestId('date').fill('2026-10-02');
+  }],
+  ['setup-paycheck-refused', 'setup-day', '/setup/paycheck', async (page) => {
+    await page.getByTestId('last-paycheck').click();
+    await page.getByTestId('date').fill('2026-10-08');
+    await page.getByTestId('sheet-save').click();
+    await page.getByTestId('sheet-problem').waitFor();
+  }],
+  ['setup-paycheck', 'setup-day', '/setup/paycheck', async (page) => {
+    await setupAnswers(page, [{ lastPaycheck: '2026-10-02' }]);
+    return 'no-sheet';
+  }],
+  ['setup-assign', 'setup-day', '/setup/assign'],
+  ['setup-assign-sheet', 'setup-day', '/setup/assign', async (page) => {
+    await page.getByTestId('assign-needs').click();
+    await page.getByTestId('amount').fill('954.10');
+  }],
+  ['setup-assign-over', 'setup-day', '/setup/assign', async (page) => {
+    await setupAnswers(page, [{ assign: { pot: 'savings', amount: 800_000 } }, { assign: { pot: 'needs', amount: 240_411 } }]);
+    return 'no-sheet';
+  }],
+  ['setup-check-missing', 'setup-day', '/setup/check', 'full'],
+  ['setup-check-ready', 'setup-day', '/setup/check', async (page) => {
+    await setupAnswers(page, SETUP_ANSWERS);
+    await page.addStyleTag({ content: '.tabbar { position: static !important; } .screen { padding-bottom: var(--space-5) !important; }' });
+    return 'no-sheet';
+  }],
+  ['setup-start-confirm', 'setup-day', '/setup/check', async (page) => {
+    await setupAnswers(page, SETUP_ANSWERS);
+    await page.getByTestId('start').click();
+  }],
+  ['setup-home-after', 'setup-day', '/setup/check', async (page) => {
+    await setupAnswers(page, SETUP_ANSWERS);
+    await page.getByTestId('start').click();
+    await page.getByTestId('confirm-yes').click();
+    await page.waitForURL(/\/home$/);
+    await page.locator('main[data-testid="home"][aria-busy="false"]').waitFor();
+    return 'no-sheet';
+  }],
+  ['setup-owes-more-bank', 'setup-owes-more', '/setup/bank'],
+  ['setup-owes-more-assign', 'setup-owes-more', '/setup/assign', async (page) => {
+    await setupAnswers(page, [{ assign: { pot: 'savings', amount: 15_000 } }, { assign: { pot: 'needs', amount: -150_000 } }, { assign: { pot: 'wants', rest: true } }]);
+    return 'no-sheet';
+  }],
+  ['setup-owes-more-transfers', 'setup-owes-more', '/setup/transfers'],
+  ['setup-not-ready', 'not-set-up', '/setup/bank'],
+  ['setup-error', 'error', '/setup/bank', 'error'],
+  ['setup-loading', 'slow', '/setup/bank', 'loading-setup'],
 ];
 
 mkdirSync(out, { recursive: true });
@@ -353,6 +442,7 @@ try {
       else if (step === 'loading-activity') await page.getByTestId('activity-loading').waitFor();
       else if (step === 'loading-payday') await page.getByTestId('payday-loading').waitFor();
       else if (step === 'loading-settings') await page.getByTestId('settings-loading').waitFor();
+      else if (step === 'loading-setup') await page.getByTestId('setup-loading').waitFor();
       else if (step === 'error') await page.locator('[data-testid$="-error"]').waitFor();
       else await page.locator('main[aria-busy="false"]').waitFor();
       if (typeof step === 'function') {

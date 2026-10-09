@@ -1146,5 +1146,124 @@
     "find": "        action = edit.move.direction === 'up' ? 'moved-up' : 'moved-down';",
     "replace": "        action = 'moved-up';",
     "why": "[a22] the answer says a rule moved up when it moved down"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-history.ts",
+    "find": "  if (bank.setUp) throw new SetupNotReady('setup day is done already');\n",
+    "replace": "",
+    "why": "[setup] 14 let setup day be done twice"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-history.ts",
+    "find": "daysBetween(h.date, today) <= withinDays);",
+    "replace": "daysBetween(h.date, today) < withinDays);",
+    "why": "[setup] B48 A25 leave out a half from the last day asked about"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-history.ts",
+    "find": "return readBankItemWithRule(role, read.item.amount, read.item.description, history.rules).rule;",
+    "replace": "return null;",
+    "why": "[setup] section 2 never name the bank rule that read a half"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-history.ts",
+    "find": "const withPending = withPendingCharges(history.posted, history.pendingCharges);",
+    "replace": "const withPending = history.posted;",
+    "why": "[setup] 12.1 check day one against the posted balances, without the pending charges"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-desk.ts",
+    "find": "    this.#done.set(request.id, { fingerprint, done: answered });\n",
+    "replace": "",
+    "why": "[setup] B92 forget decision numbers, so a repeat is done again"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-desk.ts",
+    "find": "setUp: bank.setUp || this.#started !== null",
+    "replace": "setUp: bank.setUp",
+    "why": "[setup] 14 after tracking starts, setup day can start it again"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-desk.ts",
+    "find": "if (request.confirmed !== true || request.seen !== view.key) {",
+    "replace": "if (request.confirmed !== true) {",
+    "why": "[setup] 14.3 start on a yes to a last look that has changed since"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-desk.ts",
+    "find": "if (request.confirmed !== true || request.seen !== view.key) {",
+    "replace": "if (request.seen !== view.key) {",
+    "why": "[setup] 14.3 start without his yes, when the last look is named"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-desk.ts",
+    "find": "amount = addCents(this.#answers.assignment[pot], view.leftToAssign);",
+    "replace": "amount = view.leftToAssign;",
+    "why": "[setup] 14.2 the rest replaces what the bucket had instead of adding to it"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-desk.ts",
+    "find": "if (daysBetween(date, today) < 0) return refuse",
+    "replace": "if (daysBetween(date, today) < -1) return refuse",
+    "why": "[setup] B42 take a last paycheck dated tomorrow"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-view.ts",
+    "find": "  if (halves.some((h) => h.onItsWay === null)) missing.push('halves');\n",
+    "replace": "",
+    "why": "[setup] 14.3 start with transfers not answered"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-view.ts",
+    "find": "inTransit: addCents(...onItsWay.map((h) => h.effect)),",
+    "replace": "inTransit: addCents(...halves.map((h) => h.effect)),",
+    "why": "[setup] B48 count every half as on its way in the total"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-view.ts",
+    "find": "kind: half.kind === 'transfer-sent' ? 'left' : 'arrived',",
+    "replace": "kind: half.kind === 'transfer-sent' ? 'arrived' : 'left',",
+    "why": "[setup] B48 call money that arrived money that left"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/choices.ts",
+    "find": "if (onlyKeys(assign, ['pot', 'amount']) && isWhole(assign['amount']))",
+    "replace": "if (onlyKeys(assign, ['pot', 'amount']) && typeof assign['amount'] === 'number')",
+    "why": "[setup] 0.1 take a fraction of a cent from the phone"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/http/server.ts",
+    "find": "          : 'setup' in parsed\n            ? await handlers.setup?.(request, parsed)\n            : await handlers.choice?.(request, parsed);",
+    "replace": "          : await handlers.choice?.(request, parsed as never);",
+    "why": "[setup] setup answers go to the choice desk"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/views/home.ts",
+    "find": "const stillToSet = (['paycheckRule', 'momRule'] as const).filter((key) => settings[key] === null);",
+    "replace": "const stillToSet = (['paycheckRule', 'momRule'] as const).filter((key) => settings[key] !== null);",
+    "why": "[setup] 14 Home says the rules that are set are still to set"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/demo/made-up-bank.ts",
+    "find": "      amount: dollars(item.amount),",
+    "replace": "      amount: dollars(Math.abs(item.amount)),",
+    "why": "[setup] the made-up bank loses the sign of money in"
   }
 ]

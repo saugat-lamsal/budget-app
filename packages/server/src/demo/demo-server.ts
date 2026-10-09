@@ -1,5 +1,5 @@
 import type { IncomingMessage, Server } from 'node:http';
-import { DEFAULT_SETTINGS } from '@budget-app/money';
+import { DEFAULT_SETTINGS, type IsoDate } from '@budget-app/money';
 import { ChoiceDesk } from '../choices.js';
 import { createAppServer, send } from '../http/server.js';
 import { activityView } from '../views/activity.js';
@@ -28,10 +28,7 @@ export function createDemoServer(options: { readonly webRoot: string; readonly o
       if (scenario.input === null) throw new Error('made-up failure, for the demo');
       const input = scenario.input();
       // A life not set up yet does setup day on its made-up bank (section 14).
-      const setup =
-        scenario.setup === undefined
-          ? null
-          : new SetupDesk({ bank: madeUpHistory(scenario.setup()), today: () => input.today, settings: DEFAULT_SETTINGS, halvesWithinDays: SETUP_HALVES_WITHIN_DAYS, madeUpData: true });
+      const setup = demoSetupDesk(scenario, input.today);
       lives.set(scenario.name, (live = { input, seen: new Set(), desk: input.book === null ? null : new ChoiceDesk(input.book, () => input.today), setup }));
     }
     return live;
@@ -156,6 +153,15 @@ interface Live {
 // How many days back setup day asks about transfers with one half showing
 // (QUESTIONS.md A25).
 const SETUP_HALVES_WITHIN_DAYS = 10;
+
+// The setup desk of a made-up life not set up yet, on its made-up bank, with
+// the settings tracking starts with (section 2: the paycheck rule and the
+// mom rule are not set yet). Null for a life that has no bank to set up from.
+// Tests make their twin of a life with this too.
+export function demoSetupDesk(scenario: DemoScenario, today: IsoDate): SetupDesk | null {
+  if (scenario.setup === undefined) return null;
+  return new SetupDesk({ bank: madeUpHistory(scenario.setup()), today: () => today, settings: DEFAULT_SETTINGS, halvesWithinDays: SETUP_HALVES_WITHIN_DAYS, madeUpData: true });
+}
 
 // Where the demo listens: this computer only, unless --wifi.
 export function demoAddress(args: readonly string[]): { readonly host: string; readonly port: number; readonly wifi: boolean } {

@@ -48,7 +48,7 @@ export function SetupScreen({ step, load, onRetry, onStarted }: { readonly step:
       {load.status === 'ready' && load.value.state === 'not-set-up' && !load.value.ready && (
         <StateMessage icon="bank" title="Setup day can't start yet" detail={`${capitalize(load.value.why)}.`} testId="setup-not-ready" />
       )}
-      {load.status === 'ready' && load.value.state === 'not-set-up' && load.value.ready && <SetupReady step={step} view={load.value} reload={onRetry} onStarted={onStarted} />}
+      {load.status === 'ready' && load.value.state === 'not-set-up' && load.value.ready && <SetupReady key={step} step={step} view={load.value} reload={onRetry} onStarted={onStarted} />}
     </main>
   );
 }
@@ -76,7 +76,6 @@ function SetupLoading() {
 interface Sender {
   readonly sending: boolean;
   readonly problem: string | null;
-  readonly clear: () => void;
   // Sends one answer. A retry of the same answer keeps its decision number.
   // A sheet says what went wrong itself (inSheet); otherwise the screen does.
   // Null while another answer is on its way; 'failed' when no answer came.
@@ -115,7 +114,7 @@ function useSender(reload: Reload): Sender {
       setSending(false);
     }
   };
-  return { sending, problem, clear: () => setProblem(null), send };
+  return { sending, problem, send };
 }
 
 // ----- The steps -----
@@ -169,7 +168,7 @@ function BankStep({ view }: { readonly view: SetupReadyView }) {
           </p>
         ) : (
           view.pendingCharges.filter((c) => c.account !== 'old-card').map((c) => (
-            <ListRow key={c.id} title={c.description} detail={`${ACCOUNT_NAMES[c.account]} · ${shortDate(c.date)}`} trailing={<Money cents={c.amount} />} testId={`pending-${c.id}`} />
+            <ListRow key={c.id} title={c.description} detail={`${ACCOUNT_NAMES[c.account]} · ${shortDate(c.date)}`} trailing={<Money cents={c.amount} testId={`pending-${c.id}`} />} testId={`pending-row-${c.id}`} />
           ))
         )}
         <p className="card__note">They count now, from the day of the purchase. Money still pending into your accounts counts once it posts.</p>
@@ -192,7 +191,7 @@ function BankStep({ view }: { readonly view: SetupReadyView }) {
         {view.pendingCharges
           .filter((c) => c.account === 'old-card')
           .map((c) => (
-            <ListRow key={c.id} title={c.description} detail={`Pending · ${shortDate(c.date)}`} trailing={<Money cents={c.amount} />} testId={`pending-${c.id}`} />
+            <ListRow key={c.id} title={c.description} detail={`Pending · ${shortDate(c.date)}`} trailing={<Money cents={c.amount} testId={`pending-${c.id}`} />} testId={`pending-row-${c.id}`} />
           ))}
         <p className="card__note">Tracked apart as debt. It is not part of the starting money.</p>
       </Card>

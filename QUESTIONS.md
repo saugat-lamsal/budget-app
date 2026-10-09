@@ -331,6 +331,46 @@ A24. ANSWERED Oct 9. Your answer: option 1, as built. Rulebook 13.1 and
      both; option 2 would go on top of it, with nothing built thrown away.
 
 
+## Part A, added with Setup day (Phase 4, Oct 9). Waiting on your answer.
+
+A25. How far back Setup day asks about transfers with only one side showing
+     (B48, B64). The rulebook says they are offered for you to confirm, but
+     not from how long ago. A transfer whose other side is just before the
+     start of the bank's history, or one whose other side no bank rule
+     names, would show up however old it is, and you would be asked about
+     each one.
+     Option 1: only the last 10 days, and 10 is a setting (rule 0.2). A
+     card payment or a transfer lands within a few days, so anything older
+     is history.
+     Option 2: every one in the whole history, however old.
+     Option 3: the last 10 days, and the older ones listed apart as "older,
+     not asked about", so you can see them.
+     Recommendation: option 1. An old one is not on its way any more, and a
+     long list of old card payments to answer "no" to would hide the one
+     that matters. Built: option 1 with 10 days, fixed in the demo, until you
+     answer (packages/server/src/demo/demo-server.ts,
+     SETUP_HALVES_WITHIN_DAYS). Making it a setting comes with the real
+     server.
+
+A26. A payment refunded in full still waits in Review at $0.00 (4.5, B7,
+     B11). When a purchase (a card or debit payment) is still waiting in
+     Review and the bank refunds all of it, it stays in Review with nothing
+     left to sort (checked: a 25.00 purchase, refunded 25.00, waits at
+     0.00). It holds nothing back from safe to spend (4.3),
+     but it still counts as waiting: the Review badge, "1 waiting in review"
+     on Home, and the daily review reminder (10.3, B32) come for it, and you
+     have to pick a bucket for $0.00 to clear it.
+     Option 1: leave it as is. Sorting it anywhere changes no bucket.
+     Option 2: it leaves Review by itself once it is refunded in full, since
+     there is nothing to decide. It is kept as a record (sorted nowhere), and
+     if the bank later takes the refund back (4.10), the purchase comes back
+     to Review to be sorted.
+     Option 3: it stays, marked "Refunded in full, nothing to sort", with one
+     "Got it" button, like a new purchase on the old card (5.4).
+     Recommendation: option 2. Nothing is left to decide, and a reminder for
+     $0.00 teaches you to ignore reminders. Needs a line in 4.5. Not built.
+
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 B1. Paycheck smaller than the mom reserve (3.2).
@@ -1181,3 +1221,58 @@ B124. Found by you (Oct 9), fixed with a test first: setting the mom rule
       a partly refunded payment; undoing a marked transfer or "for mom"
       cannot meet a refund, since a refund is never matched to those; a
       deposit has nothing that can change after it arrives.
+
+
+## Part B, added with Setup day (Phase 4, Oct 9). Tell me if any is wrong.
+
+B125. Where Setup day is. Before setup day, Home says "Not set up yet" with
+      "Start setup day". The five steps each have an address (/setup/bank,
+      transfers, paycheck, assign, check), with Back and Next; the tab bar
+      stays. Your answers are kept by the server until tracking starts, so
+      leaving and coming back loses nothing. The demo keeps them in memory;
+      the real server keeps them with the book's history (Phase 6, like B92).
+
+B126. Every transfer with one side showing must be answered, "On its way" or
+      "Not on its way", before tracking starts; nothing is assumed. One you
+      say is not on its way stays history: it never reaches the book. Each
+      shows the bank rule that read it as a transfer, and what saying "on
+      its way" does to the starting money (plus what left, minus what
+      arrived first, nothing for the old card, B48).
+
+B127. The last paycheck (B42) can be any real day up to and including setup
+      day. A day after it is refused: that paycheck has not come. A day long
+      ago is allowed; the next payday then shows as late (B35).
+
+B128. Handing out the starting money (14.2). Each bucket takes any amount in
+      dollars and cents: zero, or below zero (B43, typed with a minus sign).
+      "Put what is left here" adds what is left to assign to that bucket,
+      worked out by the money math; when too much is assigned it takes the
+      extra back out of it. The same amount again says "That is already the
+      amount" and changes nothing (like B114). What is left is shown after
+      every amount, from the server.
+
+B129. Starting (14.3) asks first, and your yes names the last look you saw
+      (like B113): if anything changed since, it asks again. It starts only
+      when every transfer is answered, the last paycheck is in, it adds up to
+      the cent, and the self-check passes. Otherwise it says what is missing,
+      in words, with how much is left or too much ("$0.01 is still to
+      assign"). Setup day happens once: after it, every new answer is
+      refused, and the Setup day screens say it is done.
+
+B130. After setup day, Home says what is still to set, the paycheck rule and
+      the mom rule, with a way to Settings, for as long as either is not set.
+      It is in Needs attention, after what waits in review: until they are
+      set, your paycheck and payments to mom wait there.
+
+B131. Tracking starts with the rulebook's starting settings (section 2): no
+      paycheck rule, no mom rule, and no sorting rules yet. All can be set in
+      Settings right after.
+
+B132. Bank rules on Setup day: the ones that came with the bank connection,
+      used as they are. The last look lists them, and each transfer names the
+      one that read it. Suggesting them from the bank's own labels, and
+      changing them in Settings, come next (A23).
+
+B133. A charge pending on the old card is shown with the old card, as part
+      of its debt (12.4, A10), not in the list of charges that are part of
+      the starting money.

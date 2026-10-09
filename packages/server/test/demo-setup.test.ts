@@ -1,5 +1,8 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDemoServer } from '../src/demo/demo-server.js';
 import { DEMO_SCENARIOS, SETUP_SCENARIOS, demoScenario } from '../src/demo/scenarios.js';
@@ -13,15 +16,21 @@ import type { SetupReadyView, SetupView } from '../src/views/setup.js';
 
 let server: Server;
 let base: string;
+let folder: string;
 
 beforeAll(async () => {
-  server = createDemoServer({ webRoot: 'packages/web/dist' });
+  // A stand-in for the built screens: these tests are about the addresses and numbers.
+  folder = mkdtempSync(join(tmpdir(), 'budget-setup-'));
+  mkdirSync(join(folder, 'dist'), { recursive: true });
+  writeFileSync(join(folder, 'dist', 'index.html'), '<!doctype html><title>app</title>');
+  server = createDemoServer({ webRoot: join(folder, 'dist') });
   await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 
 afterAll(async () => {
   await new Promise<void>((done) => server.close(() => done()));
+  rmSync(folder, { recursive: true, force: true });
 });
 
 async function json<T>(path: string, life: string): Promise<T> {

@@ -186,6 +186,9 @@ describe('14.3 starting to track', () => {
     assign(d, { needs: money });
     const noYes = d.decide({ id: id(), setup: { start: true } });
     expect(refused(noYes)).toMatchObject({ code: 'needs-confirmation' });
+    // Naming the last look is not a yes by itself.
+    expect(refused(d.decide({ id: id(), setup: { start: true }, seen: ready(d).key }))).toMatchObject({ code: 'needs-confirmation' });
+    expect(refused(d.decide({ id: id(), setup: { start: true }, confirmed: false, seen: ready(d).key }))).toMatchObject({ code: 'needs-confirmation' });
     const saw = ready(d).key;
     // Something changes after he looked: his yes is to what he saw.
     assign(d, { needs: money - 100, wants: 100 });
