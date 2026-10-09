@@ -2,11 +2,11 @@ import type { SelfCheck } from '@budget-app/money';
 import type { Attention, HomeView } from '@budget-app/server/views';
 import { useState } from 'react';
 import { markTakeBackSeen, type Load, type Reload } from '../app/api.js';
-import { pathOf } from '../app/routes.js';
-import { Banner, BottomSheet, BucketBar, Button, Card, ListRow, MadeUpPill, Money, Skeleton, StateMessage, StatusLabel } from '../ui/blocks.js';
+import { pathOf, setupPath } from '../app/routes.js';
+import { Banner, BottomSheet, BucketBar, Button, Card, LinkButton, ListRow, MadeUpPill, Money, Skeleton, StateMessage, StatusLabel } from '../ui/blocks.js';
 import { asOfText, longDate, shortDate } from '../ui/dates.js';
 import { Icon } from '../ui/Icon.js';
-import { dueText, paydayText, waitingText } from './home-text.js';
+import { dueText, paydayText, stillToSetText, waitingText } from './home-text.js';
 
 // Home: safe to spend is the one main number. Below it, what needs
 // attention, then needs and wants as compact bars.
@@ -31,7 +31,11 @@ export function HomeScreen({ load, onRetry }: { readonly load: Load<HomeView>; r
             title="Not set up yet"
             detail="Setup day reads your bank balances and lets you hand out your starting money. Your numbers show here after that."
             testId="home-not-set-up"
-          />
+          >
+            <LinkButton href={setupPath('bank')} testId="start-setup">
+              Start setup day
+            </LinkButton>
+          </StateMessage>
         </>
       )}
       {load.status === 'ready' && load.value.state === 'tracking' && <HomeReady view={load.value} onChanged={onRetry} />}
@@ -319,6 +323,10 @@ function AttentionRow({ item, onSavings, onTakeBack }: { readonly item: Attentio
           testId={testId}
         />
       );
+    case 'still-to-set': {
+      const words = stillToSetText(item.settings);
+      return <ListRow icon="settings" title={words.title} detail={words.detail} href={pathOf('settings')} testId={testId} />;
+    }
     case 'move-to-savings':
       return (
         <ListRow

@@ -6,9 +6,10 @@ import { HomeScreen } from '../screens/Home.js';
 import { PaydayScreen } from '../screens/Payday.js';
 import { ReviewScreen } from '../screens/Review.js';
 import { SettingsScreen } from '../screens/Settings.js';
+import { SetupScreen } from '../screens/Setup.js';
 import { TabBar } from '../ui/TabBar.js';
-import { useActivity, useBuckets, useHome, usePayday, useReview, useSettings, type Reload } from './api.js';
-import { backTarget, pathOfRoute, routeLabel, routeOf, routeTitle, tabOfRoute, type Route, type Tab } from './routes.js';
+import { useActivity, useBuckets, useHome, usePayday, useReview, useSettings, useSetup, type Reload } from './api.js';
+import { backTarget, pathOfRoute, routeLabel, routeOf, routeTitle, tabOfRoute, type Route, type SetupStepName, type Tab } from './routes.js';
 
 // Each of these loads its numbers when its screen opens, so it is always fresh.
 // A change on one of them (a choice, a move) also asks Home for its numbers
@@ -36,6 +37,12 @@ function ActivityTab({ pot, onChanged, back }: { readonly pot: Pot; readonly onC
 function PaydayTab({ onChanged, back }: { readonly onChanged: Reload; readonly back: Back }) {
   const [load, reload] = usePayday();
   return <PaydayScreen load={load} onRetry={reload} onChanged={onChanged} back={back} />;
+}
+
+// Setup day (section 14). Once tracking starts, Home shows.
+function SetupTab({ step, onStarted }: { readonly step: SetupStepName; readonly onStarted: () => void }) {
+  const [load, reload] = useSetup();
+  return <SetupScreen step={step} load={load} onRetry={reload} onStarted={onStarted} />;
 }
 
 const HOME: Route = { screen: 'tab', tab: 'home' };
@@ -111,6 +118,14 @@ export function App() {
         <ActivityTab key={route.pot} pot={route.pot} onChanged={retryHome} back={back} />
       ) : route.screen === 'payday' ? (
         <PaydayTab onChanged={retryHome} back={back} />
+      ) : route.screen === 'setup' ? (
+        <SetupTab
+          step={route.step}
+          onStarted={() => {
+            retryHome('after');
+            go(HOME);
+          }}
+        />
       ) : route.tab === 'home' ? (
         <HomeScreen load={home} onRetry={retryHome} />
       ) : route.tab === 'buckets' ? (

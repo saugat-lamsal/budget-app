@@ -51,7 +51,7 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/reading.ts",
-    "find": "  if (amount === 0) return { kind: 'nothing' };\n",
+    "find": "  if (amount === 0) return { reading: { kind: 'nothing' }, rule: null };\n",
     "replace": "",
     "why": "reading: treat zero as money moving"
   },
@@ -65,8 +65,8 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/reading.ts",
-    "find": "  if (isCard(account)) return out ? { kind: 'purchase' } : { kind: 'refund' };",
-    "replace": "  if (isCard(account)) return out ? { kind: 'refund' } : { kind: 'purchase' };",
+    "find": "  if (isCard(account)) return { reading: out ? { kind: 'purchase' } : { kind: 'refund' }, rule: null };",
+    "replace": "  if (isCard(account)) return { reading: out ? { kind: 'refund' } : { kind: 'purchase' }, rule: null };",
     "why": "4.5 swap card purchases and refunds"
   },
   {
@@ -260,23 +260,23 @@
   },
   {
     "section": "bank",
-    "file": "packages/server/src/setup-day.ts",
+    "file": "packages/server/src/setup-history.ts",
     "find": "    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || !read.ok || read.item.amount <= 0) continue;",
     "replace": "    if (!item.pending || item.removed || role === undefined || !read.ok || read.item.amount === 0) continue;",
     "why": "14.2 count pending money in as a pending charge"
   },
   {
     "section": "bank",
-    "file": "packages/server/src/setup-day.ts",
+    "file": "packages/server/src/setup-history.ts",
     "find": "    startingMoney: startingMoney(history.posted, history.pendingCharges, inTransit),",
     "replace": "    startingMoney: startingMoney(history.posted, history.pendingCharges),",
     "why": "B48 leave money on its way out of the starting money"
   },
   {
     "section": "bank",
-    "file": "packages/server/src/setup-day.ts",
-    "find": "        updated.status = 'waiting';",
-    "replace": "        updated.status = 'history';",
+    "file": "packages/server/src/setup-history.ts",
+    "find": "      updated.status = 'waiting';",
+    "replace": "      updated.status = 'history';",
     "why": "B36 never send a deposit that was pending on setup day"
   },
   {
@@ -296,8 +296,8 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/reading.ts",
-    "find": "  return out ? { kind: 'purchase' } : { kind: 'deposit' };",
-    "replace": "  return out && account === 'checking' ? { kind: 'purchase' } : { kind: 'deposit' };",
+    "find": "  return { reading: out ? { kind: 'purchase' } : { kind: 'deposit' }, rule: null };",
+    "replace": "  return { reading: out && account === 'checking' ? { kind: 'purchase' } : { kind: 'deposit' }, rule: null };",
     "why": "4.9 read money leaving savings as money in (A16)"
   },
   {
@@ -330,7 +330,7 @@
   },
   {
     "section": "bank",
-    "file": "packages/server/src/setup-day.ts",
+    "file": "packages/server/src/setup-history.ts",
     "find": "    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || !read.ok || read.item.amount <= 0) continue;",
     "replace": "    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || role === 'savings' || !read.ok || read.item.amount <= 0) continue;",
     "why": "14.2 leave a charge pending on savings out of the starting money (A16)"
@@ -849,8 +849,8 @@
   {
     "section": "review",
     "file": "packages/server/src/http/server.ts",
-    "find": "'move' in parsed\n      ? await handlers.move?.(request, parsed)\n      : 'settings' in parsed\n        ? await handlers.settingsChange?.(request, parsed)\n        : 'rule' in parsed\n          ? await handlers.ruleChange?.(request, parsed)\n          : await handlers.choice?.(request, parsed);",
-    "replace": "'move' in parsed\n      ? await handlers.choice?.(request, parsed as never)\n      : 'settings' in parsed\n        ? await handlers.settingsChange?.(request, parsed)\n        : 'rule' in parsed\n          ? await handlers.ruleChange?.(request, parsed)\n          : await handlers.move?.(request, parsed as never);",
+    "find": "'move' in parsed\n      ? await handlers.move?.(request, parsed)\n      : 'settings' in parsed\n        ? await handlers.settingsChange?.(request, parsed)\n        : 'rule' in parsed\n          ? await handlers.ruleChange?.(request, parsed)\n          : 'setup' in parsed\n            ? await handlers.setup?.(request, parsed)\n            : await handlers.choice?.(request, parsed);",
+    "replace": "'move' in parsed\n      ? await handlers.choice?.(request, parsed as never)\n      : 'settings' in parsed\n        ? await handlers.settingsChange?.(request, parsed)\n        : 'rule' in parsed\n          ? await handlers.ruleChange?.(request, parsed)\n          : 'setup' in parsed\n            ? await handlers.setup?.(request, parsed)\n            : await handlers.move?.(request, parsed as never);",
     "why": "[activity] B103 moves and choices go to each other's handler"
   },
   {

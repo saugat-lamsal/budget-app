@@ -45,6 +45,8 @@ import type {
   SettingsDone,
   SettingsRequest,
   SettingsResponse,
+  SetupRequest,
+  SetupStep,
 } from './views/choice.js';
 import { ruleViewOf } from './views/settings.js';
 
@@ -111,12 +113,49 @@ export function parseMoveRequest(value: unknown): MoveRequest | null {
 
 // Whatever the phone sent: a move, a settings change, or a rule change if it
 // says so, otherwise a choice.
-export function parseRequest(value: unknown): ChoiceRequest | MoveRequest | SettingsRequest | RuleRequest | null {
+export function parseRequest(value: unknown): ChoiceRequest | MoveRequest | SettingsRequest | RuleRequest | SetupRequest | null {
   if (!isRecord(value)) return null;
   if ('move' in value) return parseMoveRequest(value);
   if ('settings' in value) return parseSettingsRequest(value);
   if ('rule' in value) return parseRuleRequest(value);
+  if ('setup' in value) return parseSetupRequest(value);
   return parseChoiceRequest(value);
+}
+
+// One answer on the Setup day screens (section 14), exactly as the money math
+// keeps it; otherwise null. Whether the date is a real one, and whether the
+// amounts add up, is the money math's to say.
+export function parseSetupRequest(value: unknown): SetupRequest | null {
+  if (!isRecord(value) || !onlyKeys(value, ['id', 'setup', 'confirmed', 'seen'])) return null;
+  const { id, setup, confirmed, seen } = value;
+  if (typeof id !== 'string' || !ID_FORMAT.test(id)) return null;
+  if (!isRecord(setup) || Object.keys(setup).length !== 1) return null;
+  if (confirmed !== undefined && typeof confirmed !== 'boolean') return null;
+  if (seen !== undefined && (typeof seen !== 'string' || !PREVIEW_KEY.test(seen))) return null;
+  const yes = { ...(confirmed === undefined ? {} : { confirmed }), ...(seen === undefined ? {} : { seen }) };
+  let step: SetupStep;
+  if ('onItsWay' in setup) {
+    const half = setup['onItsWay'];
+    if (!isRecord(half) || Object.keys(half).length !== 2 || !onlyKeys(half, ['half', 'answer'])) return null;
+    const { half: which, answer } = half;
+    if (typeof which !== 'string' || which === '' || which.length > MAX_ITEM_LENGTH || typeof answer !== 'boolean') return null;
+    step = { onItsWay: { half: which, answer } };
+  } else if ('lastPaycheck' in setup) {
+    const date = setup['lastPaycheck'];
+    if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+    step = { lastPaycheck: date };
+  } else if ('assign' in setup) {
+    const assign = setup['assign'];
+    if (!isRecord(assign) || Object.keys(assign).length !== 2 || !isPot(assign['pot'])) return null;
+    const pot = assign['pot'];
+    if (onlyKeys(assign, ['pot', 'amount']) && isWhole(assign['amount'])) step = { assign: { pot, amount: assign['amount'] } };
+    else if (onlyKeys(assign, ['pot', 'rest']) && assign['rest'] === true) step = { assign: { pot, rest: true } };
+    else return null;
+  } else if ('start' in setup) {
+    if (setup['start'] !== true) return null;
+    step = { start: true };
+  } else return null;
+  return { id, setup: step, ...yes };
 }
 
 // ----- Settings and sorting rules (section 2) -----
@@ -614,7 +653,7 @@ interface Applied {
 
 type Refusal = Extract<ChoiceResponse, { ok: false }>;
 
-function refuse(code: RefusalCode, why: string): Refusal {
+export function refuse(code: RefusalCode, why: string): Refusal {
   return { ok: false, code, why: `${why.replace(/\s*\.?\s*$/, '')}. Nothing was changed.` };
 }
 
@@ -734,7 +773,7 @@ function escape(text: string): string {
 
 // The same request always gives the same text, whatever order its keys were
 // written in, so a repeat is recognized.
-function canonical(value: unknown): string {
+export function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
   if (isRecord(value)) {
     return `{${Object.keys(value)

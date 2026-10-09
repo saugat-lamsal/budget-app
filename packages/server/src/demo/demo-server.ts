@@ -1,4 +1,5 @@
 import type { IncomingMessage, Server } from 'node:http';
+import { DEFAULT_SETTINGS } from '@budget-app/money';
 import { ChoiceDesk } from '../choices.js';
 import { createAppServer, send } from '../http/server.js';
 import { activityView } from '../views/activity.js';
@@ -6,8 +7,11 @@ import { bucketsView } from '../views/buckets.js';
 import { homeView, type HomeInput } from '../views/home.js';
 import { paydayView } from '../views/payday.js';
 import { reviewView } from '../views/review.js';
+import { SetupDesk } from '../setup-desk.js';
 import { settingsView } from '../views/settings.js';
-import { DEMO_SCENARIOS, demoScenario, type DemoScenario } from './scenarios.js';
+import { NO_ANSWERS, setupView } from '../setup-view.js';
+import { madeUpHistory } from './made-up-bank.js';
+import { DEMO_SCENARIOS, SETUP_SCENARIOS, demoScenario, type DemoScenario } from './scenarios.js';
 
 // The screens on made-up data only (Phase 4). /demo lists the made-up
 // lives; picking one remembers it in a cookie and opens Home. Nothing here
@@ -23,7 +27,12 @@ export function createDemoServer(options: { readonly webRoot: string; readonly o
     if (live === undefined) {
       if (scenario.input === null) throw new Error('made-up failure, for the demo');
       const input = scenario.input();
-      lives.set(scenario.name, (live = { input, seen: new Set(), desk: input.book === null ? null : new ChoiceDesk(input.book, () => input.today) }));
+      // A life not set up yet does setup day on its made-up bank (section 14).
+      const setup =
+        scenario.setup === undefined
+          ? null
+          : new SetupDesk({ bank: madeUpHistory(scenario.setup()), today: () => input.today, settings: DEFAULT_SETTINGS, halvesWithinDays: SETUP_HALVES_WITHIN_DAYS, madeUpData: true });
+      lives.set(scenario.name, (live = { input, seen: new Set(), desk: input.book === null ? null : new ChoiceDesk(input.book, () => input.today), setup }));
     }
     return live;
   };
@@ -82,6 +91,28 @@ export function createDemoServer(options: { readonly webRoot: string; readonly o
       if (desk === null) return { ok: false, code: 'refused', why: 'There is nothing to change before setup day. Nothing was changed.' };
       return desk.rule(change);
     },
+    setupView: async (request) => {
+      const live = await wait(scenarioOf(request));
+      if (live.setup !== null) return live.setup.view();
+      // A life with a book is set up; the one before setup day has no bank to read.
+      if (live.input.book !== null) return { state: 'tracking', madeUpData: true };
+      return setupView({ today: live.input.today, madeUpData: true, bank: null, answers: NO_ANSWERS, settings: DEFAULT_SETTINGS, rules: [], halvesWithinDays: SETUP_HALVES_WITHIN_DAYS });
+    },
+    setup: (request, answer) => {
+      const live = liveOf(scenarioOf(request));
+      if (live.setup === null) {
+        return { ok: false, code: 'refused', why: live.input.book === null ? 'There is no bank connection yet. Nothing was changed.' : 'Setup day is done already. Nothing was changed.' };
+      }
+      const response = live.setup.decide(answer);
+      // Tracking has started: Home and every other screen read the new book.
+      const started = live.setup.started();
+      if (started !== null && live.input.book === null) {
+        const today = live.input.today;
+        live.input = { ...live.input, book: started.book, bank: started.bank };
+        live.desk = new ChoiceDesk(started.book, () => today);
+      }
+      return response;
+    },
     seen: (request, what) => {
       const live = liveOf(scenarioOf(request));
       const known = live.input.book?.changeLog().some((entry) => entry.kind === 'bank-took-back' && entry.id === what.id) ?? false;
@@ -113,12 +144,18 @@ export function createDemoServer(options: { readonly webRoot: string; readonly o
 }
 
 // One made-up life while the demo runs: its book, the take-backs seen, and
-// the desk that takes his choices.
+// the desk that takes his choices. A life not set up yet has a setup desk;
+// once tracking starts, its book and a choice desk take over.
 interface Live {
-  readonly input: HomeInput;
+  input: HomeInput;
   readonly seen: Set<string>;
-  readonly desk: ChoiceDesk | null;
+  desk: ChoiceDesk | null;
+  readonly setup: SetupDesk | null;
 }
+
+// How many days back setup day asks about transfers with one half showing
+// (QUESTIONS.md A25).
+const SETUP_HALVES_WITHIN_DAYS = 10;
 
 // Where the demo listens: this computer only, unless --wifi.
 export function demoAddress(args: readonly string[]): { readonly host: string; readonly port: number; readonly wifi: boolean } {
@@ -136,9 +173,9 @@ function scenarioOf(request: IncomingMessage): DemoScenario {
 }
 
 function demoPage(current: DemoScenario): string {
-  const items = DEMO_SCENARIOS.map(
-    (s) => `<li><a href="/demo/${s.name}"${s === current ? ' aria-current="true"' : ''}>${s.title}</a></li>`,
-  ).join('\n');
+  const item = (s: DemoScenario): string => `<li><a href="/demo/${s.name}"${s === current ? ' aria-current="true"' : ''}>${s.title}</a></li>`;
+  const items = DEMO_SCENARIOS.map(item).join('\n');
+  const setupItems = SETUP_SCENARIOS.map(item).join('\n');
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -152,6 +189,11 @@ function demoPage(current: DemoScenario): string {
 <p>Every number here is invented. Pick one to open Home with it. Come back to <b>/demo</b> to switch.</p>
 <ul>
 ${items}
+</ul>
+<h2>Not set up yet</h2>
+<p>These open Setup day with a made-up bank.</p>
+<ul>
+${setupItems}
 </ul>
 </body>
 </html>`;

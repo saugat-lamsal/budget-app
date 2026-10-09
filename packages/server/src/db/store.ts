@@ -1,5 +1,6 @@
 import { startTracking, type AccountId, type BankTransaction, type Book, type IsoDate, type SetupInput } from '@budget-app/money';
 import { checkBankRules, type BankRule } from '../bank/reading.js';
+import type { StoredAccount } from '../bank/stored-account.js';
 import type { PlaidAccount, PlaidCreditCard } from '../plaid/types.js';
 import type { Attention, ItemStatus, StoredItem } from '../sync/plan.js';
 import type { Db } from './database.js';
@@ -46,21 +47,12 @@ export function saveConnectionState(db: Db, state: { cursor: string | null; hist
 
 // ----- Accounts -----
 
-export interface StoredAccount {
-  readonly plaidAccountId: string;
-  readonly role: AccountId | null;
-  readonly raw: PlaidAccount;
-  readonly rawText: string;
-}
+export { rolesOf, type StoredAccount } from '../bank/stored-account.js';
 
 export function readAccounts(db: Db): StoredAccount[] {
   return (db.prepare('SELECT plaid_account_id, role, raw FROM accounts ORDER BY plaid_account_id').all() as { plaid_account_id: string; role: AccountId | null; raw: string }[]).map(
     (row) => ({ plaidAccountId: row.plaid_account_id, role: row.role, raw: JSON.parse(row.raw) as PlaidAccount, rawText: row.raw }),
   );
-}
-
-export function rolesOf(accounts: readonly StoredAccount[]): Map<string, AccountId> {
-  return new Map(accounts.flatMap((a) => (a.role === null ? [] : [[a.plaidAccountId, a.role] as const])));
 }
 
 export function saveAccount(db: Db, account: PlaidAccount, rawText: string, sync: number): void {

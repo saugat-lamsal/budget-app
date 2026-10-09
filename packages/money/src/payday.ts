@@ -1,4 +1,5 @@
 import { assertCents, assertPositiveCents, percentOf, subtractCents, type Cents } from './cents.js';
+import { addDays, daysBetween, type IsoDate } from './dates.js';
 import type { Settings } from './settings.js';
 
 export interface PaycheckSplit {
@@ -44,4 +45,12 @@ export function splitPaycheck(amount: Cents, momReserveNow: Cents, settings: Spl
     wants,
     detail: { reserveTaken, overflowToSavings, rest, savingsShare, roundingToSavings },
   };
+}
+
+// 11.2: the next payday from the pay schedule, counted from the last
+// paycheck, and the days to it from today. Once it has passed with no
+// paycheck the days go negative instead of jumping ahead (B35).
+export function nextPayday(lastPaycheckDate: IsoDate, payScheduleDays: number, today: IsoDate): { readonly nextPayday: IsoDate; readonly daysToPayday: number } {
+  const next = addDays(lastPaycheckDate, payScheduleDays);
+  return { nextPayday: next, daysToPayday: daysBetween(today, next) };
 }

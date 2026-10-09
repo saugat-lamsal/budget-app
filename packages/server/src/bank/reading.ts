@@ -38,17 +38,23 @@ const isBankAccount = (account: AccountId): account is 'checking' | 'savings' =>
 
 // amount uses Plaid's sign: positive is money out of the account.
 export function readBankItem(account: AccountId, amount: Cents, description: string, rules: readonly BankRule[]): Reading {
-  if (amount === 0) return { kind: 'nothing' };
+  return readBankItemWithRule(account, amount, description, rules).reading;
+}
+
+// The same, with the bank rule that decided it: null when none did, and the
+// account and the sign said it all.
+export function readBankItemWithRule(account: AccountId, amount: Cents, description: string, rules: readonly BankRule[]): { readonly reading: Reading; readonly rule: BankRule | null } {
+  if (amount === 0) return { reading: { kind: 'nothing' }, rule: null };
   const out = amount > 0;
   for (const rule of rules) {
     if (rule.account !== account || !matchesTextRule(rule, description)) continue;
     const reading = readByRule(rule, out);
-    if (reading !== null) return reading;
+    if (reading !== null) return { reading, rule };
   }
-  if (isCard(account)) return out ? { kind: 'purchase' } : { kind: 'refund' };
+  if (isCard(account)) return { reading: out ? { kind: 'purchase' } : { kind: 'refund' }, rule: null };
   // Money leaving savings that no rule names is spending too; the money math
   // sends it to review whatever it is (4.9, A16).
-  return out ? { kind: 'purchase' } : { kind: 'deposit' };
+  return { reading: out ? { kind: 'purchase' } : { kind: 'deposit' }, rule: null };
 }
 
 // What a matching rule says, or null when it does not fit the way the money

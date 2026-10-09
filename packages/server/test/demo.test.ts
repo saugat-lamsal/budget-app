@@ -343,12 +343,28 @@ describe('the demo is made-up data only', () => {
 
   it('it never loads the database, the bank connection, the bank key, or the settings file', () => {
     const { files, packages } = demoImports();
+    // Setup day (section 14) reads a made-up bank history the way the bank
+    // connection reads a real one: bank/ and sync/plan.ts read Plaid's
+    // format, and nothing there opens the database or calls the bank.
     expect(files.sort()).toEqual([
+      'bank/amounts.ts',
+      'bank/balances.ts',
+      'bank/plaid-item.ts',
+      'bank/reading.ts',
+      'bank/stored-account.ts',
       'choices.ts',
       'demo/demo-server.ts',
+      'demo/made-up-bank.ts',
       'demo/main.ts',
       'demo/scenarios.ts',
+      'demo/setup-lives.ts',
+      'errors.ts',
       'http/server.ts',
+      'plaid/types.ts',
+      'setup-desk.ts',
+      'setup-history.ts',
+      'setup-view.ts',
+      'sync/plan.ts',
       'views/activity.ts',
       'views/buckets.ts',
       'views/choice.ts',
@@ -356,7 +372,9 @@ describe('the demo is made-up data only', () => {
       'views/payday.ts',
       'views/review.ts',
       'views/settings.ts',
+      'views/setup.ts',
     ]);
+    for (const file of files) expect(file, file).not.toMatch(/^(db|crypto)\/|^(connect|status|log)\.ts$|^plaid\/(client|sandbox-lock)\.ts$|^sync\/sync\.ts$/);
     // node:crypto only names a preview of a settings change (choices.ts, previewKey).
     expect([...packages].sort()).toEqual(['@budget-app/money', 'node:crypto', 'node:fs/promises', 'node:http', 'node:os', 'node:path', 'node:url']);
   });

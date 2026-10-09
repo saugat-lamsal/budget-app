@@ -1,6 +1,6 @@
 import { openBook, type Book, type StartingPots } from './book.js';
 import { addCents, assertCents, subtractCents, type Cents } from './cents.js';
-import type { IsoDate } from './dates.js';
+import { assertIsoDate, daysBetween, type IsoDate } from './dates.js';
 import { MoneyError } from './errors.js';
 import type { SortingRule } from './rules.js';
 import { bankSide, withPendingCharges, type BankBalances } from './self-check.js';
@@ -37,24 +37,47 @@ export type SetupResult =
 
 // 14.2: checking + savings - everyday card balance, with pending charges
 // included (the same bank side as the self-check, 12.1), allowing for
-// money in transit between those accounts (12.5): money that has left and
-// not arrived is added; money that arrived before it shows leaving is
-// still counted where it left, so it is taken off. Halves going to or
-// from the old card do not count: it is outside the starting money.
+// money in transit between those accounts (12.5, inTransitEffect).
 export function startingMoney(
   posted: BankBalances,
   pendingCharges: readonly (Purchase | SavingsWithdrawal)[],
   inTransit: readonly (TransferSent | TransferArrived)[] = [],
 ): Cents {
-  const travelling = inTransit.map((transfer) => {
-    checkTransaction(transfer);
-    if (transfer.kind !== 'transfer-sent' && transfer.kind !== 'transfer-arrived') {
-      throw new MoneyError('bad-transaction', `${String((transfer as { id?: unknown }).id)} is not half of a transfer`);
-    }
-    if (transfer.to === 'old-card') return 0;
-    return transfer.kind === 'transfer-sent' ? transfer.amount : -transfer.amount;
-  });
+  const travelling = inTransit.map(inTransitEffect);
   return addCents(bankSide(withPendingCharges(posted, pendingCharges)), ...travelling);
+}
+
+// B48: what one half of a transfer, showing on setup day without its other
+// half, does to the starting money. Money that has left and not arrived is
+// added: it is still his, on its way. Money that arrived before it shows
+// leaving is taken off: it is still counted where it left. A half going to
+// the old card does not count either way: the old card is outside the
+// starting money (12.4), and its balance already shows whatever has landed.
+export function inTransitEffect(half: TransferSent | TransferArrived): Cents {
+  checkTransaction(half);
+  if (half.kind !== 'transfer-sent' && half.kind !== 'transfer-arrived') {
+    throw new MoneyError('bad-transaction', `${String((half as { id?: unknown }).id)} is not half of a transfer`);
+  }
+  if (half.to === 'old-card') return 0;
+  return half.kind === 'transfer-sent' ? half.amount : -half.amount;
+}
+
+// 12.4 with A10: the old card debt tracking starts with: what the old card
+// owes, posted, plus its charges still pending on setup day.
+export function startingDebt(oldCardBalance: Cents, pendingCharges: readonly (Purchase | SavingsWithdrawal)[]): Cents {
+  assertCents(oldCardBalance, 'old card balance');
+  return addCents(oldCardBalance, ...pendingCharges.filter((c) => c.account === 'old-card').map((c) => c.amount));
+}
+
+// 14.2, 14.3: what the assignment adds up to, and what is left to assign:
+// the starting money minus what is assigned, below zero when more is
+// assigned than there is. Tracking starts only when nothing is left.
+export function checkAssignment(money: Cents, assignment: StartingPots): { readonly assigned: Cents; readonly leftToAssign: Cents } {
+  assertCents(money, 'starting money');
+  const a = assignment;
+  for (const [name, value] of Object.entries(a)) assertCents(value, name);
+  const assigned = addCents(a.savings, a.needs, a.wants, a.momReserve, a.heldForOthers);
+  return { assigned, leftToAssign: subtractCents(money, assigned) };
 }
 
 // 14.3: tracking starts only when the assignment adds up to the starting
@@ -75,17 +98,18 @@ export function startTracking(input: SetupInput): SetupResult {
     ids.add(charge.id);
   }
   const money = startingMoney(input.bankBalances, input.pendingCharges, inTransit);
-  const a = input.assignment;
-  for (const [name, value] of Object.entries(a)) assertCents(value, name);
-  const assigned = addCents(a.savings, a.needs, a.wants, a.momReserve, a.heldForOthers);
-  if (assigned !== money) return { ok: false, startingMoney: money, assigned, difference: subtractCents(money, assigned) };
+  const { assigned, leftToAssign } = checkAssignment(money, input.assignment);
+  if (leftToAssign !== 0) return { ok: false, startingMoney: money, assigned, difference: leftToAssign };
+  // B42: the pay schedule counts from his last paycheck, which has come.
+  assertIsoDate(input.date, 'setup day');
+  if (daysBetween(input.lastPaycheckDate, input.date) < 0) {
+    throw new MoneyError('bad-date', `the last paycheck (${input.lastPaycheckDate}) cannot be after setup day (${input.date})`);
+  }
 
-  assertCents(input.oldCardBalance, 'old card balance');
-  const oldCardPending = input.pendingCharges.filter((c) => c.account === 'old-card').map((c) => c.amount);
   const book = openBook({
     date: input.date,
-    pots: a,
-    oldCardDebt: addCents(input.oldCardBalance, ...oldCardPending),
+    pots: input.assignment,
+    oldCardDebt: startingDebt(input.oldCardBalance, input.pendingCharges),
     lastPaycheckDate: input.lastPaycheckDate,
     settings: input.settings,
     rules: input.rules ?? [],

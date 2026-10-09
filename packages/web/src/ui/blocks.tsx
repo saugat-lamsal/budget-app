@@ -129,6 +129,15 @@ export function Button({
   );
 }
 
+// A link that looks like a button: it goes to another screen of the app.
+export function LinkButton({ children, href, variant = 'primary', wide = false, testId }: { readonly children: ReactNode; readonly href: string; readonly variant?: 'primary' | 'secondary'; readonly wide?: boolean; readonly testId?: string | undefined }) {
+  return (
+    <a className={`button button--${variant}${wide ? ' button--wide' : ''}`} href={href} data-testid={testId}>
+      {children}
+    </a>
+  );
+}
+
 // ----- Status label: a word and an icon, so color is never the only signal -----
 
 export type Status = 'low' | 'empty' | 'overdue' | 'pending' | 'under-target' | 'in-target' | 'over-target' | 'changes';
