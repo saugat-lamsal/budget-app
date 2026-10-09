@@ -1384,5 +1384,40 @@
     "find": "{textRow('reminders', 'Card reminders',",
     "replace": "{row('reminders', 'Card reminders',",
     "why": "[settings] the Card reminders arrow drops to its own line"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/test/browser/harness.ts",
+    "find": "response.clone().arrayBuffer().then(done, done);",
+    "replace": "done();",
+    "why": "[ci] a request counts as answered when its headers arrive, before its body"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/test/browser/harness.ts",
+    "find": "  // once that is answered too, so a test that closes it cancels nothing.\n  await untilAnswered(page);\n  return page;",
+    "replace": "  return page;",
+    "why": "[ci] openScenario hands back a page before Home's request is answered"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/test/browser/live.ts",
+    "find": "  await untilAnswered(page);\n  return page;",
+    "replace": "  return page;",
+    "why": "[ci] openLive hands back a page before Home's request is answered"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/test/browser/harness.ts",
+    "find": "waitInPage(page, 'untilQuiet', 200)",
+    "replace": "waitInPage(page, 'untilQuiet', 0)",
+    "why": "[ci] untilQuiet returns between an answer and the request the screen asks next"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/test/browser/harness.ts",
+    "find": "  if (!counted) throw",
+    "replace": "  if (counted === undefined) throw",
+    "why": "[ci] a page with nothing counting its requests is waited on until the timeout"
   }
 ]
