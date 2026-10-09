@@ -1419,5 +1419,33 @@
     "find": "  if (!counted) throw",
     "replace": "  if (counted === undefined) throw",
     "why": "[ci] a page with nothing counting its requests is waited on until the timeout"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/test/browser/harness.ts",
+    "find": "    leaveOnlyWhenQuiet(context);\n",
+    "replace": "",
+    "why": "[ci] pages are closed and left with their requests still on their way"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/test/browser/harness.ts",
+    "find": "return f === undefined || f.count === 0;",
+    "replace": "return f === undefined || f.count >= 0;",
+    "why": "[ci] leaving a page does not wait for what it has on its way"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/test/browser/harness.ts",
+    "find": "      await settle(page);\n      return goto(url, options);",
+    "replace": "      return goto(url, options);",
+    "why": "[ci] going to another address does not wait for the page's requests"
+  },
+  {
+    "section": "ci",
+    "file": "packages/web/test/browser/harness.ts",
+    "find": ".port <= HIGHEST_PORT_A_BROWSER_REFUSES) {",
+    "replace": ".port < 0) {",
+    "why": "[ci] a test server keeps a port the browsers refuse (3659, 6000, ...)"
   }
 ]

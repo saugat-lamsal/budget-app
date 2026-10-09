@@ -145,3 +145,53 @@ describe.each(ENGINES)('the count of requests on their way, in %s', (_name, engi
     }
   });
 });
+
+// Leaving a page cancels what it still has on its way, and the browsers then
+// sometimes lose the next request (CLAUDE.md, CI Oct 7 and Oct 8). So no page
+// of a browser the tests launch is ever left while a request of its own is on
+// its way, however the test leaves it. The server here answers 700 ms late and
+// says whether each answer went out in full or was cut off.
+describe.each(ENGINES)('leaving a page waits for its requests, in %s', (_name, engine) => {
+  const ways = {
+    'closing it': (page: Page) => page.close(),
+    'closing its context': (page: Page) => page.context().close(),
+    'going to another address': (page: Page, base: string) => page.goto(`${base}/other`),
+    'reloading it': (page: Page) => page.reload(),
+    'going back': (page: Page) => page.goBack(),
+  } as const;
+
+  it.each(Object.keys(ways))('%s', async (way) => {
+    const outcomes: string[] = [];
+    const server = createServer((request, response) => {
+      if (request.url === '/late') {
+        const timer = setTimeout(() => {
+          response.writeHead(200, { 'Content-Type': 'application/json' });
+          response.end('{}');
+        }, 700);
+        response.on('finish', () => outcomes.push('answered'));
+        response.on('close', () => {
+          clearTimeout(timer);
+          if (!response.writableFinished) outcomes.push('cut off');
+        });
+        return;
+      }
+      response.writeHead(200, { 'Content-Type': 'text/html' });
+      response.end('<!doctype html><title>late</title>');
+    });
+    const base = await listen(server);
+    const browser = await launch(engine);
+    try {
+      const page = await (await browser.newContext()).newPage();
+      await page.goto(`${base}/first`);
+      await page.goto(`${base}/`);
+      await page.evaluate(() => {
+        void fetch('/late');
+      });
+      await ways[way as keyof typeof ways](page, base);
+      expect(outcomes).toEqual(['answered']);
+    } finally {
+      await browser.close();
+      await close(server);
+    }
+  });
+});

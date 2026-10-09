@@ -1,4 +1,5 @@
 import { parseDollars, type Cents } from '@budget-app/money';
+import { execFileSync } from 'node:child_process';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
@@ -67,11 +68,11 @@ const serverLogs = new Map<string, ServerLogEntry[]>();
 // as Playwright builds it for Linux and Windows, loses the answer to a request
 // on a connection that was reused after a cancelled one or while the server
 // was closing it. With nothing to reuse, that cannot happen.
-export async function listen(server: Server): Promise<string> {
+export async function listen(server: Server, port = 0): Promise<string> {
   server.prependListener('request', (_request, response) => {
     response.setHeader('Connection', 'close');
   });
-  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  await listenOn(server, port);
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const log: ServerLogEntry[] = [];
   serverLogs.set(base, log);
@@ -85,6 +86,31 @@ export async function listen(server: Server): Promise<string> {
     });
   });
   return base;
+}
+
+// Browsers refuse to open some ports: Chromium's and WebKit's lists all end at
+// 10080 (3659, 4045, 5060, 6000, 6665 to 6669, ...). This PC hands out ports
+// from 1024 up, one after another, and gave a test server 3659 (Oct 9): every
+// test on it failed with net::ERR_UNSAFE_PORT. The CI machines start at 32768
+// (Linux) and 49152 (Windows). A server given such a port listens again.
+const HIGHEST_PORT_A_BROWSER_REFUSES = 10_080;
+
+async function listenOn(server: Server, port: number): Promise<void> {
+  await listenAt(server, port);
+  while ((server.address() as AddressInfo).port <= HIGHEST_PORT_A_BROWSER_REFUSES) {
+    await new Promise<void>((done) => server.close(() => done()));
+    await listenAt(server, 0);
+  }
+}
+
+function listenAt(server: Server, port: number): Promise<void> {
+  return new Promise<void>((done, fail) => {
+    server.once('error', fail);
+    server.listen(port, '127.0.0.1', () => {
+      server.off('error', fail);
+      done();
+    });
+  });
 }
 
 // What the page's own code has asked for with fetch and is still waiting on,
@@ -275,6 +301,7 @@ export async function launch(engine: BrowserType): Promise<Browser> {
   browser.newContext = async (options?: BrowserContextOptions): Promise<BrowserContext> => {
     const context = await newContext(options);
     await watchContext(context);
+    leaveOnlyWhenQuiet(context);
     return context;
   };
   launched.add(browser);
@@ -282,16 +309,95 @@ export async function launch(engine: BrowserType): Promise<Browser> {
   return browser;
 }
 
+// Leaving a page (closing it or its context, going to another address,
+// reloading, going back) cancels what it still has on its way, and the browsers
+// as Playwright builds them then sometimes lose the next request: WebKit on
+// Linux and Windows (CI, Oct 7 and Oct 8), and the next page stalled after a
+// close on Linux CI (Oct 8, twice; Chromium). Tests used to guard against it one
+// by one (untilQuiet before a close). Now no page of a launched browser is ever
+// left while a request of its own is on its way.
+//
+// One look when it has none. (untilQuiet also waits for the screen to ask
+// again after a tap; a test that taps and then leaves still calls it.)
+async function settle(page: Page): Promise<void> {
+  if (page.isClosed()) return;
+  try {
+    await page.waitForFunction(
+      () => {
+        const f = (window as unknown as { __fetches?: PageFetches }).__fetches;
+        return f === undefined || f.count === 0;
+      },
+      undefined,
+      { timeout: 15_000, polling: 20 },
+    );
+  } catch (error) {
+    // Already gone, or on its way to another document (its requests then went with the old one).
+    if (page.isClosed() || !(error instanceof Error) || error.name !== 'TimeoutError') return;
+    throw new Error(`leaving the page: a request of its own still on its way after 15000ms (a test that holds one on purpose lets it go first)\n${await stuckReport(page)}`, { cause: error });
+  }
+}
+
+function leaveOnlyWhenQuiet(context: BrowserContext): void {
+  const closeContext = context.close.bind(context);
+  context.close = async (options?: Parameters<BrowserContext['close']>[0]): Promise<void> => {
+    await Promise.all(context.pages().map(settle));
+    await closeContext(options);
+  };
+  context.on('page', (page) => {
+    const close = page.close.bind(page);
+    const goto = page.goto.bind(page);
+    const reload = page.reload.bind(page);
+    const goBack = page.goBack.bind(page);
+    page.close = async (options?: Parameters<Page['close']>[0]) => {
+      await settle(page);
+      await close(options);
+    };
+    page.goto = async (url: string, options?: Parameters<Page['goto']>[1]) => {
+      await settle(page);
+      return goto(url, options);
+    };
+    page.reload = async (options?: Parameters<Page['reload']>[0]) => {
+      await settle(page);
+      return reload(options);
+    };
+    page.goBack = async (options?: Parameters<Page['goBack']>[0]) => {
+      await settle(page);
+      return goBack(options);
+    };
+  });
+}
+
 // A browser test that fails reports every page still open: what it shows, what
-// it is still waiting on, and what its server was asked. A timeout alone says
-// nothing about why.
+// it is still waiting on, and what its server was asked; and the machine's
+// connections on 127.0.0.1 by state. A timeout alone says nothing about why.
 beforeEach(({ onTestFailed }) => {
   onTestFailed(async () => {
     const pages = [...launched].flatMap((b) => b.contexts().flatMap((c) => c.pages()));
     const reports = await Promise.all(pages.map((page) => stuckReport(page).catch((error: unknown) => `no report: ${String(error)}`)));
     console.error(reports.length === 0 ? 'No page was open when the test failed.' : `Pages open when the test failed:\n${reports.join('\n\n')}`);
+    console.error(`Connections on 127.0.0.1 when the test failed: ${loopbackConnections()}`);
   });
 });
+
+// How many TCP connections on 127.0.0.1 are in each state. A machine that ran
+// out of ports would show it here (CI, Oct 9: the most the tests ever had
+// waiting to be freed was 1,165 on Windows, of about 16,000).
+function loopbackConnections(): string {
+  try {
+    const windows = process.platform === 'win32';
+    const out = windows ? execFileSync('netstat', ['-an', '-p', 'tcp'], { encoding: 'utf8', maxBuffer: 64 << 20 }) : execFileSync('ss', ['-tan'], { encoding: 'utf8', maxBuffer: 64 << 20 });
+    const counts = new Map<string, number>();
+    for (const line of out.split(/\r?\n/)) {
+      const parts = line.trim().split(/\s+/);
+      const [local, state] = windows ? [parts[1], parts[3]] : [parts[3], parts[0]];
+      if (local?.startsWith('127.0.0.1') !== true || state === undefined) continue;
+      counts.set(state, (counts.get(state) ?? 0) + 1);
+    }
+    return JSON.stringify(Object.fromEntries(counts));
+  } catch (error) {
+    return `could not tell (${String(error)})`;
+  }
+}
 
 // One browser of an engine and one demo server for a test file.
 export function useEngine(engine: BrowserType): { browser: () => Browser; base: () => string } {

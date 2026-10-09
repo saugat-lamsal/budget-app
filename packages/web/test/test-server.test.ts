@@ -32,4 +32,26 @@ describe('the servers the browser tests run against', () => {
       await close(server);
     }
   });
+
+  // Browsers refuse to open some ports (Chromium's and WebKit's lists all end
+  // at 10080: 3659, 4045, 5060, 6000, 6665 to 6669, ...). A computer that hands
+  // out ports from 1024 up (this PC does, one after another; the CI machines
+  // start at 32768 or 49152) gave a test server 3659 on Oct 9, and every test
+  // on it failed with net::ERR_UNSAFE_PORT. Here the server is given such a
+  // port to start with, as the system could.
+  it('never listens on a port a browser could refuse', async () => {
+    for (const refused of [3659, 4045, 6566, 6679, 10080]) {
+      const server = createServer();
+      let base: string;
+      try {
+        base = await listen(server, refused);
+      } catch {
+        continue; // That port is taken here; try the next.
+      }
+      await close(server);
+      expect(Number(new URL(base).port), `started on ${refused}`).toBeGreaterThan(10_080);
+      return;
+    }
+    throw new Error('every refused port tried is taken on this machine');
+  });
 });
