@@ -278,6 +278,28 @@ const SHOTS = [
     await page.getByTestId('rules-card').scrollIntoViewIfNeeded();
     return 'no-sheet';
   }],
+  ['settings-bank-rules', 'normal', '/settings', async (page) => {
+    await page.getByTestId('bank-rules-card').scrollIntoViewIfNeeded();
+    return 'no-sheet';
+  }],
+  ['settings-bank-rule-preview', 'normal', '/settings', async (page) => {
+    await page.getByTestId('row-add-bank-rule').click();
+    await page.getByTestId('field-bank-text').fill('ZELLE TO MADE UP');
+    await page.getByTestId('field-bank-means').selectOption('payment-to-person');
+    await page.getByTestId('sheet-save').click();
+    await page.getByTestId('confirm-ask').waitFor();
+  }],
+  ['settings-bank-rule-logged', 'normal', '/settings', async (page) => {
+    await page.getByTestId('row-add-bank-rule').click();
+    await page.getByTestId('field-bank-account').selectOption('everyday-card');
+    await page.getByTestId('field-bank-text').fill('FOREIGN TRANSACTION FEE');
+    await page.getByTestId('field-bank-means').selectOption('card-fee');
+    await page.getByTestId('sheet-save').click();
+    await page.getByTestId('confirm-yes').click();
+    await page.waitForFunction(() => document.querySelector('dialog[open]') === null);
+    await page.getByTestId('log').scrollIntoViewIfNeeded();
+    return 'no-sheet';
+  }],
   ['settings', 'settings-busy', '/settings'],
   ['settings-whole', 'settings-busy', '/settings', 'full'],
   ['settings-normal-whole', 'normal', '/settings', 'full'],
@@ -364,6 +386,32 @@ const SHOTS = [
     await page.evaluate(() => window.scrollTo(0, 0));
     return 'no-sheet';
   }],
+  ['setup-transfers-look-back', 'setup-day', '/setup/transfers', async (page) => {
+    await page.getByTestId('look-back-row').click();
+    await page.getByTestId('look-back-days').waitFor();
+  }],
+  ['setup-rules', 'setup-suggest', '/setup/rules'],
+  ['setup-rules-whole', 'setup-suggest', '/setup/rules', 'full'],
+  ['setup-rules-change', 'setup-suggest', '/setup/rules', async (page) => {
+    await page.locator('[data-testid^="suggestion-s-"]').filter({ hasText: 'CRD 4444' }).getByTestId('suggestion-change').click();
+    await page.getByTestId('field-bank-other').selectOption('old-card');
+  }],
+  ['setup-rules-preview', 'setup-suggest', '/setup/rules', async (page) => {
+    await page.locator('[data-testid^="suggestion-s-"]').filter({ hasText: 'CRD 4444' }).getByTestId('suggestion-change').click();
+    await page.getByTestId('field-bank-other').selectOption('old-card');
+    await page.getByTestId('sheet-save').click();
+    await page.getByTestId('confirm-ask').waitFor();
+  }],
+  ['setup-rules-answered', 'setup-suggest', '/setup/rules', async (page) => {
+    const cards = page.locator('[data-testid^="suggestion-s-"]');
+    for (const [i, button, word] of [[0, 'suggestion-add', 'added'], [1, 'suggestion-add', 'added'], [6, 'suggestion-skip', 'skipped']]) {
+      await cards.nth(i).getByTestId(button).click();
+      await cards.nth(i).getByTestId('suggestion-status').filter({ hasText: word }).waitFor();
+    }
+    await page.evaluate(() => window.scrollTo(0, 0));
+    return 'no-sheet';
+  }],
+  ['setup-transfers-rules-first', 'setup-suggest', '/setup/transfers'],
   ['setup-paycheck-sheet', 'setup-day', '/setup/paycheck', async (page) => {
     await page.getByTestId('last-paycheck').click();
     await page.getByTestId('date').fill('2026-10-02');

@@ -394,8 +394,8 @@
   {
     "section": "4",
     "file": "packages/money/src/book.ts",
-    "find": "    if ('to' in now && now.to === 'unsorted' && !(gone && net === 0)) this.#review.add(entry.id);\n    else this.#review.delete(entry.id);",
-    "replace": "    if ('to' in now && now.to === 'unsorted' && !(gone && net === 0)) this.#review.add(entry.id);",
+    "find": "    if ('to' in now && now.to === 'unsorted' && !((gone || refundedInFull) && net === 0)) this.#review.add(entry.id);\n    else this.#review.delete(entry.id);",
+    "replace": "    if ('to' in now && now.to === 'unsorted' && !((gone || refundedInFull) && net === 0)) this.#review.add(entry.id);",
     "why": "4.3 leave sorted spending in review"
   },
   {
@@ -3512,5 +3512,26 @@
     "find": "const next = addDays(lastPaycheckDate, payScheduleDays);",
     "replace": "const next = addDays(today, payScheduleDays);",
     "why": "[setup] 11.2 count the pay schedule from today, not from the last paycheck"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "const refundedInFull = entry.refunded > 0 && net === 0;",
+    "replace": "const refundedInFull = false;",
+    "why": "[a26] 4.5 a purchase refunded in full keeps waiting at $0.00"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "if ('to' in now && now.to === 'unsorted' && !((gone || refundedInFull) && net === 0)) this.#review.add(entry.id);",
+    "replace": "if ('to' in now && now.to === 'unsorted' && !(gone && net === 0) && entry.refunded === 0) this.#review.add(entry.id);",
+    "why": "[a26] 4.5 a purchase refunded in part leaves review too"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "        entry.takenBack = true;\n        this.#refreshSpending(purchase);",
+    "replace": "        entry.takenBack = true;",
+    "why": "[a26] 4.10 a refund taken back leaves its purchase out of review"
   }
 ]

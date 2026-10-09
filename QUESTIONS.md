@@ -331,9 +331,13 @@ A24. ANSWERED Oct 9. Your answer: option 1, as built. Rulebook 13.1 and
      both; option 2 would go on top of it, with nothing built thrown away.
 
 
-## Part A, added with Setup day (Phase 4, Oct 9). Waiting on your answer.
+## Part A, added with Setup day (Phase 4, Oct 9). All answered.
 
-A25. How far back Setup day asks about transfers with only one side showing
+A25. ANSWERED Oct 9, built. Your answer: option 1, the last 10 days, as a
+     setting. Rulebook section 2, 14.2 and 25a. The transfers step on Setup
+     day says how far back it looks, with a sheet to change it (any whole
+     number of days from 0, today only); the details are B134.
+     The question was: how far back Setup day asks about transfers with only one side showing
      (B48, B64). The rulebook says they are offered for you to confirm, but
      not from how long ago. A transfer whose other side is just before the
      start of the bank's history, or one whose other side no bank rule
@@ -347,12 +351,15 @@ A25. How far back Setup day asks about transfers with only one side showing
      not asked about", so you can see them.
      Recommendation: option 1. An old one is not on its way any more, and a
      long list of old card payments to answer "no" to would hide the one
-     that matters. Built: option 1 with 10 days, fixed in the demo, until you
-     answer (packages/server/src/demo/demo-server.ts,
-     SETUP_HALVES_WITHIN_DAYS). Making it a setting comes with the real
-     server.
+     that matters.
 
-A26. A payment refunded in full still waits in Review at $0.00 (4.5, B7,
+A26. ANSWERED Oct 9, built. Your answer: option 2. A purchase or payment
+     waiting in review that is refunded in full leaves review by itself, is
+     kept as a record, and comes back to review if the bank takes the
+     refund back. Rulebook 4.5 and 25b. Worked example 39. The simulated
+     life now leaves some online orders unsorted while they go back to the
+     store, and has the bank take some refunds back; the details are B135.
+     The question was: a payment refunded in full still waits in Review at $0.00 (4.5, B7,
      B11). When a purchase (a card or debit payment) is still waiting in
      Review and the bank refunds all of it, it stays in Review with nothing
      left to sort (checked: a 25.00 purchase, refunded 25.00, waits at
@@ -368,7 +375,34 @@ A26. A payment refunded in full still waits in Review at $0.00 (4.5, B7,
      Option 3: it stays, marked "Refunded in full, nothing to sort", with one
      "Got it" button, like a new purchase on the old card (5.4).
      Recommendation: option 2. Nothing is left to decide, and a reminder for
-     $0.00 teaches you to ignore reminders. Needs a line in 4.5. Not built.
+     $0.00 teaches you to ignore reminders. Needs a line in 4.5.
+
+
+## Part A, added with bank rules (Phase 4, Oct 9). Waiting on your answer.
+
+A27. Two bank rules that match the same item (section 2). A bank rule
+     matches when the item is on its account, its description contains the
+     rule's text (ignoring case), and the money went a way the rule fits (a
+     fee is money out, say). If two of them match one item, the rulebook does
+     not say which wins. Example: "Zelle payment to" on checking says a
+     payment to a person, and "Zelle payment to MOM" on checking says a
+     transfer to savings.
+     Option 1: the first in the list wins, as with sorting rules (B9). A new
+     rule goes to the end; before you save one, Settings says how many of
+     the items it would have matched a rule before it reads first, and how
+     many it would take from a rule after it. Add Move up and Move down, as
+     for sorting rules (A22), so you can put a narrow rule ahead of a wide one.
+     Option 2: as option 1, without Move up and Move down: to put a rule
+     first, remove the ones ahead of it and add them again.
+     Option 3: the rule with the longest matching text wins ("Zelle payment
+     to MOM" beats "Zelle payment to"), whatever the order.
+     Option 4: a rule that would match an item another rule already matches
+     is refused when you save it.
+     Recommendation: option 1. It is how the sorting rules work, so there is
+     one way to think about both, and the preview already shows the overlap
+     before you save. Built: the first in the list wins (the bank connection
+     always worked that way), with the preview saying so, and no Move up or
+     Move down yet.
 
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
@@ -1270,9 +1304,115 @@ B131. Tracking starts with the rulebook's starting settings (section 2): no
 
 B132. Bank rules on Setup day: the ones that came with the bank connection,
       used as they are. The last look lists them, and each transfer names the
-      one that read it. Suggesting them from the bank's own labels, and
-      changing them in Settings, come next (A23).
+      one that read it. (Since Oct 9, suggested from the bank's labels and
+      changed on Setup day and in Settings: B136 to B145.)
 
 B133. A charge pending on the old card is shown with the old card, as part
       of its debt (12.4, A10), not in the list of charges that are part of
       the starting money.
+
+
+## Part B, added with your answers to A25 and A26 (Oct 9). Tell me if any is wrong.
+
+B134. How far back Setup day looks (A25). It starts at 10 days (section 2)
+      and is changed on the transfers step: any whole number of days, 0
+      meaning today only. A transfer exactly that many days old is asked
+      about; one a day older is not. A smaller number drops your answers
+      about the transfers it no longer asks about (they are history now),
+      so looking further back again asks about them again, unanswered.
+      The same number again says "That is already the setting" and changes
+      nothing. It is part of Setup day, like your other answers there, so
+      it is not on Settings: after setup day it has nothing left to do.
+
+B135. A purchase or payment refunded in full while it waits (A26). It leaves
+      review the moment the last cent comes back, whether the bank named the
+      purchase or you matched the refund to it (A18); a refund one cent short
+      leaves it waiting for that cent. It holds nothing back and is in no
+      bucket's list, since it was sorted nowhere. If the bank takes back a
+      refund (4.10), what is no longer refunded waits in review again, with
+      a take-back alert (10.6) as for anything taken back. A purchase that
+      was refunded in full while pending and then posts at a larger amount
+      waits for the difference. One already sorted into a bucket and then
+      refunded in full stays on that bucket's list at $0.00, as before
+      (B98). The same goes for a payment to a person waiting in review: one
+      refunded in full leaves review, so setting the mom rule does not see
+      it (13.2).
+
+
+## Part B, added with bank rules (Phase 4, Oct 9). Tell me if any is wrong.
+
+B136. The labels. Plaid gives each item a label (personal_finance_category).
+      What its test bank really sends was checked first (Oct 9, saved as
+      test/fixtures/test-bank-labels.json): transfers between checking and
+      savings are TRANSFER_OUT_SAVINGS, TRANSFER_OUT_ACCOUNT_TRANSFER and
+      TRANSFER_IN_ACCOUNT_TRANSFER; a card payment leaving checking is
+      LOAN_PAYMENTS_CREDIT_CARD_PAYMENT and arriving on the card
+      TRANSFER_IN_OTHER_TRANSFER_IN; Zelle and Venmo out are
+      TRANSFER_OUT_TRANSFER_OUT_FROM_APPS; card fees are BANK_FEES_LATE_FEES,
+      BANK_FEES_FOREIGN_TRANSACTION_FEES and BANK_FEES_OTHER_BANK_FEES, and
+      interest BANK_FEES_INTEREST_CHARGE. Only these suggest a rule, and only
+      on the kind of account they fit (a fee on checking, money in from Zelle,
+      a paycheck, a purchase suggest nothing). A label is only ever a
+      suggestion: nothing about money is decided from it.
+
+B137. What a suggestion says. The text is what the descriptions with that
+      label share from the start, ending at a whole word ("Zelle payment to"
+      for "Zelle payment to ANNA" and "Zelle payment to BEN"); if they share
+      nothing, one suggestion for each first word. For a transfer, the other
+      account is the one the history shows the other side on (the same
+      amount the other way, the nearest day). One still on its way takes the
+      other account of one with the same description whose other side shows.
+      When none shows, the suggestion says to pick the account, Add waits,
+      and "Change it first" picks it; such ones are suggested one description
+      at a time, so one wider text never covers transfers to different cards.
+
+B138. Each suggestion shows the label, the account, the text, what it means,
+      how many items in the whole history it matches (with up to three,
+      newest first), and your answer. Every one must be answered (added,
+      changed, or skipped) before tracking starts. One your bank rules
+      already read the same way says so and asks nothing. One you added can
+      be undone by removing its rule; it then asks again. Skipping one you
+      added is refused: remove its rule instead.
+
+B139. Adding a suggestion as it is does not ask again: its matches were on
+      its card. Changing it first asks, like any new rule (B140).
+
+B140. Every change to a bank rule asks first, on Setup day and on Settings,
+      with what it would have matched in the last 90 days (a number fixed
+      for this preview, not a rule about money), up to three of them, how
+      many a rule before it reads first, and how many it would take from a
+      rule after it (A27). Removing asks first too, with what it reads. Your
+      yes names the preview you saw: if what it would match changed since,
+      it asks again (like B113).
+
+B141. A bank rule is refused, in words, when it cannot be: no text, more
+      than 200 characters, a transfer with the same account, money reaching
+      a card from a card, a payment to a person from a card, a fee or
+      interest on checking or savings, or the same rule as one you have
+      (ignoring case). Changing one to what it already says is refused too.
+
+B142. A new rule goes to the end of the list; a changed rule keeps its place.
+      A rule's id is never used again for another rule, even after it is
+      removed, since the change log and Setup day's answers name rules by it.
+
+B143. From then on (24c). The bank connection reads each item with the bank
+      rules as they are when it first reads it, and keeps what it read. A
+      transfer or payment still pending when it is first seen is read when
+      it posts, since only then does it go to the book. One the bank changes
+      after it was counted is read again as the bank sends it (4.10). Before
+      tracking starts, the whole history is read again with the rules as they
+      are now, and a change drops your answers about transfers it no longer
+      asks about (like B134). 300 random histories with random rules
+      changing between syncs passed: nothing read before changed, and the
+      self-check passed after every sync.
+
+B144. The change log (13.5). Each change to a bank rule is one line, dated,
+      among the other changes, in the order they were made, newest first.
+      Changes made on Setup day come before anything in the book's own log.
+
+B145. In the demo, a life that is tracking already has five made-up bank
+      rules, and what a rule would match is read from what its made-up bank
+      sent its book. A life not set up yet has its made-up bank's history,
+      with labels. The life "setup-suggest" starts with no bank rules at all;
+      "setup-day" starts with them set, so every suggestion there is covered.
+

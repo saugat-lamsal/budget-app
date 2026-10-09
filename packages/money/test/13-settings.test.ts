@@ -312,6 +312,20 @@ describe('13.2 A9 what setting the paycheck rule or the mom rule would do, worke
     expect(preview.waitingAfter).toBe(1);
   });
 
+  it('13.2 A9 B73 left waiting by the mom rule, cleared and set again: it is left waiting again, before a new payment the rule takes (simulated life, seed 233)', () => {
+    const b = firstSync({ pots: { momReserve: 100_000 } });
+    b.receive(payPerson('z1', '2026-10-06', 4_000, MOM_NAME));
+    b.receive({ kind: 'refund', id: 'r1', account: 'checking', date: '2026-10-06', amount: 1_000, description: 'ZELLE BACK', refundOf: 'z1' });
+    b.changeSettings({ momRule: { contains: MOM_NAME } }, '2026-10-07');
+    b.changeSettings({ momRule: null }, '2026-10-08');
+    b.receive(payPerson('z2', '2026-10-09', 2_000, MOM_NAME));
+    const left = { kind: 'still-waiting', id: 'z1', date: '2026-10-06', amount: 3_000, description: `ZELLE TO ${MOM_NAME}`, why: 'partly-refunded' };
+    const taken = { kind: 'mom', id: 'z2', date: '2026-10-09', amount: 2_000, description: `ZELLE TO ${MOM_NAME}`, fromReserve: 2_000, difference: 0 };
+    expect(b.previewSettingsChange({ momRule: { contains: MOM_NAME } }, '2026-10-10').items).toEqual([left, taken]);
+    expect(b.changeSettings({ momRule: { contains: MOM_NAME } }, '2026-10-10').rechecked).toEqual([left, taken]);
+    expect(b.reviewItems().map((i) => i.id)).toEqual(['z1']);
+  });
+
   it.each([0, 100_000])('13.2 A9 B73 a partly refunded payment the new mom rule matches stays waiting exactly as it was, and is named (reserve %i)', (reserve) => {
     const b = firstSync({ pots: { momReserve: reserve } });
     b.receive(payPerson('z1', '2026-10-06', 4_000, MOM_NAME));

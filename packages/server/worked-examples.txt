@@ -145,3 +145,37 @@ Where the app stands (12.2):
         The difference is 0.00.
 
 Check: wants 164.00 | unsorted spending 75.00 | bank side 7,439.00 | difference 0.00 | taken back 10.00
+
+
+========================================================================
+EXAMPLE 4. A bank rule added after setup day reads what comes next; what was already read stays (section 2, 24c, 4.2, 4.3, 7.4, 12.1 to 12.3)
+========================================================================
+
+The same start as example 3: checking 3,000.00, savings 5,000.00, the
+everyday card owes 450.00. Starting money 3,000.00 + 5,000.00 - 450.00 =
+7,550.00: savings 4,000.00, mom reserve 1,000.00, wants 200.00, needs
+2,350.00. No bank rule names "MADE UP GYM", and no sorting rule does.
+
+Step 1. Oct 2: 40.00 to MADE UP GYM leaves checking. No bank rule names it,
+        so the bank connection reads it as a purchase. No sorting rule
+        matches it, so it waits in review (4.2, 4.3):
+        Unsorted spending 40.00
+
+Step 2. Oct 3: he adds a bank rule on Settings: "MADE UP GYM" on checking
+        is a payment to a person. Before he says yes, Settings shows what it
+        would have matched in the last 90 days: 1 item, the Oct 2 payment.
+        The rule reads what the bank sends from then on. The Oct 2 payment
+        was read already, so it stays a purchase waiting in review.
+
+Step 3. Oct 4: another 40.00 to MADE UP GYM leaves checking. The new rule
+        reads it as a payment to a person, which waits in review too (7.4):
+        Unsorted spending 40.00 + 40.00 = 80.00
+
+Where the bank stands (12.1):
+        Checking       3,000.00 - 40.00 - 40.00 = 2,920.00
+        Bank side      2,920.00 + 5,000.00 - 450.00 = 7,470.00
+Where the app stands (12.2):
+        4,000.00 + 2,350.00 + 200.00 + 1,000.00 - 80.00 = 7,470.00
+        The difference is 0.00. No cent was made or lost by the change.
+
+Check: first gym payment 40.00 | second gym payment 40.00 | unsorted spending 80.00 | bank side 7,470.00 | difference 0.00

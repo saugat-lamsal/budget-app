@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SortingRule } from '../src/index.js';
-import { TestBank, appSide, cardCharge, codeOf, deposit, dropped, openTestBook, paycheck, posted, purchase, refund, withdrawal, type TestBookOptions } from './helpers.js';
+import { TestBank, appSide, cardCharge, codeOf, deposit, dropped, openTestBook, paycheck, posted, purchase, refund, takenBack, withdrawal, type TestBookOptions } from './helpers.js';
 
 const RULES: SortingRule[] = [
   { id: 'grocer', for: 'purchase', contains: 'GROCER', bucket: 'needs' },
@@ -249,6 +249,82 @@ describe('4.5 a refund goes back to the bucket the purchase came from', () => {
     // The rest comes back: each bucket gets its part of the new split.
     b.receive(refund('r2', '2026-10-09', 10_000, 'e1'));
     expect(b.pots()).toMatchObject({ needs: 100_000, wants: 50_000, unsortedOut: 0 });
+    expect(b.reviewItems()).toEqual([]);
+  });
+
+  it('4.5 a purchase still waiting in review and refunded in full leaves review by itself, and is kept (A26)', () => {
+    const b = book();
+    const before = appSide(b.pots());
+    b.receive(purchase('e1', '2026-10-03', 2_500, 'MADE UP HARDWARE'));
+    expect(b.reviewItems().map((i) => i.id)).toEqual(['e1']);
+    expect(b.receive(refund('r1', '2026-10-06', 2_500, 'e1')).outcome).toBe('sorted');
+    expect(b.reviewItems()).toEqual([]);
+    expect(b.pots()).toMatchObject({ needs: 100_000, wants: 50_000, unsortedOut: 0, unsortedIn: 0 });
+    // Kept as a record, sorted nowhere.
+    expect(b.purchases().find((p) => p.id === 'e1')).toMatchObject({ amount: 2_500, refunded: 2_500, sortedTo: { to: 'unsorted' } });
+    expect(appSide(b.pots())).toBe(before);
+  });
+
+  it('4.5 refunded in parts, it waits until the last cent comes back (A26)', () => {
+    const b = book();
+    b.receive(purchase('e1', '2026-10-03', 2_500, 'MADE UP HARDWARE'));
+    b.receive(refund('r1', '2026-10-05', 2_499, 'e1'));
+    expect(b.reviewItems()).toMatchObject([{ id: 'e1', amount: 1 }]);
+    expect(b.pots().unsortedOut).toBe(1);
+    b.receive(refund('r2', '2026-10-06', 1, 'e1'));
+    expect(b.reviewItems()).toEqual([]);
+    expect(b.pots().unsortedOut).toBe(0);
+  });
+
+  it('4.5 4.10 the bank takes the refund back: the purchase comes back to review to be sorted (A26)', () => {
+    const b = book();
+    b.receive(purchase('e1', '2026-10-03', 2_500, 'MADE UP HARDWARE'));
+    b.receive(refund('r1', '2026-10-06', 2_500, 'e1'));
+    expect(b.reviewItems()).toEqual([]);
+    b.receive(takenBack('t1', 'r1', '2026-10-08'));
+    expect(b.reviewItems()).toMatchObject([{ type: 'spending', id: 'e1', amount: 2_500 }]);
+    expect(b.pots()).toMatchObject({ unsortedOut: 2_500, wants: 50_000 });
+    b.sort('e1', { to: 'needs' }, '2026-10-09');
+    expect(b.pots()).toMatchObject({ needs: 97_500, unsortedOut: 0 });
+    expect(b.reviewItems()).toEqual([]);
+  });
+
+  it('4.5 one of two refunds taken back: only what is no longer refunded comes back to review (A26)', () => {
+    const b = book();
+    b.receive(purchase('e1', '2026-10-03', 2_500, 'MADE UP HARDWARE'));
+    b.receive(refund('r1', '2026-10-05', 1_000, 'e1'));
+    b.receive(refund('r2', '2026-10-06', 1_500, 'e1'));
+    expect(b.reviewItems()).toEqual([]);
+    b.receive(takenBack('t2', 'r2', '2026-10-08'));
+    expect(b.reviewItems()).toMatchObject([{ id: 'e1', amount: 1_500 }]);
+    expect(b.pots().unsortedOut).toBe(1_500);
+  });
+
+  it('4.5 a refund you match to a waiting purchase (A18) that refunds all of it takes it out of review too (A26)', () => {
+    const b = book();
+    b.receive(purchase('e1', '2026-10-03', 2_500, 'MADE UP HARDWARE'));
+    b.receive(refund('r1', '2026-10-06', 2_500));
+    expect(b.reviewItems().map((i) => i.id)).toEqual(['e1', 'r1']);
+    b.sort('r1', { refundOf: 'e1' }, '2026-10-07');
+    expect(b.reviewItems()).toEqual([]);
+    expect(b.pots()).toMatchObject({ unsortedOut: 0, unsortedIn: 0, needs: 100_000, wants: 50_000 });
+  });
+
+  it('4.5 4.6 a pending charge refunded in full that posts at a larger amount comes back to review with the difference (A26)', () => {
+    const b = book();
+    b.receive(purchase('e1', '2026-10-03', 2_500, 'MADE UP HARDWARE', { pending: true }));
+    b.receive(refund('r1', '2026-10-04', 2_500, 'e1'));
+    expect(b.reviewItems()).toEqual([]);
+    b.receive(posted('e1-posted', 'e1', '2026-10-05', 2_800, 'MADE UP HARDWARE'));
+    expect(b.reviewItems()).toMatchObject([{ id: 'e1', amount: 300 }]);
+    expect(b.pots().unsortedOut).toBe(300);
+  });
+
+  it('4.5 a sorted purchase refunded in full stays where it was sorted (A26 is only for what waits)', () => {
+    const b = book();
+    b.receive(purchase('e1', '2026-10-03', 2_500, 'MADE UP CAFE'));
+    b.receive(refund('r1', '2026-10-06', 2_500, 'e1'));
+    expect(b.purchases().find((p) => p.id === 'e1')).toMatchObject({ refunded: 2_500, sortedTo: { to: 'wants' } });
     expect(b.reviewItems()).toEqual([]);
   });
 

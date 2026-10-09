@@ -11,7 +11,7 @@ import { centsAt, openScenario, untilQuiet } from './harness.js';
 // a twin of a made-up life's setup desk to compare with, and doing what a
 // person does on each step.
 
-export type SetupStepName = 'bank' | 'transfers' | 'paycheck' | 'assign' | 'check';
+export type SetupStepName = 'bank' | 'rules' | 'transfers' | 'paycheck' | 'assign' | 'check';
 
 // Opens one step of a life not set up yet, the life started over.
 export async function openSetup(context: BrowserContext, base: string, life: string, step: SetupStepName): Promise<Page> {
@@ -91,4 +91,14 @@ export async function readAssign(page: Page): Promise<{ readonly left: number; r
   const pots = {} as Record<Pot, number>;
   for (const pot of ['savings', 'needs', 'wants', 'momReserve', 'heldForOthers'] as const) pots[pot] = await centsAt(page, `assigned-${pot}`);
   return { left: await centsAt(page, 'left-to-assign'), assigned: await centsAt(page, 'assigned'), startingMoney: await centsAt(page, 'starting-money'), pots };
+}
+
+// A25: types how many days back setup day looks and saves it. Returns the
+// sheet's problem, if it was refused (the sheet stays open), or null once it closed.
+export async function lookBack(page: Page, days: string): Promise<string | null> {
+  await page.getByTestId('look-back-row').click();
+  const sheet = page.getByTestId('look-back-sheet');
+  await sheet.getByTestId('look-back-days').fill(days);
+  await sheet.getByTestId('sheet-save').click();
+  return closedOrProblem(page);
 }

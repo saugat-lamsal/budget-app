@@ -1,5 +1,5 @@
 import type { AccountId } from '@budget-app/money';
-import type { BankRule, HalfLine, SetupMissing } from '@budget-app/server/views';
+import type { BankRuleSpec, HalfLine, SetupMissing } from '@budget-app/server/views';
 import { shortDate } from '../ui/dates.js';
 
 // Words on the Setup day screens (rulebook section 14). Every amount comes
@@ -11,6 +11,11 @@ export const ACCOUNT_NAMES: Readonly<Record<AccountId, string>> = {
   'everyday-card': 'Everyday card',
   'old-card': 'Old card',
 };
+
+// An account as it reads in a sentence: "checking", "the everyday card".
+export function accountPhrase(account: AccountId): string {
+  return account === 'everyday-card' || account === 'old-card' ? `the ${ACCOUNT_NAMES[account].toLowerCase()}` : ACCOUNT_NAMES[account].toLowerCase();
+}
 
 // B48: what the bank shows of a transfer with one half showing.
 export function halfText(half: HalfLine): string {
@@ -31,11 +36,11 @@ export function answerText(onItsWay: boolean | null): string {
 }
 
 // Section 2: a bank rule, in a sentence.
-export function bankRuleText(rule: BankRule): string {
-  const on = `“${rule.contains}” on ${ACCOUNT_NAMES[rule.account].toLowerCase()}`;
+export function bankRuleText(rule: BankRuleSpec): string {
+  const on = `“${rule.contains}” on ${accountPhrase(rule.account)}`;
   switch (rule.means) {
     case 'transfer':
-      return `${on}: a transfer with the ${ACCOUNT_NAMES[rule.other].toLowerCase()}`;
+      return rule.other === undefined ? `${on}: a transfer` : `${on}: a transfer between ${accountPhrase(rule.account)} and ${accountPhrase(rule.other)}`;
     case 'payment-to-person':
       return `${on}: a payment to a person`;
     case 'card-fee':
@@ -48,6 +53,8 @@ export function bankRuleText(rule: BankRule): string {
 // 14.3: what still stops tracking from starting, in words.
 export function missingText(missing: SetupMissing, unanswered: number): string {
   switch (missing) {
+    case 'suggestions':
+      return 'Add, change, or skip each suggested bank rule.';
     case 'halves':
       return `Say whether ${unanswered === 1 ? 'the transfer is' : `each of ${unanswered} transfers is`} on its way.`;
     case 'last-paycheck':
@@ -55,6 +62,17 @@ export function missingText(missing: SetupMissing, unanswered: number): string {
     case 'assignment':
       return 'Hand out the starting money to the cent.';
   }
+}
+
+// A25: how far back setup day looks for transfers with one side showing.
+export function lookBackText(days: number): string {
+  if (days === 0) return 'Today only';
+  return days === 1 ? 'The last day' : `The last ${days} days`;
+}
+
+// A whole number of days as typed, or null.
+export function readDays(text: string): number | null {
+  return /^\d{1,6}$/.test(text.trim()) ? Number(text.trim()) : null;
 }
 
 export function stepCount(index: number, of: number): string {

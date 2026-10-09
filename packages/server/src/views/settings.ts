@@ -13,6 +13,8 @@ import {
   type SortingRule,
   type SplitSettings,
 } from '@budget-app/money';
+import type { BankRule } from '../bank/reading.js';
+import type { BankRuleLogLine } from './bank-rules.js';
 import type { RuleView } from './choice.js';
 
 // What the Settings screen shows, worked out on the server from the book:
@@ -29,6 +31,9 @@ export interface SettingsInput {
   // (12.1). Null when the bank could not be read.
   readonly bank: BankBalances | null;
   readonly madeUpData: boolean;
+  // Section 2, 24c: the bank rules, and the change log's lines for them
+  // (13.5). None when left out.
+  readonly bankRules?: { readonly rules: readonly BankRule[]; readonly log: readonly BankRuleLogLine[]; readonly recentDays: number };
 }
 
 // A sorting rule, with its place among the rules of its kind: the first that
@@ -51,7 +56,10 @@ export type LogRow =
   | { readonly key: string; readonly date: IsoDate; readonly kind: 'rule-moved'; readonly rule: RuleView; readonly past: RuleView; readonly direction: 'up' | 'down'; readonly position: number }
   | { readonly key: string; readonly date: IsoDate; readonly kind: 'money-moved'; readonly from: Pot; readonly to: Pot; readonly amount: Cents }
   // 4.10: the bank took back something the app had counted.
-  | { readonly key: string; readonly date: IsoDate; readonly kind: 'bank-took-back'; readonly description: string; readonly amount: Cents };
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'bank-took-back'; readonly description: string; readonly amount: Cents }
+  // Section 2, 24c: a bank rule added, changed (before and after), or removed.
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'bank-rule-added' | 'bank-rule-removed'; readonly rule: BankRule }
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'bank-rule-changed'; readonly before: BankRule; readonly after: BankRule };
 
 export type SettingsView =
   | { readonly state: 'not-set-up'; readonly madeUpData: boolean }
@@ -80,6 +88,10 @@ export type SettingsView =
       readonly rules: { readonly purchase: readonly RuleRow[]; readonly deposit: readonly RuleRow[]; readonly person: readonly RuleRow[] };
       // What each kind of rule can pick, from the money math.
       readonly ruleChoices: typeof RULE_CHOICES;
+      // Section 2, 24c: the bank rules, in the order they are tried (the
+      // first that fits wins, A27), with how far back a change's preview looks.
+      readonly bankRules: readonly BankRule[];
+      readonly bankRulesRecentDays: number;
       // Newest first; the same day, the one made last first.
       readonly log: readonly LogRow[];
     };
@@ -128,15 +140,26 @@ export function settingsView(input: SettingsInput): SettingsView {
     payoff: payoffCountdown(book, today),
     rules: { purchase: rows('purchase'), deposit: rows('deposit'), person: rows('person') },
     ruleChoices: RULE_CHOICES,
-    log: logRows(book),
+    bankRules: input.bankRules?.rules ?? [],
+    bankRulesRecentDays: input.bankRules?.recentDays ?? 0,
+    log: logRows(book, input.bankRules?.log ?? []),
   };
 }
 
 // The change log as lines, newest first. A settings change is one line for
-// each setting it changed.
-function logRows(book: Book): LogRow[] {
+// each setting it changed. The bank rules' lines (kept by the bank
+// connection, not the book) go where they happened among the book's (13.5).
+function logRows(book: Book, bankLog: readonly BankRuleLogLine[]): LogRow[] {
   const log = book.changeLog();
   const rows: LogRow[] = [];
+  const bankRows = (i: number): LogRow[] =>
+    bankLog.flatMap((line, m): LogRow[] => {
+      if (line.afterBookLines !== i && !(i === log.length && line.afterBookLines > log.length)) return [];
+      const key = `b${m}-0`;
+      if (line.action === 'changed' && line.before !== null) return [{ key, date: line.date, kind: 'bank-rule-changed', before: line.before, after: line.rule }];
+      return [{ key, date: line.date, kind: line.action === 'removed' ? 'bank-rule-removed' : 'bank-rule-added', rule: line.rule }];
+    });
+  rows.push(...bankRows(0));
   log.forEach((entry, i) => {
     const key = (j: number): string => `${i}-${j}`;
     const { date } = entry;
@@ -171,6 +194,7 @@ function logRows(book: Book): LogRow[] {
         rows.push({ key: key(0), date, kind: 'bank-took-back', description: entry.description, amount: entry.amount });
         break;
     }
+    rows.push(...bankRows(i + 1));
   });
   // Newest first. The log is in the order things happened, so this also puts
   // the one made last first on the same day; the lines of one change keep their order.

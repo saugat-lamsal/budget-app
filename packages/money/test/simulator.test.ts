@@ -141,6 +141,10 @@ describe('simulator: a simulated life', () => {
     expect(liveALife({ seed: 8, years: 0.5 }).stats).not.toEqual(once.stats);
   });
 
+  it('13.2 B73 a payment to mom left waiting by the mom rule is left waiting again when the rule is set again (the simulator lost track of it: seed 233, day 1551)', { timeout: 120_000 }, () => {
+    expect(liveALife({ seed: 233, years: 4.3 })).toMatchObject({ ok: true });
+  });
+
   it('12.3 a balance the book was never told about fails that day\'s self-check, and the report names the seed and the day', () => {
     const result = liveALife({ seed: 3, years: 1, sabotageOnDay: 40 });
     expect(result).toMatchObject({ ok: false, seed: 3, day: 40, check: '12.3 daily self-check' });

@@ -49,6 +49,7 @@ import type {
   SetupStep,
 } from './views/choice.js';
 import { ruleViewOf } from './views/settings.js';
+import type { BankRuleRequest, BankRuleSpec } from './views/bank-rules.js';
 
 // How a tap reaches the books (Phase 4). The screen sends the choice it was
 // offered; the money math decides. Three promises:
@@ -113,8 +114,9 @@ export function parseMoveRequest(value: unknown): MoveRequest | null {
 
 // Whatever the phone sent: a move, a settings change, or a rule change if it
 // says so, otherwise a choice.
-export function parseRequest(value: unknown): ChoiceRequest | MoveRequest | SettingsRequest | RuleRequest | SetupRequest | null {
+export function parseRequest(value: unknown): ChoiceRequest | MoveRequest | SettingsRequest | RuleRequest | SetupRequest | BankRuleRequest | null {
   if (!isRecord(value)) return null;
+  if ('bankRule' in value) return parseBankRuleRequest(value);
   if ('move' in value) return parseMoveRequest(value);
   if ('settings' in value) return parseSettingsRequest(value);
   if ('rule' in value) return parseRuleRequest(value);
@@ -151,11 +153,69 @@ export function parseSetupRequest(value: unknown): SetupRequest | null {
     if (onlyKeys(assign, ['pot', 'amount']) && isWhole(assign['amount'])) step = { assign: { pot, amount: assign['amount'] } };
     else if (onlyKeys(assign, ['pot', 'rest']) && assign['rest'] === true) step = { assign: { pot, rest: true } };
     else return null;
+  } else if ('suggestion' in setup) {
+    const s = setup['suggestion'];
+    if (!isRecord(s) || typeof s['id'] !== 'string' || s['id'] === '' || s['id'].length > MAX_ITEM_LENGTH) return null;
+    if ((s['answer'] === 'add' || s['answer'] === 'skip') && Object.keys(s).length === 2 && onlyKeys(s, ['id', 'answer'])) step = { suggestion: { id: s['id'], answer: s['answer'] } };
+    else if (s['answer'] === 'change' && Object.keys(s).length === 3 && onlyKeys(s, ['id', 'answer', 'rule'])) {
+      const rule = parseBankRuleSpec(s['rule'], false);
+      if (rule === null) return null;
+      step = { suggestion: { id: s['id'], answer: 'change', rule } };
+    } else return null;
+  } else if ('lookBack' in setup) {
+    const days = setup['lookBack'];
+    if (!isWhole(days) || days < 0) return null;
+    step = { lookBack: days };
   } else if ('start' in setup) {
     if (setup['start'] !== true) return null;
     step = { start: true };
   } else return null;
   return { id, setup: step, ...yes };
+}
+
+// A change to the bank rules (section 2, 24c), exactly as the bank rules
+// keep it; otherwise null. Whether the rule can be (a transfer between two
+// accounts, a fee on a card) is for the bank rules to say, in words.
+export function parseBankRuleRequest(value: unknown): BankRuleRequest | null {
+  if (!isRecord(value) || !onlyKeys(value, ['id', 'bankRule', 'confirmed', 'seen'])) return null;
+  const { id, bankRule, confirmed, seen } = value;
+  if (typeof id !== 'string' || !ID_FORMAT.test(id)) return null;
+  if (!isRecord(bankRule) || Object.keys(bankRule).length !== 1) return null;
+  if (confirmed !== undefined && typeof confirmed !== 'boolean') return null;
+  if (seen !== undefined && (typeof seen !== 'string' || !PREVIEW_KEY.test(seen))) return null;
+  const yes = { ...(confirmed === undefined ? {} : { confirmed }), ...(seen === undefined ? {} : { seen }) };
+  if ('remove' in bankRule) {
+    const which = bankRule['remove'];
+    return typeof which === 'string' && which !== '' && which.length <= MAX_ITEM_LENGTH ? { id, bankRule: { remove: which }, ...yes } : null;
+  }
+  if ('add' in bankRule) {
+    const spec = parseBankRuleSpec(bankRule['add'], false);
+    return spec === null ? null : { id, bankRule: { add: spec }, ...yes };
+  }
+  if ('change' in bankRule) {
+    const spec = parseBankRuleSpec(bankRule['change'], true);
+    return spec === null || !('id' in spec) ? null : { id, bankRule: { change: spec }, ...yes };
+  }
+  return null;
+}
+
+const BANK_MEANINGS: readonly string[] = ['transfer', 'payment-to-person', 'card-fee', 'card-interest'];
+
+// A bank rule as the phone sends it: an account, the text, what it means,
+// and for a transfer the other account; with its id when it is changed.
+export function parseBankRuleSpec(value: unknown, withId: boolean): BankRuleSpec | (BankRuleSpec & { readonly id: string }) | null {
+  const keys = [...(withId ? ['id'] : []), 'account', 'contains', 'means', 'other'];
+  if (!isRecord(value) || !onlyKeys(value, keys)) return null;
+  const { id, account, contains, means, other } = value;
+  if (withId && (typeof id !== 'string' || id === '' || id.length > MAX_ITEM_LENGTH)) return null;
+  if (!isAccount(account) || typeof contains !== 'string' || contains.length > MAX_TEXT_LENGTH * 2 || typeof means !== 'string' || !BANK_MEANINGS.includes(means)) return null;
+  if (other !== undefined && !isAccount(other)) return null;
+  const spec = { account, contains, means: means as BankRuleSpec['means'], ...(other === undefined ? {} : { other }) };
+  return withId ? { id: id as string, ...spec } : spec;
+}
+
+function isAccount(value: unknown): value is AccountId {
+  return (ACCOUNTS as readonly unknown[]).includes(value);
 }
 
 // ----- Settings and sorting rules (section 2) -----

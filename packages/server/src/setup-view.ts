@@ -16,7 +16,9 @@ import {
   type SortingRule,
   type StartingPots,
 } from '@budget-app/money';
+import { bankLinesOf, suggestBankRules } from './bank-rules.js';
 import { bankRuleOf, halvesInTransitIn, notReadyWhy, planSetup, setupPreviewOf, type BankHistory } from './setup-history.js';
+import type { SuggestionLine } from './views/bank-rules.js';
 import type { AccountLine, HalfLine, SetupMissing, SetupReadyView, SetupView } from './views/setup.js';
 
 // What the Setup day screens show (rulebook section 14), worked out from the
@@ -24,12 +26,18 @@ import type { AccountLine, HalfLine, SetupMissing, SetupReadyView, SetupView } f
 
 // His answers so far.
 export interface SetupAnswers {
+  // 20a: his answer to each suggested bank rule, by its id, and the rule it added.
+  readonly suggestions: ReadonlyMap<string, { readonly answer: 'added' | 'changed' | 'skipped'; readonly ruleId: string | null }>;
+  // A25: how many days back it asks; null until he changes it.
+  readonly halvesWithinDays: number | null;
   readonly onItsWay: ReadonlyMap<string, boolean>;
   readonly lastPaycheckDate: IsoDate | null;
   readonly assignment: StartingPots;
 }
 
 export const NO_ANSWERS: SetupAnswers = {
+  suggestions: new Map(),
+  halvesWithinDays: null,
   onItsWay: new Map(),
   lastPaycheckDate: null,
   assignment: { savings: 0, needs: 0, wants: 0, momReserve: 0, heldForOthers: 0 },
@@ -44,9 +52,13 @@ export interface SetupViewInput {
   // What tracking starts with.
   readonly settings: Settings;
   readonly rules: readonly SortingRule[];
-  // How many days back setup day asks about halves on their way (QUESTIONS.md A25).
+  // How many days back setup day asks about halves on their way, to start
+  // with (A25: a setting, section 2; his answer replaces it).
   readonly halvesWithinDays: number;
 }
+
+// Section 2, A25: setup day looks back this many days, until he changes it.
+export const SETUP_LOOK_BACK_DAYS = 10;
 
 export function setupView(input: SetupViewInput): SetupView {
   const { bank, madeUpData, today, answers, settings } = input;
@@ -60,7 +72,18 @@ export function setupView(input: SetupViewInput): SetupView {
   const withPending = withPendingCharges(base.posted, charges);
   const line = (posted: Cents, account: AccountId, counted: Cents): AccountLine => ({ posted, pending: pendingOn(account), withPending: counted });
 
-  const halves: HalfLine[] = halvesInTransitIn(bank, today, input.halvesWithinDays).map((half) => ({
+  // 20a: the suggestions, with his answers. One whose rule he has removed
+  // since is open again.
+  const suggestions: SuggestionLine[] = suggestBankRules(bankLinesOf(bank), bank.rules).map((s) => {
+    const answer = answers.suggestions.get(s.id);
+    const added = answer !== undefined && answer.answer !== 'skipped' && bank.rules.some((r) => r.id === answer.ruleId);
+    const status = answer?.answer === 'skipped' ? 'skipped' : added ? answer.answer : s.covered ? 'covered' : 'open';
+    return { id: s.id, label: s.label, account: s.account, contains: s.contains, means: s.means, other: s.other, matches: s.matches, status, ruleId: added ? answer.ruleId : null };
+  });
+  const unansweredSuggestions = suggestions.filter((s) => s.status === 'open').length;
+
+  const within = answers.halvesWithinDays ?? input.halvesWithinDays;
+  const halves: HalfLine[] = halvesInTransitIn(bank, today, within).map((half) => ({
     id: half.id,
     kind: half.kind === 'transfer-sent' ? 'left' : 'arrived',
     from: half.from,
@@ -81,6 +104,7 @@ export function setupView(input: SetupViewInput): SetupView {
   const lastPaycheck = answers.lastPaycheckDate === null ? null : { date: answers.lastPaycheckDate, ...nextPayday(answers.lastPaycheckDate, settings.payScheduleDays, today) };
 
   const missing: SetupMissing[] = [];
+  if (unansweredSuggestions > 0) missing.push('suggestions');
   if (halves.some((h) => h.onItsWay === null)) missing.push('halves');
   if (lastPaycheck === null) missing.push('last-paycheck');
   if (leftToAssign !== 0) missing.push('assignment');
@@ -113,8 +137,10 @@ export function setupView(input: SetupViewInput): SetupView {
     pendingCharges: charges.map((c) => ({ id: c.id, account: c.account, date: c.date, description: c.description, amount: c.amount })),
     oldCard: { posted: base.oldCardBalance, pending: pendingOn('old-card'), debt: startingDebt(base.oldCardBalance, charges) },
     bankSide: startingMoney(base.posted, charges),
+    suggestions,
+    unansweredSuggestions,
     halves,
-    halvesWithinDays: input.halvesWithinDays,
+    halvesWithinDays: within,
     unanswered: halves.filter((h) => h.onItsWay === null).length,
     inTransit: addCents(...onItsWay.map((h) => h.effect)),
     startingMoney: money,

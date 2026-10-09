@@ -1,4 +1,5 @@
-import { assertCents, type AccountId, type Cents, type IsoDate } from '@budget-app/money';
+import { assertCents, type AccountId, type BankTransaction, type Cents, type IsoDate } from '@budget-app/money';
+import type { BankLine } from '../bank-rules.js';
 import { checkBankRules, type BankRule } from '../bank/reading.js';
 import type { StoredAccount } from '../bank/stored-account.js';
 import type { PlaidAccount, PlaidTransaction } from '../plaid/types.js';
@@ -19,7 +20,13 @@ export interface MadeUpItem {
   readonly date: IsoDate;
   readonly description: string;
   readonly pending?: boolean;
+  // Plaid's detailed label (personal_finance_category), as its test bank
+  // sends it for such an item (live/labels.live.ts). None when left out.
+  readonly label?: string;
 }
+
+// Plaid's primary labels, of which each detailed label is one kind.
+const PRIMARY_LABELS = ['TRANSFER_IN', 'TRANSFER_OUT', 'LOAN_PAYMENTS', 'BANK_FEES', 'INCOME', 'FOOD_AND_DRINK', 'GENERAL_MERCHANDISE', 'TRANSPORTATION', 'RENT_AND_UTILITIES', 'ENTERTAINMENT'];
 
 export interface MadeUpBank {
   // What each account holds, posted; for a card, what it owes.
@@ -76,6 +83,7 @@ export function madeUpHistory(bank: MadeUpBank): BankHistory {
       original_description: item.description,
       pending: item.pending ?? false,
       pending_transaction_id: null,
+      ...(item.label === undefined ? {} : { personal_finance_category: { primary: PRIMARY_LABELS.find((p) => item.label?.startsWith(`${p}_`)) ?? item.label, detailed: item.label } }),
     };
     items.set(item.id, {
       transactionId: item.id,
@@ -94,4 +102,54 @@ export function madeUpHistory(bank: MadeUpBank): BankHistory {
     });
   }
   return { connection: { historyComplete: bank.historyComplete ?? true }, setUp: false, accounts, items, rules: checkBankRules(bank.rules) };
+}
+
+// What a made-up life's bank sent its book, as the bank rules read bank items
+// (Plaid's sign: positive is money out): for showing what a rule would match
+// on Settings. A pending charge that posted, was dropped, or was changed shows
+// as the bank shows it now; one taken back is gone. Made-up lives have no labels.
+export function madeUpLines(feed: readonly BankTransaction[]): BankLine[] {
+  const lines = new Map<string, BankLine>();
+  const put = (id: string, account: AccountId, amount: Cents, date: IsoDate, description: string, pending = false): void => {
+    lines.set(id, { id, account, amount, date, description, pending, label: null });
+  };
+  for (const txn of feed) {
+    switch (txn.kind) {
+      case 'purchase':
+      case 'savings-withdrawal':
+        if (txn.pendingId !== undefined) lines.delete(txn.pendingId);
+        put(txn.id, txn.account, txn.amount, txn.date, txn.description, txn.pending);
+        break;
+      case 'card-charge':
+      case 'payment-to-person':
+        put(txn.id, txn.account, txn.amount, txn.date, txn.description);
+        break;
+      case 'deposit':
+      case 'refund':
+        put(txn.id, txn.account, -txn.amount, txn.date, txn.description);
+        break;
+      case 'transfer':
+        put(`${txn.id}-out`, txn.from, txn.amount, txn.date, txn.description);
+        put(`${txn.id}-in`, txn.to, -txn.amount, txn.date, txn.description);
+        break;
+      case 'transfer-sent':
+        put(txn.id, txn.from, txn.amount, txn.date, txn.description);
+        break;
+      case 'transfer-arrived':
+        put(txn.id, txn.to, -txn.amount, txn.date, txn.description);
+        break;
+      case 'pending-changed': {
+        const was = lines.get(txn.pendingId);
+        if (was !== undefined) lines.set(txn.pendingId, { ...was, amount: txn.amount });
+        break;
+      }
+      case 'pending-dropped':
+        lines.delete(txn.pendingId);
+        break;
+      case 'taken-back':
+        lines.delete(txn.takenId);
+        break;
+    }
+  }
+  return [...lines.values()];
 }

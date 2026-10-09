@@ -5,6 +5,7 @@ import {
   openBook,
   subtractCents,
   type BankBalances,
+  type BankTransaction,
   type Book,
   type CardStatement,
   type Cents,
@@ -12,9 +13,10 @@ import {
   type Purchase,
   type SortingRule,
 } from '@budget-app/money';
+import { checkBankRules, type BankRule } from '../bank/reading.js';
 import type { HomeInput } from '../views/home.js';
 import type { MadeUpBank } from './made-up-bank.js';
-import { SETUP_OWES_MORE, SETUP_PENDING } from './setup-lives.js';
+import { SETUP_OWES_MORE, SETUP_PENDING, SETUP_SUGGEST } from './setup-lives.js';
 
 // Made-up lives for the demo (npm run demo) and the browser tests. Every
 // name, amount, and date here is invented. Each one is played through the
@@ -35,6 +37,26 @@ const RULES: readonly SortingRule[] = [
 ];
 
 const SETUP_DAY: IsoDate = '2026-09-19';
+
+// What each made-up life's bank sent its book, by book.
+const FEEDS = new WeakMap<Book, readonly BankTransaction[]>();
+
+// What a made-up life's bank sent, in order: for showing what a bank rule
+// would match on Settings (section 2, 24c). Empty for a book not made here.
+export function madeUpFeed(book: Book): readonly BankTransaction[] {
+  return FEEDS.get(book) ?? [];
+}
+
+// The bank rules the made-up lives that are tracking already came with
+// (section 2): how their made-up bank describes transfers, payments to
+// people, and card charges.
+export const DEMO_BANK_RULES: readonly BankRule[] = checkBankRules([
+  { id: 'bank-rule-1', account: 'checking', contains: 'PAYMENT TO EVERYDAY CARD', means: 'transfer', other: 'everyday-card' },
+  { id: 'bank-rule-2', account: 'savings', contains: 'PAYMENT TO OLD CARD', means: 'transfer', other: 'old-card' },
+  { id: 'bank-rule-3', account: 'checking', contains: 'ZELLE TO', means: 'payment-to-person' },
+  { id: 'bank-rule-4', account: 'everyday-card', contains: 'LATE FEE', means: 'card-fee' },
+  { id: 'bank-rule-5', account: 'everyday-card', contains: 'INTEREST CHARGE', means: 'card-interest' },
+]);
 const PAYDAY: IsoDate = '2026-10-02';
 // The demo's today: Wednesday, Oct 7, 2026. The next payday is Oct 16.
 export const DEMO_TODAY: IsoDate = '2026-10-07';
@@ -119,11 +141,18 @@ function story(s: Story): HomeInput {
     settings: s.firstSync === true ? changeSettings(SETTINGS, { paycheckRule: null, momRule: null }) : SETTINGS,
     rules: RULES,
   });
+  // What the made-up bank sent, in order, for the bank rules on Settings.
+  const fed: BankTransaction[] = [];
+  FEEDS.set(book, fed);
+  const feed = (txn: BankTransaction): ReturnType<Book['receive']> => {
+    fed.push(txn);
+    return book.receive(txn);
+  };
   const busy = s.settingsBusy === true;
   let n = 0;
   const buy = (date: IsoDate, amount: Cents, description: string, account: Purchase['account'] = 'everyday-card', pending = false): string => {
     const id = `demo-${(n += 1)}`;
-    book.receive({ kind: 'purchase', id, account, date, amount: x(amount), description, pending });
+    feed({ kind: 'purchase', id, account, date, amount: x(amount), description, pending });
     return id;
   };
 
@@ -138,13 +167,13 @@ function story(s: Story): HomeInput {
   }
   // A coffee still pending the day before payday, which posts after it with a tip.
   const pendingCoffee = s.activityBusy === true ? buy('2026-10-01', 450, 'BLUE DOOR COFFEE', 'everyday-card', true) : '';
-  book.receive({ kind: 'deposit', id: 'demo-pay', account: 'checking', date: PAYDAY, amount: x(420_000), description: `${EMPLOYER} DIR DEP` });
+  feed({ kind: 'deposit', id: 'demo-pay', account: 'checking', date: PAYDAY, amount: x(420_000), description: `${EMPLOYER} DIR DEP` });
   for (const item of s.firstSync === true ? [] : book.reviewItems()) {
     // On the busy lists, needs' leftover is moved to savings, so that row is there to see.
     const answer = s.activityBusy === true && item.type === 'leftover' && item.bucket === 'needs' ? 'move-to-savings' : 'roll-over';
     if (item.type === 'leftover' && s.reviewBusy !== true) book.answerLeftover(item.id, answer, PAYDAY);
   }
-  book.receive({ kind: 'payment-to-person', id: 'demo-mom', account: 'checking', date: '2026-10-03', amount: x(50_000), description: `ZELLE TO ${MOM}` });
+  feed({ kind: 'payment-to-person', id: 'demo-mom', account: 'checking', date: '2026-10-03', amount: x(50_000), description: `ZELLE TO ${MOM}` });
   const groceryRun = buy('2026-10-03', 8_643, 'GROCERY OUTLET #12', 'checking');
   const gasRun = buy('2026-10-04', 4_120, 'CORNER GAS STATION');
   if (busy) book.changeRule({ id: 'pharmacy', for: 'purchase', contains: 'PHARMACY #', bucket: 'needs' }, '2026-10-04');
@@ -156,7 +185,7 @@ function story(s: Story): HomeInput {
   }
   if (s.chargedTwice === true) {
     const copy = buy('2026-10-05', 3_890, 'MAIN ST RESTAURANT');
-    book.receive({ kind: 'taken-back', id: 'demo-correction', takenId: copy, date: '2026-10-06', description: 'CORRECTION' });
+    feed({ kind: 'taken-back', id: 'demo-correction', takenId: copy, date: '2026-10-06', description: 'CORRECTION' });
   }
   buy('2026-10-05', 1_599, 'STREAMING SERVICE');
   if (s.eatingOut !== undefined) buy('2026-10-06', s.eatingOut, 'HARBOR RESTAURANT');
@@ -173,75 +202,75 @@ function story(s: Story): HomeInput {
   let cardExtra = 0;
   if (s.bucketsBusy === true) {
     // A roommate's share of the rent, held until he passes it on (7.1).
-    book.receive({ kind: 'deposit', id: 'busy-roommate', account: 'checking', date: '2026-10-05', amount: x(12_000), description: 'ZELLE FROM MADE UP ROOMMATE' });
+    feed({ kind: 'deposit', id: 'busy-roommate', account: 'checking', date: '2026-10-05', amount: x(12_000), description: 'ZELLE FROM MADE UP ROOMMATE' });
     book.sort('busy-roommate', { to: 'not-mine' }, DEMO_TODAY);
     // Mom again: 2,500.00 for the month so far, inside the 2,000.00 to 3,000.00 target (8.2).
-    book.receive({ kind: 'payment-to-person', id: 'busy-mom', account: 'checking', date: '2026-10-06', amount: x(200_000), description: `ZELLE TO ${MOM}` });
+    feed({ kind: 'payment-to-person', id: 'busy-mom', account: 'checking', date: '2026-10-06', amount: x(200_000), description: `ZELLE TO ${MOM}` });
   }
   if (s.activityBusy === true) {
     // The coffee posts after payday with a tip: 1.25 more than it showed, counted in this pay period (B97).
-    book.receive({ kind: 'purchase', id: 'act-coffee-posted', account: 'everyday-card', date: '2026-10-03', amount: x(575), description: 'BLUE DOOR COFFEE', pending: false, pendingId: pendingCoffee });
+    feed({ kind: 'purchase', id: 'act-coffee-posted', account: 'everyday-card', date: '2026-10-03', amount: x(575), description: 'BLUE DOOR COFFEE', pending: false, pendingId: pendingCoffee });
     cardExtra += 575;
     // Something bought the day before payday that is first seen after it (B4).
     buy('2026-10-01', 2_150, 'GROCERY OUTLET #12', 'checking');
     // A split purchase, and part of a grocery run refunded (4.4, 4.5).
-    book.receive({ kind: 'purchase', id: 'act-hardware', account: 'checking', date: '2026-10-04', amount: x(9_000), description: 'HARDWARE SUPERSTORE', pending: false });
+    feed({ kind: 'purchase', id: 'act-hardware', account: 'checking', date: '2026-10-04', amount: x(9_000), description: 'HARDWARE SUPERSTORE', pending: false });
     book.sort('act-hardware', { split: [{ bucket: 'needs', amount: x(6_000) }, { bucket: 'wants', amount: x(3_000) }] }, DEMO_TODAY);
-    book.receive({ kind: 'refund', id: 'act-refund', account: 'checking', date: '2026-10-05', amount: x(1_500), description: 'GROCERY OUTLET #12 REFUND', refundOf: groceryRun });
+    feed({ kind: 'refund', id: 'act-refund', account: 'checking', date: '2026-10-05', amount: x(1_500), description: 'GROCERY OUTLET #12 REFUND', refundOf: groceryRun });
     // The gas station run was really wants: sorted again by hand (4.7).
     book.sort(gasRun, { to: 'wants' }, DEMO_TODAY);
     // A card fee, sorted to needs (4.8).
-    book.receive({ kind: 'card-charge', id: 'act-fee', account: 'everyday-card', date: '2026-10-04', amount: x(3_500), description: 'LATE FEE', charge: 'fee' });
+    feed({ kind: 'card-charge', id: 'act-fee', account: 'everyday-card', date: '2026-10-04', amount: x(3_500), description: 'LATE FEE', charge: 'fee' });
     book.sort('act-fee', { to: 'needs' }, DEMO_TODAY);
     cardExtra += 3_500;
     // Money in: a friend paying back, a side job, and a roommate's share (6.1, 7.1).
-    book.receive({ kind: 'deposit', id: 'act-payback', account: 'checking', date: '2026-10-05', amount: x(5_000), description: 'ZELLE FROM MADE UP FRIEND' });
+    feed({ kind: 'deposit', id: 'act-payback', account: 'checking', date: '2026-10-05', amount: x(5_000), description: 'ZELLE FROM MADE UP FRIEND' });
     book.sort('act-payback', { to: 'wants' }, DEMO_TODAY);
-    book.receive({ kind: 'deposit', id: 'act-side', account: 'checking', date: '2026-10-06', amount: x(25_000), description: 'MADE UP SIDE JOB' });
+    feed({ kind: 'deposit', id: 'act-side', account: 'checking', date: '2026-10-06', amount: x(25_000), description: 'MADE UP SIDE JOB' });
     book.sort('act-side', { to: 'other-income' }, DEMO_TODAY);
-    book.receive({ kind: 'deposit', id: 'act-roommate', account: 'checking', date: '2026-10-05', amount: x(12_000), description: 'ZELLE FROM MADE UP ROOMMATE' });
+    feed({ kind: 'deposit', id: 'act-roommate', account: 'checking', date: '2026-10-05', amount: x(12_000), description: 'ZELLE FROM MADE UP ROOMMATE' });
     book.sort('act-roommate', { to: 'not-mine' }, DEMO_TODAY);
     // Paid for a friend, marked not mine (7.2).
-    book.receive({ kind: 'payment-to-person', id: 'act-friend', account: 'checking', date: '2026-10-06', amount: x(4_000), description: 'ZELLE TO MADE UP FRIEND' });
+    feed({ kind: 'payment-to-person', id: 'act-friend', account: 'checking', date: '2026-10-06', amount: x(4_000), description: 'ZELLE TO MADE UP FRIEND' });
     book.sort('act-friend', { to: 'not-mine' }, DEMO_TODAY);
     // A hand move (13.3).
     book.moveMoney({ from: 'wants', to: 'needs', amount: x(2_500) }, '2026-10-06');
   }
   if (s.markedFromSavings === true) {
-    book.receive({ kind: 'savings-withdrawal', id: 'act-water', account: 'savings', date: '2026-10-06', amount: x(6_410), description: 'BILL PAY WATER UTILITY', pending: false });
+    feed({ kind: 'savings-withdrawal', id: 'act-water', account: 'savings', date: '2026-10-06', amount: x(6_410), description: 'BILL PAY WATER UTILITY', pending: false });
     book.sort('act-water', { transfer: 'old-card' }, DEMO_TODAY);
     savingsOut += 6_410;
   }
   if (s.markedOldCard === true) {
-    book.receive({ kind: 'purchase', id: 'act-landlord', account: 'checking', date: '2026-10-06', amount: x(8_500), description: 'MADE UP LANDLORD', pending: false });
+    feed({ kind: 'purchase', id: 'act-landlord', account: 'checking', date: '2026-10-06', amount: x(8_500), description: 'MADE UP LANDLORD', pending: false });
     book.sort('act-landlord', { transfer: 'old-card' }, DEMO_TODAY);
   }
   if (s.reviewBusy === true) {
     const rid = (name: string): string => `busy-${name}`;
     // Money in: a deposit, and a paycheck-looking one only four days after the last (3.7).
-    book.receive({ kind: 'deposit', id: rid('tax'), account: 'checking', date: '2026-10-05', amount: x(25_000), description: 'MADE UP TAX REFUND' });
-    book.receive({ kind: 'deposit', id: rid('early'), account: 'checking', date: '2026-10-06', amount: x(30_000), description: `${EMPLOYER} BONUS` });
+    feed({ kind: 'deposit', id: rid('tax'), account: 'checking', date: '2026-10-05', amount: x(25_000), description: 'MADE UP TAX REFUND' });
+    feed({ kind: 'deposit', id: rid('early'), account: 'checking', date: '2026-10-06', amount: x(30_000), description: `${EMPLOYER} BONUS` });
     // A refund the bank did not match to a purchase (4.5, A15).
     buy('2026-10-01', 5_400, 'ONLINE MARKETPLACE');
-    book.receive({ kind: 'refund', id: rid('refund'), account: 'everyday-card', date: DEMO_TODAY, amount: x(2_317), description: 'ONLINE MARKETPLACE REFUND' });
+    feed({ kind: 'refund', id: rid('refund'), account: 'everyday-card', date: DEMO_TODAY, amount: x(2_317), description: 'ONLINE MARKETPLACE REFUND' });
     cardExtra += 5_400 - 2_317;
     // Fees and interest on the everyday card (4.8).
-    book.receive({ kind: 'card-charge', id: rid('fee'), account: 'everyday-card', date: '2026-10-04', amount: x(3_500), description: 'LATE FEE', charge: 'fee' });
-    book.receive({ kind: 'card-charge', id: rid('interest'), account: 'everyday-card', date: '2026-10-04', amount: x(1_842), description: 'PURCHASE INTEREST CHARGE', charge: 'interest' });
+    feed({ kind: 'card-charge', id: rid('fee'), account: 'everyday-card', date: '2026-10-04', amount: x(3_500), description: 'LATE FEE', charge: 'fee' });
+    feed({ kind: 'card-charge', id: rid('interest'), account: 'everyday-card', date: '2026-10-04', amount: x(1_842), description: 'PURCHASE INTEREST CHARGE', charge: 'interest' });
     cardExtra += 3_500 + 1_842;
     // Money out of savings (4.9, 5.2).
-    book.receive({ kind: 'savings-withdrawal', id: rid('water'), account: 'savings', date: '2026-10-06', amount: x(6_410), description: 'BILL PAY WATER UTILITY', pending: false });
-    book.receive({ kind: 'transfer', id: rid('old-card'), from: 'savings', to: 'old-card', date: '2026-10-06', amount: x(20_000), description: 'PAYMENT TO OLD CARD' });
+    feed({ kind: 'savings-withdrawal', id: rid('water'), account: 'savings', date: '2026-10-06', amount: x(6_410), description: 'BILL PAY WATER UTILITY', pending: false });
+    feed({ kind: 'transfer', id: rid('old-card'), from: 'savings', to: 'old-card', date: '2026-10-06', amount: x(20_000), description: 'PAYMENT TO OLD CARD' });
     savingsOut += 6_410 + 20_000;
     // A new purchase on the old card (5.4).
-    book.receive({ kind: 'purchase', id: rid('furniture'), account: 'old-card', date: '2026-10-05', amount: x(8_000), description: 'MADE UP FURNITURE', pending: false });
+    feed({ kind: 'purchase', id: rid('furniture'), account: 'old-card', date: '2026-10-05', amount: x(8_000), description: 'MADE UP FURNITURE', pending: false });
     // A friend (7.4), and a mom payment bigger than what the reserve holds (8.3).
-    book.receive({ kind: 'payment-to-person', id: rid('friend'), account: 'checking', date: '2026-10-06', amount: x(4_000), description: 'ZELLE TO MADE UP FRIEND' });
-    book.receive({ kind: 'payment-to-person', id: rid('mom'), account: 'checking', date: '2026-10-06', amount: x(250_000), description: `ZELLE TO ${MOM}` });
+    feed({ kind: 'payment-to-person', id: rid('friend'), account: 'checking', date: '2026-10-06', amount: x(4_000), description: 'ZELLE TO MADE UP FRIEND' });
+    feed({ kind: 'payment-to-person', id: rid('mom'), account: 'checking', date: '2026-10-06', amount: x(250_000), description: `ZELLE TO ${MOM}` });
     // A split purchase that was partly refunded, so it needs splitting again (4.5).
-    book.receive({ kind: 'purchase', id: rid('hardware'), account: 'checking', date: '2026-10-04', amount: x(9_000), description: 'HARDWARE SUPERSTORE', pending: false });
+    feed({ kind: 'purchase', id: rid('hardware'), account: 'checking', date: '2026-10-04', amount: x(9_000), description: 'HARDWARE SUPERSTORE', pending: false });
     book.sort(rid('hardware'), { split: [{ bucket: 'needs', amount: x(6_000) }, { bucket: 'wants', amount: x(3_000) }] }, DEMO_TODAY);
-    book.receive({ kind: 'refund', id: rid('hardware-refund'), account: 'checking', date: '2026-10-06', amount: x(1_000), description: 'HARDWARE SUPERSTORE REFUND', refundOf: rid('hardware') });
+    feed({ kind: 'refund', id: rid('hardware-refund'), account: 'checking', date: '2026-10-06', amount: x(1_000), description: 'HARDWARE SUPERSTORE REFUND', refundOf: rid('hardware') });
     // Still pending: it counts now but cannot be marked a transfer yet (4.6).
     buy('2026-10-07', 980, 'CORNER DELI', 'everyday-card', true);
     cardExtra += 980;
@@ -252,7 +281,7 @@ function story(s: Story): HomeInput {
   buy('2026-10-07', 625, 'BLUE DOOR COFFEE', 'everyday-card', true);
   // The second paycheck, on its day: a new pay period, with both leftover questions open.
   if (s.secondPaycheck === true) {
-    book.receive({ kind: 'deposit', id: 'demo-pay-2', account: 'checking', date: '2026-10-16', amount: x(420_000), description: `${EMPLOYER} DIR DEP` });
+    feed({ kind: 'deposit', id: 'demo-pay-2', account: 'checking', date: '2026-10-16', amount: x(420_000), description: `${EMPLOYER} DIR DEP` });
   }
 
   let statements = s.statements ?? [EVERYDAY_STATEMENT, OLD_CARD_STATEMENT];
@@ -260,7 +289,7 @@ function story(s: Story): HomeInput {
   if (s.allDone === true) {
     for (const id of unsorted) book.sort(id, { to: 'wants' }, DEMO_TODAY);
     // The everyday card paid in full (9.3): not spending (5.1).
-    book.receive({ kind: 'transfer', id: 'demo-card-payment', from: 'checking', to: 'everyday-card', date: '2026-10-05', amount: x(61_248), description: 'PAYMENT TO EVERYDAY CARD' });
+    feed({ kind: 'transfer', id: 'demo-card-payment', from: 'checking', to: 'everyday-card', date: '2026-10-05', amount: x(61_248), description: 'PAYMENT TO EVERYDAY CARD' });
     everydayCardOwes = subtractCents(everydayCardOwes, x(61_248));
     statements = statements.filter((st) => st.card === 'everyday-card');
   }
@@ -339,7 +368,8 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
 // Lives not set up yet, with a made-up bank to do setup day with (section
 // 14). Kept apart from the others: each has a bank history instead of a book.
 export const SETUP_SCENARIOS: readonly DemoScenario[] = [
-  { name: 'setup-day', title: 'Setup day: charges still pending, and a card payment on its way', input: notSetUp, setup: () => SETUP_PENDING },
+  { name: 'setup-day', title: 'Setup day: charges still pending, a card payment on its way, bank rules already set', input: notSetUp, setup: () => SETUP_PENDING },
+  { name: 'setup-suggest', title: 'Setup day from the start: bank rules suggested from the bank’s labels', input: notSetUp, setup: () => SETUP_SUGGEST },
   { name: 'setup-owes-more', title: 'Setup day: the everyday card owes more than checking and savings hold', input: notSetUp, setup: () => SETUP_OWES_MORE },
 ];
 

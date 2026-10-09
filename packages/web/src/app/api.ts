@@ -2,6 +2,8 @@ import type { Pot } from '@budget-app/money';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   ActivityView,
+  BankRuleRequest,
+  BankRuleResponse,
   BucketsView,
   ChoiceRequest,
   ChoiceResponse,
@@ -82,9 +84,10 @@ export async function sendChoice(request: MoveRequest): Promise<MoveResponse>;
 export async function sendChoice(request: SettingsRequest): Promise<SettingsResponse>;
 export async function sendChoice(request: RuleRequest): Promise<RuleResponse>;
 export async function sendChoice(request: SetupRequest): Promise<SetupResponse>;
+export async function sendChoice(request: BankRuleRequest): Promise<BankRuleResponse>;
 export async function sendChoice(
-  request: ChoiceRequest | MoveRequest | SettingsRequest | RuleRequest | SetupRequest,
-): Promise<ChoiceResponse | MoveResponse | SettingsResponse | RuleResponse | SetupResponse> {
+  request: ChoiceRequest | MoveRequest | SettingsRequest | RuleRequest | SetupRequest | BankRuleRequest,
+): Promise<ChoiceResponse | MoveResponse | SettingsResponse | RuleResponse | SetupResponse | BankRuleResponse> {
   const response = await fetch('/api/choice', {
     method: 'POST',
     cache: 'no-store',
@@ -92,7 +95,7 @@ export async function sendChoice(
     body: JSON.stringify(request),
   });
   if (response.status !== 200 && response.status !== 422) throw new Error(`sending the choice answered ${response.status}`);
-  const answer = (await response.json()) as ChoiceResponse | MoveResponse | SettingsResponse | RuleResponse | SetupResponse;
+  const answer = (await response.json()) as ChoiceResponse | MoveResponse | SettingsResponse | RuleResponse | SetupResponse | BankRuleResponse;
   if (typeof answer !== 'object' || answer === null || typeof answer.ok !== 'boolean') throw new Error('the choice was answered with something unexpected');
   return answer;
 }

@@ -212,6 +212,12 @@ export function readBankRules(db: Db): readonly BankRule[] {
   return checkBankRules(row === undefined ? [] : (JSON.parse(row.value) as unknown));
 }
 
+// Saves the bank rules as they are, without a log line: for a change that
+// logs itself (bank-rules-db.ts).
+export function saveBankRules(db: Db, rules: readonly BankRule[]): void {
+  db.prepare('INSERT INTO settings (name, value) VALUES (?, ?) ON CONFLICT (name) DO UPDATE SET value = excluded.value').run(BANK_RULES, JSON.stringify(checkBankRules(rules)));
+}
+
 // Rule 13.5: every change is logged with the date.
 export function setBankRules(db: Db, rules: readonly BankRule[], date: IsoDate): void {
   const checked = checkBankRules(rules);

@@ -13,6 +13,7 @@ import type {
   SettingsPreview,
   SplitBucket,
 } from '@budget-app/money';
+import type { BankRulePreview, BankRuleSpec } from './bank-rules.js';
 
 // How a tap reaches the books. The screen sends the choice it was offered;
 // the server hands it to the money math, which decides. Types only, so the
@@ -200,6 +201,14 @@ export type SetupStep =
   // 14.2: whatever is left to assign goes in this bucket, worked out by the
   // money math, not the screen.
   | { readonly assign: { readonly pot: Pot; readonly rest: true } }
+  // 20a: his answer to a bank rule suggested from the bank's labels: add it
+  // as it is, or skip it; or add it as he changed it, which asks first, with
+  // what it would match.
+  | { readonly suggestion: { readonly id: string; readonly answer: 'add' | 'skip' } }
+  | { readonly suggestion: { readonly id: string; readonly answer: 'change'; readonly rule: BankRuleSpec } }
+  // A25: how many days back setup day asks about transfers with only one
+  // side showing. A setting (0.2): any whole number of days from zero up.
+  | { readonly lookBack: number }
   // 14.3: start tracking. Final, so it needs his yes.
   | { readonly start: true };
 
@@ -219,10 +228,15 @@ export type SetupDone =
   | { readonly step: 'on-its-way'; readonly half: string; readonly answer: boolean; readonly startingMoney: Cents }
   | { readonly step: 'last-paycheck'; readonly date: IsoDate; readonly nextPayday: IsoDate }
   | { readonly step: 'assign'; readonly pot: Pot; readonly amount: Cents; readonly leftToAssign: Cents }
+  // 20a: ruleId names the bank rule it added; null when skipped.
+  | { readonly step: 'suggestion'; readonly id: string; readonly answer: 'added' | 'changed' | 'skipped'; readonly ruleId: string | null }
+  // A25: asked is how many transfers setup day asks about now.
+  | { readonly step: 'look-back'; readonly days: number; readonly asked: number }
   // Tracking has started. stillToSet: the rules he has not set yet, for Settings.
   | { readonly step: 'started'; readonly startingMoney: Cents; readonly stillToSet: readonly ('paycheckRule' | 'momRule')[] };
 
 export type SetupResponse =
   | { readonly ok: true; readonly replayed: boolean; readonly done: SetupDone }
-  // Nothing was changed. why is for him to read.
-  | { readonly ok: false; readonly code: RefusalCode; readonly why: string };
+  // Nothing was changed. why is for him to read. With needs-confirmation for
+  // a suggestion he changed, preview says what the rule would match.
+  | { readonly ok: false; readonly code: RefusalCode; readonly why: string; readonly preview?: BankRulePreview };

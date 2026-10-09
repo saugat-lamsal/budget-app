@@ -1,12 +1,15 @@
 import { formatDollars, parseDollars, type Cents, type LeftoverChoice, type Settings } from '@budget-app/money';
-import type { LogRow, RuleRequest, RuleRow, RuleSpec, SettingsPreviewView, SettingsRequest, SettingsView } from '@budget-app/server/views';
+import type { BankRuleChange, LogRow, RuleRequest, RuleRow, RuleSpec, SettingsPreviewView, SettingsRequest, SettingsView } from '@budget-app/server/views';
 import { useRef, useState, type ReactNode } from 'react';
 import { newDecisionId, sendChoice, type Load, type Reload } from '../app/api.js';
 import { pathOf } from '../app/routes.js';
 import { Banner, BottomSheet, Button, ButtonRow, Card, CompareTable, ListRow, MadeUpPill, Money, Notice, SelectField, Skeleton, StateMessage, TextField } from '../ui/blocks.js';
 import { dayWithYear, longDate, shortDate } from '../ui/dates.js';
 import { POT_NAMES } from '../ui/names.js';
+import { BankRuleRows, BankRuleSheet, type Editing as BankEditing } from './bank-rules.js';
+import { bankRuleDoneText } from './bank-rules-text.js';
 import { SaidNotice, type Said } from './choose.js';
+import { bankRuleText } from './setup-text.js';
 import {
   LEFTOVER_NAMES,
   RULE_CHOICE_NAMES,
@@ -108,6 +111,20 @@ function SettingsReady({ view, reload, onChanged }: { readonly view: Tracking; r
     />
   );
   const next = shortDate(split.nextPayday.date);
+  // Section 2, 24c: the sheet for a bank rule, and what the last change did.
+  const [bankEditing, setBankEditing] = useState<BankEditing | null>(null);
+  const openBank = (e: BankEditing): void => {
+    setSaid(null);
+    setOpened((n) => n + 1);
+    setBankEditing(e);
+  };
+  const sendBankRule = async (id: string, change: BankRuleChange, yes?: { readonly seen: string }) => {
+    try {
+      return await sendChoice({ id, bankRule: change, ...(yes === undefined ? {} : { confirmed: true, seen: yes.seen }) });
+    } catch {
+      return 'failed' as const;
+    }
+  };
 
   return (
     <>
@@ -245,6 +262,19 @@ function SettingsReady({ view, reload, onChanged }: { readonly view: Tracking; r
         <ListRow icon="settings" title="Add a rule" onClick={() => open({ what: 'rule', rule: null })} testId="row-add-rule" />
       </Card>
 
+      {/* Section 2, 24c: how the app tells transfers, payments to people, and card charges from purchases. */}
+      <Card title="Bank rules" testId="bank-rules-card">
+        <p className="card__note">How the app tells your transfers, payments to people, and card fees from purchases. The first rule that fits wins. A change reads what the bank sends from then on; what was already read stays as it was.</p>
+        {view.bankRules.length === 0 ? (
+          <p className="card__note" data-testid="bank-rules-empty">
+            None yet.
+          </p>
+        ) : (
+          <BankRuleRows rules={view.bankRules} onOpen={(rule) => openBank({ rule })} />
+        )}
+        <ListRow icon="settings" title="Add a bank rule" onClick={() => openBank({ start: null, title: 'New bank rule' })} testId="row-add-bank-rule" />
+      </Card>
+
       <Card title="Change log" testId="log">
         {view.log.length === 0 ? (
           <StateMessage icon="clock" title="Nothing changed yet" detail="Every change to your settings and rules, and every hand move, shows here with its date." testId="log-empty" />
@@ -252,6 +282,21 @@ function SettingsReady({ view, reload, onChanged }: { readonly view: Tracking; r
           view.log.map((line) => <LogLine key={line.key} line={line} />)
         )}
       </Card>
+
+      {bankEditing !== null && (
+        <BankRuleSheet
+          // Its own key: the settings sheet beside it is keyed by the same count.
+          key={`bank-${opened}`}
+          editing={bankEditing}
+          send={sendBankRule}
+          onClose={() => setBankEditing(null)}
+          onDone={(change) => {
+            setBankEditing(null);
+            setSaid({ tone: 'ok', text: bankRuleDoneText(change) });
+            reload('after');
+          }}
+        />
+      )}
 
       <SettingSheet
         key={opened}
@@ -307,6 +352,12 @@ function LogLine({ line }: { readonly line: LogRow }) {
       return <ListRow icon="move" title={`Moved from ${POT_NAMES[line.from]} to ${POT_NAMES[line.to]}`} detail={when} trailing={<Money cents={line.amount} />} testId={testId} />;
     case 'bank-took-back':
       return <ListRow icon="undo" title={`The bank took back ${line.description}`} detail={when} trailing={<Money cents={line.amount} />} testId={testId} />;
+    case 'bank-rule-added':
+      return <ListRow icon="bank" title="Bank rule added" detail={`${bankRuleText(line.rule)} · ${when}`} testId={testId} />;
+    case 'bank-rule-changed':
+      return <ListRow icon="bank" title="Bank rule changed" detail={`${bankRuleText(line.before)} to ${bankRuleText(line.after)} · ${when}`} testId={testId} />;
+    case 'bank-rule-removed':
+      return <ListRow icon="bank" title="Bank rule removed" detail={`${bankRuleText(line.rule)} · ${when}`} testId={testId} />;
   }
 }
 

@@ -12,8 +12,11 @@ import {
   type SortingRule,
   type StartingPots,
 } from '@budget-app/money';
+import { BankRulesDesk } from './bank-rules-desk.js';
+import { bankLinesOf, type BankRuleSpec } from './bank-rules.js';
 import { canonical, refuse } from './choices.js';
 import { planSetup, type BankHistory } from './setup-history.js';
+import type { BankRuleRequest, BankRuleResponse, SuggestionLine } from './views/bank-rules.js';
 import type { SetupDone, SetupRequest, SetupResponse } from './views/choice.js';
 import { NO_ANSWERS, setupView, type SetupAnswers } from './setup-view.js';
 import type { SetupReadyView, SetupView } from './views/setup.js';
@@ -27,6 +30,13 @@ import type { SetupReadyView, SetupView } from './views/setup.js';
 //   yes, and the yes must name the last look he saw (its key).
 // His answers are kept here until tracking starts. Setup day happens once:
 // after that every new answer is refused.
+//
+// The bank rules (section 2, 20a, 24c) are kept by a bank rules desk: the
+// one given, or one of its own made from the bank history's rules. Before
+// tracking starts, every step reads the whole history again with the rules
+// as they are now; a change drops his answers about transfers it no longer
+// asks about. After it starts, the rules can still change (Settings), and
+// read what the bank sends from then on.
 
 export interface SetupDeskInput {
   // The bank history; null when the bank is not connected.
@@ -38,6 +48,8 @@ export interface SetupDeskInput {
   // How many days back setup day asks about halves on their way (QUESTIONS.md A25).
   readonly halvesWithinDays: number;
   readonly madeUpData: boolean;
+  // Who keeps the bank rules; without it, the desk keeps its own.
+  readonly bankRules?: BankRulesDesk;
 }
 
 export interface Started {
@@ -54,13 +66,44 @@ export class SetupDesk {
   // demo); the real server keeps it with the book's history (Phase 6).
   readonly #done = new Map<string, { readonly fingerprint: string; readonly done: SetupDone }>();
 
+  readonly #bankRules: BankRulesDesk;
+
   constructor(input: SetupDeskInput) {
     this.#input = input;
+    const bank = input.bank;
+    this.#bankRules =
+      input.bankRules ??
+      new BankRulesDesk({ rules: bank?.rules ?? [], lines: () => (bank === null ? [] : bankLinesOf(bank)), today: input.today, bookLines: () => this.#started?.book.changeLog().length ?? 0 });
+  }
+
+  bankRules(): BankRulesDesk {
+    return this.#bankRules;
+  }
+
+  // The bank history, read with the bank rules as they are now.
+  #bank(): BankHistory | null {
+    const bank = this.#input.bank;
+    return bank === null ? null : { ...bank, rules: this.#bankRules.rules() };
+  }
+
+  // A change to the bank rules (section 2, 24c), on Setup day or after it.
+  bankRule(request: BankRuleRequest): BankRuleResponse {
+    const answer = this.#bankRules.decide(request);
+    if (answer.ok && !answer.replayed) this.#dropAnswersNotAsked();
+    return answer;
+  }
+
+  // His answers about transfers it no longer asks about are dropped: they are history now (A25, 24c).
+  #dropAnswersNotAsked(): void {
+    const view = this.view();
+    if (view.state !== 'not-set-up' || !view.ready) return;
+    const asked = new Set(view.halves.map((h) => h.id));
+    this.#answers = { ...this.#answers, onItsWay: new Map([...this.#answers.onItsWay].filter(([half]) => asked.has(half))) };
   }
 
   // What the Setup day screens show now.
   view(): SetupView {
-    const bank = this.#input.bank;
+    const bank = this.#bank();
     return setupView({
       today: this.#input.today(),
       madeUpData: this.#input.madeUpData,
@@ -110,6 +153,24 @@ export class SetupDesk {
       return { step: 'on-its-way', half, answer, startingMoney: this.#ready().startingMoney };
     }
 
+    // A25: how far back it asks. An answer about a transfer it no longer
+    // asks about is dropped: that transfer is history now.
+    if ('lookBack' in step) {
+      const days = step.lookBack;
+      if (days === view.halvesWithinDays) return refuse('refused', 'That is already the setting');
+      this.#answers = { ...this.#answers, halvesWithinDays: days };
+      this.#dropAnswersNotAsked();
+      return { step: 'look-back', days, asked: this.#ready().halves.length };
+    }
+
+    // 20a: a suggested bank rule, added as it is, skipped, or added as he
+    // changed it (which asks first, with what it would match).
+    if ('suggestion' in step) {
+      const shown = view.suggestions.find((s) => s.id === step.suggestion.id);
+      if (shown === undefined) return refuse('refused', 'That is not one setup day suggests');
+      return this.#suggestion(shown, step.suggestion, request);
+    }
+
     // B42: the day of his last paycheck, on or before today.
     if ('lastPaycheck' in step) {
       const date = step.lastPaycheck;
@@ -149,6 +210,7 @@ export class SetupDesk {
 
     // 14.3: start tracking, only when it adds up to the cent and the
     // self-check passes, and only with his yes to what he saw.
+    if (view.missing.includes('suggestions')) return refuse('refused', 'Answer each suggested bank rule first');
     if (view.missing.includes('halves')) return refuse('refused', 'Say whether each transfer is still on its way first');
     const date = this.#answers.lastPaycheckDate;
     if (date === null) return refuse('refused', 'Enter the date of your last paycheck first');
@@ -163,7 +225,7 @@ export class SetupDesk {
           : 'Starting to track is final: setup day is done once. It needs your OK first',
       );
     }
-    const bank = this.#input.bank;
+    const bank = this.#bank();
     if (bank === null) return refuse('refused', 'There is no bank connection yet');
     let plan: ReturnType<typeof planSetup>;
     try {
@@ -184,6 +246,43 @@ export class SetupDesk {
     const settings = plan.book.settings();
     const stillToSet = (['paycheckRule', 'momRule'] as const).filter((key) => settings[key] === null);
     return { step: 'started', startingMoney: plan.startingMoney, stillToSet };
+  }
+
+  #suggestion(
+    shown: SuggestionLine,
+    answer: { readonly answer: 'add' | 'skip' } | { readonly answer: 'change'; readonly rule: BankRuleSpec },
+    request: SetupRequest,
+  ): SetupDone | Extract<SetupResponse, { ok: false }> {
+    if (shown.status === 'covered') return refuse('refused', 'Your bank rules already read these this way');
+    if (shown.status === 'added' || shown.status === 'changed') {
+      return refuse('refused', answer.answer === 'skip' ? 'It is added already. To undo it, remove its rule from your bank rules' : 'That is already your answer');
+    }
+    const record = (kind: 'added' | 'changed' | 'skipped', ruleId: string | null): SetupDone => {
+      const suggestions = new Map(this.#answers.suggestions);
+      suggestions.set(shown.id, { answer: kind, ruleId });
+      this.#answers = { ...this.#answers, suggestions };
+      this.#dropAnswersNotAsked();
+      return { step: 'suggestion', id: shown.id, answer: kind, ruleId };
+    };
+    if (answer.answer === 'skip') {
+      if (shown.status === 'skipped') return refuse('refused', 'That is already your answer');
+      return record('skipped', null);
+    }
+    if (answer.answer === 'add') {
+      if (shown.means === 'transfer' && shown.other === null) return refuse('refused', 'Pick the account it is with first: change it');
+      const spec: BankRuleSpec = { account: shown.account, contains: shown.contains, means: shown.means, ...(shown.other === null ? {} : { other: shown.other }) };
+      const done = this.#bankRules.apply({ add: spec });
+      return done.ok ? record('added', done.done.rule.id) : refuse('refused', done.why);
+    }
+    if (!('rule' in answer)) throw new Error('a suggestion answer is add, skip, or change');
+    const preview = this.#bankRules.preview({ add: answer.rule });
+    if ('why' in preview) return refuse('refused', preview.why);
+    if (request.confirmed !== true || request.seen !== preview.key) {
+      const changedSince = request.confirmed === true && request.seen !== undefined;
+      return { ...refuse('needs-confirmation', changedSince ? 'What it would match has changed since you looked. Check it again' : 'Check what it would match before you add it'), preview };
+    }
+    const done = this.#bankRules.apply({ add: answer.rule });
+    return done.ok ? record('changed', done.done.rule.id) : refuse('refused', done.why);
   }
 
   #ready(): SetupReadyView {
