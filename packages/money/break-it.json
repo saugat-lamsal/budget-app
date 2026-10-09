@@ -3124,8 +3124,8 @@
   {
     "section": "3",
     "file": "packages/money/src/book.ts",
-    "find": "return report('moved-to-savings', -(asked.effect[bucket] ?? 0), null);",
-    "replace": "return report('moved-to-savings', asked.amount, null);",
+    "find": "return report('moved-to-savings', -(asked.effect[bucket] ?? 0), null, less);",
+    "replace": "return report('moved-to-savings', asked.amount, null, less);",
     "why": "[activity] B4 the amount moved is what was asked at payday, not what moved"
   },
   {
