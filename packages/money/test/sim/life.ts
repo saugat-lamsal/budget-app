@@ -17,9 +17,11 @@ import {
   type IsoDate,
   type LeftoverAnswer,
   type LeftoverChoice,
+  type PersonPayment,
   type Pot,
   type Pots,
   type Purchase,
+  type RecheckedItem,
   type ReviewItem,
   type SavingsWithdrawal,
   type Settings,
@@ -152,6 +154,9 @@ export const STAT_NAMES = [
   'pendingAtSetup',
   'inTransitAtSetup',
   'activityChecks',
+  'momRuleSetWhileWaiting',
+  'momPaymentsRefundedWhileWaiting',
+  'paycheckRuleSetWhileWaiting',
 ] as const;
 export type Stats = Record<(typeof STAT_NAMES)[number], number>;
 
@@ -292,6 +297,12 @@ class Life {
   // How the person split each split purchase, by the id it first had.
   readonly #splitParts = new Map<string, { readonly needs: Cents; readonly wants: Cents }>();
   readonly #momSent = new Map<string, Cents>();
+  // 13.2, A9: now and then the person clears the mom rule, and sets it again
+  // a few days later. Payments to mom wait in review meanwhile, and the bank
+  // refunds part of some of them. In the order they came.
+  readonly #waitingForMomRule: { readonly txn: PersonPayment; refunded: Cents }[] = [];
+  // The same for the paycheck rule: the paycheck that waits for it, if any.
+  #paycheckWaitingForRule: string | null = null;
 
   // Things already set to happen on a later day, such as a pending charge
   // posting or a card payment landing.
@@ -583,6 +594,20 @@ class Life {
   // it comes less than 10 days after the last one; then it waits in review.
   #payroll(amount: Cents, description: string, meant: 'paycheck' | 'other-income'): void {
     const early = daysBetween(this.#lastPaycheckDate, this.#date) < this.#settings.earlyPaycheckDays;
+    // 13.2, A9: now and then the paycheck rule is cleared that morning, and set
+    // again that evening, after the paycheck has come in and waited.
+    if (meant === 'paycheck' && !early && this.#settings.paycheckRule !== null && this.#paycheckWaitingForRule === null && this.#random.chance(1, 25)) {
+      this.#clearRule('paycheckRule');
+      const before = this.#book.pots();
+      const txn = this.#bank.deposit(this.#date, 'checking', amount, description);
+      this.#intents.set(txn.id, { type: 'money-in', choice: meant });
+      const outcome = this.#receive(txn);
+      if (outcome !== 'review') throw new CheckFailed('3.1 with no paycheck rule, a paycheck waits in review', `${txn.id} came back as ${outcome}`);
+      this.#expectChange(before, { unsortedIn: amount }, '3.1 with no paycheck rule, a paycheck waits in review', txn.id);
+      this.#paycheckWaitingForRule = txn.id;
+      this.#tonight.push(() => this.#setPaycheckRuleAgain(txn));
+      return;
+    }
     const before = this.#book.pots();
     const asked = this.#openLeftovers();
     const txn = this.#bank.deposit(this.#date, 'checking', amount, description);
@@ -927,9 +952,17 @@ class Life {
       this.#laterOn(addDays(this.#date, r.int(0, 27)), () => {
         this.#stats.momPayments++;
         if (from === 'savings') this.#stats.momFromSavings++;
+        if (this.#settings.momRule !== null && r.chance(1, 30)) {
+          this.#clearRule('momRule');
+          this.#laterOn(addDays(this.#date, r.int(1, 6)), () => this.#setMomRuleAgain());
+        }
         const before = this.#book.pots();
         const txn = this.#bank.payPerson(this.#date, amount, MOM, from);
         this.#receive(txn);
+        if (this.#settings.momRule === null) {
+          this.#waitForMomRule(txn, before);
+          return;
+        }
         const fromReserve = Math.min(amount, Math.max(0, before.momReserve));
         if (fromReserve < amount) this.#stats.momDifferences++;
         this.#expectChange(before, { momReserve: -fromReserve, unsortedOut: amount - fromReserve }, '8.1 and 8.3 a payment to mom', txn.id);
@@ -1314,6 +1347,111 @@ class Life {
     return this.#rules.find((rule) => rule.for === kind && text.includes(rule.contains.toLowerCase()));
   }
 
+  // ---- The mom rule and the paycheck rule, cleared and set again (13.2, A9)
+
+  // Clearing a rule sorts nothing: the preview says so, and nothing changes.
+  #clearRule(key: 'momRule' | 'paycheckRule'): void {
+    const before = this.#book.pots();
+    const logBefore = this.#book.changeLog().length;
+    const preview = this.#book.previewSettingsChange({ [key]: null }, this.#date);
+    if (preview.items.length !== 0 || !same(preview.potsAfter, before)) throw new CheckFailed('13.2 A9 clearing a rule sorts nothing', JSON.stringify(preview));
+    const { rechecked } = this.#book.changeSettings({ [key]: null }, this.#date);
+    if (rechecked.length !== 0) throw new CheckFailed('13.2 A9 clearing a rule sorts nothing', JSON.stringify(rechecked));
+    this.#settings = { ...this.#settings, [key]: null };
+    this.#expectChange(before, {}, '13.2 A9 clearing a rule sorts nothing', key);
+    if (this.#book.changeLog().length !== logBefore + 1) throw new CheckFailed('13.5 every change is logged', `clearing ${key} was not logged`);
+    this.#note(`${key} cleared`);
+  }
+
+  // A payment to mom while the mom rule is cleared waits in review like any
+  // payment to a person (7.4). Now and then the bank refunds part of it, or
+  // all of it, before the rule is set again.
+  #waitForMomRule(txn: PersonPayment, before: Pots): void {
+    this.#expectChange(before, { unsortedOut: txn.amount }, '7.4 with no mom rule, a payment to mom waits in review', txn.id);
+    const waiting = { txn, refunded: 0 };
+    this.#waitingForMomRule.push(waiting);
+    if (txn.account !== 'checking' || !this.#random.chance(1, 2)) return;
+    const back = this.#random.chance(1, 4) ? txn.amount : this.#random.int(1, txn.amount - 1);
+    // Right away, so it always comes before the rule is set again (that can be later the same day).
+    {
+      const ahead = this.#book.pots();
+      const refund = this.#bank.refund(this.#date, 'checking', back, 'ZELLE RETURNED', txn.id);
+      const outcome = this.#receive(refund);
+      if (outcome !== 'sorted') throw new CheckFailed('4.5 a refund of a payment waiting in review', `${refund.id} came back as ${outcome}`);
+      this.#expectChange(ahead, { unsortedOut: -back }, '4.5 a refund of a payment waiting in review', refund.id);
+      waiting.refunded += back;
+      this.#stats.momPaymentsRefundedWhileWaiting++;
+    }
+  }
+
+  // The mom rule is set again. Worked out here from the rulebook, before the
+  // book is asked: the waiting payments to mom, oldest first, each come out
+  // of the reserve as far as it goes, the rest waiting (8.1, 8.3); one partly
+  // or fully refunded cannot be for mom and stays waiting exactly as it was
+  // (13.2, B73). The preview must say exactly that, and the change do it.
+  #setMomRuleAgain(): void {
+    if (this.#settings.momRule !== null) return;
+    const before = this.#book.pots();
+    const patch = { momRule: { contains: MOM } };
+    let reserve = before.momReserve;
+    const expected: RecheckedItem[] = this.#waitingForMomRule.map(({ txn, refunded }) => {
+      const { id, date, amount, description } = txn;
+      if (refunded > 0) return { kind: 'still-waiting', id, date, amount: amount - refunded, description, why: 'partly-refunded' };
+      const fromReserve = Math.min(amount, Math.max(0, reserve));
+      reserve -= fromReserve;
+      return { kind: 'mom', id, date, amount, description, fromReserve, difference: amount - fromReserve };
+    });
+    const preview = this.#book.previewSettingsChange(patch, this.#date);
+    if (!same(preview.items, expected)) throw new CheckFailed('13.2 A9 what setting the mom rule would do', `expected ${JSON.stringify(expected)}, the preview says ${JSON.stringify(preview.items)}`);
+    const { rechecked } = this.#book.changeSettings(patch, this.#date);
+    if (!same(rechecked, preview.items) || !same(this.#book.pots(), preview.potsAfter)) throw new CheckFailed('13.2 A9 the change is what the preview said', JSON.stringify({ rechecked, after: this.#book.pots(), preview }));
+    this.#settings = { ...this.#settings, momRule: patch.momRule };
+    const taken = expected.reduce((sum, item) => sum + (item.kind === 'mom' ? item.fromReserve : 0), 0);
+    this.#expectChange(before, { momReserve: -taken, unsortedOut: -taken }, '13.2 A9 8.1 setting the mom rule', `${expected.length} waiting`);
+    for (const { txn, refunded } of this.#waitingForMomRule) {
+      if (refunded > 0) {
+        // Still the person's to sort, from what is left of it.
+        this.#intents.set(txn.id, { type: 'person', sorting: 'needs' });
+        continue;
+      }
+      if (expected.some((i) => i.id === txn.id && i.kind === 'mom' && i.difference > 0)) this.#stats.momDifferences++;
+      this.#addMomSent(txn.date, txn.amount);
+      this.#momRulePayments.push(txn.id);
+      if (this.#momRulePayments.length > 20) this.#momRulePayments.shift();
+    }
+    // 8.2: each month the rule took payments from, once all are added.
+    for (const { txn } of this.#waitingForMomRule) this.#checkMomMonth(txn.date);
+    this.#waitingForMomRule.length = 0;
+    this.#stats.momRuleSetWhileWaiting++;
+    this.#note(`mom rule set again: ${JSON.stringify(expected.map((i) => [i.id, i.kind]))}`);
+  }
+
+  // The paycheck rule is set again, the evening the paycheck came in. The
+  // waiting paycheck becomes the paycheck, dated the day it came (B53), split
+  // as any paycheck is (3.2, 3.3), with the leftover questions about what the
+  // buckets hold now.
+  #setPaycheckRuleAgain(txn: Deposit): void {
+    const before = this.#book.pots();
+    const asked = this.#openLeftovers();
+    const patch = { paycheckRule: { contains: PAYROLL } };
+    const preview = this.#book.previewSettingsChange(patch, this.#date);
+    const first = preview.items[0];
+    if (preview.items.length !== 1 || first?.kind !== 'paycheck' || first.id !== txn.id || first.amount !== txn.amount || first.date !== txn.date) {
+      throw new CheckFailed('13.2 A9 what setting the paycheck rule would do', `${txn.id} waits; the preview says ${JSON.stringify(preview.items)}`);
+    }
+    const expectedSplit = this.#expectedSplit(txn.amount, before.momReserve);
+    if (!same({ momReserve: first.split.momReserve, savings: first.split.savings, needs: first.split.needs, wants: first.split.wants }, expectedSplit)) {
+      throw new CheckFailed('13.2 A9 3.2 3.3 the paycheck the rule would make', `expected ${JSON.stringify(expectedSplit)}, the preview says ${JSON.stringify(first.split)}`);
+    }
+    const { rechecked } = this.#book.changeSettings(patch, this.#date);
+    if (!same(rechecked, preview.items) || !same(this.#book.pots(), preview.potsAfter)) throw new CheckFailed('13.2 A9 the change is what the preview said', JSON.stringify({ rechecked, preview }));
+    this.#settings = { ...this.#settings, paycheckRule: patch.paycheckRule };
+    this.#paycheckWaitingForRule = null;
+    this.#onPaycheck(before, asked, txn.amount, txn.date, true);
+    this.#stats.paycheckRuleSetWhileWaiting++;
+    this.#note(`paycheck rule set again: ${txn.id} is the paycheck`);
+  }
+
   // ---- The person's evening ---------------------------------------------
 
   #evening(): void {
@@ -1335,6 +1473,8 @@ class Life {
     // Earlier answers can sort later items (a new rule, a paycheck), so skip
     // anything no longer waiting.
     if (!this.#book.reviewItems().some((i) => i.id === item.id)) return;
+    // What waits for the mom rule or the paycheck rule to be set again waits for it.
+    if (item.id === this.#paycheckWaitingForRule || this.#waitingForMomRule.some((w) => w.txn.id === item.id)) return;
     const before = this.#book.pots();
     switch (item.type) {
       case 'leftover': {

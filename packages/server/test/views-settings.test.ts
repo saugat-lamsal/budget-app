@@ -188,6 +188,36 @@ describe('13.5 the change log, newest first', () => {
     });
   });
 
+  it('13.5 A22 a moved rule: which way, past which rule, and its place now', () => {
+    const b = book({ rules: [{ id: 'store', for: 'purchase', contains: 'STORE', bucket: 'needs' }, { id: 'big', for: 'purchase', contains: 'BIG STORE', bucket: 'wants' }] });
+    b.moveRule('big', 'up', '2026-10-05');
+    expect(view(b).log).toEqual([
+      {
+        key: '0-0',
+        date: '2026-10-05',
+        kind: 'rule-moved',
+        rule: { id: 'big', for: 'purchase', contains: 'BIG STORE', to: 'wants' },
+        past: { id: 'store', for: 'purchase', contains: 'STORE', to: 'needs' },
+        direction: 'up',
+        position: 1,
+      },
+    ]);
+    expect(view(b).rules.purchase.map((r) => [r.id, r.position])).toEqual([
+      ['big', 1],
+      ['store', 2],
+    ]);
+  });
+
+  it('13.5 13.6 A22 a correction ahead of a rule that was moved later still shows that rule as it was then', () => {
+    const b = book({ rules: [{ id: 'grocer', for: 'purchase', contains: 'GROCER', bucket: 'needs' }, { id: 'cafe', for: 'purchase', contains: 'CAFE', bucket: 'wants' }] });
+    b.receive(purchase('e1', '2026-10-02', 2_000, 'MADE UP GROCER CAFE'));
+    b.sortAlways('e1', { to: 'wants' }, { id: 'fix', contains: 'GROCER CAFE' }, '2026-10-03');
+    b.moveRule('cafe', 'up', '2026-10-04');
+    b.removeRule('grocer', '2026-10-05');
+    const row = view(b).log.at(-1);
+    expect(row).toMatchObject({ kind: 'rule-added', fromCorrection: true, aheadOf: { id: 'grocer', contains: 'GROCER', to: 'needs' } });
+  });
+
   it('13.5 the same day: the one made last comes first', () => {
     const b = book();
     b.moveMoney({ from: 'wants', to: 'needs', amount: 1 }, '2026-10-05');

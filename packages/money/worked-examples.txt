@@ -998,3 +998,78 @@ nothing of it waits. He says yes.
 Check: paycheck needs 300.00 | preview mom reserve 1,500.00 | preview savings 1,500.00 | preview needs 800.00 | preview wants 500.00
 Check: preview unsorted money in 400.00 | preview unsorted spending 300.00
 Check: mom reserve 1,200.00 | savings 1,500.00 | needs 800.00 | wants 500.00 | unsorted money in 400.00 | unsorted spending 0.00
+
+
+========================================================================
+EXAMPLE 34. The mom rule is set while a payment to mom waits, part of it refunded (rules 13.2, 8.1, 4.5; B73; A9)
+========================================================================
+
+Before: Mom reserve 1,000.00. Everything else 0.00. There is no mom rule.
+
+Oct 6.  ZELLE TO Made Up Mom, 40.00. With no mom rule it is a payment to a
+        person, and waits in review (7.4).
+        Unsorted spending 40.00.
+Oct 7.  10.00 of it comes back, matched to it (4.5). What waits is less:
+        Unsorted spending 40.00 - 10.00 = 30.00.
+        In your buckets: 1,000.00 - 30.00 = 970.00.
+Oct 8.  He sets the mom rule. Part of this payment was refunded, so it cannot
+        be for mom (B73). It stays waiting exactly as it was, and Settings
+        names it, before and after his yes:
+        Unsorted spending 30.00, Mom reserve 1,000.00, In your buckets 970.00.
+        (Before this was fixed, all 40.00 came out of the reserve and the
+        10.00 refund was lost: In your buckets showed 960.00.)
+Oct 9.  Another payment to her, 25.00. Now the mom rule matches it as it
+        comes in (8.1): Mom reserve 1,000.00 - 25.00 = 975.00.
+        In your buckets: 975.00 - 30.00 = 945.00.
+
+Check: still waiting 30.00 | reserve after the rule 1,000.00 | in your buckets after the rule 970.00
+Check: mom reserve 975.00 | unsorted spending 30.00 | in your buckets 945.00
+
+
+========================================================================
+EXAMPLE 35. A bill from savings, marked by mistake as a payment to the old card, and unmarked (rules 5.6, 5.2, 4.9, 13.3; QUESTIONS.md A4, A21)
+========================================================================
+
+Before: Savings 1,000.00, Needs 500.00. The old card owes 2,980.00.
+
+Oct 5.  BILL PAY WATER UTILITY, 64.10, straight from savings. Money leaving
+        savings always waits in review (4.9): unsorted spending 64.10.
+Oct 6.  He marks it "transfer between my accounts", to the old card. A payment
+        to the old card from savings waits for him to pick savings or needs
+        (A4), and he picks Savings:
+        Savings 1,000.00 - 64.10 = 935.90. Nothing waits.
+        The old card still owes 2,980.00: no money has landed on it.
+Oct 7.  It was the water bill. On Savings' list its sheet now has its own
+        choice, "It was not a payment to the old card" (A21). He taps it. It
+        is the bill paid from savings again, waiting in review (4.9):
+        Savings 935.90 + 64.10 = 1,000.00, unsorted spending 64.10.
+        The old card still owes 2,980.00, as before he marked it.
+        He sorts it to Needs: Needs 500.00 - 64.10 = 435.90. To pay for it out
+        of savings he moves 64.10 from Savings to Needs by hand (13.3):
+        Savings 1,000.00 - 64.10 = 935.90, Needs 435.90 + 64.10 = 500.00.
+
+Check: savings when marked 935.90 | savings after unmarking 1,000.00 | unsorted spending after unmarking 64.10
+Check: old card owes 2,980.00 | needs 500.00 | savings 935.90
+
+
+========================================================================
+EXAMPLE 36. Moving a sorting rule up (rules 4.2, 13.2, 13.5; B9; QUESTIONS.md A22)
+========================================================================
+
+Before: Needs 500.00, Wants 300.00. His rules for purchases, in order:
+        1. "STORE" goes to Needs
+        2. "BIG STORE" goes to Wants
+
+Oct 5.  MADE UP BIG STORE, 40.00. Both rules match; the first one that
+        matches wins, so it goes to Needs: 500.00 - 40.00 = 460.00.
+        He moves "BIG STORE" up on Settings. Now:
+        1. "BIG STORE" goes to Wants
+        2. "STORE" goes to Needs
+        The move is in the change log. The 40.00 already sorted stays in
+        Needs (13.2); to change it he sorts it again by hand (4.7).
+Oct 6.  MADE UP BIG STORE, 25.00: "BIG STORE" matches first now, so Wants:
+        300.00 - 25.00 = 275.00.
+        MADE UP CORNER STORE, 10.00: only "STORE" matches, so Needs:
+        460.00 - 10.00 = 450.00.
+
+Check: needs 450.00 | wants 275.00

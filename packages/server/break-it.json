@@ -1104,5 +1104,47 @@
     "find": "      ['settings', options.settings],\n",
     "replace": "",
     "why": "[settings] the Settings numbers are not served"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "  if ('unmark' in value) return value['unmark'] === true ? { unmark: true } : null;",
+    "replace": "  if ('unmark' in value) return { unmark: true };",
+    "why": "[a21] unmark: false is read as unmark"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "    if ('unmark' in c) return options.unmark && request.always === undefined ? null : no;",
+    "replace": "    if ('unmark' in c) return null;",
+    "why": "[a21] unmark is taken for any item"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "        : 'unmark' in choice\n          ? { unmark: true }\n",
+    "replace": "        : 'unmark' in choice\n          ? { to: 'needs' }\n",
+    "why": "[a21] unmark is handed to the book as needs"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "    if (typeof which !== 'string' || which === '' || which.length > MAX_ITEM_LENGTH || (direction !== 'up' && direction !== 'down')) return null;",
+    "replace": "    if (typeof which !== 'string' || which === '' || which.length > MAX_ITEM_LENGTH) return null;",
+    "why": "[a22] a move in any direction is read"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "        if (edit.move.direction === 'up' && place === 0) return refuse('refused', 'It is already the first rule of its kind');\n",
+    "replace": "",
+    "why": "[a22] moving the first rule up is not refused in words"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "        action = edit.move.direction === 'up' ? 'moved-up' : 'moved-down';",
+    "replace": "        action = 'moved-up';",
+    "why": "[a22] the answer says a rule moved up when it moved down"
   }
 ]

@@ -289,6 +289,23 @@ describe('13.2 A9 the paycheck rule and the mom rule ask first, and show what th
     expect(book.reviewItems()).toHaveLength(2);
   });
 
+  it('13.2 A9 B73 a partly refunded payment the mom rule matches stays waiting, and the preview and the answer name it', () => {
+    const s = setup({ settings: { momRule: null }, pots: { momReserve: 100_000 } });
+    s.book.receive(payPerson('z1', '2026-10-10', 4_000, MOM_NAME));
+    s.book.receive({ kind: 'refund', id: 'r1', account: 'checking', date: '2026-10-11', amount: 1_000, description: 'ZELLE BACK', refundOf: 'z1' });
+    const before = snapshot(s.book);
+    const pots = s.book.pots();
+    const request = settings({ momRule: { contains: MOM_NAME } });
+    const asked = refused(s.desk.settings(request));
+    const still = { kind: 'still-waiting', id: 'z1', date: '2026-10-10', amount: 3_000, description: `ZELLE TO ${MOM_NAME}`, why: 'partly-refunded' };
+    expect(asked.preview!.items).toEqual([still]);
+    expect(snapshot(s.book)).toBe(before);
+    const r = done(s.desk.settings({ ...request, confirmed: true, seen: asked.preview!.key }));
+    expect(r.done.rechecked).toEqual([still]);
+    expect(s.book.pots()).toEqual(pots);
+    expect(s.book.reviewItems().map((i) => [i.id, i.amount])).toEqual([['z1', 3_000]]);
+  });
+
   it('13.2 A9 a paycheck rule the money math refuses is refused before it asks', () => {
     const { desk } = firstSync();
     expect(refused(desk.settings(settings({ paycheckRule: { contains: PAYROLL }, earlyPaycheckDays: -1 })))).toMatchObject({ code: 'refused', why: 'Early paycheck days must be a whole number, zero or more. Nothing was changed.' });
@@ -435,5 +452,70 @@ describe('13.2 sorting rules from Settings: add, change, remove', () => {
     expect(r.done).toMatchObject({ alsoSorted: 0, stillWaiting: [{ item: 'd1', name: 'MADE UP FRIEND' }] });
     expect(book.pots()).toEqual(pots);
     expect(book.reviewItems().map((i) => i.id)).toEqual(['d1']);
+  });
+});
+
+describe('13.2 A22 moving a rule up or down, from Settings', () => {
+  const RULES = [
+    { id: 'store', for: 'purchase', contains: 'STORE', bucket: 'needs' },
+    { id: 'friend', for: 'deposit', contains: 'FRIEND', choice: { to: 'wants' } },
+    { id: 'big', for: 'purchase', contains: 'BIG STORE', bucket: 'wants' },
+  ] as const;
+
+  it('A22 reads a move: a rule and up or down, nothing else', () => {
+    const move = { id: 'abcdefgh', rule: { move: { id: 'big', direction: 'up' } } };
+    expect(parseRuleRequest(move)).toEqual(move);
+    expect(parseRequest(move)).toEqual(move);
+    for (const bad of [{ id: 'big', direction: 'left' }, { id: '', direction: 'up' }, { id: 'big' }, { id: 'big', direction: 'up', by: 2 }, 'big']) {
+      expect(parseRuleRequest({ id: 'abcdefgh', rule: { move: bad } }), JSON.stringify(bad)).toBeNull();
+    }
+  });
+
+  it('A22 13.5 a move is what the book does, logged, and the answer says which way it went', () => {
+    const a = setup({ rules: [...RULES] });
+    const b = setup({ rules: [...RULES] });
+    const r = done(a.desk.rule(rule({ move: { id: 'big', direction: 'up' } })));
+    b.book.moveRule('big', 'up', TODAY);
+    expect(snapshot(a.book)).toBe(snapshot(b.book));
+    expect(r.done).toEqual({ action: 'moved-up', rule: { id: 'big', for: 'purchase', contains: 'BIG STORE', to: 'wants' }, alsoSorted: 0, stillWaiting: [] });
+    expect(a.book.rules().map((x) => x.id)).toEqual(['big', 'friend', 'store']);
+    expect(done(a.desk.rule(rule({ move: { id: 'big', direction: 'down' } }))).done.action).toBe('moved-down');
+  });
+
+  it('A22 the first cannot move up and the last cannot move down: refused in words, nothing changes', () => {
+    const { book, desk } = setup({ rules: [...RULES] });
+    const before = snapshot(book);
+    expect(refused(desk.rule(rule({ move: { id: 'store', direction: 'up' } })))).toEqual({ ok: false, code: 'refused', why: 'It is already the first rule of its kind. Nothing was changed.' });
+    expect(refused(desk.rule(rule({ move: { id: 'big', direction: 'down' } })))).toEqual({ ok: false, code: 'refused', why: 'It is already the last rule of its kind. Nothing was changed.' });
+    expect(refused(desk.rule(rule({ move: { id: 'friend', direction: 'down' } })))).toMatchObject({ code: 'refused' });
+    expect(refused(desk.rule(rule({ move: { id: 'gone', direction: 'up' } })))).toEqual({ ok: false, code: 'not-waiting', why: 'That rule is not there any more. Nothing was changed.' });
+    expect(snapshot(book)).toBe(before);
+  });
+
+  it('A22 13.2 A19 the moved rule sorts what waits that it is now the first match for, and names what it cannot sort', () => {
+    const { book, desk } = setup({ settings: { momRule: null }, pots: { needs: 50_000, momReserve: 100_000 } });
+    book.receive(payPerson('z1', '2026-10-15', 4_000, 'MADE UP FRIEND'));
+    book.receive({ kind: 'refund', id: 'r1', account: 'checking', date: '2026-10-16', amount: 1_000, description: 'ZELLE BACK', refundOf: 'z1' });
+    // Two rules for mom; neither can sort a payment partly refunded (B73), so it waits.
+    book.addRule({ id: 'first', for: 'person', contains: 'MADE UP FRIEND', choice: { to: 'mom' } }, TODAY);
+    book.addRule({ id: 'second', for: 'person', contains: 'FRIEND', choice: { to: 'mom' } }, TODAY);
+    const r = done(desk.rule(rule({ move: { id: 'second', direction: 'up' } })));
+    expect(r.done).toMatchObject({ action: 'moved-up', alsoSorted: 0, stillWaiting: [{ item: 'z1', name: 'ZELLE TO MADE UP FRIEND' }] });
+    // One that can sort it, moved to the top, does.
+    book.addRule({ id: 'needs', for: 'person', contains: 'FRIEND', choice: { to: 'needs' } }, TODAY);
+    done(desk.rule(rule({ move: { id: 'needs', direction: 'up' } })));
+    const top = done(desk.rule(rule({ move: { id: 'needs', direction: 'up' } })));
+    expect(top.done).toMatchObject({ alsoSorted: 1, stillWaiting: [] });
+    expect(book.reviewItems()).toEqual([]);
+    expect(book.pots().needs).toBe(50_000 - 3_000);
+  });
+
+  it('B92 a move sent twice moves once', () => {
+    const { book, desk } = setup({ rules: [...RULES] });
+    const request = rule({ move: { id: 'big', direction: 'up' } });
+    const first = done(desk.rule(request));
+    expect(desk.rule(request)).toEqual({ ...first, replayed: true });
+    expect(book.rules().map((x) => x.id)).toEqual(['big', 'friend', 'store']);
+    expect(book.changeLog()).toHaveLength(1);
   });
 });

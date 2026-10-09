@@ -44,6 +44,10 @@ export type ReviewOptions =
       readonly match: readonly string[];
       // What marking it a transfer with each account does (5.6 with 5.1 to 5.3).
       readonly transferOutcome: Readonly<Partial<Record<AccountId, TransferOutcome>>>;
+      // QUESTIONS.md A21: "It was not a payment to the old card", for a payment
+      // you marked as going to the old card from savings. It brings back what
+      // the bank sent. Its own choice: "needs" keeps meaning "out of needs" (A4).
+      readonly unmark: boolean;
     }
   // 3.4
   | { readonly type: 'leftover'; readonly answers: readonly LeftoverAnswer[] }
@@ -73,6 +77,8 @@ export type ReviewFacts =
       readonly countedAtSetup: boolean;
       readonly gone: boolean;
       readonly canBeForMom: boolean;
+      // A21: a payment to the old card from savings that you marked by hand (5.6).
+      readonly markedFromSavings: boolean;
       // What is left to sort (4.4 needs a part of at least a cent each).
       readonly net: Cents;
     }
@@ -123,12 +129,14 @@ function moneyInOptions(f: Extract<ReviewFacts, { type: 'money-in' }>): ReviewOp
     // early paycheck or a refund never gets a rule.
     always: f.reason === 'deposit' ? ['other-income', ...BUCKET_PAYBACKS, 'not-mine'] : [],
     unavailable,
+    unmark: false,
   };
 }
 
 function spendingOptions(f: Extract<ReviewFacts, { type: 'spending' }>): ReviewOptions {
   // 5.2, A4: a payment to the old card from savings comes out of savings or needs.
-  if (f.kind === 'debt-payoff') return { type: 'sort', picks: [plain('savings'), plain('needs')], split: null, transfer: [], transferOutcome: {}, always: [], unavailable: [], match: [] };
+  // A21: one you marked from savings can also be unmarked.
+  if (f.kind === 'debt-payoff') return { type: 'sort', picks: [plain('savings'), plain('needs')], split: null, transfer: [], transferOutcome: {}, always: [], unavailable: [], match: [], unmark: f.markedFromSavings };
 
   const person = f.kind === 'person-payment';
   const picks: ReviewPick[] = [plain('needs'), plain('wants')];
@@ -162,5 +170,5 @@ function spendingOptions(f: Extract<ReviewFacts, { type: 'spending' }>): ReviewO
   // to the old card (5.2); anywhere else no bucket changes (5.1, 5.3).
   const outcome = (to: AccountId): TransferOutcome => (to !== 'old-card' ? 'no-bucket-change' : f.account === 'checking' ? 'out-of-needs' : 'savings-or-needs');
   const transferOutcome = Object.fromEntries(transfer.map((a) => [a, outcome(a)]));
-  return { type: 'sort', picks, split, transfer, transferOutcome, always, unavailable, match: [] };
+  return { type: 'sort', picks, split, transfer, transferOutcome, always, unavailable, match: [], unmark: false };
 }

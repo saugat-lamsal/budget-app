@@ -97,6 +97,10 @@ interface Story {
   // The first sync: no paycheck rule and no mom rule yet, so the paycheck
   // and the payment to mom wait in review (for Settings, A9).
   readonly firstSync?: boolean;
+  // A bill paid from savings, marked by mistake as a payment to the old card
+  // (5.6, A4): it waits in review for savings or needs, or "It was not a
+  // payment to the old card" (A21).
+  readonly markedFromSavings?: boolean;
 }
 
 // When the bank was last read and matched, in the "bank-not-read" life:
@@ -200,6 +204,11 @@ function story(s: Story): HomeInput {
     book.sort('act-friend', { to: 'not-mine' }, DEMO_TODAY);
     // A hand move (13.3).
     book.moveMoney({ from: 'wants', to: 'needs', amount: x(2_500) }, '2026-10-06');
+  }
+  if (s.markedFromSavings === true) {
+    book.receive({ kind: 'savings-withdrawal', id: 'act-water', account: 'savings', date: '2026-10-06', amount: x(6_410), description: 'BILL PAY WATER UTILITY', pending: false });
+    book.sort('act-water', { transfer: 'old-card' }, DEMO_TODAY);
+    savingsOut += 6_410;
   }
   if (s.markedOldCard === true) {
     book.receive({ kind: 'purchase', id: 'act-landlord', account: 'checking', date: '2026-10-06', amount: x(8_500), description: 'MADE UP LANDLORD', pending: false });
@@ -309,6 +318,7 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   { name: 'activity-busy', title: 'Activity: every kind of row on the lists of what went in and out', input: () => story({ activityBusy: true }) },
   { name: 'activity-marked', title: 'Activity: the same, and a purchase marked as a payment to the old card, to undo', input: () => story({ activityBusy: true, markedOldCard: true }) },
   { name: 'payday-paid', title: 'Payday: the second paycheck just came in, two leftover questions open', input: () => story({ today: '2026-10-16', secondPaycheck: true, allDone: true, statements: [] }) },
+  { name: 'review-marked-savings', title: 'Review: a bill from savings marked by mistake as a payment to the old card', input: () => story({ markedFromSavings: true }) },
   { name: 'settings-busy', title: 'Settings: changes along the way, a new split waiting for the next paycheck, a promo end date', input: () => story({ settingsBusy: true, chargedTwice: true }) },
   { name: 'settings-first-sync', title: 'Settings: no paycheck rule or mom rule yet, the paycheck and mom waiting in review', input: () => story({ firstSync: true }) },
   {

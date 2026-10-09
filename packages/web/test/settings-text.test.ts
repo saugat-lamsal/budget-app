@@ -55,12 +55,14 @@ describe('13.2 A9 what a change did, in words', () => {
   const paycheck: RecheckedItem = { kind: 'paycheck', id: 'p1', date: '2026-10-02', amount: 420_000, description: 'PAY', split: { momReserve: 150_000, savings: 135_000, needs: 81_000, wants: 54_000, detail: { reserveTaken: 150_000, overflowToSavings: 0, rest: 270_000, savingsShare: 135_000, roundingToSavings: 0 } } };
   const early: RecheckedItem = { kind: 'early-paycheck', id: 'p2', date: '2026-10-05', amount: 1_000, description: 'PAY' };
   const mom: RecheckedItem = { kind: 'mom', id: 'z1', date: '2026-10-03', amount: 50_000, description: 'ZELLE', fromReserve: 30_000, difference: 20_000 };
+  const still: RecheckedItem = { kind: 'still-waiting', id: 'z2', date: '2026-10-04', amount: 3_000, description: 'ZELLE TO MADE UP MOM', why: 'partly-refunded' };
 
   it('A9 3.7 8.3 each waiting item a new rule handles', () => {
     expect(recheckedText(paycheck, 10)).toBe('Becomes your paycheck, and a new pay period starts that day.');
     expect(recheckedText(early, 10)).toBe('Still waits in review, as a paycheck that came early: less than 10 days after the last one.');
     expect(recheckedText(mom, 10)).toBe('$300.00 comes out of the mom reserve. The other $200.00 waits in review for you to pick a bucket.');
     expect(recheckedText({ ...mom, fromReserve: 50_000, difference: 0 }, 10)).toBe('Comes out of the mom reserve.');
+    expect(recheckedText(still, 10)).toBe('Still waits in Review: part of it was refunded, so it cannot come out of the mom reserve. Sort it there.');
   });
 
   it('13.1 A9 what a settings change did', () => {
@@ -68,6 +70,9 @@ describe('13.2 A9 what a change did, in words', () => {
     expect(settingsDoneText({ changed: ['payScheduleDays'], fromNextPaycheck: false, rechecked: [] }, '2026-10-16')).toBe('Saved.');
     expect(settingsDoneText({ changed: ['paycheckRule'], fromNextPaycheck: false, rechecked: [paycheck, paycheck, early] }, '2026-10-16')).toBe('Saved. 2 deposits that were waiting are now paychecks. One waits in review as an early paycheck.');
     expect(settingsDoneText({ changed: ['momRule'], fromNextPaycheck: false, rechecked: [mom, mom] }, '2026-10-16')).toBe('Saved. 2 payments that were waiting came out of the mom reserve.');
+    expect(settingsDoneText({ changed: ['momRule'], fromNextPaycheck: false, rechecked: [mom, still] }, '2026-10-16')).toBe(
+      'Saved. A payment that was waiting came out of the mom reserve. ZELLE TO MADE UP MOM still waits in Review: part of it was refunded, so it cannot come out of the mom reserve.',
+    );
   });
 
   it('13.2 A19 what a rule change did', () => {

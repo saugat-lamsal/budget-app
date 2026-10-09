@@ -36,7 +36,10 @@ export type ChoiceOf =
   | { readonly acknowledge: true }
   // "This refund is for this one" (4.5, QUESTIONS.md A18): one of the likely
   // purchases offered for a refund.
-  | { readonly refundOf: string };
+  | { readonly refundOf: string }
+  // "It was not a payment to the old card" (QUESTIONS.md A21): for one marked
+  // from savings, it becomes what the bank sent again.
+  | { readonly unmark: true };
 
 export interface ChoiceRequest {
   // Made once on the phone for this decision, and sent again, the same, on a
@@ -138,7 +141,12 @@ export interface SettingsRequest {
 
 export interface RuleRequest {
   readonly id: string;
-  readonly rule: { readonly add: RuleSpec } | { readonly change: RuleView } | { readonly remove: string };
+  readonly rule:
+    | { readonly add: RuleSpec }
+    | { readonly change: RuleView }
+    | { readonly remove: string }
+    // A22: one place up or down among the rules of its kind.
+    | { readonly move: { readonly id: string; readonly direction: 'up' | 'down' } };
   // His yes, for removing a rule.
   readonly confirmed?: boolean;
 }
@@ -163,7 +171,7 @@ export type SettingsResponse =
   | { readonly ok: false; readonly code: RefusalCode; readonly why: string; readonly preview?: SettingsPreviewView };
 
 export interface RuleDone {
-  readonly action: 'added' | 'changed' | 'removed';
+  readonly action: 'added' | 'changed' | 'removed' | 'moved-up' | 'moved-down';
   // The rule as it is now; for a removal, as it was.
   readonly rule: RuleView;
   // 13.2: the waiting items the rule sorted.

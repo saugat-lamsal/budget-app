@@ -1,7 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { FROM_NEXT_PAYCHECK, MOVABLE_POTS, RULE_CHOICES, addDays, checkRules, type Book, type Settings, type SortingRule } from '../src/index.js';
-import { MOM_NAME, PAYROLL, appSide, codeOf, deposit, openTestBook, payPerson, paycheck, purchase, takenBack, type TestBookOptions } from './helpers.js';
+import { MOM_NAME, PAYROLL, appSide, codeOf, deposit, openTestBook, payPerson, paycheck, purchase, refund, takenBack, type TestBookOptions } from './helpers.js';
 
 // What the Settings screen needs from the money math (Phase 4): what is in
 // force this pay period next to the settings (13.1), the change log with what
@@ -312,6 +312,26 @@ describe('13.2 A9 what setting the paycheck rule or the mom rule would do, worke
     expect(preview.waitingAfter).toBe(1);
   });
 
+  it.each([0, 100_000])('13.2 A9 B73 a partly refunded payment the new mom rule matches stays waiting exactly as it was, and is named (reserve %i)', (reserve) => {
+    const b = firstSync({ pots: { momReserve: reserve } });
+    b.receive(payPerson('z1', '2026-10-06', 4_000, MOM_NAME));
+    b.receive({ kind: 'refund', id: 'r1', account: 'checking', date: '2026-10-07', amount: 1_000, description: 'ZELLE BACK', refundOf: 'z1' });
+    const before = { pots: b.pots(), review: b.reviewItems(), recount: b.recountPots() };
+    expect(before.pots.unsortedOut).toBe(3_000);
+    const preview = b.previewSettingsChange({ momRule: { contains: MOM_NAME } }, '2026-10-08');
+    expect(preview.items).toEqual([{ kind: 'still-waiting', id: 'z1', date: '2026-10-06', amount: 3_000, description: `ZELLE TO ${MOM_NAME}`, why: 'partly-refunded' }]);
+    expect(preview.potsAfter).toEqual(before.pots);
+    const { rechecked } = b.changeSettings({ momRule: { contains: MOM_NAME } }, '2026-10-08');
+    expect(rechecked).toEqual(preview.items);
+    expect(b.pots()).toEqual(before.pots);
+    expect(b.reviewItems()).toEqual(before.review);
+    expect(b.recountPots()).toEqual(before.pots);
+    expect(appSide(b.pots())).toBe(appSide(before.pots));
+    // The refund still counts on it: the bank taking the refund back works.
+    b.receive(takenBack('t1', 'r1', '2026-10-09'));
+    expect(b.pots().unsortedOut).toBe(4_000);
+  });
+
   it('13.2 A9 8.3 B27 a reserve at zero or below covers nothing: all of it would wait', () => {
     const b = firstSync({ pots: { momReserve: -500 } });
     b.receive(payPerson('z1', '2026-10-06', 20_000, MOM_NAME));
@@ -400,12 +420,14 @@ describe('13.2 A9 what setting the paycheck rule or the mom rule would do, worke
 
 describe('random scenarios: the preview of a settings change (13.2, A9)', () => {
   // Things waiting in review on the first sync: deposits (some paychecks),
-  // payments to people (some to mom), and purchases, on random days.
+  // payments to people (some to mom), and purchases, on random days. Some of
+  // the payments and purchases are partly or fully refunded while they wait:
+  // refunded is a share of the amount, in percent (0 for none).
   const waitingArb = fc.array(
     fc.oneof(
       fc.record({ type: fc.constant('deposit' as const), day: fc.integer({ min: 0, max: 40 }), amount: fc.integer({ min: 1, max: 900_000 }), paycheck: fc.boolean() }),
-      fc.record({ type: fc.constant('person' as const), day: fc.integer({ min: 0, max: 40 }), amount: fc.integer({ min: 1, max: 400_000 }), mom: fc.boolean() }),
-      fc.record({ type: fc.constant('purchase' as const), day: fc.integer({ min: 0, max: 40 }), amount: fc.integer({ min: 1, max: 50_000 }) }),
+      fc.record({ type: fc.constant('person' as const), day: fc.integer({ min: 0, max: 40 }), amount: fc.integer({ min: 1, max: 400_000 }), mom: fc.boolean(), refunded: fc.oneof(fc.constant(0), fc.integer({ min: 1, max: 100 })) }),
+      fc.record({ type: fc.constant('purchase' as const), day: fc.integer({ min: 0, max: 40 }), amount: fc.integer({ min: 1, max: 50_000 }), refunded: fc.oneof(fc.constant(0), fc.integer({ min: 1, max: 100 })) }),
     ),
     { maxLength: 8 },
   );
@@ -435,6 +457,12 @@ describe('random scenarios: the preview of a settings change (13.2, A9)', () => 
             if (w.type === 'deposit') b.receive(w.paycheck ? paycheck(`d${i}`, date, w.amount) : deposit(`d${i}`, date, w.amount, 'MADE UP GIFT'));
             else if (w.type === 'person') b.receive(payPerson(`z${i}`, date, w.amount, w.mom ? MOM_NAME : 'MADE UP FRIEND'));
             else b.receive(purchase(`e${i}`, date, w.amount, 'MADE UP STORE'));
+            // A refund of part of it (or all of it), a day later, while it waits.
+            const back = w.type === 'deposit' ? 0 : Math.floor((w.amount * w.refunded) / 100);
+            if (back > 0) {
+              const id = w.type === 'person' ? `z${i}` : `e${i}`;
+              b.receive(refund(`r${i}`, addDays(date, 1), back, id, w.type === 'person' ? 'checking' : 'everyday-card'));
+            }
           });
           const before = everything(b);
           const preview = b.previewSettingsChange(patch, '2026-11-15');
@@ -450,6 +478,8 @@ describe('random scenarios: the preview of a settings change (13.2, A9)', () => 
           // Sorting what was waiting moves money between buckets, never makes or loses any (12.2).
           expect(appSide(b.pots())).toBe(appSide(preview.potsBefore));
           for (const item of preview.items) {
+            // 13.2, B73: a partly refunded payment the mom rule matches stays waiting, exactly as it was.
+            if (item.kind === 'still-waiting') expect(b.reviewItems().find((i) => i.id === item.id)).toMatchObject({ amount: item.amount });
             if (item.kind === 'paycheck') expect(item.split.momReserve + item.split.savings + item.split.needs + item.split.wants).toBe(item.amount);
             if (item.kind === 'mom') {
               expect(item.fromReserve + item.difference).toBe(item.amount);
@@ -490,5 +520,130 @@ describe('4.2 6.2 7.4 what each kind of sorting rule can pick', () => {
     expect(Object.isFrozen(RULE_CHOICES.purchase)).toBe(true);
     expect(Object.isFrozen(RULE_CHOICES.deposit)).toBe(true);
     expect(Object.isFrozen(RULE_CHOICES.person)).toBe(true);
+  });
+});
+
+describe('13.2 A22 moving a sorting rule up or down in its list', () => {
+  const STORE = { id: 'store', for: 'purchase', contains: 'STORE', bucket: 'needs' } as const;
+  const BIG = { id: 'big', for: 'purchase', contains: 'BIG STORE', bucket: 'wants' } as const;
+  const FRIEND = { id: 'friend', for: 'deposit', contains: 'FRIEND', choice: { to: 'wants' } } as const;
+
+  it('13.2 A22 4.2 a rule moved up passes the rule of its kind before it, and the first that matches now wins', () => {
+    const b = book({ rules: [STORE, BIG] });
+    b.moveRule('big', 'up', '2026-10-05');
+    expect(b.rules().map((r) => r.id)).toEqual(['big', 'store']);
+    b.receive(purchase('e1', '2026-10-06', 1_000, 'MADE UP BIG STORE'));
+    expect(b.purchases()[0]?.sortedTo).toEqual({ to: 'wants' });
+  });
+
+  it('13.2 A22 a rule moved down lets the next one of its kind match first', () => {
+    const b = book({ rules: [BIG, STORE] });
+    b.moveRule('big', 'down', '2026-10-05');
+    expect(b.rules().map((r) => r.id)).toEqual(['store', 'big']);
+    b.receive(purchase('e1', '2026-10-06', 1_000, 'MADE UP BIG STORE'));
+    expect(b.purchases()[0]?.sortedTo).toEqual({ to: 'needs' });
+  });
+
+  it('13.2 A22 B9 only rules of the same kind count: a rule of another kind in between is passed over and stays where it is', () => {
+    const b = book({ rules: [STORE, FRIEND, BIG] });
+    b.moveRule('big', 'up', '2026-10-05');
+    expect(b.rules().map((r) => r.id)).toEqual(['big', 'friend', 'store']);
+    b.moveRule('big', 'down', '2026-10-06');
+    expect(b.rules().map((r) => r.id)).toEqual(['store', 'friend', 'big']);
+  });
+
+  it('13.2 A22 the first cannot move up and the last cannot move down: refused, and nothing changes or is logged', () => {
+    const b = book({ rules: [STORE, FRIEND, BIG] });
+    const before = everything(b);
+    expect(codeOf(() => b.moveRule('store', 'up', '2026-10-05'))).toBe('bad-rule');
+    expect(codeOf(() => b.moveRule('big', 'down', '2026-10-05'))).toBe('bad-rule');
+    expect(codeOf(() => b.moveRule('friend', 'up', '2026-10-05'))).toBe('bad-rule');
+    expect(codeOf(() => b.moveRule('nope', 'up', '2026-10-05'))).toBe('unknown-rule');
+    // Neither up nor down: refused, even for a rule that could move either way.
+    expect(codeOf(() => b.moveRule('store', 'sideways' as 'up', '2026-10-05'))).toBe('bad-rule');
+    expect(codeOf(() => b.moveRule('big', 'up', '2026-13-05'))).toBe('not-a-date');
+    expect(everything(b)).toEqual(before);
+  });
+
+  it('13.2 A22 13.5 each move is logged with the date, the rule, the rule it passed, and its place now', () => {
+    const b = book({ rules: [STORE, FRIEND, BIG] });
+    b.moveRule('big', 'up', '2026-10-05');
+    expect(b.changeLog()).toEqual([{ date: '2026-10-05', kind: 'rule-moved', rule: BIG, past: STORE, direction: 'up', position: 1 }]);
+  });
+
+  it('13.2 A22 what waits that a moved rule is now the first match for is sorted; what is sorted already stays where it is', () => {
+    // A payment to a friend, partly refunded while it waited, so a rule "for mom" cannot sort it (B73, A19).
+    const b = book({ pots: { savings: 100_000, needs: 50_000, wants: 30_000, momReserve: 10_000 }, settings: { momRule: null } });
+    b.receive(payPerson('z1', '2026-10-05', 4_000, 'MADE UP FRIEND'));
+    b.receive(refund('r1', '2026-10-06', 1_000, 'z1', 'checking'));
+    b.receive(payPerson('z0', '2026-10-05', 2_000, 'MADE UP FRIEND JR'));
+    b.addRule({ id: 'mom', for: 'person', contains: 'FRIEND', choice: { to: 'mom' } }, '2026-10-07');
+    expect(b.reviewItems().map((i) => i.id)).toEqual(['z1']);
+    b.addRule({ id: 'needs', for: 'person', contains: 'MADE UP FRIEND', choice: { to: 'needs' } }, '2026-10-07');
+    expect(b.reviewItems().map((i) => i.id)).toEqual(['z1']);
+    const momBefore = b.pots().momReserve;
+    const { stillWaiting } = b.moveRule('needs', 'up', '2026-10-08');
+    expect(stillWaiting).toEqual([]);
+    expect(b.reviewItems()).toEqual([]);
+    expect(b.pots()).toMatchObject({ needs: 50_000 - 3_000, unsortedOut: 0, momReserve: momBefore });
+    // The payment the old order sorted for mom stays there (13.2).
+    expect(b.momSentInMonth('2026-10').sent).toBe(2_000);
+    expect(b.recountPots()).toEqual(b.pots());
+  });
+
+  it('13.2 A22 A19 a moved rule that cannot sort what it now matches first leaves it waiting exactly as it was, and names it', () => {
+    const b = book({ settings: { momRule: null } });
+    b.receive(payPerson('z1', '2026-10-05', 4_000, 'MADE UP FRIEND'));
+    b.receive(refund('r1', '2026-10-06', 1_000, 'z1', 'checking'));
+    // Two rules for mom; neither can sort a payment partly refunded (B73).
+    expect(b.addRule({ id: 'first', for: 'person', contains: 'MADE UP FRIEND', choice: { to: 'mom' } }, '2026-10-07').stillWaiting).toEqual(['z1']);
+    expect(b.addRule({ id: 'second', for: 'person', contains: 'FRIEND', choice: { to: 'mom' } }, '2026-10-07').stillWaiting).toEqual([]);
+    const before = { pots: b.pots(), review: b.reviewItems() };
+    const { stillWaiting } = b.moveRule('second', 'up', '2026-10-08');
+    expect(stillWaiting).toEqual(['z1']);
+    expect(b.rules().map((r) => r.id)).toEqual(['second', 'first']);
+    expect(b.pots()).toEqual(before.pots);
+    expect(b.reviewItems()).toEqual(before.review);
+    });
+});
+
+describe('random scenarios: moving rules (13.2, A22)', () => {
+  it('13.2 A22 B9 any moves keep the same rules, never move one of another kind, and with nothing waiting change no bucket', () => {
+    const kindArb = fc.constantFrom<'purchase' | 'deposit' | 'person'>('purchase', 'deposit', 'person');
+    fc.assert(
+      fc.property(fc.array(kindArb, { minLength: 1, maxLength: 8 }), fc.array(fc.tuple(fc.nat(), fc.boolean()), { maxLength: 15 }), (kinds, moves) => {
+        const rules: SortingRule[] = kinds.map((kind, i) =>
+          kind === 'purchase' ? { id: `r${i}`, for: kind, contains: `TEXT ${i}`, bucket: 'needs' } : { id: `r${i}`, for: kind, contains: `TEXT ${i}`, choice: { to: 'wants' } },
+        );
+        const b = book({ rules });
+        const pots = b.pots();
+        let logged = 0;
+        for (const [pick, up] of moves) {
+          const now = b.rules();
+          const rule = now[pick % now.length] as SortingRule;
+          const kindsBefore = now.map((r) => r.for);
+          const sameKind = now.filter((r) => r.for === rule.for);
+          const place = sameKind.indexOf(rule);
+          const canMove = up ? place > 0 : place < sameKind.length - 1;
+          if (!canMove) {
+            expect(codeOf(() => b.moveRule(rule.id, up ? 'up' : 'down', '2026-10-05'))).toBe('bad-rule');
+            continue;
+          }
+          b.moveRule(rule.id, up ? 'up' : 'down', '2026-10-05');
+          logged += 1;
+          const after = b.rules();
+          // The kinds stay in the same places; within the kind, the rule swapped with its neighbour.
+          expect(after.map((r) => r.for)).toEqual(kindsBefore);
+          const swapped = [...sameKind];
+          const other = up ? place - 1 : place + 1;
+          [swapped[place], swapped[other]] = [swapped[other] as SortingRule, swapped[place] as SortingRule];
+          expect(after.filter((r) => r.for === rule.for).map((r) => r.id)).toEqual(swapped.map((r) => r.id));
+        }
+        expect([...b.rules().map((r) => r.id)].sort()).toEqual(rules.map((r) => r.id).sort());
+        expect(b.changeLog()).toHaveLength(logged);
+        expect(b.pots()).toEqual(pots);
+      }),
+      { numRuns: 300 },
+    );
   });
 });

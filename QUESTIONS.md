@@ -235,9 +235,14 @@ A20. ANSWERED Oct 8, built. Undoing "transfer between my accounts" from a
      the only way back.
 
 
-## Part A, added with his answers to A20 and the Payday card (Phase 4, Oct 8). Waiting on your answer.
+## Part A, added with his answers to A20 and the Payday card (Phase 4, Oct 8). All answered.
 
-A21. Undoing a payment you marked as going to the old card FROM SAVINGS
+A21. ANSWERED Oct 9, built. Your answer: option 2. A payment you marked
+     as going to the old card from savings has its own choice, "It was not
+     a payment to the old card", in review and on its bucket's list. It
+     becomes what the bank sent again, and the old card owes what it did
+     before. Rulebook 5.6 and 24a; the details are B123.
+     The question was: undoing a payment you marked as going to the old card FROM SAVINGS
      (5.2, 5.6, A4). A20 is built for checking. From savings the same
      marking waits in review for you to pick Savings or Needs (A4), and
      after that it is on that bucket's list with the same two choices.
@@ -256,9 +261,12 @@ A21. Undoing a payment you marked as going to the old card FROM SAVINGS
      wrong. It is its own button, so nothing changes meaning.
 
 
-## Part A, added with Settings (Phase 4, Oct 9). Waiting on your answer.
+## Part A, added with Settings (Phase 4, Oct 9). All answered.
 
-A22. The order of the sorting rules (4.2, B9). The first rule that matches
+A22. ANSWERED Oct 9, built. Your answer: option 2. Each rule's sheet on
+     Settings has Move up and Move down; each move is logged. Rulebook 13.2
+     and 24b; the details are B122.
+     The question was: the order of the sorting rules (4.2, B9). The first rule that matches
      wins, so the order matters, but nothing lets you change it. Today a new
      rule goes to the end of its list (B39), a changed rule keeps its place,
      and "always do this" puts its rule just ahead of the rule it corrects
@@ -278,7 +286,9 @@ A22. The order of the sorting rules (4.2, B9). The first rule that matches
      Recommendation: option 2. Built: option 1, as the rulebook has it, until
      you answer.
 
-A23. Bank rules on Settings (section 2, A12). They tell the bank connection
+A23. ANSWERED Oct 9. Your answer: option 1. Nothing to build now: they
+     come with Setup day. Rulebook section 2 and 24c.
+     The question was: bank rules on Settings (section 2, A12). They tell the bank connection
      which bank items are transfers between your accounts, payments to
      people, and card fees or interest. They live in the server's database,
      not in the book (the money math), and the demo has no database, so
@@ -302,7 +312,9 @@ A23. Bank rules on Settings (section 2, A12). They tell the bank connection
      book, which risks counting something twice; 5.6 already fixes one item
      at a time. Option 3 is a mock-up that Setup day would replace. Not built.
 
-A24. What is in force this pay period (13.1). The book gave out only the
+A24. ANSWERED Oct 9. Your answer: option 1, as built. Rulebook 13.1 and
+     24d.
+     The question was: what is in force this pay period (13.1). The book gave out only the
      settings as they are now, so Settings could not show this pay period's
      split next to the next paycheck's. The book had always kept the split
      and the mom reserve in force for the pay period (other income uses them,
@@ -1127,3 +1139,45 @@ B120. Amounts on Settings are typed in dollars and cents ("1,500.00",
       in words, with what the split adds up to, and changes nothing.
 
 B121. Before setup day there are no settings to change: Settings says so.
+
+
+## Part B, added with your review of Settings (Oct 9). Tell me if any is wrong.
+
+B122. Moving a sorting rule (A22). Move up and Move down are on the rule's
+      sheet on Settings; the first rule of its kind has no Move up and the
+      last no Move down. A rule moves one place among the rules of its own
+      kind (purchases, money in, payments to people), past the next one of
+      its kind; rules of other kinds stay where they are, since only rules
+      of the same kind compete (B9). It does not ask first: moving it back
+      is one tap. The change log says which way, past which rule, and its
+      number now. After a move, what is waiting in review that either of
+      the two rules is now the first match for is sorted, and what one
+      cannot sort is named and stays waiting (13.2, A19); nothing already
+      sorted moves.
+
+B123. "It was not a payment to the old card" (A21) is only for a payment you
+      marked as going to the old card from savings, in review (where it
+      waits for savings or needs, A4) and on the list of the bucket it was
+      sorted to. One marked from checking already offers what it was (A20,
+      B110). It does not ask first: it can be marked again. For one marked
+      from savings, its choices are exactly savings, needs, or this: to put
+      it in Wants or split it, unmark it first. (Before, the money math also
+      took Wants, a split, or a transfer with another account for it,
+      undoing the marking without a word, though none was offered. A test
+      this round found it; the money math now takes only what is offered.)
+
+B124. Found by you (Oct 9), fixed with a test first: setting the mom rule
+      while a payment to her waited, partly refunded, counted the full
+      payment against the mom reserve and lost the refund. It now stays
+      waiting exactly as it was (13.2, B73), and Settings names it before
+      and after your yes. Worked example 34. The random test of the preview
+      now refunds some waiting payments, and found the mistake on its own
+      with the fix turned off. The simulated life now clears the mom rule
+      and the paycheck rule now and then and sets them again while things
+      wait, some of it refunded meanwhile, and checks what happens against
+      the rulebook (2,000 simulated years). The other places that take a
+      waiting item out and make it again from what the bank first sent were
+      checked: marking for mom by hand and marking a transfer already refuse
+      a partly refunded payment; undoing a marked transfer or "for mom"
+      cannot meet a refund, since a refund is never matched to those; a
+      deposit has nothing that can change after it arrives.

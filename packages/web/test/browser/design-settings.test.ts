@@ -1,7 +1,7 @@
 import type { BrowserContext, Page } from 'playwright';
 import { describe, expect, it } from 'vitest';
 import { addStyle, axeViolations, tappable } from './design-helpers.js';
-import { ENGINES, IPHONE, IPHONE_INSETS, phone, untilQuiet, useEngine, watchPage } from './harness.js';
+import { ENGINES, IPHONE, IPHONE_INSETS, phone, untilAnswered, untilQuiet, useEngine, watchPage } from './harness.js';
 import { openSettings } from './settings-screens.js';
 
 // The design rules (CLAUDE.md) for Settings and its sheets, in the browser:
@@ -48,6 +48,10 @@ const SHEETS: readonly (readonly [string, string, (page: Page) => Promise<void>]
   ['a new rule', 'normal', async (page) => {
     await page.getByTestId('row-add-rule').click();
     await page.getByTestId('field-rule-text').fill('CORNER STORE');
+  }],
+  ['a rule, with Move up and Move down', 'normal', async (page) => {
+    await page.getByTestId('rule-coffee').click();
+    await page.getByTestId('sheet-move-down').waitFor();
   }],
   ['a rule, asking before it is removed', 'normal', async (page) => {
     await page.getByTestId('rule-streaming').click();
@@ -146,6 +150,28 @@ describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
     await context.close();
   });
 
+  it('every arrow stays on its row, at the right edge, never on a line of its own', async () => {
+    const context = await browser().newContext(phone());
+    const off: string[] = [];
+    for (const life of ['settings-busy', 'normal', 'settings-first-sync'] as const) {
+      const page = await openSettings(context, base(), life);
+      const rows = await page.locator('main .row').evaluateAll((els) =>
+        els.flatMap((row) => {
+          const chevron = row.querySelector('.row__chevron');
+          if (chevron === null) return [];
+          const r = row.getBoundingClientRect();
+          const c = chevron.getBoundingClientRect();
+          return [{ what: row.getAttribute('data-testid') ?? row.textContent?.slice(0, 30) ?? '', rowRight: r.right, rowWidth: r.width, left: c.left }];
+        }),
+      );
+      expect(rows.length, life).toBeGreaterThan(10);
+      for (const r of rows) if (r.left < r.rowRight - 64) off.push(`${life} ${r.what}: the arrow is at ${Math.round(r.left)}, the row ends at ${Math.round(r.rowRight)}`);
+      await page.close();
+    }
+    await context.close();
+    expect(off).toEqual([]);
+  });
+
   it('with reduced motion on, the sheet does not slide', async () => {
     const moving = await openSettings(await browser().newContext(phone()), base(), 'normal');
     await moving.getByTestId('row-split').click();
@@ -231,6 +257,10 @@ describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
     const slow = await context.newPage();
     watchPage(slow);
     await slow.goto(`${base()}/demo/slow`);
+    // Home's numbers come slowly too: leave only once they are in. Leaving with a
+    // request on its way makes WebKit and Windows lose the next answer (CLAUDE.md, Oct 7 and 8).
+    await slow.locator('main[aria-busy="false"]').waitFor({ timeout: 15_000 });
+    await untilAnswered(slow);
     await slow.goto(`${base()}/settings`);
     await slow.getByTestId('settings-loading').waitFor();
     expect(await slow.locator('main').getAttribute('aria-busy')).toBe('true');

@@ -3201,8 +3201,8 @@
   {
     "section": "5",
     "file": "packages/money/src/book.ts",
-    "find": "      canBeForMom: person,\n      net: entry.amount,",
-    "replace": "      canBeForMom: false,\n      net: entry.amount,",
+    "find": "      canBeForMom: person,\n      markedFromSavings: false,",
+    "replace": "      canBeForMom: false,\n      markedFromSavings: false,",
     "why": "[activity] 7.6 A20 a marked payment to a person cannot be for mom"
   },
   {
@@ -3372,5 +3372,103 @@
     "find": "  purchase: Object.freeze(['needs', 'wants'] as const),",
     "replace": "  purchase: Object.freeze(['wants', 'needs'] as const),",
     "why": "[settings] 4.2 offer wants before needs"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (entry.refunded > 0) {\n        const { id, date, description } = entry.txn;",
+    "replace": "      if (false) {\n        const { id, date, description } = entry.txn;",
+    "why": "[settings] 13.2 B73 the mom rule takes a partly refunded payment out of review (the lost refund)"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "kind: 'still-waiting', id, date, amount: netOf(entry), description",
+    "replace": "kind: 'still-waiting', id, date, amount: entry.amount, description",
+    "why": "[settings] 13.2 B73 a payment that still waits is said to wait in full, refund and all"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "        handled.push(Object.freeze({ kind: 'still-waiting', id, date, amount: netOf(entry), description, why: 'partly-refunded' }));\n",
+    "replace": "",
+    "why": "[settings] 13.2 B73 a payment that still waits is not named"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "    const other = ofItsKind[direction === 'up' ? k - 1 : k + 1];",
+    "replace": "    const other = ofItsKind[direction === 'up' ? k + 1 : k - 1];",
+    "why": "[a22] 13.2 a rule moves the wrong way"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "    const ofItsKind = this.#rules.flatMap((r, i) => (r.for === rule.for ? [i] : []));",
+    "replace": "    const ofItsKind = this.#rules.flatMap((_r, i) => [i]);",
+    "why": "[a22] B9 a rule moves past a rule of another kind"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      const position = (direction === 'up' ? k - 1 : k + 1) + 1;",
+    "replace": "      const position = (direction === 'up' ? k - 1 : k + 1);",
+    "why": "[a22] 13.5 the log counts a moved rule's place from 0"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#log.push(Object.freeze({ date, kind: 'rule-moved', rule: this.#ruleById(id), past: this.#ruleById(past.id), direction, position }));\n",
+    "replace": "",
+    "why": "[a22] 13.5 a move is not logged"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      const stillWaiting = [...this.#sortWaitingByRules(id), ...this.#sortWaitingByRules(past.id)];",
+    "replace": "      const stillWaiting: string[] = [];",
+    "why": "[a22] 13.2 a moved rule does not sort what waits that it now matches first"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (direction !== 'up' && direction !== 'down') throw new MoneyError('bad-rule',",
+    "replace": "    if (direction !== 'up' && direction !== 'down' && false) throw new MoneyError('bad-rule',",
+    "why": "[a22] a rule moves sideways"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "    return entry.spendingKind === 'debt-payoff' && entry.original !== undefined && (txn.kind === 'transfer' || txn.kind === 'transfer-sent') && txn.from === 'savings';",
+    "replace": "    return entry.spendingKind === 'debt-payoff' && (txn.kind === 'transfer' || txn.kind === 'transfer-sent') && txn.from === 'savings';",
+    "why": "[a21] 5.6 the bank's own payment to the old card from savings can be unmarked"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "    return entry.spendingKind === 'debt-payoff' && entry.original !== undefined && (txn.kind === 'transfer' || txn.kind === 'transfer-sent') && txn.from === 'savings';",
+    "replace": "    return entry.spendingKind === 'debt-payoff' && entry.original !== undefined && (txn.kind === 'transfer' || txn.kind === 'transfer-sent');",
+    "why": "[a21] 5.6 one marked from checking is offered unmark too"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "    this.#atomically(() => this.#restore(entry));\n  }",
+    "replace": "    this.#atomically(() => this.#sortSpending(entry, { to: 'needs' }));\n  }",
+    "why": "[a21] 5.6 unmarking keeps it a payment to the old card, out of needs"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (entry.kind === 'spend' && this.#markedFromSavings(entry) && !(typeof choice",
+    "replace": "    if (false && entry.kind === 'spend' && this.#markedFromSavings(entry) && !(typeof choice",
+    "why": "[a21] 5.6 one marked from savings quietly takes wants or a split"
+  },
+  {
+    "section": "5",
+    "file": "packages/money/src/review-options.ts",
+    "find": "unavailable: [], match: [], unmark: f.markedFromSavings };",
+    "replace": "unavailable: [], match: [], unmark: false };",
+    "why": "[a21] 5.6 unmark is not offered"
   }
 ]

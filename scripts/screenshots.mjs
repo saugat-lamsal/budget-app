@@ -229,7 +229,29 @@ const SHOTS = [
   ['payday-not-set-up', 'not-set-up', '/payday'],
   ['payday-error', 'error', '/payday', 'error'],
   ['payday-loading', 'slow', '/payday', 'loading-payday'],
+  // A21: a bill from savings marked as a payment to the old card, and its own choice
+  ['review-unmark', 'review-marked-savings', '/review', async (page) => {
+    await page.getByTestId('item-act-water').getByTestId('more').click();
+    await page.getByTestId('choice-unmark').scrollIntoViewIfNeeded();
+  }],
+  ['review-unmarked', 'review-marked-savings', '/review', async (page) => {
+    await page.getByTestId('item-act-water').getByTestId('more').click();
+    await page.getByTestId('choice-unmark').click();
+    await page.getByTestId('notice').waitFor();
+    return 'no-sheet';
+  }],
   // Settings
+  ['settings-rule-move', 'normal', '/settings', async (page) => {
+    await page.getByTestId('rule-restaurant').click();
+    await page.getByTestId('sheet-move-up').waitFor();
+  }],
+  ['settings-rule-moved', 'normal', '/settings', async (page) => {
+    await page.getByTestId('rule-restaurant').click();
+    await page.getByTestId('sheet-move-up').click();
+    await page.getByTestId('notice').waitFor();
+    await page.getByTestId('rules-card').scrollIntoViewIfNeeded();
+    return 'no-sheet';
+  }],
   ['settings', 'settings-busy', '/settings'],
   ['settings-whole', 'settings-busy', '/settings', 'full'],
   ['settings-normal-whole', 'normal', '/settings', 'full'],

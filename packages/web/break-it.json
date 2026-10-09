@@ -1328,5 +1328,61 @@
     "find": "        : `${moneyText(item.fromReserve)} comes out of the mom reserve. The other ${moneyText(item.difference)} waits",
     "replace": "        : `${moneyText(item.amount)} comes out of the mom reserve. The other ${moneyText(item.difference)} waits",
     "why": "[settings] 8.3 the preview says all of a mom payment comes out of the reserve"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "      return 'Still waits in Review: part of it was refunded, so it cannot come out of the mom reserve. Sort it there.';",
+    "replace": "      return 'Comes out of the mom reserve.';",
+    "why": "[settings] 13.2 B73 the preview says a refunded payment comes out of the reserve"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "  if (still.length > 0) parts.push(",
+    "replace": "  if (false) parts.push(",
+    "why": "[settings] 13.2 B73 the answer does not name what still waits"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "              {rule.position > 1 && (",
+    "replace": "              {rule.position > 0 && (",
+    "why": "[a22] the first rule has a Move up"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "onClick={() => send({ rule: { move: { id: rule.id, direction: 'up' } } })}>",
+    "replace": "onClick={() => send({ rule: { move: { id: rule.id, direction: 'down' } } })}>",
+    "why": "[a22] Move up moves the rule down"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "`${RULE_KINDS[line.rule.for]}: ${ruleText(line.rule)}, now number ${line.position},",
+    "replace": "`${RULE_KINDS[line.rule.for]}: ${ruleText(line.rule)}, now number ${line.position + 1},",
+    "why": "[a22] the log line gives the wrong place"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "      {!always && options.unmark && (",
+    "replace": "      {false && options.unmark && (",
+    "why": "[a21] the choice is not shown"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "              if (!busy) onChoose(target, { unmark: true });",
+    "replace": "              if (!busy) onChoose(target, { to: 'needs' });",
+    "why": "[a21] the choice sends needs"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "{textRow('reminders', 'Card reminders',",
+    "replace": "{row('reminders', 'Card reminders',",
+    "why": "[settings] the Card reminders arrow drops to its own line"
   }
 ]

@@ -560,6 +560,61 @@ const examples: Record<number, () => Record<string, Cents>> = {
       'preview unsorted spending': preview.potsAfter.unsortedOut,
     };
   },
+  34: () => {
+    const book = openTestBook({ pots: { momReserve: parseDollars('1,000.00') }, settings: { momRule: null } });
+    book.receive(payPerson('mom1', '2026-10-06', parseDollars('40.00'), MOM_NAME));
+    book.receive(refund('back', '2026-10-07', parseDollars('10.00'), 'mom1', 'checking'));
+    const preview = book.previewSettingsChange({ momRule: { contains: MOM_NAME } }, '2026-10-08');
+    expect(preview.items).toMatchObject([{ kind: 'still-waiting', id: 'mom1' }]);
+    const { rechecked } = book.changeSettings({ momRule: { contains: MOM_NAME } }, '2026-10-08');
+    expect(rechecked).toEqual(preview.items);
+    const afterRule = book.pots();
+    const still = book.reviewItems().find((i) => i.id === 'mom1');
+    book.receive(payPerson('mom2', '2026-10-09', parseDollars('25.00'), MOM_NAME));
+    return {
+      ...buckets(book),
+      'still waiting': still?.amount ?? -1,
+      'reserve after the rule': afterRule.momReserve,
+      'in your buckets after the rule': appSide(afterRule),
+      'in your buckets': appSide(book.pots()),
+    };
+  },
+  35: () => {
+    const book = openTestBook({ pots: { savings: parseDollars('1,000.00'), needs: parseDollars('500.00') }, oldCardDebt: parseDollars('2,980.00') });
+    book.receive(withdrawal('water', '2026-10-05', parseDollars('64.10'), 'BILL PAY WATER UTILITY'));
+    book.sort('water', { transfer: 'old-card' }, '2026-10-06');
+    book.sort('water', { to: 'savings' }, '2026-10-06');
+    const marked = book.pots();
+    expect(book.resortDetail('water')).toMatchObject({ resortable: true, options: { unmark: true } });
+    book.sort('water', { unmark: true }, '2026-10-07');
+    const unmarked = book.pots();
+    const owes = book.oldCardDebt();
+    book.sort('water', { to: 'needs' }, '2026-10-07');
+    book.moveMoney({ from: 'savings', to: 'needs', amount: parseDollars('64.10'), confirmed: true }, '2026-10-07');
+    return {
+      ...buckets(book),
+      'savings when marked': marked.savings,
+      'savings after unmarking': unmarked.savings,
+      'unsorted spending after unmarking': unmarked.unsortedOut,
+      'old card owes': owes,
+    };
+  },
+  36: () => {
+    const book = openTestBook({
+      pots: { needs: parseDollars('500.00'), wants: parseDollars('300.00') },
+      rules: [
+        { id: 'store', for: 'purchase', contains: 'STORE', bucket: 'needs' },
+        { id: 'big', for: 'purchase', contains: 'BIG STORE', bucket: 'wants' },
+      ],
+    });
+    book.receive(purchase('a', '2026-10-05', parseDollars('40.00'), 'MADE UP BIG STORE'));
+    book.moveRule('big', 'up', '2026-10-05');
+    book.receive(purchase('b', '2026-10-06', parseDollars('25.00'), 'MADE UP BIG STORE'));
+    book.receive(purchase('c', '2026-10-06', parseDollars('10.00'), 'MADE UP CORNER STORE'));
+    expect(book.rules().map((r) => r.id)).toEqual(['big', 'store']);
+    expect(book.changeLog()).toMatchObject([{ kind: 'rule-moved', direction: 'up', position: 1 }]);
+    return buckets(book);
+  },
 };
 
 describe('worked examples (worked-examples.txt)', () => {

@@ -27,6 +27,8 @@ interface Change {
   readonly patch: Partial<Settings> | null;
   readonly asksFirst?: boolean;
   readonly rule?: Omit<Extract<SortingRule, { for: 'purchase' }>, 'id'> | Omit<Extract<SortingRule, { for: 'deposit' | 'person' }>, 'id'>;
+  // A22: a rule moved one place, from its sheet.
+  readonly move?: { readonly id: string; readonly direction: 'up' | 'down' };
 }
 
 function randomChange(random: Random, settings: Settings, descriptions: readonly string[]): Change {
@@ -95,7 +97,26 @@ function randomChange(random: Random, settings: Settings, descriptions: readonly
   }
 }
 
+// A22: a rule that can move, and which way (the first cannot go up, the last cannot go down).
+function randomMove(random: Random, rules: readonly SortingRule[]): Change | null {
+  const movable = rules.flatMap((rule) => {
+    const ofItsKind = rules.filter((r) => r.for === rule.for);
+    const place = ofItsKind.indexOf(rule);
+    return [...(place > 0 ? [{ id: rule.id, direction: 'up' as const }] : []), ...(place < ofItsKind.length - 1 ? [{ id: rule.id, direction: 'down' as const }] : [])];
+  });
+  if (movable.length === 0) return null;
+  const move = random.pick(movable);
+  return { what: `move ${move.id} ${move.direction}`, row: `rule-${move.id}`, fields: {}, patch: null, move };
+}
+
 async function make(page: Page, change: Change): Promise<void> {
+  if (change.move !== undefined) {
+    await page.getByTestId(change.row).click();
+    await page.getByTestId(`sheet-move-${change.move.direction}`).click();
+    await page.getByTestId('notice').waitFor();
+    await untilQuiet(page);
+    return;
+  }
   await page.getByTestId(change.row).click();
   await page.getByTestId('settings-sheet').waitFor();
   for (const [testId, value] of Object.entries(change.fields)) {
@@ -133,7 +154,7 @@ describe.each(ENGINES)('random lives on Settings in %s', (_name, engine) => {
       const done: string[] = [];
       for (let n = 0; n < 3; n += 1) {
         const descriptions = twin.book.reviewItems().flatMap((i) => ('description' in i ? [i.description] : []));
-        const change = randomChange(random, twin.book.settings(), descriptions);
+        const change = (random.int(0, 4) === 0 ? randomMove(random, twin.book.rules()) : null) ?? randomChange(random, twin.book.settings(), descriptions);
         const at = `${where}, change ${n + 1}: ${change.what}`;
         const posts = watch.posts.length;
         await make(page, change);
@@ -141,7 +162,9 @@ describe.each(ENGINES)('random lives on Settings in %s', (_name, engine) => {
         // The same change, straight to the money math. A change it refuses (or
         // one that is already so) changes nothing on either.
         const id = watch.ids()[posts];
-        if (change.rule !== undefined && id !== undefined) {
+        if (change.move !== undefined) {
+          twin.book.moveRule(change.move.id, change.move.direction, twin.today);
+        } else if (change.rule !== undefined && id !== undefined) {
           twin.book.addRule({ ...change.rule, id: `rule-${id}` } as SortingRule, twin.today);
         } else if (change.patch !== null) {
           const current = twin.book.settings();

@@ -2,7 +2,9 @@ import { type BankBalances, type Book, type IsoDate, type Settings } from '@budg
 import type { Page } from 'playwright';
 import { describe, expect, it } from 'vitest';
 import { demoScenario } from '../../../server/src/demo/scenarios.js';
-import { ENGINES, centsAt, phone, readCents, textAt, untilQuiet, useEngine } from './harness.js';
+import { MOM_NAME, appSide, openTestBook, payPerson, refund } from '../../../money/test/helpers.js';
+import { ENGINES, centsAt, close, phone, readCents, textAt, untilQuiet, useEngine } from './harness.js';
+import { openLive, startLive } from './live.js';
 import { bucketsOf, readBuckets, watchChoices } from './screens.js';
 import { openSettings, readSettings, settingsOf } from './settings-screens.js';
 
@@ -362,6 +364,64 @@ describe.each(ENGINES)('Settings in %s', (_name, engine) => {
     const page = await openSettings(await browser().newContext(phone()), base(), 'mismatch');
     expect(await page.getByTestId('mismatch').isVisible()).toBe(true);
     expect(readCents(await textAt(page, 'mismatch-amount'))).toBe(1_234);
+    await page.context().close();
+  });
+
+  it('13.2 A9 B73 a partly refunded payment to mom stays waiting, and the screen says so before and after the yes', async () => {
+    const book = openTestBook({ pots: { savings: 100_000, needs: 50_000, wants: 30_000, momReserve: 100_000 }, settings: { momRule: null } });
+    book.receive(payPerson('z1', '2026-10-10', 4_000, MOM_NAME));
+    book.receive(refund('r1', '2026-10-11', 1_000, 'z1', 'checking'));
+    const bank = { checking: appSide(book.pots()) - book.inTransit().total, savings: 0, everydayCard: 0 };
+    const pots = book.pots();
+    const live = await startLive({ book, bank, today: '2026-10-12' });
+    const context = await browser().newContext(phone());
+    try {
+      const page = await openLive(context, live.base, '/settings');
+      await change(page, 'row-mom-rule', { 'field-mom-rule': MOM_NAME });
+      await page.getByTestId('preview').waitFor();
+      expect(await textAt(page, 'preview-item-z1')).toContain('Still waits in Review: part of it was refunded, so it cannot come out of the mom reserve.');
+      expect(readCents(await page.getByTestId('preview-item-z1').locator('[data-money]').last().innerText())).toBe(3_000);
+      expect(await centsAt(page, 'preview-after-momReserve')).toBe(100_000);
+      await page.getByTestId('confirm-yes').click();
+      expect(await saved(page)).toBe(`Saved. ZELLE TO ${MOM_NAME} still waits in Review: part of it was refunded, so it cannot come out of the mom reserve.`);
+      // Exactly as it was: the $30.00 waits, the reserve and every bucket are as they were.
+      expect(book.reviewItems().map((i) => [i.id, i.amount])).toEqual([['z1', 3_000]]);
+      expect(book.pots()).toEqual(pots);
+      expect(book.recountPots()).toEqual(pots);
+      expect(await page.getByTestId('review-badge').innerText()).toBe('1');
+    } finally {
+      await context.close();
+      await close(live.server);
+    }
+  });
+
+  it('13.2 A22 a rule moves up or down in its list from its sheet, the screen shows the new order, and the log says so', async () => {
+    const twin = life('normal');
+    const page = await openSettings(await browser().newContext(phone()), base(), 'normal');
+    // The first rule cannot move up and the last cannot move down: those buttons are not there.
+    await page.getByTestId('rule-grocery').click();
+    expect(await page.getByTestId('sheet-move-up').count()).toBe(0);
+    expect(await page.getByTestId('sheet-move-down').count()).toBe(1);
+    await page.keyboard.press('Escape');
+    await page.getByTestId('rule-streaming').click();
+    expect(await page.getByTestId('sheet-move-down').count()).toBe(0);
+    await page.keyboard.press('Escape');
+    // RESTAURANT goes up past COFFEE.
+    await page.getByTestId('rule-restaurant').click();
+    await page.getByTestId('sheet-move-up').click();
+    expect(await saved(page)).toBe('Rule moved up: “RESTAURANT” → Wants.');
+    twin.book.moveRule('restaurant', 'up', twin.today);
+    await expectSameAs(page, twin, 'after moving up');
+    expect((await readSettings(page)).rules.purchase.slice(2, 4)).toEqual(['3. restaurant: Wants', '4. coffee: Wants']);
+    expect(await textAt(page, 'log-0-0')).toContain('Rule moved up');
+    expect(await textAt(page, 'log-0-0')).toContain('“RESTAURANT” → Wants, now number 3, ahead of “COFFEE” → Wants');
+    // And down again.
+    await page.getByTestId('notice-dismiss').click();
+    await page.getByTestId('rule-restaurant').click();
+    await page.getByTestId('sheet-move-down').click();
+    expect(await saved(page)).toBe('Rule moved down: “RESTAURANT” → Wants.');
+    twin.book.moveRule('restaurant', 'down', twin.today);
+    await expectSameAs(page, twin, 'after moving down');
     await page.context().close();
   });
 });

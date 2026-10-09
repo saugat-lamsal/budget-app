@@ -116,7 +116,10 @@ export type SortChoice =
   | PersonPaymentChoice
   | { readonly split: readonly SplitPart[] }
   | { readonly transfer: AccountId }
-  | { readonly refundOf: string };
+  | { readonly refundOf: string }
+  // QUESTIONS.md A21: "It was not a payment to the old card", for one you
+  // marked from savings: it becomes what the bank sent again.
+  | { readonly unmark: true };
 
 export type SpendingSort =
   | { readonly to: 'unsorted' }
@@ -324,6 +327,9 @@ export type ChangeLogEntry =
     }
   | { readonly date: IsoDate; readonly kind: 'rule-changed'; readonly before: SortingRule; readonly after: SortingRule }
   | { readonly date: IsoDate; readonly kind: 'rule-removed'; readonly rule: SortingRule }
+  // A22: a rule moved one place up or down among the rules of its kind, past
+  // another; position is its place among them now, from 1.
+  | { readonly date: IsoDate; readonly kind: 'rule-moved'; readonly rule: SortingRule; readonly past: SortingRule; readonly direction: 'up' | 'down'; readonly position: number }
   | { readonly date: IsoDate; readonly kind: 'money-moved'; readonly from: Pot; readonly to: Pot; readonly amount: Cents }
   // 4.10: the bank took back a transaction the app had counted.
   | { readonly date: IsoDate; readonly kind: 'bank-took-back'; readonly id: string; readonly description: string; readonly amount: Cents };
@@ -344,7 +350,11 @@ export type RecheckedItem =
       readonly description: string;
       readonly fromReserve: Cents;
       readonly difference: Cents;
-    };
+    }
+  // 13.2, B73: a payment the new mom rule matches but that cannot come out of
+  // the mom reserve, because part of it was refunded. It stays waiting
+  // exactly as it was; amount is what waits.
+  | { readonly kind: 'still-waiting'; readonly id: string; readonly date: IsoDate; readonly amount: Cents; readonly description: string; readonly why: 'partly-refunded' };
 
 // What a change to the settings would do, worked out before it is done (A9):
 // the waiting items it would handle, oldest first, and every bucket and the
@@ -1138,7 +1148,7 @@ export class Book {
         const txn = entry.txn;
         // Sorting it again can pick another bucket or split it, but a rule or a transfer starts
         // from a payment waiting to be sorted, not one already counted for mom.
-        const options = reviewOptions({ type: 'spending', kind: 'person-payment', fromSavings: false, account: txn.account, leavesAnAccount: false, pending: false, partlyRefunded: false, countedAtSetup: false, gone: false, canBeForMom: true, net: txn.amount });
+        const options = reviewOptions({ type: 'spending', kind: 'person-payment', fromSavings: false, account: txn.account, leavesAnAccount: false, pending: false, partlyRefunded: false, countedAtSetup: false, gone: false, canBeForMom: true, markedFromSavings: false, net: txn.amount });
         if (options.type !== 'sort') throw new MoneyError('broken-book', 'a payment to a person has no choices');
         return Object.freeze({
           resortable: true,
@@ -1236,6 +1246,7 @@ export class Book {
       countedAtSetup: false,
       gone: false,
       canBeForMom: person,
+      markedFromSavings: false,
       net: entry.amount,
     };
     const options = reviewOptions(facts);
@@ -1276,6 +1287,7 @@ export class Book {
       countedAtSetup: entry.countedAtSetup > 0,
       gone: entry.dropped === true || entry.takenBack === true,
       canBeForMom: entry.spendingKind === 'person-payment' && txn.kind === 'payment-to-person' && entry.refunded === 0,
+      markedFromSavings: this.#markedFromSavings(entry),
       net: netOf(entry),
     };
   }
@@ -1933,6 +1945,12 @@ export class Book {
     if (entry === undefined) throw new MoneyError('unknown-item', `no item ${id}`);
     // Taken back by the bank (4.10): only what is left of it, if anything, waits to be sorted.
     if (this.#gone(entry) && !this.#review.has(entry.id)) throw new MoneyError('not-sortable', `the bank took back ${id}`);
+    if (typeof choice === 'object' && choice !== null && 'unmark' in choice) return this.#unmark(entry, choice.unmark);
+    // A21: one you marked from savings takes savings or needs (A4), or is unmarked; to be
+    // anything else, unmark it first. One tap cannot mean both.
+    if (entry.kind === 'spend' && this.#markedFromSavings(entry) && !(typeof choice === 'object' && choice !== null && 'to' in choice && (choice.to === 'savings' || choice.to === 'needs'))) {
+      throw new MoneyError('bad-choice', `${id} is marked as a payment to the old card from savings: it comes out of savings or needs, or say it was not one`);
+    }
     if (typeof choice === 'object' && choice !== null && 'transfer' in choice) return this.#markAsTransfer(entry, choice.transfer);
     if (typeof choice === 'object' && choice !== null && 'refundOf' in choice) return this.#matchRefund(entry, choice.refundOf);
     // Marked as a transfer by hand (5.6): sorting it any other way makes it
@@ -2063,6 +2081,24 @@ export class Book {
     if (other === txn.account) refuse('a transfer comes from another of your accounts');
     const half: TransferArrived = { kind: 'transfer-arrived', id: entry.id, from: other as 'checking' | 'savings', to: txn.account, date: txn.date, amount: txn.amount, description: txn.description };
     return { original: txn, posted: null, half };
+  }
+
+  // A21: a payment to the old card from savings that you marked by hand
+  // (5.6): not one the bank sent as such.
+  #markedFromSavings(entry: SpendEntry): boolean {
+    const txn = entry.txn;
+    return entry.spendingKind === 'debt-payoff' && entry.original !== undefined && (txn.kind === 'transfer' || txn.kind === 'transfer-sent') && txn.from === 'savings';
+  }
+
+  // QUESTIONS.md A21: "It was not a payment to the old card". One you marked
+  // from savings becomes what the bank sent again, taken as the bank sent it
+  // (money leaving savings waits in review, 4.9); the old card owes what it
+  // did before. Whatever bucket it was sorted to gets its money back.
+  #unmark(entry: Entry, yes: unknown): void {
+    if (yes !== true || entry.kind !== 'spend' || !this.#markedFromSavings(entry)) {
+      throw new MoneyError('bad-choice', `${entry.id} is not a payment you marked as going to the old card from savings`);
+    }
+    this.#atomically(() => this.#restore(entry));
   }
 
   // Undoes a transfer you marked by hand and gives the book what the bank
@@ -2296,6 +2332,14 @@ export class Book {
       .sort((a, b) => daysBetween(b.txn.date, a.txn.date));
     const handled: RecheckedItem[] = [];
     for (const entry of matching) {
+      // 13.2, B73: a payment partly refunded cannot be for mom. Taking it out
+      // and paying mom from what the bank first sent would lose the refund.
+      // (One the bank took back waits only for money back, so it has a refund too.)
+      if (entry.refunded > 0) {
+        const { id, date, description } = entry.txn;
+        handled.push(Object.freeze({ kind: 'still-waiting', id, date, amount: netOf(entry), description, why: 'partly-refunded' }));
+        continue;
+      }
       this.#remove(entry);
       this.#payMom(entry.txn, 'mom-rule');
       const mom = this.#entry(entry.txn.id);
@@ -2340,6 +2384,7 @@ export class Book {
     const was = entry.kind === 'spend' ? this.#wasBeforeMarked(entry) : undefined;
     if ('transfer' in choice) throw new MoneyError('bad-choice', 'a sorting rule cannot mark transfers; the bank rules in settings do that');
     if ('refundOf' in choice) throw new MoneyError('bad-choice', 'a sorting rule cannot match a refund to a purchase');
+    if ('unmark' in choice) throw new MoneyError('bad-choice', 'a sorting rule cannot unmark a transfer');
     if (was?.kind === 'purchase' || (entry.kind === 'spend' && was === undefined && entry.spendingKind === 'purchase' && !fromSavings)) {
       if ('split' in choice || !isSpendingBucket(choice.to)) throw new MoneyError('bad-choice', 'a rule picks needs or wants; it cannot split');
       newRule = { id: rule.id, for: 'purchase', contains: rule.contains, bucket: choice.to };
@@ -2387,6 +2432,34 @@ export class Book {
     const rule = this.#ruleById(id);
     this.#rules = checkRules(this.#rules.filter((r) => r.id !== id));
     this.#log.push(Object.freeze({ date, kind: 'rule-removed', rule }));
+  }
+
+  // 13.2, QUESTIONS.md A22: moves a rule one place up or down among the
+  // rules of its kind (only those compete, B9), past the next one of its kind;
+  // rules of other kinds stay where they are. What waits in review that
+  // either rule is now the first match for is sorted, as after a changed
+  // rule; what is sorted already stays where it is. Returns the waiting items
+  // they matched but could not sort (A19).
+  moveRule(id: string, direction: 'up' | 'down', date: IsoDate): { readonly stillWaiting: readonly string[] } {
+    assertIsoDate(date);
+    if (direction !== 'up' && direction !== 'down') throw new MoneyError('bad-rule', `a rule moves up or down, not ${String(direction)}`);
+    const rule = this.#ruleById(id);
+    const at = this.#rules.indexOf(rule);
+    const ofItsKind = this.#rules.flatMap((r, i) => (r.for === rule.for ? [i] : []));
+    const k = ofItsKind.indexOf(at);
+    const other = ofItsKind[direction === 'up' ? k - 1 : k + 1];
+    if (other === undefined) throw new MoneyError('bad-rule', `${id} is already ${direction === 'up' ? 'first' : 'last'} of its kind`);
+    const past = this.#rules[other] as SortingRule;
+    return this.#atomically(() => {
+      const next = [...this.#rules];
+      next[at] = past;
+      next[other] = rule;
+      this.#rules = checkRules(next);
+      const position = (direction === 'up' ? k - 1 : k + 1) + 1;
+      this.#log.push(Object.freeze({ date, kind: 'rule-moved', rule: this.#ruleById(id), past: this.#ruleById(past.id), direction, position }));
+      const stillWaiting = [...this.#sortWaitingByRules(id), ...this.#sortWaitingByRules(past.id)];
+      return { stillWaiting: [...new Set(stillWaiting)] };
+    });
   }
 
   #ruleById(id: string): SortingRule {

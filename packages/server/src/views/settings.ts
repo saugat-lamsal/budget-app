@@ -47,6 +47,8 @@ export type LogRow =
   | { readonly key: string; readonly date: IsoDate; readonly kind: 'rule-added'; readonly rule: RuleView; readonly fromCorrection: boolean; readonly aheadOf: RuleView | null }
   | { readonly key: string; readonly date: IsoDate; readonly kind: 'rule-changed'; readonly before: RuleView; readonly after: RuleView }
   | { readonly key: string; readonly date: IsoDate; readonly kind: 'rule-removed'; readonly rule: RuleView }
+  // A22: moved one place up or down past another rule of its kind; position is its place now.
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'rule-moved'; readonly rule: RuleView; readonly past: RuleView; readonly direction: 'up' | 'down'; readonly position: number }
   | { readonly key: string; readonly date: IsoDate; readonly kind: 'money-moved'; readonly from: Pot; readonly to: Pot; readonly amount: Cents }
   // 4.10: the bank took back something the app had counted.
   | { readonly key: string; readonly date: IsoDate; readonly kind: 'bank-took-back'; readonly description: string; readonly amount: Cents };
@@ -159,6 +161,9 @@ function logRows(book: Book): LogRow[] {
       case 'rule-removed':
         rows.push({ key: key(0), date, kind: 'rule-removed', rule: ruleViewOf(entry.rule) });
         break;
+      case 'rule-moved':
+        rows.push({ key: key(0), date, kind: 'rule-moved', rule: ruleViewOf(entry.rule), past: ruleViewOf(entry.past), direction: entry.direction, position: entry.position });
+        break;
       case 'money-moved':
         rows.push({ key: key(0), date, kind: 'money-moved', from: entry.from, to: entry.to, amount: entry.amount });
         break;
@@ -190,6 +195,8 @@ function ruleAsItWas(log: readonly ChangeLogEntry[], at: number, id: string, rul
       case 'rule-changed':
         if (entry.after.id !== id) return undefined;
         return side === 'then' ? entry.after : entry.before;
+      case 'rule-moved':
+        return entry.rule.id === id ? entry.rule : entry.past.id === id ? entry.past : undefined;
       default:
         return undefined;
     }

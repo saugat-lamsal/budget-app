@@ -223,6 +223,13 @@ export function parseRuleRequest(value: unknown): RuleRequest | null {
     const which = rule['remove'];
     return typeof which === 'string' && which !== '' && which.length <= MAX_ITEM_LENGTH ? { id, rule: { remove: which }, ...yes } : null;
   }
+  if ('move' in rule) {
+    const move = rule['move'];
+    if (!isRecord(move) || Object.keys(move).length !== 2 || !onlyKeys(move, ['id', 'direction'])) return null;
+    const { id: which, direction } = move;
+    if (typeof which !== 'string' || which === '' || which.length > MAX_ITEM_LENGTH || (direction !== 'up' && direction !== 'down')) return null;
+    return { id, rule: { move: { id: which, direction } }, ...yes };
+  }
   return null;
 }
 
@@ -250,6 +257,7 @@ function parseChoice(value: unknown): ChoiceOf | null {
   if ('transfer' in value) return (ACCOUNTS as readonly unknown[]).includes(value['transfer']) ? { transfer: value['transfer'] as AccountId } : null;
   if ('leftover' in value) return value['leftover'] === 'roll-over' || value['leftover'] === 'move-to-savings' ? { leftover: value['leftover'] } : null;
   if ('acknowledge' in value) return value['acknowledge'] === true ? { acknowledge: true } : null;
+  if ('unmark' in value) return value['unmark'] === true ? { unmark: true } : null;
   if ('split' in value) return parseSplit(value['split']);
   if ('refundOf' in value) {
     const of = value['refundOf'];
@@ -495,6 +503,17 @@ export class ChoiceDesk {
         if (canonical(next) === canonical(was)) return refuse('refused', 'The rule already says that');
         ({ stillWaiting } = book.changeRule(next, today));
         action = 'changed';
+      } else if ('move' in edit) {
+        // A22: one place among the rules of its kind; the money math says where that is.
+        ruleId = edit.move.id;
+        const rule = existing(ruleId);
+        if (rule === undefined) return refuse('not-waiting', 'That rule is not there any more');
+        const ofItsKind = book.rules().filter((r) => r.for === rule.for);
+        const place = ofItsKind.indexOf(rule);
+        if (edit.move.direction === 'up' && place === 0) return refuse('refused', 'It is already the first rule of its kind');
+        if (edit.move.direction === 'down' && place === ofItsKind.length - 1) return refuse('refused', 'It is already the last rule of its kind');
+        ({ stillWaiting } = book.moveRule(ruleId, edit.move.direction, today));
+        action = edit.move.direction === 'up' ? 'moved-up' : 'moved-down';
       } else {
         ruleId = edit.remove;
         removed = existing(ruleId);
@@ -532,6 +551,8 @@ export class ChoiceDesk {
     if ('leftover' in c) return options.type === 'leftover' && options.answers.includes(c.leftover) && request.always === undefined ? null : no;
     if ('acknowledge' in c) return options.type === 'acknowledge' && request.always === undefined ? null : no;
     if (options.type !== 'sort') return no;
+    // A21: only for a payment marked from savings, and never by a rule.
+    if ('unmark' in c) return options.unmark && request.always === undefined ? null : no;
     // A18: only one of the likely purchases offered, only for a refund, and
     // never by a rule.
     if ('refundOf' in c) {
@@ -570,7 +591,9 @@ export class ChoiceDesk {
     const sort: SortChoice =
       'to' in choice
         ? { to: choice.to }
-        : 'transfer' in choice
+        : 'unmark' in choice
+          ? { unmark: true }
+          : 'transfer' in choice
           ? { transfer: choice.transfer }
           : 'refundOf' in choice
             ? { refundOf: choice.refundOf }

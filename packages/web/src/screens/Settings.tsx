@@ -192,7 +192,7 @@ function SettingsReady({ view, reload, onChanged }: { readonly view: Tracking; r
 
       <Card title="Alerts and reminders" testId="alerts-card">
         {row('low-alert', 'Low-bucket alert', `${s.lowBucketAlertPercent}%`, 'Of what needs or wants started the pay period with')}
-        {row('reminders', 'Card reminders', reminderText(s.cardReminderDaysBefore), 'Before each card is due')}
+        {textRow('reminders', 'Card reminders', reminderText(s.cardReminderDaysBefore), 'Before each card is due')}
         {row('review-time', 'Daily review', timeText(s.dailyReviewTime), 'Only when something waits in Review')}
       </Card>
 
@@ -294,6 +294,15 @@ function LogLine({ line }: { readonly line: LogRow }) {
       return <ListRow icon="swap" title="Rule changed" detail={`${ruleText(line.before)} to ${ruleText(line.after)} · ${when}`} testId={testId} />;
     case 'rule-removed':
       return <ListRow icon="swap" title="Rule removed" detail={`${RULE_KINDS[line.rule.for]}: ${ruleText(line.rule)} · ${when}`} testId={testId} />;
+    case 'rule-moved':
+      return (
+        <ListRow
+          icon="swap"
+          title={line.direction === 'up' ? 'Rule moved up' : 'Rule moved down'}
+          detail={`${RULE_KINDS[line.rule.for]}: ${ruleText(line.rule)}, now number ${line.position}, ${line.direction === 'up' ? 'ahead of' : 'after'} ${ruleText(line.past)} · ${when}`}
+          testId={testId}
+        />
+      );
     case 'money-moved':
       return <ListRow icon="move" title={`Moved from ${POT_NAMES[line.from]} to ${POT_NAMES[line.to]}`} detail={when} trailing={<Money cents={line.amount} />} testId={testId} />;
     case 'bank-took-back':
@@ -542,6 +551,21 @@ function SettingSheet({ editing, view, onClose, onDone }: { readonly editing: Ed
             <Button variant="secondary" wide disabled={sending} testId="sheet-clear" onClick={() => send({ settings: { oldCardPromoEndDate: null } })}>
               Clear the date
             </Button>
+          )}
+          {rule !== null && (
+            // A22: one place up or down among the rules of its kind; the first that matches wins.
+            <ButtonRow>
+              {rule.position > 1 && (
+                <Button variant="secondary" wide disabled={sending} testId="sheet-move-up" onClick={() => send({ rule: { move: { id: rule.id, direction: 'up' } } })}>
+                  Move up
+                </Button>
+              )}
+              {rule.position < view.rules[rule.for].length && (
+                <Button variant="secondary" wide disabled={sending} testId="sheet-move-down" onClick={() => send({ rule: { move: { id: rule.id, direction: 'down' } } })}>
+                  Move down
+                </Button>
+              )}
+            </ButtonRow>
           )}
           {rule !== null && (
             <Button variant="secondary" wide disabled={sending} testId="sheet-remove" onClick={() => send({ rule: { remove: rule.id } })}>

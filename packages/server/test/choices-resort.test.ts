@@ -425,3 +425,46 @@ describe('what the phone sends: resort', () => {
     expect(parseChoiceRequest(plain)).toEqual(plain);
   });
 });
+
+describe('5.6 A21 "It was not a payment to the old card", for one marked from savings', () => {
+  function marked() {
+    const book = openTestBook({ pots: { savings: 100_000, needs: 50_000, wants: 30_000 }, oldCardDebt: 300_000 });
+    book.receive({ kind: 'savings-withdrawal', id: 'w1', account: 'savings', date: '2026-10-05', amount: 20_000, description: 'MADE UP WATER UTILITY', pending: false });
+    const pots = book.pots();
+    book.sort('w1', { transfer: 'old-card' }, '2026-10-06');
+    return { book, pots, desk: new ChoiceDesk(book, () => '2026-10-20') };
+  }
+
+  it('A21 reads it, and only as true', () => {
+    expect(parseChoiceRequest({ id: 'abcdefgh', item: 'w1', choice: { unmark: true } })).toEqual({ id: 'abcdefgh', item: 'w1', choice: { unmark: true } });
+    expect(parseChoiceRequest({ id: 'abcdefgh', item: 'w1', choice: { unmark: false } })).toBeNull();
+    expect(parseChoiceRequest({ id: 'abcdefgh', item: 'w1', choice: { unmark: 'yes' } })).toBeNull();
+  });
+
+  it('A21 4.9 in review it brings back what the bank sent, waiting, and the old card owes what it did', () => {
+    const { book, pots, desk } = marked();
+    const r = desk.decide({ id: 'unmark-0001', item: 'w1', choice: { unmark: true } });
+    expect(r).toMatchObject({ ok: true, done: { item: 'w1', choice: { unmark: true } } });
+    expect(book.pots()).toEqual(pots);
+    expect(book.oldCardDebt()).toBe(300_000);
+    expect(book.reviewItems()).toMatchObject([{ id: 'w1', reason: 'from-savings', amount: 20_000 }]);
+  });
+
+  it('A21 A4 from its list, after it was sorted to savings', () => {
+    const { book, pots, desk } = marked();
+    book.sort('w1', { to: 'savings' }, '2026-10-07');
+    expect(desk.decide({ id: 'unmark-0002', item: 'w1', choice: { unmark: true }, resort: true })).toMatchObject({ ok: true });
+    expect(book.pots()).toEqual(pots);
+  });
+
+  it('A21 offered only there, never with "always do this"; anywhere else it is refused and changes nothing', () => {
+    const { book, desk } = marked();
+    expect(desk.decide({ id: 'unmark-0003', item: 'w1', choice: { unmark: true }, always: { contains: 'WATER' } })).toMatchObject({ ok: false, code: 'refused', why: "That isn't one of the choices for this item. Nothing was changed." });
+    book.receive(purchase('p1', '2026-10-06', 1_000, 'MADE UP CAFE'));
+    const before = JSON.stringify({ pots: book.pots(), review: book.reviewItems() });
+    expect(desk.decide({ id: 'unmark-0004', item: 'p1', choice: { unmark: true } })).toMatchObject({ ok: false, code: 'refused' });
+    // Wants is not one of its choices either: unmark it first (A21).
+    expect(desk.decide({ id: 'unmark-0005', item: 'w1', choice: { to: 'wants' } })).toMatchObject({ ok: false, code: 'refused' });
+    expect(JSON.stringify({ pots: book.pots(), review: book.reviewItems() })).toBe(before);
+  });
+});

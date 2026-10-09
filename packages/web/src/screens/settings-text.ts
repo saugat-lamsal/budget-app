@@ -129,6 +129,8 @@ export function recheckedText(item: RecheckedItem, earlyDays: number): string {
       return 'Becomes your paycheck, and a new pay period starts that day.';
     case 'early-paycheck':
       return `Still waits in review, as a paycheck that came early: less than ${daysText(earlyDays)} after the last one.`;
+    case 'still-waiting':
+      return 'Still waits in Review: part of it was refunded, so it cannot come out of the mom reserve. Sort it there.';
     case 'mom':
       return item.difference === 0
         ? `Comes out of the mom reserve.`
@@ -146,12 +148,14 @@ export function settingsDoneText(done: SettingsDone, nextPayday: string): string
   if (paychecks > 0) parts.push(paychecks === 1 ? 'A deposit that was waiting is now your paycheck.' : `${paychecks} deposits that were waiting are now paychecks.`);
   if (early > 0) parts.push(early === 1 ? 'One waits in review as an early paycheck.' : `${early} wait in review as early paychecks.`);
   if (mom > 0) parts.push(mom === 1 ? 'A payment that was waiting came out of the mom reserve.' : `${mom} payments that were waiting came out of the mom reserve.`);
+  const still = done.rechecked.filter((i) => i.kind === 'still-waiting');
+  if (still.length > 0) parts.push(`${still.map((i) => i.description).join(', ')} still ${still.length === 1 ? 'waits' : 'wait'} in Review: part of it was refunded, so it cannot come out of the mom reserve.`);
   return parts.join(' ');
 }
 
 // What a rule change did, in a sentence (13.2, A19).
 export function ruleDoneText(done: RuleDone): string {
-  const what = done.action === 'added' ? 'Rule added' : done.action === 'changed' ? 'Rule changed' : 'Rule removed';
+  const what = { added: 'Rule added', changed: 'Rule changed', removed: 'Rule removed', 'moved-up': 'Rule moved up', 'moved-down': 'Rule moved down' }[done.action];
   const parts = [`${what}: ${ruleText(done.rule)}.`];
   if (done.alsoSorted > 0) parts.push(done.alsoSorted === 1 ? 'It sorted 1 item that was waiting.' : `It sorted ${done.alsoSorted} items that were waiting.`);
   if (done.stillWaiting.length > 0) parts.push(`It could not sort ${done.stillWaiting.map((w) => w.name).join(', ')}, so that still waits in Review.`);

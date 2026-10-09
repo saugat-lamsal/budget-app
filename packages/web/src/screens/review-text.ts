@@ -169,6 +169,8 @@ export function doneText(label: string, kind: 'money-in' | 'spending' | 'leftove
     text = `${label} split: ${c.split.map((p) => `${BUCKET_NAMES[p.bucket] ?? p.bucket} ${p.amount === 'rest' ? 'the rest' : moneyText(p.amount)}`).join(', ')}.`;
   } else if ('transfer' in c) {
     text = about === undefined || about === '' ? `${label} marked as a transfer with ${ACCOUNT_NAMES[c.transfer]}.` : `${label} ${about}`;
+  } else if ('unmark' in c) {
+    text = `${label} is what the bank sent again, not a payment to the old card. It waits in Review for you to sort it.`;
   } else if ('leftover' in c) {
     text = c.leftover === 'roll-over' ? `${label} kept for this pay period.` : `${label} moved to Savings.`;
   } else {
