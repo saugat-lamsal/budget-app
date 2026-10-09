@@ -72,8 +72,24 @@ export function parseArgs(argv) {
   return options;
 }
 
+// The break lists: the money math, the bank connection, and the screens.
+export const BREAK_LISTS = Object.freeze(['packages/money/break-it.json', 'packages/server/break-it.json', 'packages/web/break-it.json']);
+
 export function loadBreaks(root, lists) {
   return lists.filter((list) => existsSync(join(root, list))).flatMap((list) => JSON.parse(readFileSync(join(root, list), 'utf8')));
+}
+
+// How many times each break's text is in its file: a break is applied only
+// when it is there exactly once (see judge). Returns the breaks that are not,
+// with the count (null when the file is gone). An empty text is never a break.
+export function staleBreaks(root, breaks) {
+  const stale = [];
+  for (const b of breaks) {
+    const path = join(root, b.file);
+    const found = existsSync(path) ? (b.find === '' ? 0 : readFileSync(path, 'utf8').split(b.find).length - 1) : null;
+    if (found !== 1) stale.push({ ...b, found });
+  }
+  return stale;
 }
 
 export function selectBreaks(breaks, { sections, match, file }) {

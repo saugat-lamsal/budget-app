@@ -1304,8 +1304,8 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "if (entry.kind === 'spend' && entry.spendingKind === 'purchase' && !fromSavings) {\n      if ('split' in choice",
-    "replace": "if (entry.kind === 'spend' && entry.spendingKind !== 'person-payment' && !fromSavings) {\n      if ('split' in choice",
+    "find": "(entry.kind === 'spend' && was === undefined && entry.spendingKind === 'purchase' && !fromSavings)) {\n      if ('split' in choice",
+    "replace": "(entry.kind === 'spend' && was === undefined && entry.spendingKind !== 'person-payment' && !fromSavings)) {\n      if ('split' in choice",
     "why": "13.6 let fees get a rule"
   },
   {
@@ -1661,15 +1661,15 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "descriptions = [entry.txn.description, ...(entry.postedTxn === null ? [] : [entry.postedTxn.description])];",
-    "replace": "descriptions = [(entry.postedTxn ?? entry.txn).description];",
+    "find": "descriptions = was?.descriptions ?? (entry.kind === 'spend' ? [entry.txn.description, ...(entry.postedTxn === null ? [] : [entry.postedTxn.description])] : []);",
+    "replace": "descriptions = was?.descriptions ?? (entry.kind === 'spend' ? [(entry.postedTxn ?? entry.txn).description] : []);",
     "why": "13.6 look only at the posted description"
   },
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "descriptions = [entry.txn.description, ...(entry.postedTxn === null ? [] : [entry.postedTxn.description])];",
-    "replace": "descriptions = [entry.txn.description];",
+    "find": "descriptions = was?.descriptions ?? (entry.kind === 'spend' ? [entry.txn.description, ...(entry.postedTxn === null ? [] : [entry.postedTxn.description])] : []);",
+    "replace": "descriptions = was?.descriptions ?? (entry.kind === 'spend' ? [entry.txn.description] : []);",
     "why": "13.6 look only at the description it arrived with"
   },
   {
@@ -2179,8 +2179,8 @@
   {
     "section": "13",
     "file": "packages/money/src/book.ts",
-    "find": "    const fromSavings = entry.kind === 'spend' && entry.txn.kind === 'savings-withdrawal';\n    if ('transfer' in choice)",
-    "replace": "    const fromSavings = false;\n    if ('transfer' in choice)",
+    "find": "    const fromSavings = entry.kind === 'spend' && entry.txn.kind === 'savings-withdrawal';\n    // A20:",
+    "replace": "    const fromSavings = false;\n    // A20:",
     "why": "4.9 let \"always do this\" make a rule for money leaving savings (A16)"
   },
   {
@@ -3061,8 +3061,8 @@
   {
     "section": "4",
     "file": "packages/money/src/book.ts",
-    "find": "(txn.kind === 'transfer' || txn.kind === 'transfer-sent') && txn.from === 'checking') {\n          return no(",
-    "replace": "(txn.kind === 'transfer' || txn.kind === 'transfer-sent') && txn.from === 'savings') {\n          return no(",
+    "find": "(txn.kind === 'transfer' || txn.kind === 'transfer-sent') && txn.from === 'checking') {\n          // 5.6, A20",
+    "replace": "(txn.kind === 'transfer' || txn.kind === 'transfer-sent') && txn.from === 'savings') {\n          // 5.6, A20",
     "why": "[activity] 5.2 a payment to the old card from checking can be sorted again"
   },
   {
@@ -3089,8 +3089,8 @@
   {
     "section": "4",
     "file": "packages/money/src/book.ts",
-    "find": "          now: entry.sortedTo,\n          options,",
-    "replace": "          now: { to: 'needs' as const },\n          options,",
+    "find": "          now: entry.sortedTo,\n          marked: null,\n          options,",
+    "replace": "          now: { to: 'needs' as const },\n          marked: null,\n          options,",
     "why": "[activity] 4.7 where an item is sorted now is not what the book says"
   },
   {
