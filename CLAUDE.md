@@ -440,6 +440,17 @@ This applies to every phase and every session, cloud or local.
     written, so other work can go on while it runs. Edits made after the run
     started are not tested. Files git ignores are not copied, so a copy has no
     .env (the one test that reads it skips itself there).
+  - Every copy is the project as it was at the start of the run, though the
+    copies are not all made at that moment: the first is, the others after the
+    nothing-broken check, which can take minutes. So the run pins the commit
+    once (its id, not "HEAD"), copies the files that differ from it into a
+    folder of its own in the run's temp folder once, and notes the list of
+    packages once, all at the start; every copy is built from that and never
+    reads the project folder again. An edit, a new file, a deleted file, or a
+    commit made in the project during the check is in no copy (before this, the
+    later copies read the project as it was by then: a mix of old and new code
+    that never existed, or a crash on a file deleted meanwhile). node_modules
+    itself is still linked when each copy is made; it is not code under test.
   - `--workers N` sets the number of workers; the default is the number of
     cores minus 2 (14 on this PC). `--workers 1` is one break at a time. The
     nothing-broken check runs once, alone, in the first copy, before the other
@@ -482,11 +493,11 @@ This applies to every phase and every session, cloud or local.
     tests failing, many of them waiting out timeouts. Use a smaller
     `--workers` if the PC is needed for something else.
   - The script's own tests: test/break-it.test.ts, on a made-up project (never
-    this one), 26 tests. They are skipped inside a break-it run
+    this one), 31 tests. They are skipped inside a break-it run
     (BREAK_IT_RUN=1, like SKIP_BROWSER_TESTS): no break touches them. The
-    script itself was broken on purpose 44 ways (flip the links to the
+    script itself was broken on purpose 53 ways (flip the links to the
     project, skip the files changed since the commit, share the temp folder,
-    forget to put the file back, and so on) and every one is caught by those
-    tests.
+    forget to put the file back, pin nothing at the start, and so on) and
+    every one is caught by those tests.
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.
