@@ -48,13 +48,13 @@ describe('B48 the words for a transfer with one side showing', () => {
 
 describe('section 2 14.3 the bank rules, what is missing, and the steps', () => {
   it('section 2 each kind of bank rule in a sentence', () => {
-    expect(bankRuleText({ id: 'a', account: 'checking', contains: 'payment to CRD 3333', means: 'transfer', other: 'everyday-card' })).toBe('“payment to CRD 3333” on checking: a transfer between checking and the everyday card');
-    expect(bankRuleText({ id: 'e', account: 'everyday-card', contains: 'PAYMENT - THANK YOU', means: 'transfer', other: 'checking' })).toBe('“PAYMENT - THANK YOU” on the everyday card: a transfer between the everyday card and checking');
-    expect(bankRuleText({ id: 'f', account: 'savings', contains: 'transfer from CHK', means: 'transfer', other: 'checking' })).toBe('“transfer from CHK” on savings: a transfer between savings and checking');
-    expect(bankRuleText({ id: 'g', account: 'checking', contains: 'transfer to SAV', means: 'transfer', other: 'savings' })).toBe('“transfer to SAV” on checking: a transfer between checking and savings');
-    expect(bankRuleText({ id: 'b', account: 'checking', contains: 'Zelle payment to', means: 'payment-to-person' })).toBe('“Zelle payment to” on checking: a payment to a person');
-    expect(bankRuleText({ id: 'c', account: 'everyday-card', contains: 'LATE FEE', means: 'card-fee' })).toBe('“LATE FEE” on the everyday card: a card fee');
-    expect(bankRuleText({ id: 'd', account: 'old-card', contains: 'INTEREST CHARGE', means: 'card-interest' })).toBe('“INTEREST CHARGE” on the old card: card interest');
+    expect(bankRuleText({ account: 'checking', contains: 'payment to CRD 3333', means: 'transfer', other: 'everyday-card' })).toBe('“payment to CRD 3333” on checking: a transfer between checking and the everyday card');
+    expect(bankRuleText({ account: 'everyday-card', contains: 'PAYMENT - THANK YOU', means: 'transfer', other: 'checking' })).toBe('“PAYMENT - THANK YOU” on the everyday card: a transfer between the everyday card and checking');
+    expect(bankRuleText({ account: 'savings', contains: 'transfer from CHK', means: 'transfer', other: 'checking' })).toBe('“transfer from CHK” on savings: a transfer between savings and checking');
+    expect(bankRuleText({ account: 'checking', contains: 'transfer to SAV', means: 'transfer', other: 'savings' })).toBe('“transfer to SAV” on checking: a transfer between checking and savings');
+    expect(bankRuleText({ account: 'checking', contains: 'Zelle payment to', means: 'payment-to-person' })).toBe('“Zelle payment to” on checking: a payment to a person');
+    expect(bankRuleText({ account: 'everyday-card', contains: 'LATE FEE', means: 'card-fee' })).toBe('“LATE FEE” on the everyday card: a card fee');
+    expect(bankRuleText({ account: 'old-card', contains: 'INTEREST CHARGE', means: 'card-interest' })).toBe('“INTEREST CHARGE” on the old card: card interest');
   });
 
   it('A25 how far back setup day looks, in words, and the days as typed', () => {

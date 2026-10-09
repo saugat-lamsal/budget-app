@@ -11,7 +11,7 @@ import { centsAt, openScenario, untilQuiet } from './harness.js';
 // a twin of a made-up life's setup desk to compare with, and doing what a
 // person does on each step.
 
-export type SetupStepName = 'bank' | 'transfers' | 'paycheck' | 'assign' | 'check';
+export type SetupStepName = 'bank' | 'rules' | 'transfers' | 'paycheck' | 'assign' | 'check';
 
 // Opens one step of a life not set up yet, the life started over.
 export async function openSetup(context: BrowserContext, base: string, life: string, step: SetupStepName): Promise<Page> {

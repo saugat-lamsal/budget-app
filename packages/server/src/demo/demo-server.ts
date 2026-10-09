@@ -1,5 +1,7 @@
 import type { IncomingMessage, Server } from 'node:http';
-import { DEFAULT_SETTINGS, type IsoDate } from '@budget-app/money';
+import { DEFAULT_SETTINGS, type Book, type IsoDate } from '@budget-app/money';
+import { BankRulesDesk } from '../bank-rules-desk.js';
+import { RECENT_DAYS, bankLinesOf } from '../bank-rules.js';
 import { ChoiceDesk } from '../choices.js';
 import { createAppServer, send } from '../http/server.js';
 import { activityView } from '../views/activity.js';
@@ -10,8 +12,8 @@ import { reviewView } from '../views/review.js';
 import { SetupDesk } from '../setup-desk.js';
 import { settingsView } from '../views/settings.js';
 import { NO_ANSWERS, SETUP_LOOK_BACK_DAYS, setupView } from '../setup-view.js';
-import { madeUpHistory } from './made-up-bank.js';
-import { DEMO_SCENARIOS, SETUP_SCENARIOS, demoScenario, type DemoScenario } from './scenarios.js';
+import { madeUpHistory, madeUpLines } from './made-up-bank.js';
+import { DEMO_BANK_RULES, DEMO_SCENARIOS, SETUP_SCENARIOS, demoScenario, madeUpFeed, type DemoScenario } from './scenarios.js';
 
 // The screens on made-up data only (Phase 4). /demo lists the made-up
 // lives; picking one remembers it in a cookie and opens Home. Nothing here
@@ -27,9 +29,15 @@ export function createDemoServer(options: { readonly webRoot: string; readonly o
     if (live === undefined) {
       if (scenario.input === null) throw new Error('made-up failure, for the demo');
       const input = scenario.input();
+      // The bank rules are kept per life, and read with Setup day and
+      // Settings alike (section 2, 24c).
+      const holder: { live?: Live } = {};
+      const bankRules = demoBankRulesDesk(scenario, input.today, () => holder.live?.input.book ?? null, input.book);
       // A life not set up yet does setup day on its made-up bank (section 14).
-      const setup = demoSetupDesk(scenario, input.today);
-      lives.set(scenario.name, (live = { input, seen: new Set(), desk: input.book === null ? null : new ChoiceDesk(input.book, () => input.today), setup }));
+      const setup = demoSetupDesk(scenario, input.today, bankRules);
+      live = { input, seen: new Set(), desk: input.book === null ? null : new ChoiceDesk(input.book, () => input.today), setup, bankRules };
+      holder.live = live;
+      lives.set(scenario.name, live);
     }
     return live;
   };
@@ -75,7 +83,8 @@ export function createDemoServer(options: { readonly webRoot: string; readonly o
     },
     settings: async (request) => {
       const { input } = await wait(scenarioOf(request));
-      return settingsView({ today: input.today, book: input.book, bank: input.bank, madeUpData: input.madeUpData });
+      const { bankRules } = liveOf(scenarioOf(request));
+      return settingsView({ today: input.today, book: input.book, bank: input.bank, madeUpData: input.madeUpData, bankRules: { rules: bankRules.rules(), log: bankRules.log(), recentDays: RECENT_DAYS } });
     },
     settingsChange: (request, change) => {
       const { desk } = liveOf(scenarioOf(request));
@@ -109,6 +118,13 @@ export function createDemoServer(options: { readonly webRoot: string; readonly o
         live.desk = new ChoiceDesk(started.book, () => today);
       }
       return response;
+    },
+    bankRule: (request, change) => {
+      const live = liveOf(scenarioOf(request));
+      // On Setup day, its desk takes it, so the transfers step follows (24c).
+      if (live.setup !== null) return live.setup.bankRule(change);
+      if (live.input.book === null) return { ok: false, code: 'refused', why: 'There is no bank connection yet. Nothing was changed.' };
+      return live.bankRules.decide(change);
     },
     seen: (request, what) => {
       const live = liveOf(scenarioOf(request));
@@ -148,15 +164,36 @@ interface Live {
   readonly seen: Set<string>;
   desk: ChoiceDesk | null;
   readonly setup: SetupDesk | null;
+  readonly bankRules: BankRulesDesk;
 }
 
 // The setup desk of a made-up life not set up yet, on its made-up bank, with
 // the settings tracking starts with (section 2: the paycheck rule and the
 // mom rule are not set yet). Null for a life that has no bank to set up from.
 // Tests make their twin of a life with this too.
-export function demoSetupDesk(scenario: DemoScenario, today: IsoDate): SetupDesk | null {
+export function demoSetupDesk(scenario: DemoScenario, today: IsoDate, bankRules?: BankRulesDesk): SetupDesk | null {
   if (scenario.setup === undefined) return null;
-  return new SetupDesk({ bank: madeUpHistory(scenario.setup()), today: () => today, settings: DEFAULT_SETTINGS, halvesWithinDays: SETUP_LOOK_BACK_DAYS, madeUpData: true });
+  return new SetupDesk({
+    bank: madeUpHistory(scenario.setup()),
+    today: () => today,
+    settings: DEFAULT_SETTINGS,
+    halvesWithinDays: SETUP_LOOK_BACK_DAYS,
+    madeUpData: true,
+    bankRules: bankRules ?? demoBankRulesDesk(scenario, today, () => null),
+  });
+}
+
+// The bank rules of a made-up life, kept in memory (section 2, 24c): a life
+// not set up yet starts with its made-up bank's rules and history; a life
+// that is tracking, with the rules its made-up bank came with and what that
+// bank sent its book. bookOf gives the life's book once it has one, for
+// placing each change in the change log; made, the book the life began with
+// (made again from the life when not given). Tests make their twin with this too.
+export function demoBankRulesDesk(scenario: DemoScenario, today: IsoDate, bookOf: () => Book | null, made?: Book | null): BankRulesDesk {
+  const bank = scenario.setup === undefined ? null : madeUpHistory(scenario.setup());
+  const book = bank !== null ? null : made !== undefined ? made : (scenario.input?.().book ?? null);
+  const lines = bank !== null ? bankLinesOf(bank) : book === null ? [] : madeUpLines(madeUpFeed(book));
+  return new BankRulesDesk({ rules: bank?.rules ?? (book === null ? [] : DEMO_BANK_RULES), lines: () => lines, today: () => today, bookLines: () => bookOf()?.changeLog().length ?? 0 });
 }
 
 // Where the demo listens: this computer only, unless --wifi.

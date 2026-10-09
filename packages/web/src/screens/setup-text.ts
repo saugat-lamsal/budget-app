@@ -1,5 +1,5 @@
 import type { AccountId } from '@budget-app/money';
-import type { BankRule, HalfLine, SetupMissing } from '@budget-app/server/views';
+import type { BankRuleSpec, HalfLine, SetupMissing } from '@budget-app/server/views';
 import { shortDate } from '../ui/dates.js';
 
 // Words on the Setup day screens (rulebook section 14). Every amount comes
@@ -36,11 +36,11 @@ export function answerText(onItsWay: boolean | null): string {
 }
 
 // Section 2: a bank rule, in a sentence.
-export function bankRuleText(rule: BankRule): string {
+export function bankRuleText(rule: BankRuleSpec): string {
   const on = `“${rule.contains}” on ${accountPhrase(rule.account)}`;
   switch (rule.means) {
     case 'transfer':
-      return `${on}: a transfer between ${accountPhrase(rule.account)} and ${accountPhrase(rule.other)}`;
+      return rule.other === undefined ? `${on}: a transfer` : `${on}: a transfer between ${accountPhrase(rule.account)} and ${accountPhrase(rule.other)}`;
     case 'payment-to-person':
       return `${on}: a payment to a person`;
     case 'card-fee':
@@ -53,6 +53,8 @@ export function bankRuleText(rule: BankRule): string {
 // 14.3: what still stops tracking from starting, in words.
 export function missingText(missing: SetupMissing, unanswered: number): string {
   switch (missing) {
+    case 'suggestions':
+      return 'Add, change, or skip each suggested bank rule.';
     case 'halves':
       return `Say whether ${unanswered === 1 ? 'the transfer is' : `each of ${unanswered} transfers is`} on its way.`;
     case 'last-paycheck':

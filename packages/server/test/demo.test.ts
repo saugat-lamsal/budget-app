@@ -347,6 +347,8 @@ describe('the demo is made-up data only', () => {
     // connection reads a real one: bank/ and sync/plan.ts read Plaid's
     // format, and nothing there opens the database or calls the bank.
     expect(files.sort()).toEqual([
+      'bank-rules-desk.ts',
+      'bank-rules.ts',
       'bank/amounts.ts',
       'bank/balances.ts',
       'bank/plaid-item.ts',
@@ -366,6 +368,7 @@ describe('the demo is made-up data only', () => {
       'setup-view.ts',
       'sync/plan.ts',
       'views/activity.ts',
+      'views/bank-rules.ts',
       'views/buckets.ts',
       'views/choice.ts',
       'views/home.ts',

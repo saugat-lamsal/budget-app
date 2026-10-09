@@ -5,6 +5,7 @@ import type { Pot } from '@budget-app/money';
 import { parseRequest } from '../choices.js';
 import { POT_SLUGS, potOfSlug, type ActivityView } from '../views/activity.js';
 import type { BucketsView } from '../views/buckets.js';
+import type { BankRuleRequest, BankRuleResponse } from '../views/bank-rules.js';
 import type { ChoiceRequest, ChoiceResponse, MoveRequest, MoveResponse, RuleRequest, RuleResponse, SettingsRequest, SettingsResponse, SetupRequest, SetupResponse } from '../views/choice.js';
 import type { HomeView } from '../views/home.js';
 import type { PaydayView } from '../views/payday.js';
@@ -27,7 +28,7 @@ export const SCREEN_PATHS: readonly string[] = ['/payday', ...Object.keys(POT_SL
 
 // The Setup day screens, one address per step (section 14). They get the app
 // too. Must match packages/web/src/app/routes.ts (a test checks).
-export const SETUP_PATHS: readonly string[] = ['bank', 'transfers', 'paycheck', 'assign', 'check'].map((step) => `/setup/${step}`);
+export const SETUP_PATHS: readonly string[] = ['bank', 'rules', 'transfers', 'paycheck', 'assign', 'check'].map((step) => `/setup/${step}`);
 
 export interface AppServerOptions {
   // The built screens (packages/web/dist).
@@ -64,6 +65,9 @@ export interface AppServerOptions {
   // math decides; starting to track asks first. Without them, none can be sent.
   readonly setupView?: (request: IncomingMessage) => SetupView | Promise<SetupView>;
   readonly setup?: SetupHandler;
+  // His change to the bank rules (section 2, 24c), on Setup day or Settings.
+  // It asks first, with what the rule would match. Without it, none can be sent.
+  readonly bankRule?: BankRuleHandler;
 }
 
 export type Seen = { readonly kind: 'bank-took-back'; readonly id: string };
@@ -73,6 +77,7 @@ export type MoveHandler = (request: IncomingMessage, move: MoveRequest) => MoveR
 export type SettingsHandler = (request: IncomingMessage, change: SettingsRequest) => SettingsResponse | Promise<SettingsResponse>;
 export type RuleHandler = (request: IncomingMessage, change: RuleRequest) => RuleResponse | Promise<RuleResponse>;
 export type SetupHandler = (request: IncomingMessage, answer: SetupRequest) => SetupResponse | Promise<SetupResponse>;
+export type BankRuleHandler = (request: IncomingMessage, change: BankRuleRequest) => BankRuleResponse | Promise<BankRuleResponse>;
 
 // What handles each kind of request sent to /api/choice.
 interface ChoiceHandlers {
@@ -81,6 +86,7 @@ interface ChoiceHandlers {
   readonly settingsChange: SettingsHandler | undefined;
   readonly ruleChange: RuleHandler | undefined;
   readonly setup: SetupHandler | undefined;
+  readonly bankRule: BankRuleHandler | undefined;
 }
 
 // The most a "seen" request may carry; the real one is under 100 bytes.
@@ -168,7 +174,9 @@ async function takeChoice(request: IncomingMessage, response: ServerResponse, ha
           ? await handlers.ruleChange?.(request, parsed)
           : 'setup' in parsed
             ? await handlers.setup?.(request, parsed)
-            : await handlers.choice?.(request, parsed);
+            : 'bankRule' in parsed
+              ? await handlers.bankRule?.(request, parsed)
+              : await handlers.choice?.(request, parsed);
   if (answer === undefined) {
     send(response, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'not-found' }), 'no-store');
     return;
@@ -239,7 +247,7 @@ export function createAppServer(options: AppServerOptions): Server {
     }
     // His choices, moves, and changes to the settings: they change the app's
     // books, never the bank (0.4).
-    const handlers: ChoiceHandlers = { choice: options.choice, move: options.move, settingsChange: options.settingsChange, ruleChange: options.ruleChange, setup: options.setup };
+    const handlers: ChoiceHandlers = { choice: options.choice, move: options.move, settingsChange: options.settingsChange, ruleChange: options.ruleChange, setup: options.setup, bankRule: options.bankRule };
     if (path === '/api/choice' && Object.values(handlers).some((handler) => handler !== undefined)) {
       if (request.method !== 'POST') {
         response.setHeader('Allow', 'POST');

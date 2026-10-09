@@ -1,5 +1,6 @@
 import type { AccountId, Cents, IsoDate, SelfCheck, StartingPots } from '@budget-app/money';
 import type { BankRule } from '../bank/reading.js';
+import type { SuggestionLine } from './bank-rules.js';
 
 export type { BankRule } from '../bank/reading.js';
 
@@ -53,7 +54,7 @@ export interface HalfLine {
 }
 
 // What still stops tracking from starting, in the order of the steps.
-export type SetupMissing = 'halves' | 'last-paycheck' | 'assignment';
+export type SetupMissing = 'suggestions' | 'halves' | 'last-paycheck' | 'assignment';
 
 export interface SetupReadyView {
   readonly state: 'not-set-up';
@@ -69,7 +70,11 @@ export interface SetupReadyView {
   readonly oldCard: { readonly posted: Cents; readonly pending: Cents; readonly debt: Cents };
   // 12.1: checking + savings - everyday card, pending charges included.
   readonly bankSide: Cents;
-  // Step 2, B48: halves of transfers from the last halvesWithinDays days.
+  // Step 2, 20a: bank rules suggested from the bank's labels, with his
+  // answers, and how many still wait for one.
+  readonly suggestions: readonly SuggestionLine[];
+  readonly unansweredSuggestions: number;
+  // Step 3, B48: halves of transfers from the last halvesWithinDays days.
   readonly halves: readonly HalfLine[];
   readonly halvesWithinDays: number;
   readonly unanswered: number;
@@ -77,18 +82,18 @@ export interface SetupReadyView {
   readonly inTransit: Cents;
   // 14.2: the bank side plus what is on its way.
   readonly startingMoney: Cents;
-  // Step 3, B42: his last paycheck, and the payday it gives (11.2).
+  // Step 4, B42: his last paycheck, and the payday it gives (11.2).
   readonly lastPaycheck: { readonly date: IsoDate; readonly nextPayday: IsoDate; readonly daysToPayday: number } | null;
   readonly payScheduleDays: number;
-  // Step 4, 14.2: what he has given each bucket, and what is left.
+  // Step 5, 14.2: what he has given each bucket, and what is left.
   readonly assignment: StartingPots;
   readonly assigned: Cents;
   readonly leftToAssign: Cents;
-  // Step 5, 14.3.
+  // Step 6, 14.3.
   readonly missing: readonly SetupMissing[];
   // The self-check tracking would start with; null until nothing is missing.
   readonly selfCheck: SelfCheck | null;
-  // Section 2: the bank rules that read the history, as they are.
+  // Section 2: the bank rules that read the history, as they are now (24c).
   readonly bankRules: readonly BankRule[];
   // Names exactly this last look. His yes to starting carries it.
   readonly key: string;

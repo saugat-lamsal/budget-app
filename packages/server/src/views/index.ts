@@ -8,3 +8,4 @@ export * from './payday.js';
 export type * from './choice.js';
 export * from './settings.js';
 export * from './setup.js';
+export type * from './bank-rules.js';

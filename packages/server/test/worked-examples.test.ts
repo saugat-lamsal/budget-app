@@ -8,7 +8,9 @@ import { checkBankRules } from '../src/bank/reading.js';
 import { connectTestBank } from '../src/connect.js';
 import { TokenBox } from '../src/crypto/token-box.js';
 import { openDatabase } from '../src/db/database.js';
-import { loadBook, readAccounts, setAccountRoles, setBankRules } from '../src/db/store.js';
+import { bankLinesIn, changeBankRuleIn } from '../src/bank-rules-db.js';
+import { matchesOf } from '../src/bank-rules.js';
+import { loadBook, readAccounts, readBankRules, readItems, setAccountRoles, setBankRules } from '../src/db/store.js';
 import { memoryLog } from '../src/log.js';
 import { PlaidClient } from '../src/plaid/client.js';
 import { plaidKeysFromEnv } from '../src/plaid/sandbox-lock.js';
@@ -151,5 +153,34 @@ describe('worked examples: reading the bank', () => {
     const alerts = b.takeAlerts({ bankConnection: 'ok', bankBalances: balances });
     expect(alerts.reduce((sum, a) => sum + (a.kind === 'bank-took-back' ? a.amount : 0), 0)).toBe(checks.get('taken back'));
     expect(status.attention).toEqual([]);
+  });
+
+  it('example 4, a bank rule added after setup day reads what comes next (section 2, 24c)', async () => {
+    const h = await tracking();
+    h.fake.addPosted({ id: 'gym-1', account: ACCOUNT_IDS.checking, amount: 4_000, date: '2026-10-02', description: 'MADE UP GYM' });
+    await h.sync('2026-10-02');
+    const spec = { account: 'checking' as const, contains: 'MADE UP GYM', means: 'payment-to-person' as const };
+    // What Settings shows before his yes: what it would have matched lately.
+    const preview = matchesOf(spec, readBankRules(h.db), bankLinesIn(h.db), { today: '2026-10-03', recentOnly: true });
+    expect(preview.count).toBe(1);
+    expect(changeBankRuleIn(h.db, { add: spec }, '2026-10-03').ok).toBe(true);
+    h.fake.addPosted({ id: 'gym-2', account: ACCOUNT_IDS.checking, amount: 4_000, date: '2026-10-04', description: 'MADE UP GYM' });
+    await h.sync('2026-10-04');
+    const checks = checksOf(4);
+    const items = readItems(h.db);
+    expect([items.get('gym-1')?.kind, items.get('gym-2')?.kind]).toEqual(['purchase', 'payment-to-person']);
+    const b = book(h);
+    const waiting = b.reviewItems();
+    expect(waiting.map((i) => i.id)).toEqual(['gym-1', 'gym-2']);
+    const amountOf = (id: string): Cents | undefined => {
+      const item = waiting.find((i) => i.id === id);
+      return item !== undefined && 'amount' in item ? item.amount : undefined;
+    };
+    expect(amountOf('gym-1')).toBe(checks.get('first gym payment'));
+    expect(amountOf('gym-2')).toBe(checks.get('second gym payment'));
+    expect(b.pots().unsortedOut).toBe(checks.get('unsorted spending'));
+    const status = bankStatus(h.db);
+    expect(status.selfCheck?.bankSide).toBe(checks.get('bank side'));
+    expect(status.selfCheck?.difference).toBe(checks.get('difference'));
   });
 });

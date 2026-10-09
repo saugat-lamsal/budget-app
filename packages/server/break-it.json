@@ -849,8 +849,8 @@
   {
     "section": "review",
     "file": "packages/server/src/http/server.ts",
-    "find": "'move' in parsed\n      ? await handlers.move?.(request, parsed)\n      : 'settings' in parsed\n        ? await handlers.settingsChange?.(request, parsed)\n        : 'rule' in parsed\n          ? await handlers.ruleChange?.(request, parsed)\n          : 'setup' in parsed\n            ? await handlers.setup?.(request, parsed)\n            : await handlers.choice?.(request, parsed);",
-    "replace": "'move' in parsed\n      ? await handlers.choice?.(request, parsed as never)\n      : 'settings' in parsed\n        ? await handlers.settingsChange?.(request, parsed)\n        : 'rule' in parsed\n          ? await handlers.ruleChange?.(request, parsed)\n          : 'setup' in parsed\n            ? await handlers.setup?.(request, parsed)\n            : await handlers.move?.(request, parsed as never);",
+    "find": "'move' in parsed\n      ? await handlers.move?.(request, parsed)\n      : 'settings' in parsed\n        ? await handlers.settingsChange?.(request, parsed)\n        : 'rule' in parsed\n          ? await handlers.ruleChange?.(request, parsed)\n          : 'setup' in parsed\n            ? await handlers.setup?.(request, parsed)\n            : 'bankRule' in parsed\n              ? await handlers.bankRule?.(request, parsed)\n              : await handlers.choice?.(request, parsed);",
+    "replace": "'move' in parsed\n      ? await handlers.choice?.(request, parsed as never)\n      : 'settings' in parsed\n        ? await handlers.settingsChange?.(request, parsed)\n        : 'rule' in parsed\n          ? await handlers.ruleChange?.(request, parsed)\n          : 'setup' in parsed\n            ? await handlers.setup?.(request, parsed)\n            : 'bankRule' in parsed\n              ? await handlers.bankRule?.(request, parsed)\n              : await handlers.move?.(request, parsed as never);",
     "why": "[activity] B103 moves and choices go to each other's handler"
   },
   {
@@ -1248,8 +1248,8 @@
   {
     "section": "setup",
     "file": "packages/server/src/http/server.ts",
-    "find": "          : 'setup' in parsed\n            ? await handlers.setup?.(request, parsed)\n            : await handlers.choice?.(request, parsed);",
-    "replace": "          : await handlers.choice?.(request, parsed as never);",
+    "find": "          : 'setup' in parsed\n            ? await handlers.setup?.(request, parsed)\n            : 'bankRule' in parsed",
+    "replace": "          : 'setup' in parsed\n            ? await handlers.choice?.(request, parsed as never)\n            : 'bankRule' in parsed",
     "why": "[setup] setup answers go to the choice desk"
   },
   {
@@ -1269,8 +1269,8 @@
   {
     "section": "setup",
     "file": "packages/server/src/setup-desk.ts",
-    "find": "const onItsWay = new Map([...this.#answers.onItsWay].filter(([half]) => asked.some((h) => h.id === half)));",
-    "replace": "const onItsWay = new Map(this.#answers.onItsWay);",
+    "find": "this.#answers = { ...this.#answers, onItsWay: new Map([...this.#answers.onItsWay].filter(([half]) => asked.has(half))) };",
+    "replace": "this.#answers = { ...this.#answers, onItsWay: new Map(this.#answers.onItsWay) };",
     "why": "[a25] A25 keep answers about transfers it no longer asks about"
   },
   {
@@ -1293,5 +1293,159 @@
     "find": "if (days === view.halvesWithinDays) return refuse('refused', 'That is already the setting');",
     "replace": "if (days === -1) return refuse('refused', 'That is already the setting');",
     "why": "[a25] A25 the same number again is not refused"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "if (out && label === 'BANK_FEES_INTEREST_CHARGE') return { means: 'card-interest' };",
+    "replace": "if (out && label === 'BANK_FEES_INTEREST_CHARGE') return { means: 'card-fee' };",
+    "why": "[bank-rules] 20a suggest interest as a fee"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "o.account !== l.account && o.amount === -l.amount",
+    "replace": "o.account !== l.account && o.amount === l.amount",
+    "why": "[bank-rules] 20a pair a transfer with money going the same way"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "other: read.find((o) => o.other !== null && sameKind(o, r))?.other ?? null",
+    "replace": "other: null",
+    "why": "[bank-rules] 20a one on its way never takes the other account of one like it"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "return (cutInAWord ? prefix.replace(/[A-Za-z0-9]+$/, '') : prefix).trim();",
+    "replace": "return prefix.trim();",
+    "why": "[bank-rules] 20a cut the shared text in the middle of a word"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "(since === null || daysBetween(since, l.date) >= 0)",
+    "replace": "(since === null || daysBetween(since, l.date) > 0)",
+    "why": "[bank-rules] 24c leave out the day exactly 90 days back"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "if (before !== null && before.id !== options.replacing) takenFromLater += 1;",
+    "replace": "if (before !== null) takenFromLater += 1;",
+    "why": "[bank-rules] A27 count what a changed rule read before as taken from another"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "shown.sort((a, b) => daysBetween(a.date, b.date) || a.id.localeCompare(b.id));",
+    "replace": "shown.sort((a, b) => daysBetween(b.date, a.date) || a.id.localeCompare(b.id));",
+    "why": "[bank-rules] section 2 show the oldest matches, not the newest"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "if (isCard(spec.account) && isCard(spec.other)) return 'Money reaches a card from checking or savings';",
+    "replace": "if (spec.account === 'old-card' && spec.other === 'everyday-card') return 'Money reaches a card from checking or savings';",
+    "why": "[bank-rules] section 2 let money reach the old card from the everyday card"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "if (contains.length > MAX_RULE_TEXT) return",
+    "replace": "if (contains.length >= MAX_RULE_TEXT) return",
+    "why": "[bank-rules] section 2 refuse a text of exactly 200 characters"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "a.contains.trim().toLowerCase() === b.contains.trim().toLowerCase()",
+    "replace": "a.contains.trim() === b.contains.trim()",
+    "why": "[bank-rules] section 2 take the same rule twice when only the case differs"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "rules: rules.map((r) => (r.id === before.id ? rule : r)), rule, before };",
+    "replace": "rules: [...rules.filter((r) => r.id !== before.id), rule], rule, before };",
+    "why": "[bank-rules] 24c a changed rule moves to the end"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules-desk.ts",
+    "find": "if (request.confirmed !== true || request.seen !== preview.key) {",
+    "replace": "if (request.confirmed !== true || request.seen === undefined) {",
+    "why": "[bank-rules] 24c a yes to an old preview goes through"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules-desk.ts",
+    "find": "    if (tried.action === 'added') this.#issued += 1;\n",
+    "replace": "",
+    "why": "[bank-rules] section 2 hand out the same id again"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules-desk.ts",
+    "find": "afterBookLines: this.#input.bookLines() }));",
+    "replace": "afterBookLines: 0 }));",
+    "why": "[bank-rules] 13.5 put every bank rule change before the book's in the log"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-desk.ts",
+    "find": "    if (view.missing.includes('suggestions')) return refuse('refused', 'Answer each suggested bank rule first');\n",
+    "replace": "",
+    "why": "[bank-rules] 20a start tracking with suggestions not answered"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-desk.ts",
+    "find": "      if (shown.means === 'transfer' && shown.other === null) return refuse('refused', 'Pick the account it is with first: change it');\n",
+    "replace": "",
+    "why": "[bank-rules] 20a add a transfer with no other account as it is"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-view.ts",
+    "find": "const added = answer !== undefined && answer.answer !== 'skipped' && bank.rules.some((r) => r.id === answer.ruleId);",
+    "replace": "const added = answer !== undefined && answer.answer !== 'skipped';",
+    "why": "[bank-rules] 20a a suggestion whose rule was removed still says added"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-desk.ts",
+    "find": "    if (answer.ok && !answer.replayed) this.#dropAnswersNotAsked();\n",
+    "replace": "",
+    "why": "[bank-rules] 24c keep answers about transfers a rule change no longer asks about"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/views/settings.ts",
+    "find": "  rows.push(...bankRows(0));\n",
+    "replace": "",
+    "why": "[bank-rules] 13.5 leave Setup day's bank rule changes out of the log"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules-db.ts",
+    "find": "    logChange(db, date, WHAT[done.action], {",
+    "replace": "    if (done.action !== 'added') logChange(db, date, WHAT[done.action], {",
+    "why": "[bank-rules] 13.5 the database does not log a new bank rule"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/choices.ts",
+    "find": "  if (other !== undefined && !isAccount(other)) return null;\n",
+    "replace": "",
+    "why": "[bank-rules] section 2 read a transfer with an account that is not his"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/http/server.ts",
+    "find": "              ? await handlers.bankRule?.(request, parsed)",
+    "replace": "              ? await handlers.choice?.(request, parsed as never)",
+    "why": "[bank-rules] section 2 bank rule changes go to the choice desk"
   }
 ]

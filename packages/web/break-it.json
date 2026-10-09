@@ -1458,8 +1458,8 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Setup.tsx",
-    "find": "        <Money cents={view.startingMoney} hero testId=\"starting-money\" />\n      </Hero>\n      <Card title=\"How far back\"",
-    "replace": "        <Money cents={view.bankSide} hero testId=\"starting-money\" />\n      </Hero>\n      <Card title=\"How far back\"",
+    "find": "        <Money cents={view.startingMoney} hero testId=\"starting-money\" />\n      </Hero>\n      {view.missing.includes('suggestions') && (",
+    "replace": "        <Money cents={view.bankSide} hero testId=\"starting-money\" />\n      </Hero>\n      {view.missing.includes('suggestions') && (",
     "why": "[setup] B48 the starting money on Transfers leaves out what is on its way"
   },
   {
@@ -1517,5 +1517,40 @@
     "find": "void sender.send({ lookBack: days }, { inSheet: true })",
     "replace": "void sender.send({ lookBack: days + 1 }, { inSheet: true })",
     "why": "[a25] A25 the sheet sends one day more than typed"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/bank-rules-text.ts",
+    "find": "return ACCOUNTS.filter((a) => a !== account && (!isCard(account) || !isCard(a)));",
+    "replace": "return ACCOUNTS.filter((a) => a !== account);",
+    "why": "[bank-rules] section 2 offer a card as the other side of a card's transfer"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/bank-rules-text.ts",
+    "find": "if (m.readFirstByEarlier > 0) parts.push(",
+    "replace": "if (m.readFirstByEarlier > 1) parts.push(",
+    "why": "[bank-rules] A27 say nothing when one is read first by another rule"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/bank-rules-text.ts",
+    "find": "return recentDays === null ? `It matches ${items(m.count)} in your history.` : `It would have matched ${items(m.count)} in the last ${recentDays} days.`;",
+    "replace": "return `It matches ${items(m.count)} in your history.`;",
+    "why": "[bank-rules] 24c say the whole history when it is the last 90 days"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "key={`bank-${opened}`}",
+    "replace": "key={opened}",
+    "why": "[bank-rules] section 2 the bank rule sheet shares its key with the settings sheet"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Setup.tsx",
+    "find": "onClick={() => void sender.send({ suggestion: { id: s.id, answer: 'add' } })}",
+    "replace": "onClick={() => void sender.send({ suggestion: { id: s.id, answer: 'skip' } })}",
+    "why": "[bank-rules] 20a Add this rule sends skip"
   }
 ]

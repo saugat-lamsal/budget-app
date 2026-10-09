@@ -138,7 +138,7 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 12. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 13. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
@@ -148,7 +148,8 @@ This applies to every phase and every session, cloud or local.
   6.1, 13.2), section 23 his answers after the bucket lists, hand moves
   and Payday review (A20: rule 5.6; the Payday card's reason: rule 3.4),
   section 24 his answers after the Settings screen (A21 to A24: rules
-  5.6, 13.1, 13.2, and the bank rules in section 2).
+  5.6, 13.1, 13.2, and the bank rules in section 2), section 25 his
+  answers after Setup day (A25, A26: section 2, 4.5, 14.2).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -734,5 +735,60 @@ This applies to every phase and every session, cloud or local.
   - Break-it: new breaks tagged "[setup]" (money sections 11 and 14, server
     section "setup", screens section "home"); 17 older breaks whose code
     moved were pointed at it again.
-- Waiting on: the promo end date for the old card. Only the payoff countdown
+- PR #15 merged (Oct 9, 2026).
+- His answers to A25 and A26, and bank rules (Step 1 of the chunk): built
+  Oct 9, 2026 on branch bank-rules, one pull request, on made-up data only.
+  Then stop, for his feedback.
+  - Its own first commit: A25 (Setup day looks back 10 days, a setting
+    changed on the transfers step) and A26 (a purchase or payment waiting in
+    review and refunded in full leaves review by itself, and comes back if
+    the bank takes the refund back), in the rulebook (draft 13, section 25)
+    and built test first. The simulated life covers A26 (online orders left
+    unsorted while they go back; refunds taken back; nothing waits at
+    $0.00). It also found a gap in the simulator itself (seed 233), now a
+    test. The bank rule sentence says "a transfer between checking and the
+    everyday card".
+  - What the test bank really labels each item with was checked first
+    (live/labels.live.ts, saved as test/fixtures/test-bank-labels.json):
+    Plaid's personal_finance_category. Only labels seen there suggest rules.
+  - The logic works on the bank items handed to it (packages/server/src/
+    bank-rules.ts: bankLinesOf, suggestBankRules, matchesOf, changeBankRules,
+    bankRuleProblem); bank-rules-db.ts is the thin database wrapper (rules,
+    change log lines, items). The desk (bank-rules-desk.ts) keeps the rules,
+    the log and the decision numbers in memory for the demo. Every change
+    asks first with what the rule would have matched in the last 90 days;
+    the yes names that preview. Types the phone shares: views/bank-rules.ts.
+  - Setup day has a new step 2, Bank rules (/setup/rules): suggestions from
+    the labels, each added, changed first, or skipped (SetupDesk, step
+    { suggestion }), and the rules to change. Tracking does not start while
+    one is open. Before tracking starts every step reads the history with
+    the rules as they are now; a change drops answers about transfers it no
+    longer asks about. After it, the same rules are on Settings (card "Bank
+    rules": add, change, remove; remove asks first), and each change is in
+    the change log among the book's lines, in the order made
+    (SettingsInput.bankRules; BankRuleLogLine.afterBookLines).
+  - Taps go through POST /api/choice: { bankRule: add | change | remove }
+    and { setup: { suggestion } }, parsed strictly, with decision numbers.
+    The screens still write only /api/seen and /api/choice. Shared pieces:
+    screens/bank-rules.tsx (list, matches, the sheet) and bank-rules-text.ts.
+  - Demo: the life setup-suggest starts with no bank rules (labels on its
+    made-up bank); setup-day starts with them set. Tracked lives have five
+    made-up bank rules, matched against what their made-up bank sent
+    (scenarios.ts madeUpFeed, made-up-bank.ts madeUpLines).
+  - Tests: server bank-rules (with the test bank's real labels),
+    bank-rules-desk, setup-bank-rules, views-settings-bank-rules,
+    bank-rules-db (the database and the logic agree; random histories with
+    random rules changing between syncs: nothing already read changes, and
+    the self-check passes after every sync; BANK_RULE_SCENARIOS=n, SEED=n;
+    300 passed); web bank-rules-text; browser bank-rules (Setup day and
+    Settings against a twin), design-setup and design-settings (the new step
+    and sheets). Worked examples: money 39, bank 4, screens 18 (a new line).
+  - Found while building it: the bank rule sheet on Settings and the
+    settings sheet beside it had the same React key, so Close did not close
+    it. The browser test caught it; a break keeps it caught.
+  - Break-it: new breaks tagged "[a25]", "[a26]" and "[bank-rules]"; older
+    breaks whose code moved were pointed at it again.
+  - QUESTIONS.md A27 (two bank rules that match one item) waits on his
+    answer; built as the first in the list wins, as it always was.
+- Waiting on: the promo end date for the old card, and A27. Only the payoff countdown
   (rule 9.5) depends on it.

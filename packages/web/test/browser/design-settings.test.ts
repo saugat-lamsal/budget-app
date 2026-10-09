@@ -45,6 +45,18 @@ const SHEETS: readonly (readonly [string, string, (page: Page) => Promise<void>]
     await page.getByTestId('row-promo').click();
     await page.getByTestId('sheet-clear').waitFor();
   }],
+  ['a bank rule, with Remove', 'normal', async (page) => {
+    await page.getByTestId('bank-rule-bank-rule-1').click();
+    await page.getByTestId('sheet-remove').waitFor();
+  }],
+  ['a new bank rule, asking first with what it would have matched', 'normal', async (page) => {
+    await page.getByTestId('row-add-bank-rule').click();
+    await page.getByTestId('field-bank-text').fill('ZELLE TO MADE UP');
+    await page.getByTestId('field-bank-means').selectOption('payment-to-person');
+    await page.getByTestId('sheet-save').click();
+    await page.getByTestId('confirm-ask').waitFor();
+    await untilQuiet(page);
+  }],
   ['a new rule', 'normal', async (page) => {
     await page.getByTestId('row-add-rule').click();
     await page.getByTestId('field-rule-text').fill('CORNER STORE');

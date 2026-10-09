@@ -62,6 +62,24 @@ export function readPlaidItem(raw: unknown): ReadResult {
   }
 }
 
+// Plaid's label for a transaction (personal_finance_category), as the test
+// bank really sends it: a primary label and a detailed one, such as
+// TRANSFER_OUT and TRANSFER_OUT_SAVINGS. Null when it sent none, or not in
+// that shape. Only Setup day's suggestions use it (section 2, 20a); nothing
+// about money is ever decided from it.
+export interface BankLabel {
+  readonly primary: string;
+  readonly detailed: string;
+}
+
+export function labelOf(raw: unknown): BankLabel | null {
+  const tx = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
+  const pfc = tx['personal_finance_category'];
+  if (typeof pfc !== 'object' || pfc === null) return null;
+  const { primary, detailed } = pfc as Record<string, unknown>;
+  return typeof primary === 'string' && typeof detailed === 'string' && primary !== '' && detailed !== '' ? { primary, detailed } : null;
+}
+
 function text(value: unknown, what: string): string {
   if (typeof value !== 'string') throw new BankDataError(`its ${what} is not text`);
   return value;

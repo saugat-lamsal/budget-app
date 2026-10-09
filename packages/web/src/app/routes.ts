@@ -46,11 +46,12 @@ export type Route =
 // paycheck, handing out the starting money, and a last look. Each has its own
 // address, /setup/bank and so on. The server answers each with the app
 // (packages/server/src/http/server.ts, SETUP_PATHS; a test checks).
-export const SETUP_STEPS = ['bank', 'transfers', 'paycheck', 'assign', 'check'] as const;
+export const SETUP_STEPS = ['bank', 'rules', 'transfers', 'paycheck', 'assign', 'check'] as const;
 export type SetupStepName = (typeof SETUP_STEPS)[number];
 
 export const SETUP_STEP_TITLES: Readonly<Record<SetupStepName, string>> = {
   bank: 'What the bank shows',
+  rules: 'Bank rules',
   transfers: 'Transfers on their way',
   paycheck: 'Your last paycheck',
   assign: 'Hand out your starting money',

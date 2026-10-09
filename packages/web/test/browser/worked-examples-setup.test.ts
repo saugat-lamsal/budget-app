@@ -18,6 +18,10 @@ describe.each(ENGINES)('worked examples on the Setup day screens, in %s', (_name
     got.set('old card debt', await centsAt(page, 'old-debt'));
     await page.getByTestId('next').click();
     await settled(page);
+    // Bank rules: the ones he has already read every suggestion this way, so nothing is asked (20a).
+    expect(await textAt(page, 'suggestions-left')).toBe('0');
+    await page.getByTestId('next').click();
+    await settled(page);
     for (const half of ['su-old-left', 'su-card-left', 'su-sav-landed']) await answerHalf(page, half, true);
     got.set('starting money', await centsAt(page, 'starting-money'));
     await page.getByTestId('next').click();

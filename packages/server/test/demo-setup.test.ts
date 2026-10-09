@@ -59,7 +59,7 @@ async function startOver(life: string): Promise<void> {
 
 describe('14 the demo lives not set up yet', () => {
   it('14 they are their own list, each with a made-up bank and no book', () => {
-    expect(SETUP_SCENARIOS.map((s) => s.name)).toEqual(['setup-day', 'setup-owes-more']);
+    expect(SETUP_SCENARIOS.map((s) => s.name)).toEqual(['setup-day', 'setup-suggest', 'setup-owes-more']);
     for (const s of SETUP_SCENARIOS) {
       expect(s.setup, s.name).toBeDefined();
       expect(s.input?.().book, s.name).toBeNull();

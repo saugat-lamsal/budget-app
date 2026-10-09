@@ -1,17 +1,20 @@
 import { formatDollars, parseDollars, type Cents, type Pot } from '@budget-app/money';
-import type { HalfLine, SetupReadyView, SetupResponse, SetupStep, SetupView } from '@budget-app/server/views';
+import type { HalfLine, SetupReadyView, SetupResponse, SetupStep, SetupView, SuggestionLine } from '@budget-app/server/views';
 import { useRef, useState, type ReactNode } from 'react';
 import { newDecisionId, sendChoice, type Load, type Reload } from '../app/api.js';
 import { SETUP_STEPS, SETUP_STEP_TITLES, pathOf, setupPath, type SetupStepName } from '../app/routes.js';
-import { BackLink, BottomSheet, Button, ButtonRow, Card, Decision, Hero, LinkButton, ListRow, MadeUpPill, Money, Notice, Skeleton, StateMessage, TextField } from '../ui/blocks.js';
+import { BackLink, BottomSheet, Button, ButtonRow, Card, Decision, Hero, HeroCount, LinkButton, ListRow, MadeUpPill, Money, Notice, Skeleton, StateMessage, TextField } from '../ui/blocks.js';
 import { dayWithYear, shortDate } from '../ui/dates.js';
 import { Icon } from '../ui/Icon.js';
 import { POT_NAMES } from '../ui/names.js';
+import { BankRuleRows, BankRuleSheet, Matches, type Editing, type Send } from './bank-rules.js';
+import { statusText, suggestionText } from './bank-rules-text.js';
 import { paydayText } from './home-text.js';
 import { ACCOUNT_NAMES, answerText, bankRuleText, effectLead, halfText, lookBackText, missingText, readDays, stepCount } from './setup-text.js';
 
 // Setup day (rulebook section 14), one step per screen: what the bank shows
-// today (14.1), transfers on their way (B48), the last paycheck (B42),
+// today (14.1), bank rules suggested from the bank's labels (20a), transfers
+// on their way (B48), the last paycheck (B42),
 // handing out the starting money (14.2), and a last look before tracking
 // starts (14.3). Every number comes from the server, worked out by the money
 // math; the screen only shows it. His answers go to the server one at a time
@@ -130,6 +133,7 @@ function SetupReady({ step, view, reload, onStarted }: { readonly step: SetupSte
         </Notice>
       )}
       {step === 'bank' && <BankStep view={view} />}
+      {step === 'rules' && <RulesStep view={view} sender={sender} reload={reload} />}
       {step === 'transfers' && <TransfersStep view={view} sender={sender} />}
       {step === 'paycheck' && <PaycheckStep view={view} sender={sender} />}
       {step === 'assign' && <AssignStep view={view} sender={sender} />}
@@ -223,7 +227,118 @@ function AccountFigure({ name, line, owes = false, testId }: { readonly name: st
   );
 }
 
-// Step 2, B48: each transfer with one half showing, on its way or not.
+// Step 2, 20a: bank rules suggested from the labels in the bank's history,
+// each to add, change, or skip; and the rules as they are, to change. The
+// next steps read the history with them as they are now (24c).
+function RulesStep({ view, sender, reload }: { readonly view: SetupReadyView; readonly sender: Sender; readonly reload: Reload }) {
+  const [editing, setEditing] = useState<{ readonly editing: Editing; readonly suggestion: string | null } | null>(null);
+  // Each opening of the sheet is a new sheet, filled in as things are then.
+  const [opened, setOpened] = useState(0);
+  const open = (e: { readonly editing: Editing; readonly suggestion: string | null }): void => {
+    setOpened((n) => n + 1);
+    setEditing(e);
+  };
+  const suggestion = editing?.suggestion ?? null;
+  const send: Send = async (id, change, yes) => {
+    const ok = yes === undefined ? {} : { confirmed: true, seen: yes.seen };
+    try {
+      // A suggestion changed before it is added is his answer to it (20a).
+      if (suggestion !== null && 'add' in change) return await sendChoice({ id, setup: { suggestion: { id: suggestion, answer: 'change', rule: change.add } }, ...ok });
+      return await sendChoice({ id, bankRule: change, ...ok });
+    } catch {
+      return 'failed';
+    }
+  };
+  const left = view.unansweredSuggestions;
+  return (
+    <>
+      <Hero label="Suggestions to answer" sub={view.suggestions.length === 0 ? 'Nothing to suggest.' : left === 0 ? 'Every suggestion is answered.' : 'Add, change, or skip each one.'} testId="setup-hero">
+        <HeroCount count={left} testId="suggestions-left" />
+      </Hero>
+      <Card title="Suggested from your bank’s labels" testId="suggestions">
+        <p className="card__note">Your bank labels each item. From those labels, these rules would tell your transfers, payments to people, and card fees from purchases. Nothing is assumed: each one is yours to add, change, or skip.</p>
+        {view.suggestions.length === 0 ? (
+          <p className="card__note" data-testid="suggestions-none">
+            Nothing in your history has a label to suggest a rule from.
+          </p>
+        ) : (
+          view.suggestions.map((s) => (
+            <SuggestionDecision
+              key={s.id}
+              s={s}
+              sender={sender}
+              onChange={() => open({ editing: { start: { account: s.account, contains: s.contains, means: s.means, ...(s.other === null ? {} : { other: s.other }) }, title: 'Change it first' }, suggestion: s.id })}
+            />
+          ))
+        )}
+      </Card>
+      <Card title="Your bank rules" testId="setup-bank-rules">
+        {view.bankRules.length === 0 ? (
+          <p className="card__note" data-testid="bank-rules-none">
+            None yet.
+          </p>
+        ) : (
+          <BankRuleRows rules={view.bankRules} onOpen={(rule) => open({ editing: { rule }, suggestion: null })} />
+        )}
+        <ListRow icon="settings" title="Add a bank rule" onClick={() => open({ editing: { start: null, title: 'New bank rule' }, suggestion: null })} testId="row-add-bank-rule" />
+        <p className="card__note">The first rule that fits wins. The next steps read your history with these rules as they are now; Settings can change them later.</p>
+      </Card>
+      {editing !== null && (
+        <BankRuleSheet
+          key={opened}
+          editing={editing.editing}
+          send={send}
+          onClose={() => setEditing(null)}
+          onDone={() => {
+            setEditing(null);
+            reload('after');
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+function SuggestionDecision({ s, sender, onChange }: { readonly s: SuggestionLine; readonly sender: Sender; readonly onChange: () => void }) {
+  const added = s.status === 'added' || s.status === 'changed';
+  const toPick = s.means === 'transfer' && s.other === null;
+  return (
+    <Decision
+      title={suggestionText(s)}
+      detail={`Your bank labels these ${s.label}.`}
+      testId={`suggestion-${s.id}`}
+      actions={
+        s.status === 'covered' ? null : (
+          <ButtonRow>
+            <Button variant={added ? 'primary' : 'secondary'} disabled={sender.sending || added || toPick} testId="suggestion-add" onClick={() => void sender.send({ suggestion: { id: s.id, answer: 'add' } })}>
+              {added && <Icon name="check" size={16} />}
+              Add this rule
+            </Button>
+            <Button variant="secondary" disabled={sender.sending || added} testId="suggestion-change" onClick={onChange}>
+              Change it first
+            </Button>
+            <Button variant={s.status === 'skipped' ? 'primary' : 'secondary'} disabled={sender.sending || s.status !== 'open'} testId="suggestion-skip" onClick={() => void sender.send({ suggestion: { id: s.id, answer: 'skip' } })}>
+              {s.status === 'skipped' && <Icon name="check" size={16} />}
+              Skip
+            </Button>
+          </ButtonRow>
+        )
+      }
+    >
+      <Matches matches={s.matches} recentDays={null} testId="suggestion-matches" />
+      {toPick && !added && (
+        <p className="decision__detail" data-testid="suggestion-pick">
+          <span>Which account it is with does not show in your history: change it to pick the account.</span>
+        </p>
+      )}
+      <p className="decision__detail" data-testid="suggestion-status">
+        <strong>{statusText(s.status)}</strong>
+      </p>
+    </Decision>
+  );
+}
+
+// Step 3, B48: each transfer with one half showing, on its way or not.
 function TransfersStep({ view, sender }: { readonly view: SetupReadyView; readonly sender: Sender }) {
   const [lookBack, setLookBack] = useState(false);
   return (
@@ -235,6 +350,11 @@ function TransfersStep({ view, sender }: { readonly view: SetupReadyView; readon
       >
         <Money cents={view.startingMoney} hero testId="starting-money" />
       </Hero>
+      {view.missing.includes('suggestions') && (
+        <Notice tone="warning" icon="alert" testId="rules-first">
+          Answer the suggested bank rules first: they decide which items are transfers.
+        </Notice>
+      )}
       <Card title="How far back" testId="look-back">
         <ListRow title="Transfers from" detail={lookBackText(view.halvesWithinDays)} onClick={() => setLookBack(true)} testId="look-back-row" />
         <p className="card__note">A transfer lands within a few days, so an older one is history. Changing this drops your answers about transfers it no longer asks about.</p>
@@ -330,7 +450,7 @@ function HalfDecision({ half, sender }: { readonly half: HalfLine; readonly send
   );
 }
 
-// Step 3, B42: his last paycheck, which the pay schedule counts from.
+// Step 4, B42: his last paycheck, which the pay schedule counts from.
 function PaycheckStep({ view, sender }: { readonly view: SetupReadyView; readonly sender: Sender }) {
   const [open, setOpen] = useState(false);
   const last = view.lastPaycheck;
@@ -381,7 +501,7 @@ function DateSheet({ view, sender, onClose }: { readonly view: SetupReadyView; r
   );
 }
 
-// Step 4, 14.2: the starting money handed out across the buckets. What is
+// Step 5, 14.2: the starting money handed out across the buckets. What is
 // left to assign comes from the server after every amount.
 function AssignStep({ view, sender }: { readonly view: SetupReadyView; readonly sender: Sender }) {
   const [editing, setEditing] = useState<Pot | null>(null);
@@ -465,7 +585,7 @@ function typed(cents: Cents): string {
   return formatDollars(cents).replace('$', '');
 }
 
-// Step 5, 14.3: a last look at everything, then start. It asks first.
+// Step 6, 14.3: a last look at everything, then start. It asks first.
 function CheckStep({ view, sender, reload, onStarted }: { readonly view: SetupReadyView; readonly sender: Sender; readonly reload: Reload; readonly onStarted: () => void }) {
   const [asked, setAsked] = useState<{ readonly why: string; readonly key: string } | null>(null);
   // What the server said after his yes, when it did not start.
@@ -583,7 +703,7 @@ function CheckStep({ view, sender, reload, onStarted }: { readonly view: SetupRe
         <ListRow title="Old card debt" detail="Tracked apart, not part of the starting money." trailing={<Money cents={view.oldCard.debt} testId="check-old-debt" />} testId="check-old" />
       </Card>
       <Card title="Bank rules" testId="bank-rules">
-        <p className="card__note">How the app tells your transfers, payments to people, and card fees from purchases. They come with the bank connection.</p>
+        <p className="card__note">How the app tells your transfers, payments to people, and card fees from purchases. Set on the Bank rules step; Settings can change them later.</p>
         {view.bankRules.length === 0 ? (
           <p className="card__note" data-testid="bank-rules-none">
             None yet.

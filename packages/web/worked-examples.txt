@@ -517,6 +517,8 @@ What the bank shows. Checking 3,214.56, less 86.43 pending: 3,128.13.
         owes 612.48, plus 47.45 pending (41.20 + 6.25): 659.93.
         Starting money: 3,128.13 + 7,935.90 - 659.93 = 10,404.10.
         The old card, apart: 2,980.00 + 19.99 pending = 2,999.99.
+Bank rules. The bank rules he has already read every suggestion this
+        way, so nothing is asked (20a). Nothing changes.
 Transfers on their way. Three show one side only. He taps "On its way"
         on each: +300.00, -150.00, and 0.00 for the old card's.
         Starting money: 10,404.10 + 300.00 - 150.00 = 10,554.10.

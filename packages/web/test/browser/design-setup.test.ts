@@ -10,12 +10,24 @@ import { answerHalf, openSetup, typeAmount, type SetupStepName } from './setup-s
 // and what each state means said in words, not by color alone. Every screen
 // has a loading, an empty, and an error state.
 
-const STEPS: readonly SetupStepName[] = ['bank', 'transfers', 'paycheck', 'assign', 'check'];
+const STEPS: readonly SetupStepName[] = ['bank', 'rules', 'transfers', 'paycheck', 'assign', 'check'];
 
 // Every state: [where, made-up life, step, what to do first].
 const STATES: readonly (readonly [string, string, SetupStepName, ((page: Page) => Promise<void>) | null])[] = [
   ...STEPS.map((step) => [`setup-day ${step}`, 'setup-day', step, null] as const),
   ...STEPS.map((step) => [`setup-owes-more ${step}`, 'setup-owes-more', step, null] as const),
+  // 20a: every suggestion open; the transfers step says to answer them first.
+  ['suggestions to answer', 'setup-suggest', 'rules', null],
+  ['the transfers step before the suggestions', 'setup-suggest', 'transfers', null],
+  ['suggestions answered', 'setup-suggest', 'rules', async (page) => {
+    const cards = page.locator('[data-testid^="suggestion-s-"]');
+    await cards.nth(0).getByTestId('suggestion-add').click();
+    await cards.nth(0).getByTestId('suggestion-status').filter({ hasText: 'added' }).waitFor();
+    await untilQuiet(page);
+    await cards.nth(6).getByTestId('suggestion-skip').click();
+    await cards.nth(6).getByTestId('suggestion-status').filter({ hasText: 'skipped' }).waitFor();
+    await untilQuiet(page);
+  }],
   ['answered transfers', 'setup-day', 'transfers', async (page) => {
     await answerHalf(page, 'su-card-left', true);
     await answerHalf(page, 'su-sav-landed', false);
@@ -46,6 +58,22 @@ const STATES: readonly (readonly [string, string, SetupStepName, ((page: Page) =
 
 // Every sheet: [name, made-up life, step, how to open it].
 const SHEETS: readonly (readonly [string, string, SetupStepName, (page: Page) => Promise<void>])[] = [
+  ['a suggestion, changed first', 'setup-suggest', 'rules', async (page) => {
+    await page.locator('[data-testid^="suggestion-s-"]').nth(2).getByTestId('suggestion-change').click();
+    await page.getByTestId('field-bank-text').waitFor();
+  }],
+  ['a bank rule, before the yes', 'setup-suggest', 'rules', async (page) => {
+    await page.getByTestId('row-add-bank-rule').click();
+    await page.getByTestId('field-bank-text').fill('Zelle payment to');
+    await page.getByTestId('field-bank-means').selectOption('payment-to-person');
+    await page.getByTestId('sheet-save').click();
+    await page.getByTestId('confirm-ask').waitFor();
+    await untilQuiet(page);
+  }],
+  ['how far back', 'setup-day', 'transfers', async (page) => {
+    await page.getByTestId('look-back-row').click();
+    await page.getByTestId('look-back-days').waitFor();
+  }],
   ['an amount', 'setup-day', 'assign', async (page) => {
     await page.getByTestId('assign-needs').click();
     await page.getByTestId('amount').waitFor();
