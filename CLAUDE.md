@@ -166,8 +166,13 @@ This applies to every phase and every session, cloud or local.
     for each section. It never changes the project folder, so other work can
     continue while it runs (edits made after it started are not tested).
     See "Break-it runs in parallel" below.
-- CI: GitHub Actions runs `npm test` on Linux and Windows for every pull
-  request (.github/workflows/test.yml).
+- CI: GitHub Actions runs `npm test` (.github/workflows/test.yml). Since
+  Oct 9, 2026, to save Actions minutes: Linux on every pull request;
+  Windows only when he starts it by hand (Actions, Tests, Run workflow, pick
+  the branch; it asks Windows, Linux, or both, Windows by default), for a
+  phase's finish line. The Playwright browsers are kept between runs (one
+  copy per system and Playwright version); Linux still installs their
+  system libraries each run.
 - Phase 2 (stress testing), part one, the simulated you: built Oct 6, 2026
   on branch phase-2-simulator (PR #3).
   - packages/money/test/sim: a made-up person lived one day at a time
@@ -680,5 +685,6 @@ This applies to every phase and every session, cloud or local.
     scripts/break-it.mjs --match "\[ci\]" --only
     test/browser/page-quiet.test.ts for the 8 in section home; node
     scripts/break-it.mjs ci for the port).
+  - PR #14 merged (Oct 9, 2026).
 - Waiting on: the promo end date for the old card. Only the payoff countdown
   (rule 9.5) depends on it.

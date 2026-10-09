@@ -1,17 +1,31 @@
-# Runs the type check and every test (npm test) on every pull request, on
-# Linux and on Windows, so nothing is merged on the strength of one
-# computer's result.
+# Runs the type check and every test (npm test).
+#
+# On every pull request: Linux only. Windows minutes count double, so
+# Windows runs only when started by hand (Actions, Tests, Run workflow,
+# pick the branch), for a phase's finish line. The manual run asks which
+# systems: Windows (the default), Linux, or both.
 name: Tests
 
 on:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      systems:
+        description: Which systems to run on
+        type: choice
+        options:
+          - windows
+          - linux
+          - both
+        default: windows
 
 permissions:
   contents: read
 
-# A newer push to the same pull request replaces the run still going.
+# A newer push to the same pull request replaces the run still going. A run
+# started by hand is never replaced by a push, nor a push's run by it.
 concurrency:
-  group: tests-${{ github.event.pull_request.number }}
+  group: tests-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -20,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || inputs.systems == 'both' && '["ubuntu-latest","windows-latest"]' || inputs.systems == 'linux' && '["ubuntu-latest"]' || '["windows-latest"]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
@@ -34,7 +48,25 @@ jobs:
           cache: npm
       - run: npm ci
       # The browser tests use the screens in Chromium and in WebKit (iPhone
-      # Safari's engine). Playwright's own copies, at the version in
-      # package-lock.json.
-      - run: npx playwright install --with-deps chromium webkit
+      # Safari's engine): Playwright's own copies, at the version in
+      # package-lock.json. The browsers are kept between runs, one copy per
+      # system and Playwright version; a new version downloads them again.
+      - name: Playwright version
+        id: playwright
+        shell: bash
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Keep the Playwright browsers between runs
+        id: browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.os == 'Windows' && '~/AppData/Local/ms-playwright' || '~/.cache/ms-playwright' }}
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - name: Download the browsers
+        if: steps.browsers.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium webkit
+      # The system libraries the browsers need are not in the kept copy, so
+      # Linux installs them every time (Windows needs none).
+      - name: Install the browsers' system libraries
+        if: steps.browsers.outputs.cache-hit == 'true' && runner.os == 'Linux'
+        run: npx playwright install-deps chromium webkit
       - run: npm test
