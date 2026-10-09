@@ -96,6 +96,16 @@ export function matchesOf(spec: BankRuleSpec, rules: readonly BankRule[], lines:
   return { count: matched.length, examples: shown.slice(0, EXAMPLES), readFirstByEarlier, takenFromLater };
 }
 
+// A27: how many of the items (recent ones only, if asked) a different rule
+// would read first with the rules in the order after than in the order now.
+// For a move, only items that both rules trading places fit can change.
+export function itemsReadDifferently(now: readonly BankRule[], after: readonly BankRule[], lines: readonly BankLine[], options: MatchOptions): number {
+  const since = options.recentOnly === true ? addDays(options.today, -RECENT_DAYS) : null;
+  return lines.filter(
+    (l) => (since === null || daysBetween(since, l.date) >= 0) && readBankItemWithRule(l.account, l.amount, l.description, now).rule?.id !== readBankItemWithRule(l.account, l.amount, l.description, after).rule?.id,
+  ).length;
+}
+
 // Whether a rule fits money going this way (bank/reading.ts says the same
 // for a whole rule). A transfer whose other account is not known yet fits
 // whatever the other account turns out to be.
@@ -271,7 +281,21 @@ function coveredBy(spec: BankRuleSpec, rules: readonly BankRule[], lines: readon
 
 export type BankRuleChanged =
   | { readonly ok: true; readonly action: 'added' | 'changed' | 'removed'; readonly rules: readonly BankRule[]; readonly rule: BankRule; readonly before: BankRule | null }
+  // A27: position is its place in the whole list now, from 1.
+  | {
+      readonly ok: true;
+      readonly action: 'moved';
+      readonly direction: 'up' | 'down';
+      readonly rules: readonly BankRule[];
+      readonly rule: BankRule;
+      readonly before: null;
+      readonly past: BankRule;
+      readonly position: number;
+    }
   | { readonly ok: false; readonly why: string };
+
+// An account as it reads in a sentence.
+const ACCOUNT_WORDS: Readonly<Record<AccountId, string>> = { checking: 'checking', savings: 'savings', 'everyday-card': 'the everyday card', 'old-card': 'the old card' };
 
 // Why a rule cannot be, in words; null when it can.
 export function bankRuleProblem(spec: BankRuleSpec): string | null {
@@ -296,12 +320,29 @@ export function bankRuleProblem(spec: BankRuleSpec): string | null {
 const sameRule = (a: BankRuleSpec, b: BankRuleSpec): boolean =>
   a.account === b.account && a.contains.trim().toLowerCase() === b.contains.trim().toLowerCase() && a.means === b.means && (a.means !== 'transfer' || a.other === b.other);
 
-// Adds a rule at the end, changes one in its place, or removes one. Changes
+// Adds a rule at the end, changes one in its place, removes one, or moves one
+// a place up or down among the rules on its account (A27). Changes
 // nothing it is given; says why, in words, when it cannot. A new rule gets
 // newId, or else the first "bank-rule-N" not taken. An id is never used again
 // for another rule (the change log and Setup day's answers name rules by it),
 // so whoever keeps the rules hands out ids from a count that only goes up.
 export function changeBankRules(rules: readonly BankRule[], change: BankRuleChange, newId?: string): BankRuleChanged {
+  // A27: one place up or down among the rules on its account, past the next
+  // one there; rules on other accounts keep their places.
+  if ('move' in change) {
+    const { id, direction } = change.move;
+    const at = rules.findIndex((r) => r.id === id);
+    const rule = rules[at];
+    if (rule === undefined) return { ok: false, why: 'That rule is not there any more' };
+    const onItsAccount = rules.flatMap((r, i) => (r.account === rule.account ? [i] : []));
+    const other = onItsAccount[onItsAccount.indexOf(at) + (direction === 'up' ? -1 : 1)];
+    const past = other === undefined ? undefined : rules[other];
+    if (other === undefined || past === undefined) return { ok: false, why: `It is already the ${direction === 'up' ? 'first' : 'last'} bank rule on ${ACCOUNT_WORDS[rule.account]}` };
+    const next = [...rules];
+    next[at] = past;
+    next[other] = rule;
+    return { ok: true, action: 'moved', direction, rules: next, rule, before: null, past, position: other + 1 };
+  }
   if ('remove' in change) {
     const rule = rules.find((r) => r.id === change.remove);
     if (rule === undefined) return { ok: false, why: 'That rule is not there any more' };

@@ -9,7 +9,7 @@ import { connectTestBank } from '../src/connect.js';
 import { TokenBox } from '../src/crypto/token-box.js';
 import { openDatabase } from '../src/db/database.js';
 import { bankLinesIn, changeBankRuleIn } from '../src/bank-rules-db.js';
-import { matchesOf } from '../src/bank-rules.js';
+import { changeBankRules, itemsReadDifferently, matchesOf } from '../src/bank-rules.js';
 import { loadBook, readAccounts, readBankRules, readItems, setAccountRoles, setBankRules } from '../src/db/store.js';
 import { memoryLog } from '../src/log.js';
 import { PlaidClient } from '../src/plaid/client.js';
@@ -179,6 +179,35 @@ describe('worked examples: reading the bank', () => {
     expect(amountOf('gym-1')).toBe(checks.get('first gym payment'));
     expect(amountOf('gym-2')).toBe(checks.get('second gym payment'));
     expect(b.pots().unsortedOut).toBe(checks.get('unsorted spending'));
+    const status = bankStatus(h.db);
+    expect(status.selfCheck?.bankSide).toBe(checks.get('bank side'));
+    expect(status.selfCheck?.difference).toBe(checks.get('difference'));
+  });
+
+  it('example 5, moving a bank rule up: the first rule that fits wins (section 2, A27)', async () => {
+    const h = await tracking();
+    const wide = changeBankRuleIn(h.db, { add: { account: 'checking', contains: 'Online Banking transfer', means: 'payment-to-person' } }, '2026-10-02');
+    const narrow = changeBankRuleIn(h.db, { add: { account: 'checking', contains: 'Online Banking transfer to CRD 4444', means: 'transfer', other: 'old-card' } }, '2026-10-02');
+    if (!wide.ok || !narrow.ok) throw new Error('the rules were refused');
+    h.fake.addPosted({ id: 'card-1', account: ACCOUNT_IDS.checking, amount: 10_000, date: '2026-10-03', description: 'Online Banking transfer to CRD 4444' });
+    await h.sync('2026-10-03');
+    const checks = checksOf(5);
+    expect(book(h).pots().unsortedOut).toBe(checks.get('unsorted spending'));
+    // What Settings shows before his yes: the Oct 3 payment would change hands.
+    const moved = changeBankRules(readBankRules(h.db), { move: { id: narrow.rule.id, direction: 'up' } });
+    if (!moved.ok) throw new Error(moved.why);
+    expect(itemsReadDifferently(readBankRules(h.db), moved.rules, bankLinesIn(h.db), { today: '2026-10-03', recentOnly: true })).toBe(1);
+    expect(changeBankRuleIn(h.db, { move: { id: narrow.rule.id, direction: 'up' } }, '2026-10-03')).toMatchObject({ ok: true, action: 'moved', past: { id: wide.rule.id } });
+    h.fake.addPosted({ id: 'card-2', account: ACCOUNT_IDS.checking, amount: 10_000, date: '2026-10-04', description: 'Online Banking transfer to CRD 4444' });
+    await h.sync('2026-10-04');
+    const items = readItems(h.db);
+    expect([items.get('card-1')?.kind, items.get('card-2')?.kind]).toEqual(['payment-to-person', 'transfer-sent']);
+    const b = book(h);
+    expect(b.reviewItems().map((i) => i.id)).toEqual(['card-1']);
+    expect(b.purchases().find((p) => p.id === 'card-2')).toMatchObject({ kind: 'debt-payoff', amount: checks.get('second payment'), sortedTo: { to: 'needs' } });
+    expect(b.pots().needs).toBe(checks.get('needs'));
+    expect(b.pots().unsortedOut).toBe(checks.get('unsorted spending'));
+    expect(b.inTransit().items.map((i) => [i.to, i.amount])).toEqual([['old-card', checks.get('second payment')]]);
     const status = bankStatus(h.db);
     expect(status.selfCheck?.bankSide).toBe(checks.get('bank side'));
     expect(status.selfCheck?.difference).toBe(checks.get('difference'));

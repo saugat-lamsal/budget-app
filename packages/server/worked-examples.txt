@@ -179,3 +179,51 @@ Where the app stands (12.2):
         The difference is 0.00. No cent was made or lost by the change.
 
 Check: first gym payment 40.00 | second gym payment 40.00 | unsorted spending 80.00 | bank side 7,470.00 | difference 0.00
+
+
+========================================================================
+EXAMPLE 5. Moving a bank rule up: the first rule that fits wins (section 2, A27, 5.2, 7.4, 12.1 to 12.5)
+========================================================================
+
+The same start as example 3: checking 3,000.00, savings 5,000.00, the
+everyday card owes 450.00. Starting money 3,000.00 + 5,000.00 - 450.00 =
+7,550.00: savings 4,000.00, mom reserve 1,000.00, wants 200.00, needs
+2,350.00.
+
+Step 1. Oct 2: he adds two bank rules on Settings, in this order. Each new
+        rule goes to the end of the list:
+        (a) "Online Banking transfer" on checking: a payment to a person
+            (he pays his landlord that way);
+        (b) "Online Banking transfer to CRD 4444" on checking: a transfer
+            between checking and the old card.
+        A payment to the old card fits both. The first rule that fits wins
+        (A27), and (a) comes first.
+
+Step 2. Oct 3: 100.00 "Online Banking transfer to CRD 4444" leaves
+        checking. Rule (a) reads it as a payment to a person, so it waits
+        in review (7.4):
+        Unsorted spending 100.00
+
+Step 3. Oct 3: he moves rule (b) up. Only rules on checking compete for
+        what leaves checking, so it moves past (a), the rule before it there.
+        Before he says yes, Settings shows what would change hands: 1 item
+        from the last 90 days, the Oct 3 payment, that (a) reads now. The move
+        reads what the bank sends from then on. The Oct 3 payment was read
+        already, so it stays waiting in review (he can mark it as a transfer
+        there, 5.6).
+
+Step 4. Oct 4: another 100.00 "Online Banking transfer to CRD 4444" leaves
+        checking. Now rule (b) reads it first: a payment to the old card from
+        checking, which comes out of needs on a "debt payoff" line (5.2):
+        Needs 2,350.00 - 100.00 = 2,250.00
+        It is on its way to the old card: shown, but not counted, because the
+        old card is not part of the check (12.4, 12.5).
+
+Where the bank stands (12.1):
+        Checking       3,000.00 - 100.00 - 100.00 = 2,800.00
+        Bank side      2,800.00 + 5,000.00 - 450.00 = 7,350.00
+Where the app stands (12.2):
+        4,000.00 + 2,250.00 + 200.00 + 1,000.00 - 100.00 = 7,350.00
+        The difference is 0.00. Moving the rule made or lost no cent.
+
+Check: unsorted spending 100.00 | second payment 100.00 | needs 2,250.00 | bank side 7,350.00 | difference 0.00

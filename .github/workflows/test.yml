@@ -1,4 +1,11 @@
-# Runs the type check and every test (npm test).
+# Runs the type check and every test (npm test), split in three jobs that
+# run at the same time, so each finishes well inside its time limit:
+# - checks: the type check, then every test that does not use a browser
+#   (money, server, web, repo), with SKIP_BROWSER_TESTS=1;
+# - chromium: the browser tests in Chromium only (BROWSER_ENGINE=chromium);
+# - webkit: the browser tests in WebKit only (BROWSER_ENGINE=webkit).
+# Together they are exactly npm test: test/ci-workflow.test.ts checks that no
+# test is left out. (One job took 38 min 46 s on PR #16, against 45.)
 #
 # On every pull request: Linux only. Windows minutes count double, so
 # Windows runs only when started by hand (Actions, Tests, Run workflow,
@@ -30,11 +37,12 @@ concurrency:
 
 jobs:
   test:
-    name: npm test (${{ matrix.os }})
+    name: ${{ matrix.part }} (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
         os: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || inputs.systems == 'both' && '["ubuntu-latest","windows-latest"]' || inputs.systems == 'linux' && '["ubuntu-latest"]' || '["windows-latest"]') }}
+        part: [checks, chromium, webkit]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
@@ -47,26 +55,44 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+
+      # The type check, then everything but the browser tests.
+      - name: Type check
+        if: matrix.part == 'checks'
+        run: npm run typecheck
+      - name: Every test without a browser
+        if: matrix.part == 'checks'
+        env:
+          SKIP_BROWSER_TESTS: '1'
+        run: npx vitest run
+
       # The browser tests use the screens in Chromium and in WebKit (iPhone
       # Safari's engine): Playwright's own copies, at the version in
-      # package-lock.json. The browsers are kept between runs, one copy per
-      # system and Playwright version; a new version downloads them again.
+      # package-lock.json. Each browser job downloads only its own browser.
+      # The browsers are kept between runs, one copy per system, browser and
+      # Playwright version; a new version downloads them again.
       - name: Playwright version
+        if: matrix.part != 'checks'
         id: playwright
         shell: bash
         run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
-      - name: Keep the Playwright browsers between runs
+      - name: Keep the Playwright browser between runs
+        if: matrix.part != 'checks'
         id: browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.os == 'Windows' && '~/AppData/Local/ms-playwright' || '~/.cache/ms-playwright' }}
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
-      - name: Download the browsers
-        if: steps.browsers.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium webkit
-      # The system libraries the browsers need are not in the kept copy, so
+          key: playwright-${{ runner.os }}-${{ matrix.part }}-${{ steps.playwright.outputs.version }}
+      - name: Download the browser
+        if: matrix.part != 'checks' && steps.browsers.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps ${{ matrix.part }}
+      # The system libraries the browser needs are not in the kept copy, so
       # Linux installs them every time (Windows needs none).
-      - name: Install the browsers' system libraries
-        if: steps.browsers.outputs.cache-hit == 'true' && runner.os == 'Linux'
-        run: npx playwright install-deps chromium webkit
-      - run: npm test
+      - name: Install the browser's system libraries
+        if: matrix.part != 'checks' && steps.browsers.outputs.cache-hit == 'true' && runner.os == 'Linux'
+        run: npx playwright install-deps ${{ matrix.part }}
+      - name: The browser tests in ${{ matrix.part }}
+        if: matrix.part != 'checks'
+        env:
+          BROWSER_ENGINE: ${{ matrix.part }}
+        run: npx vitest run --project web-browser

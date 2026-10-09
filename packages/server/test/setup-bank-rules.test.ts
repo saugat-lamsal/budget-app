@@ -175,6 +175,24 @@ describe('20a Setup day suggests bank rules from the labels in the history; noth
     expect(d.bankRules().log().at(-1)).toMatchObject({ action: 'removed', afterBookLines: book?.changeLog().length });
   });
 
+  it('A27 24c on Setup day, a bank rule moved ahead of a wider one reads the history again in the new order, as if added in that order', () => {
+    const wide: BankRuleSpec = { account: 'checking', contains: 'Online', means: 'payment-to-person' };
+    const narrow: BankRuleSpec = { account: 'checking', contains: 'Online payment to CRD 3333', means: 'transfer', other: 'everyday-card' };
+    const moved = desk();
+    bankRuleYes(moved, { add: wide });
+    bankRuleYes(moved, { add: narrow });
+    const before = halves(moved);
+    bankRuleYes(moved, { move: { id: 'bank-rule-2', direction: 'up' } });
+    const inOrder = desk();
+    bankRuleYes(inOrder, { add: narrow });
+    bankRuleYes(inOrder, { add: wide });
+    expect(ready(moved).bankRules.map((r) => r.contains)).toEqual(['Online payment to CRD 3333', 'Online']);
+    expect(halves(moved)).toEqual(halves(inOrder));
+    expect(halves(moved)).not.toEqual(before);
+    expect(ready(moved).startingMoney).toBe(ready(inOrder).startingMoney);
+    expect(moved.bankRules().log().map((l) => l.action)).toEqual(['added', 'added', 'moved-up']);
+  });
+
   it('B92 an answer to a suggestion sent again gets the first answer back, and changes nothing', () => {
     const d = desk();
     const step: SetupStep = { suggestion: { id: suggestion(d, 'LATE FEE').id, answer: 'add' } };

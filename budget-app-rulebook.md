@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 13)
+# Budget App Rulebook (draft 14)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -48,7 +48,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
   confirm). They can be changed later in Settings, and each change is
   logged (13.5). A changed bank rule reads what the bank sends from then
   on; what was already read stays as it was, and one item read wrong is
-  fixed in review (5.6).
+  fixed in review (5.6). If two bank rules fit one item, the first in the
+  list wins. A rule can be moved up or down among the rules on its account
+  (only those can fit the same item), and each move is logged (13.5).
 
 
 ## 3. Payday
@@ -505,3 +507,11 @@ a.  Setup day asks about transfers with only one side showing from the last
 b.  A purchase or payment waiting in review that is refunded in full leaves
     review by itself and is kept as a record. If the bank takes the refund
     back, it comes back to review (4.5, QUESTIONS.md A26).
+
+
+## 26. Answers after bank rules (Oct 9, 2026)
+
+a.  When two bank rules fit one item, the first in the list wins, as with
+    sorting rules. A bank rule can be moved up or down among the rules on
+    its account, and each move is logged (section 2, 13.5, QUESTIONS.md
+    A27).

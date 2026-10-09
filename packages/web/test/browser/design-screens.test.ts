@@ -44,15 +44,31 @@ async function sheets(page: Page): Promise<{ readonly name: string }[]> {
 describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, engine) => {
   const { browser, base } = useEngine(engine);
 
-  it('readable contrast and no accessibility problems, in light and dark, in every state, and in every sheet', async () => {
-    const problems: string[] = [];
-    for (const scheme of ['light', 'dark'] as const) {
+  // One test per colour scheme and per part (Buckets, Review, Review's
+  // sheets), so none comes near the time limit when the whole suite runs at
+  // once (WebKit went past 60 s as one test). Together they check exactly
+  // what the one test did.
+  for (const scheme of ['light', 'dark'] as const) {
+    for (const [screen, path] of [
+      ['Buckets', '/buckets'],
+      ['Review', '/review'],
+    ] as const) {
+      it(`readable contrast and no accessibility problems, in ${scheme} mode, on ${screen} in every state`, async () => {
+        const problems: string[] = [];
+        const context = await browser().newContext(phone({ colorScheme: scheme, bypassCSP: true }));
+        for (const [life, at] of SCREENS.filter(([, p]) => p === path)) {
+          const page = await openScenario(context, base(), life, at);
+          problems.push(...(await axeViolations(page)).map((p) => `${scheme} ${at} ${life}: ${p}`));
+          await page.close();
+        }
+        await context.close();
+        expect(problems).toEqual([]);
+      });
+    }
+
+    it(`readable contrast and no accessibility problems, in ${scheme} mode, in every sheet on Review`, async () => {
+      const problems: string[] = [];
       const context = await browser().newContext(phone({ colorScheme: scheme, bypassCSP: true }));
-      for (const [life, path] of SCREENS) {
-        const page = await openScenario(context, base(), life, path);
-        problems.push(...(await axeViolations(page)).map((p) => `${scheme} ${path} ${life}: ${p}`));
-        await page.close();
-      }
       const page = await openScenario(context, base(), 'review-busy', '/review');
       for (const sheet of await sheets(page)) {
         problems.push(...(await axeViolations(page)).map((p) => `${scheme} sheet ${sheet.name}: ${p}`));
@@ -69,9 +85,9 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
       await page.getByTestId('notice').waitFor();
       problems.push(...(await axeViolations(page)).map((p) => `${scheme} done message: ${p}`));
       await context.close();
-    }
-    expect(problems).toEqual([]);
-  });
+      expect(problems).toEqual([]);
+    });
+  }
 
   it('every tap target is at least 44 by 44 points, in every state and every sheet', async () => {
     const small: string[] = [];

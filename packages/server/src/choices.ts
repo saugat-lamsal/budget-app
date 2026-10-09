@@ -188,6 +188,14 @@ export function parseBankRuleRequest(value: unknown): BankRuleRequest | null {
     const which = bankRule['remove'];
     return typeof which === 'string' && which !== '' && which.length <= MAX_ITEM_LENGTH ? { id, bankRule: { remove: which }, ...yes } : null;
   }
+  // A27: one place up or down among the rules on its account.
+  if ('move' in bankRule) {
+    const move = bankRule['move'];
+    if (!isRecord(move) || Object.keys(move).length !== 2 || !onlyKeys(move, ['id', 'direction'])) return null;
+    const { id: which, direction } = move;
+    if (typeof which !== 'string' || which === '' || which.length > MAX_ITEM_LENGTH || (direction !== 'up' && direction !== 'down')) return null;
+    return { id, bankRule: { move: { id: which, direction } }, ...yes };
+  }
   if ('add' in bankRule) {
     const spec = parseBankRuleSpec(bankRule['add'], false);
     return spec === null ? null : { id, bankRule: { add: spec }, ...yes };

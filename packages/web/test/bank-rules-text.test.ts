@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bankRuleDoneText, matchesText, meaningsOn, othersOf, overlapText, statusText, suggestionText } from '../src/screens/bank-rules-text.js';
+import { bankRuleDoneText, matchesText, meaningsOn, movesOf, moveText, othersOf, overlapText, statusText, suggestionText } from '../src/screens/bank-rules-text.js';
 
 // The words for bank rules (rulebook section 2, 20a, 24c). Every count comes
 // from the server; these only name things. Made-up names.
@@ -47,5 +47,27 @@ describe('section 2 20a 24c the words for bank rules', () => {
     ]);
     expect(bankRuleDoneText({ remove: 'x' })).toBe('Bank rule removed.');
     expect(bankRuleDoneText({ add: { account: 'checking', contains: 'x', means: 'payment-to-person' } })).toMatch(/^Bank rule added\./);
+    expect(bankRuleDoneText({ move: { id: 'x', direction: 'up' } })).toBe('Bank rule moved up. It reads what the bank sends from now on, ahead of the rule it passed.');
+    expect(bankRuleDoneText({ move: { id: 'x', direction: 'down' } })).toBe('Bank rule moved down. The rule it passed reads first from now on.');
+  });
+
+  it('A27 what a move would change, in words: none, one, many, moving up or down', () => {
+    const past = { id: 'wide', account: 'checking' as const, contains: 'Zelle payment to', means: 'payment-to-person' as const };
+    expect(moveText({ direction: 'up', past, switching: 0 }, 90)).toBe('Nothing from the last 90 days fits both this rule and “Zelle payment to” on checking: a payment to a person, so nothing read lately would change.');
+    expect(moveText({ direction: 'up', past, switching: 1 }, 90)).toBe('It would read 1 item from the last 90 days that “Zelle payment to” on checking: a payment to a person reads now.');
+    expect(moveText({ direction: 'down', past, switching: 3 }, 90)).toBe('“Zelle payment to” on checking: a payment to a person would read 3 items from the last 90 days that this rule reads now.');
+  });
+
+  it('A27 which way a rule can move: only past another rule on its account', () => {
+    const rules = [
+      { id: 'a', account: 'checking' as const, contains: 'A', means: 'payment-to-person' as const },
+      { id: 'b', account: 'savings' as const, contains: 'B', means: 'payment-to-person' as const },
+      { id: 'c', account: 'checking' as const, contains: 'C', means: 'payment-to-person' as const },
+    ];
+    expect(rules.map((r) => movesOf(r, rules))).toEqual([
+      { up: false, down: true },
+      { up: false, down: false },
+      { up: true, down: false },
+    ]);
   });
 });

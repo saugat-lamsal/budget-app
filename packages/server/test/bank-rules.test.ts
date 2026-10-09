@@ -1,7 +1,7 @@
 import type { AccountId, Cents, IsoDate } from '@budget-app/money';
 import { describe, expect, it } from 'vitest';
-import { RECENT_DAYS, bankLinesOf, changeBankRules, matchesOf, suggestBankRules, type BankLine, type BankRuleSpec } from '../src/bank-rules.js';
-import { checkBankRules, type BankRule } from '../src/bank/reading.js';
+import { RECENT_DAYS, bankLinesOf, changeBankRules, itemsReadDifferently, matchesOf, suggestBankRules, type BankLine, type BankRuleSpec } from '../src/bank-rules.js';
+import { checkBankRules, readBankItemWithRule, type BankRule } from '../src/bank/reading.js';
 import type { StoredAccount } from '../src/bank/stored-account.js';
 import type { PlaidAccount, PlaidTransaction } from '../src/plaid/types.js';
 import type { StoredItem } from '../src/sync/plan.js';
@@ -293,5 +293,73 @@ describe('section 2 24c changing the bank rules', () => {
 
   it('section 2 exactly 200 characters is allowed', () => {
     expect(changeBankRules(rules, { add: { account: 'checking', contains: 'x'.repeat(200), means: 'payment-to-person' } }).ok).toBe(true);
+  });
+});
+
+describe('A27 moving a bank rule up or down, among the rules on its account', () => {
+  // Only rules on the same account can match the same item, so only they compete.
+  const rules: readonly BankRule[] = checkBankRules([
+    { id: 'a', account: 'checking', contains: 'Zelle payment to', means: 'payment-to-person' },
+    { id: 'b', account: 'savings', contains: 'Zelle payment to', means: 'payment-to-person' },
+    { id: 'c', account: 'checking', contains: 'Zelle payment to MOM', means: 'transfer', other: 'savings' },
+    { id: 'd', account: 'checking', contains: 'transfer to SAV', means: 'transfer', other: 'savings' },
+  ]);
+
+  it('A27 a rule moves up past the rule before it on its account, into its place; rules on other accounts stay where they are', () => {
+    const done = changeBankRules(rules, { move: { id: 'c', direction: 'up' } });
+    expect(done).toMatchObject({ ok: true, action: 'moved', direction: 'up', position: 1, rule: rules[2], past: rules[0], before: null });
+    expect(done.ok && done.rules.map((r) => r.id)).toEqual(['c', 'b', 'a', 'd']);
+  });
+
+  it('A27 a rule moves down past the next rule on its account, into its place', () => {
+    const done = changeBankRules(rules, { move: { id: 'a', direction: 'down' } });
+    expect(done).toMatchObject({ ok: true, action: 'moved', direction: 'down', position: 3, rule: rules[0], past: rules[2] });
+    expect(done.ok && done.rules.map((r) => r.id)).toEqual(['c', 'b', 'a', 'd']);
+    // The next one down on checking is the last rule in the list.
+    const last = changeBankRules(rules, { move: { id: 'c', direction: 'down' } });
+    expect(last).toMatchObject({ ok: true, position: 4, past: rules[3] });
+    expect(last.ok && last.rules.map((r) => r.id)).toEqual(['a', 'b', 'd', 'c']);
+  });
+
+  it('A27 the first rule on its account cannot move up, nor the last down, whatever is around it on other accounts; one not there is refused', () => {
+    expect(changeBankRules(rules, { move: { id: 'a', direction: 'up' } })).toEqual({ ok: false, why: 'It is already the first bank rule on checking' });
+    expect(changeBankRules(rules, { move: { id: 'b', direction: 'up' } })).toEqual({ ok: false, why: 'It is already the first bank rule on savings' });
+    expect(changeBankRules(rules, { move: { id: 'b', direction: 'down' } })).toEqual({ ok: false, why: 'It is already the last bank rule on savings' });
+    expect(changeBankRules(rules, { move: { id: 'd', direction: 'down' } })).toEqual({ ok: false, why: 'It is already the last bank rule on checking' });
+    expect(changeBankRules(rules, { move: { id: 'nope', direction: 'up' } })).toEqual({ ok: false, why: 'That rule is not there any more' });
+    const card = checkBankRules([{ id: 'fee', account: 'everyday-card', contains: 'LATE FEE', means: 'card-fee' }]);
+    expect(changeBankRules(card, { move: { id: 'fee', direction: 'up' } })).toEqual({ ok: false, why: 'It is already the first bank rule on the everyday card' });
+  });
+
+  it('A27 after a move, the first rule that fits still wins, in the new order: a narrow rule moved ahead of a wide one reads what both fit', () => {
+    const mom = (list: readonly BankRule[]) => readBankItemWithRule('checking', 50_000, 'Zelle payment to MOM MADEUP', list);
+    expect(mom(rules).rule?.id).toBe('a');
+    const done = changeBankRules(rules, { move: { id: 'c', direction: 'up' } });
+    if (!done.ok) throw new Error(done.why);
+    expect(mom(done.rules).rule?.id).toBe('c');
+    // What only the wide one fits is still read by it.
+    expect(readBankItemWithRule('checking', 4_000, 'Zelle payment to ANNA', done.rules).rule?.id).toBe('a');
+  });
+
+  it(`A27 what a move would change: the recent items (the last ${RECENT_DAYS} days) that a different rule would read first; nothing else`, () => {
+    const own = [
+      line('checking', 50_000, 'Zelle payment to MOM MADEUP', null, '2026-10-01'),
+      line('checking', 40_000, 'Zelle payment to MOM MADEUP', null, '2026-07-11'),
+      line('checking', 30_000, 'Zelle payment to MOM MADEUP', null, '2026-07-10'),
+      line('checking', 4_000, 'Zelle payment to ANNA', null, '2026-10-02'),
+      line('savings', 50_000, 'Zelle payment to MOM MADEUP', null, '2026-10-03'),
+      line('checking', 10_000, 'Online transfer to SAV', null, '2026-10-04'),
+    ];
+    const options = { today: TODAY, recentOnly: true };
+    const up = changeBankRules(rules, { move: { id: 'c', direction: 'up' } });
+    if (!up.ok) throw new Error(up.why);
+    // The payments to mom on checking from the last 90 days (the day exactly 90 days back included), not the one before them, nor the one on savings.
+    expect(itemsReadDifferently(rules, up.rules, own, options)).toBe(2);
+    expect(itemsReadDifferently(rules, up.rules, own, { today: TODAY })).toBe(3);
+    // Rules that fit nothing in common change nothing by trading places.
+    const apart = changeBankRules(rules, { move: { id: 'd', direction: 'up' } });
+    if (!apart.ok) throw new Error(apart.why);
+    expect(itemsReadDifferently(rules, apart.rules, own, options)).toBe(0);
+    expect(itemsReadDifferently(rules, rules, own, options)).toBe(0);
   });
 });

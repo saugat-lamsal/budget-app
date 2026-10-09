@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { IsoDate } from '@budget-app/money';
-import { RECENT_DAYS, changeBankRules, matchesOf, type BankLine, type BankRuleChange, type BankRuleSpec } from './bank-rules.js';
+import { RECENT_DAYS, changeBankRules, itemsReadDifferently, matchesOf, type BankLine, type BankRuleChange, type BankRuleSpec } from './bank-rules.js';
 import type { BankRule } from './bank/reading.js';
 import { canonical, refuse } from './choices.js';
 import type { BankRuleDone, BankRuleLogLine, BankRulePreview, BankRuleRequest, BankRuleResponse } from './views/bank-rules.js';
@@ -63,12 +63,19 @@ export class BankRulesDesk {
     if (!tried.ok) return { why: tried.why };
     const shown: BankRuleSpec = tried.rule;
     const options = { today: this.#input.today(), recentOnly: true };
-    // A removal shows what the rule matched while it was there.
-    const matches = 'remove' in change ? matchesOf(shown, this.#rules.filter((r) => r.id !== tried.rule.id), this.lines(), options) : matchesOf(shown, this.#rules, this.lines(), 'change' in change ? { ...options, replacing: change.change.id } : options);
+    // A removal shows what the rule matched while it was there; a move, what
+    // it would match in its new place, and what changes hands (A27).
+    const matches =
+      'remove' in change
+        ? matchesOf(shown, this.#rules.filter((r) => r.id !== tried.rule.id), this.lines(), options)
+        : 'move' in change
+          ? matchesOf(shown, tried.rules, this.lines(), { ...options, replacing: tried.rule.id })
+          : matchesOf(shown, this.#rules, this.lines(), 'change' in change ? { ...options, replacing: change.change.id } : options);
     const preview: Omit<BankRulePreview, 'key'> = {
-      action: 'add' in change ? 'add' : 'change' in change ? 'change' : 'remove',
+      action: 'add' in change ? 'add' : 'change' in change ? 'change' : 'remove' in change ? 'remove' : 'move',
       rule: specOf(tried.rule),
       before: tried.before,
+      ...(tried.action === 'moved' ? { move: { direction: tried.direction, past: tried.past, switching: itemsReadDifferently(this.#rules, tried.rules, this.lines(), options) } } : {}),
       matches,
       recentDays: RECENT_DAYS,
     };
@@ -101,7 +108,14 @@ export class BankRulesDesk {
     if (!tried.ok) return tried;
     if (tried.action === 'added') this.#issued += 1;
     this.#rules = tried.rules;
-    this.#log.push(Object.freeze({ date: this.#input.today(), action: tried.action, rule: tried.rule, before: tried.before, afterBookLines: this.#input.bookLines() }));
+    const date = this.#input.today();
+    const afterBookLines = this.#input.bookLines();
+    if (tried.action === 'moved') {
+      const action = tried.direction === 'up' ? 'moved-up' : 'moved-down';
+      this.#log.push(Object.freeze({ date, action, rule: tried.rule, before: null, past: tried.past, position: tried.position, afterBookLines }));
+      return { ok: true, done: { action, rule: tried.rule } };
+    }
+    this.#log.push(Object.freeze({ date, action: tried.action, rule: tried.rule, before: tried.before, afterBookLines }));
     return { ok: true, done: { action: tried.action, rule: tried.rule } };
   }
 
@@ -115,6 +129,7 @@ function specOf(rule: BankRule): BankRuleSpec {
 }
 
 function askingWhy(change: BankRuleChange): string {
+  if ('move' in change) return 'Moving a bank rule changes which rule reads what the bank sends from now on. It needs your OK first';
   if ('remove' in change) return 'Removing a bank rule changes how the app reads what the bank sends from now on. It needs your OK first';
   return 'Check what it would have matched lately before you save it. It reads what the bank sends from now on';
 }

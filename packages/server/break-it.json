@@ -1129,8 +1129,8 @@
   {
     "section": "settings",
     "file": "packages/server/src/choices.ts",
-    "find": "    if (typeof which !== 'string' || which === '' || which.length > MAX_ITEM_LENGTH || (direction !== 'up' && direction !== 'down')) return null;",
-    "replace": "    if (typeof which !== 'string' || which === '' || which.length > MAX_ITEM_LENGTH) return null;",
+    "find": "    if (typeof which !== 'string' || which === '' || which.length > MAX_ITEM_LENGTH || (direction !== 'up' && direction !== 'down')) return null;\n    return { id, rule: { move: { id: which, direction } }, ...yes };",
+    "replace": "    if (typeof which !== 'string' || which === '' || which.length > MAX_ITEM_LENGTH) return null;\n    return { id, rule: { move: { id: which, direction } }, ...yes };",
     "why": "[a22] a move in any direction is read"
   },
   {
@@ -1325,8 +1325,8 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank-rules.ts",
-    "find": "(since === null || daysBetween(since, l.date) >= 0)",
-    "replace": "(since === null || daysBetween(since, l.date) > 0)",
+    "find": "daysBetween(since, l.date) >= 0) && l.account === spec.account",
+    "replace": "daysBetween(since, l.date) > 0) && l.account === spec.account",
     "why": "[bank-rules] 24c leave out the day exactly 90 days back"
   },
   {
@@ -1388,8 +1388,8 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank-rules-desk.ts",
-    "find": "afterBookLines: this.#input.bookLines() }));",
-    "replace": "afterBookLines: 0 }));",
+    "find": "const afterBookLines = this.#input.bookLines();",
+    "replace": "const afterBookLines = 0;",
     "why": "[bank-rules] 13.5 put every bank rule change before the book's in the log"
   },
   {
@@ -1430,8 +1430,8 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank-rules-db.ts",
-    "find": "    logChange(db, date, WHAT[done.action], {",
-    "replace": "    if (done.action !== 'added') logChange(db, date, WHAT[done.action], {",
+    "find": "    else logChange(db, date, WHAT[done.action], {",
+    "replace": "    else if (done.action !== 'added') logChange(db, date, WHAT[done.action], {",
     "why": "[bank-rules] 13.5 the database does not log a new bank rule"
   },
   {
@@ -1447,5 +1447,89 @@
     "find": "              ? await handlers.bankRule?.(request, parsed)",
     "replace": "              ? await handlers.choice?.(request, parsed as never)",
     "why": "[bank-rules] section 2 bank rule changes go to the choice desk"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "const other = onItsAccount[onItsAccount.indexOf(at) + (direction === 'up' ? -1 : 1)];",
+    "replace": "const other = onItsAccount[onItsAccount.indexOf(at) + (direction === 'up' ? 1 : -1)];",
+    "why": "[a27] move a bank rule the wrong way"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "const onItsAccount = rules.flatMap((r, i) => (r.account === rule.account ? [i] : []));",
+    "replace": "const onItsAccount = rules.flatMap((_r, i) => [i]);",
+    "why": "[a27] move a bank rule past one on another account"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "rule, before: null, past, position: other + 1 };",
+    "replace": "rule, before: null, past, position: other };",
+    "why": "[a27] say the wrong place in the list after a move"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": ">= 0) && readBankItemWithRule(",
+    "replace": "> 0) && readBankItemWithRule(",
+    "why": "[a27] leave out the day exactly 90 days back from what a move changes"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": ".rule?.id !== readBankItemWithRule(l.account, l.amount, l.description, after).rule?.id,",
+    "replace": ".rule?.id === readBankItemWithRule(l.account, l.amount, l.description, after).rule?.id,",
+    "why": "[a27] count what a move leaves as it was"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules-desk.ts",
+    "find": "? matchesOf(shown, tried.rules, this.lines(), { ...options, replacing: tried.rule.id })",
+    "replace": "? matchesOf(shown, this.#rules, this.lines(), { ...options, replacing: tried.rule.id })",
+    "why": "[a27] show what a moved rule matches in its old place"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules-desk.ts",
+    "find": "switching: itemsReadDifferently(this.#rules, tried.rules, this.lines(), options)",
+    "replace": "switching: itemsReadDifferently(this.#rules, this.#rules, this.lines(), options)",
+    "why": "[a27] say a move changes nothing"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules-desk.ts",
+    "find": "const action = tried.direction === 'up' ? 'moved-up' : 'moved-down';",
+    "replace": "const action = 'moved-up';",
+    "why": "[a27] log every move as up"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules-desk.ts",
+    "find": "if ('move' in change) return 'Moving a bank rule",
+    "replace": "if ('move' in change && false) return 'Moving a bank rule",
+    "why": "[a27] ask about a move as if it were a new rule"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/choices.ts",
+    "find": "return { id, bankRule: { move: { id: which, direction } }, ...yes };",
+    "replace": "return { id, bankRule: { move: { id: which, direction: 'up' } }, ...yes };",
+    "why": "[a27] read every move the phone sends as up"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-rules-db.ts",
+    "find": "WHAT[done.direction === 'up' ? 'moved-up' : 'moved-down']",
+    "replace": "WHAT['moved-up']",
+    "why": "[a27] save every move as up in the database log"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/views/settings.ts",
+    "find": "direction: line.action === 'moved-up' ? 'up' : 'down',",
+    "replace": "direction: 'up',",
+    "why": "[a27] show every move as up on Settings"
   }
 ]

@@ -288,6 +288,7 @@ function SettingsReady({ view, reload, onChanged }: { readonly view: Tracking; r
           // Its own key: the settings sheet beside it is keyed by the same count.
           key={`bank-${opened}`}
           editing={bankEditing}
+          rules={view.bankRules}
           send={sendBankRule}
           onClose={() => setBankEditing(null)}
           onDone={(change) => {
@@ -358,6 +359,15 @@ function LogLine({ line }: { readonly line: LogRow }) {
       return <ListRow icon="bank" title="Bank rule changed" detail={`${bankRuleText(line.before)} to ${bankRuleText(line.after)} · ${when}`} testId={testId} />;
     case 'bank-rule-removed':
       return <ListRow icon="bank" title="Bank rule removed" detail={`${bankRuleText(line.rule)} · ${when}`} testId={testId} />;
+    case 'bank-rule-moved':
+      return (
+        <ListRow
+          icon="bank"
+          title={line.direction === 'up' ? 'Bank rule moved up' : 'Bank rule moved down'}
+          detail={`${bankRuleText(line.rule)}, now number ${line.position}, ${line.direction === 'up' ? 'ahead of' : 'after'} ${bankRuleText(line.past)} · ${when}`}
+          testId={testId}
+        />
+      );
   }
 }
 

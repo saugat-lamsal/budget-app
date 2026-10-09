@@ -103,6 +103,9 @@ describe.each(ENGINES)('Bank rules in %s', (_name, engine) => {
     if (scenario === undefined) throw new Error('no life');
     const twin = demoBankRulesDesk(scenario, DEMO_TODAY, () => null);
     const page = await openScenario(await browser().newContext(phone()), base(), 'settings-busy', '/settings');
+    // The numbers are in once openScenario returns, but WebKit may not have
+    // drawn the list yet: wait for it before counting (it counted 0, Oct 9).
+    await page.getByTestId('bank-rules-card').locator('[data-testid^="bank-rule-"]').first().waitFor();
     expect(await ruleTexts(page, 'bank-rules-card')).toHaveLength(twin.rules().length);
 
     const spec: BankRuleSpec = { account: 'checking', contains: 'ZELLE TO MADE UP', means: 'payment-to-person' };
@@ -147,6 +150,81 @@ describe.each(ENGINES)('Bank rules in %s', (_name, engine) => {
     expect(await ruleTexts(page, 'bank-rules-card')).toHaveLength(twin.rules().length);
     expect(await page.getByTestId('bank-rule-bank-rule-3').count()).toBe(0);
     expect(await page.getByTestId('log').locator('[data-testid^="log-"]').first().innerText()).toContain('Bank rule removed');
+    await page.context().close();
+  });
+
+  it('A27 13.5 Settings: a rule moves up or down only among the rules on its account; it asks first with what would change hands; yes moves it, as in the twin, and the log says so', async () => {
+    const scenario = demoScenario('settings-busy');
+    if (scenario === undefined) throw new Error('no life');
+    const twin = demoBankRulesDesk(scenario, DEMO_TODAY, () => null);
+    const page = await openScenario(await browser().newContext(phone()), base(), 'settings-busy', '/settings');
+    const buttons = async (id: string): Promise<[number, number]> => {
+      await page.getByTestId(`bank-rule-${id}`).click();
+      await page.getByTestId('bank-rule-sheet').waitFor();
+      const shown: [number, number] = [await page.getByTestId('sheet-move-up').count(), await page.getByTestId('sheet-move-down').count()];
+      await page.getByTestId('bank-rule-sheet').getByRole('button', { name: 'Close' }).click();
+      await sheetClosed(page);
+      return shown;
+    };
+    // The first rule on checking can only go down; the only one on savings, nowhere; the last on the everyday card, only up.
+    expect(await buttons('bank-rule-1')).toEqual([0, 1]);
+    expect(await buttons('bank-rule-2')).toEqual([0, 0]);
+    expect(await buttons('bank-rule-5')).toEqual([1, 0]);
+
+    // A narrow rule added after a wide one, then moved ahead of it.
+    const spec: BankRuleSpec = { account: 'checking', contains: 'ZELLE TO MADE UP', means: 'payment-to-person' };
+    await page.getByTestId('row-add-bank-rule').click();
+    await page.getByTestId('field-bank-text').fill(spec.contains);
+    await page.getByTestId('field-bank-means').selectOption('payment-to-person');
+    await page.getByTestId('sheet-save').click();
+    await page.getByTestId('confirm-yes').click();
+    await sheetClosed(page);
+    const added = twin.apply({ add: spec });
+    if (!added.ok) throw new Error(added.why);
+    const id = added.done.rule.id;
+
+    const preview = twin.preview({ move: { id, direction: 'up' } });
+    if ('why' in preview || preview.move === undefined) throw new Error('the twin did not preview the move');
+    await page.getByTestId(`bank-rule-${id}`).click();
+    await page.getByTestId('sheet-move-up').click();
+    await page.getByTestId('confirm-ask').waitFor();
+    expect(await textAt(page, 'confirm-ask')).toBe('Moving a bank rule changes which rule reads what the bank sends from now on. It needs your OK first. Nothing was changed.');
+    const lately = (n: number): string => (n === 1 ? '1 item' : `${n} items`);
+    expect(await textAt(page, 'preview-move')).toBe(
+      preview.move.switching === 0
+        ? 'Nothing from the last 90 days fits both this rule and “ZELLE TO” on checking: a payment to a person, so nothing read lately would change.'
+        : `It would read ${lately(preview.move.switching)} from the last 90 days that “ZELLE TO” on checking: a payment to a person reads now.`,
+    );
+    // Back: nothing moved.
+    await page.getByTestId('confirm-cancel').click();
+    await page.getByTestId('bank-rule-sheet').getByRole('button', { name: 'Close' }).click();
+    await sheetClosed(page);
+    // Each row is the twin's rule at that place, numbered.
+    const inOrder = async (): Promise<boolean[]> => (await ruleTexts(page, 'bank-rules-card')).map((t, i) => t.startsWith(`${i + 1}.`) && t.includes(`“${twin.rules()[i]?.contains ?? ''}”`));
+    expect(await inOrder()).toEqual(twin.rules().map(() => true));
+
+    await page.getByTestId(`bank-rule-${id}`).click();
+    await page.getByTestId('sheet-move-up').click();
+    await page.getByTestId('confirm-yes').click();
+    await sheetClosed(page);
+    twin.apply({ move: { id, direction: 'up' } });
+    expect(await inOrder()).toEqual(twin.rules().map(() => true));
+    expect(twin.rules().map((r) => r.id).slice(0, 3)).toEqual(['bank-rule-1', 'bank-rule-2', id]);
+    expect(await page.getByTestId('log').locator('[data-testid^="log-"]').first().innerText()).toContain('Bank rule moved up');
+    expect(await page.getByTestId('log').locator('[data-testid^="log-"]').first().innerText()).toContain('now number 3, ahead of “ZELLE TO”');
+
+    // And back down, past the same rule.
+    await page.getByTestId(`bank-rule-${id}`).click();
+    // It can still go up past the first rule on checking, or down past "ZELLE TO" again.
+    expect(await page.getByTestId('sheet-move-up').count()).toBe(1);
+    await page.getByTestId('sheet-move-down').click();
+    await page.getByTestId('confirm-yes').click();
+    await sheetClosed(page);
+    twin.apply({ move: { id, direction: 'down' } });
+    expect(await inOrder()).toEqual(twin.rules().map(() => true));
+    expect(twin.rules().at(-1)?.id).toBe(id);
+    expect(await page.getByTestId('log').locator('[data-testid^="log-"]').first().innerText()).toContain('Bank rule moved down');
+    expect(await page.getByTestId('log').locator('[data-testid^="log-"]').first().innerText()).toContain('now number 6, after “ZELLE TO”');
     await page.context().close();
   });
 });

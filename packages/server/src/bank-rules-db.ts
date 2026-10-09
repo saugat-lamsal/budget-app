@@ -11,7 +11,13 @@ import type { BankRuleLogLine } from './views/bank-rules.js';
 // one transaction. The sync reads the rules each time it runs, so a change
 // reads what the bank sends from then on; nothing already read is touched.
 
-const WHAT: Readonly<Record<BankRuleLogLine['action'], string>> = { added: 'bank rule added', changed: 'bank rule changed', removed: 'bank rule removed' };
+const WHAT: Readonly<Record<BankRuleLogLine['action'], string>> = {
+  added: 'bank rule added',
+  changed: 'bank rule changed',
+  removed: 'bank rule removed',
+  'moved-up': 'bank rule moved up',
+  'moved-down': 'bank rule moved down',
+};
 
 export function bankLinesIn(db: Db): BankLine[] {
   return bankLinesOf({ accounts: readAccounts(db), items: readItems(db) });
@@ -19,10 +25,15 @@ export function bankLinesIn(db: Db): BankLine[] {
 
 // Every change to the bank rules, in the order made.
 export function bankRuleLogIn(db: Db): BankRuleLogLine[] {
-  const rows = db.prepare("SELECT date, what, detail FROM change_log WHERE what IN ('bank rule added', 'bank rule changed', 'bank rule removed') ORDER BY id").all() as { date: string; what: string; detail: string }[];
-  return rows.map((row) => {
-    const detail = JSON.parse(row.detail) as { rule: BankRule; before: BankRule | null; afterBookLines: number };
-    const action = (Object.keys(WHAT) as BankRuleLogLine['action'][]).find((a) => WHAT[a] === row.what) ?? 'added';
+  const actions = Object.keys(WHAT) as BankRuleLogLine['action'][];
+  const rows = db.prepare(`SELECT date, what, detail FROM change_log WHERE what IN (${actions.map(() => '?').join(', ')}) ORDER BY id`).all(...actions.map((a) => WHAT[a])) as { date: string; what: string; detail: string }[];
+  return rows.map((row): BankRuleLogLine => {
+    const detail = JSON.parse(row.detail) as { rule: BankRule; before: BankRule | null; afterBookLines: number; past?: BankRule; position?: number };
+    const action = actions.find((a) => WHAT[a] === row.what) ?? 'added';
+    if (action === 'moved-up' || action === 'moved-down') {
+      if (detail.past === undefined || detail.position === undefined) throw new Error(`the change log line for a bank rule moved has no rule passed: ${row.detail}`);
+      return { date: row.date, action, rule: detail.rule, before: null, past: detail.past, position: detail.position, afterBookLines: detail.afterBookLines };
+    }
     return { date: row.date, action, rule: detail.rule, before: detail.before, afterBookLines: detail.afterBookLines };
   });
 }
@@ -36,7 +47,9 @@ export function changeBankRuleIn(db: Db, change: BankRuleChange, date: IsoDate):
     const done = changeBankRules(rules, change, `bank-rule-${issued + 1}`);
     if (!done.ok) return done;
     saveBankRules(db, done.rules);
-    logChange(db, date, WHAT[done.action], { rule: done.rule, before: done.before, afterBookLines: loadBook(db)?.changeLog().length ?? 0 });
+    const afterBookLines = loadBook(db)?.changeLog().length ?? 0;
+    if (done.action === 'moved') logChange(db, date, WHAT[done.direction === 'up' ? 'moved-up' : 'moved-down'], { rule: done.rule, before: null, past: done.past, position: done.position, afterBookLines });
+    else logChange(db, date, WHAT[done.action], { rule: done.rule, before: done.before, afterBookLines });
     return done;
   })();
 }

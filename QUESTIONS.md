@@ -378,9 +378,13 @@ A26. ANSWERED Oct 9, built. Your answer: option 2. A purchase or payment
      $0.00 teaches you to ignore reminders. Needs a line in 4.5.
 
 
-## Part A, added with bank rules (Phase 4, Oct 9). Waiting on your answer.
+## Part A, added with bank rules (Phase 4, Oct 9). All answered.
 
-A27. Two bank rules that match the same item (section 2). A bank rule
+A27. ANSWERED Oct 9, built. Your answer: option 1. The first bank rule in
+     the list wins; each bank rule's sheet, on Settings and on Setup day, has
+     Move up and Move down, which ask first, and each move is logged.
+     Rulebook section 2 and 26a; the details are B146 to B148.
+     The question was: two bank rules that match the same item (section 2). A bank rule
      matches when the item is on its account, its description contains the
      rule's text (ignoring case), and the money went a way the rule fits (a
      fee is money out, say). If two of them match one item, the rulebook does
@@ -1416,3 +1420,26 @@ B145. In the demo, a life that is tracking already has five made-up bank
       with labels. The life "setup-suggest" starts with no bank rules at all;
       "setup-day" starts with them set, so every suggestion there is covered.
 
+
+## Part B, added with your answer to A27 (Oct 9). Tell me if any is wrong.
+
+B146. Which rules a bank rule moves past (A27). Only rules on the same
+      account can fit the same item, so a rule moves one place up or down
+      among the rules on its account, past the next one there, and the two
+      trade places in the list; rules on other accounts stay where they are.
+      The first rule on its account has no Move up, and the last no Move
+      down. Settings numbers the whole list, so a move can jump more than one
+      number ("now number 3"). Worked example bank 5.
+
+B147. A move asks first, like every other change to a bank rule (B140): it
+      says how many items from the last 90 days a different one of the two
+      rules would read first (moving up, the ones it would take from the rule
+      it passes; moving down, the ones that rule would take from it), and
+      what the rule would match in its new place. Your yes names that
+      preview. A move reads what the bank sends from then on; what was
+      already read stays as it was (24c). On Setup day, before tracking
+      starts, the history is read again with the new order (like B143).
+
+B148. The change log (13.5): "Bank rule moved up" or "moved down", with the
+      rule, its number in the list now, and the rule it passed, dated, among
+      the other changes in the order they were made.

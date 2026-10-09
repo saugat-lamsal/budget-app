@@ -1552,5 +1552,61 @@
     "find": "onClick={() => void sender.send({ suggestion: { id: s.id, answer: 'add' } })}",
     "replace": "onClick={() => void sender.send({ suggestion: { id: s.id, answer: 'skip' } })}",
     "why": "[bank-rules] 20a Add this rule sends skip"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/bank-rules-text.ts",
+    "find": "const mine = rules.filter((r) => r.account === rule.account);",
+    "replace": "const mine = rules;",
+    "why": "[a27] offer moves past bank rules on other accounts"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/bank-rules-text.ts",
+    "find": "return move.direction === 'up' ? `It would read",
+    "replace": "return move.direction === 'down' ? `It would read",
+    "why": "[a27] say what a move up changes the other way round"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/bank-rules-text.ts",
+    "find": "if (move.switching === 0) return",
+    "replace": "if (move.switching <= 1) return",
+    "why": "[a27] say nothing changes when one item would"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/bank-rules-text.ts",
+    "find": "if ('move' in change) return change.move.direction === 'up' ?",
+    "replace": "if ('move' in change) return change.move.direction !== 'up' ?",
+    "why": "[a27] say a move up was down"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/bank-rules.tsx",
+    "find": "onClick={() => go({ move: { id: editing.rule.id, direction: 'down' } })}",
+    "replace": "onClick={() => go({ move: { id: editing.rule.id, direction: 'up' } })}",
+    "why": "[a27] Move down moves the bank rule up"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/bank-rules.tsx",
+    "find": "              {moves.up && (",
+    "replace": "              {moves.down && (",
+    "why": "[a27] show Move up where Move down belongs"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/bank-rules.tsx",
+    "find": "{moveText(asked.preview.move, asked.preview.recentDays)}",
+    "replace": "{null}",
+    "why": "[a27] ask about a move without saying what would change hands"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "title={line.direction === 'up' ? 'Bank rule moved up' : 'Bank rule moved down'}",
+    "replace": "title={line.direction !== 'up' ? 'Bank rule moved up' : 'Bank rule moved down'}",
+    "why": "[a27] the change log says a bank rule moved the other way"
   }
 ]

@@ -96,6 +96,77 @@ describe('24c every change asks first, with what it would have matched lately', 
   });
 });
 
+describe('A27 moving a bank rule asks first, and is logged', () => {
+  function withMom(lines: BankLine[] = []): BankRulesDesk {
+    return new BankRulesDesk({
+      rules: checkBankRules([
+        { id: 'zelle', account: 'checking', contains: 'Zelle payment to', means: 'payment-to-person' },
+        { id: 'fee', account: 'everyday-card', contains: 'LATE FEE', means: 'card-fee' },
+        { id: 'mom', account: 'checking', contains: 'Zelle payment to MOM', means: 'transfer', other: 'savings' },
+      ]),
+      lines: () => lines,
+      today: () => TODAY,
+      bookLines: () => 2,
+    });
+  }
+
+  it('A27 a move asks first, saying how many recent items it would read that the rule it passes reads now; nothing moves until the yes', () => {
+    const d = withMom([line('checking', 50_000, 'Zelle payment to MOM MADEUP'), line('checking', 4_000, 'Zelle payment to ANNA')]);
+    const asked = d.decide({ id: id(), bankRule: { move: { id: 'mom', direction: 'up' } } });
+    expect(asked).toMatchObject({
+      ok: false,
+      code: 'needs-confirmation',
+      why: 'Moving a bank rule changes which rule reads what the bank sends from now on. It needs your OK first. Nothing was changed.',
+      preview: {
+        action: 'move',
+        rule: { account: 'checking', contains: 'Zelle payment to MOM', means: 'transfer', other: 'savings' },
+        move: { direction: 'up', past: { id: 'zelle' }, switching: 1 },
+        matches: { count: 1, readFirstByEarlier: 0 },
+      },
+    });
+    expect(d.rules().map((r) => r.id)).toEqual(['zelle', 'fee', 'mom']);
+    expect(d.log()).toEqual([]);
+  });
+
+  it('A27 13.5 with his yes it moves one place among the rules on its account, and the move is logged with the date and the rule it passed', () => {
+    const d = withMom();
+    const done = askThenYes(d, { move: { id: 'mom', direction: 'up' } });
+    expect(done).toEqual({ ok: true, replayed: false, done: { action: 'moved-up', rule: { id: 'mom', account: 'checking', contains: 'Zelle payment to MOM', means: 'transfer', other: 'savings' } } });
+    expect(d.rules().map((r) => r.id)).toEqual(['mom', 'fee', 'zelle']);
+    expect(d.log()).toEqual([{ date: TODAY, action: 'moved-up', rule: d.rules()[0], before: null, past: d.rules()[2], position: 1, afterBookLines: 2 }]);
+    const down = askThenYes(d, { move: { id: 'mom', direction: 'down' } });
+    expect(down.ok && down.done.action).toBe('moved-down');
+    expect(d.rules().map((r) => r.id)).toEqual(['zelle', 'fee', 'mom']);
+    expect(d.log().map((l) => [l.action, 'position' in l ? l.position : null])).toEqual([
+      ['moved-up', 1],
+      ['moved-down', 3],
+    ]);
+  });
+
+  it('A27 a move that cannot be is refused in words before anything is asked, and nothing changes', () => {
+    const d = withMom();
+    expect(d.decide({ id: id(), bankRule: { move: { id: 'zelle', direction: 'up' } } })).toEqual({ ok: false, code: 'refused', why: 'It is already the first bank rule on checking. Nothing was changed.' });
+    expect(d.decide({ id: id(), bankRule: { move: { id: 'fee', direction: 'down' } } })).toEqual({ ok: false, code: 'refused', why: 'It is already the last bank rule on the everyday card. Nothing was changed.' });
+    expect(d.decide({ id: id(), bankRule: { move: { id: 'gone', direction: 'down' } } })).toEqual({ ok: false, code: 'refused', why: 'That rule is not there any more. Nothing was changed.' });
+    expect(d.rules().map((r) => r.id)).toEqual(['zelle', 'fee', 'mom']);
+    expect(d.log()).toEqual([]);
+  });
+
+  it('A27 B92 a lost answer to a move: the same yes sent again is answered the same, and moves it once', () => {
+    const d = withMom();
+    const decision = id();
+    const change = { move: { id: 'mom', direction: 'up' as const } };
+    const asked = d.decide({ id: decision, bankRule: change });
+    const key = !asked.ok ? (asked.preview?.key ?? '') : '';
+    const first = d.decide({ id: decision, bankRule: change, confirmed: true, seen: key });
+    const second = d.decide({ id: decision, bankRule: change, confirmed: true, seen: key });
+    expect(first).toMatchObject({ ok: true, replayed: false });
+    expect(second).toEqual({ ...first, replayed: true });
+    expect(d.rules().map((r) => r.id)).toEqual(['mom', 'fee', 'zelle']);
+    expect(d.log()).toHaveLength(1);
+  });
+});
+
 describe('B92 decision numbers and refusals', () => {
   it('B92 a decision number used for a different change is refused, and nothing changes', () => {
     const { d } = desk();
@@ -136,6 +207,8 @@ describe('section 2 what the phone may send for a bank rule: exactly the right s
     { id: 'abcdefgh', bankRule: { add: { account: 'checking', contains: 'to SAV', means: 'transfer', other: 'savings' } }, confirmed: true, seen: '0123abcd' },
     { id: 'abcdefgh', bankRule: { change: { id: 'bank-rule-1', account: 'everyday-card', contains: 'LATE FEE', means: 'card-fee' } } },
     { id: 'abcdefgh', bankRule: { remove: 'bank-rule-1' } },
+    { id: 'abcdefgh', bankRule: { move: { id: 'bank-rule-1', direction: 'up' } } },
+    { id: 'abcdefgh', bankRule: { move: { id: 'bank-rule-1', direction: 'down' } }, confirmed: true, seen: '0123abcd' },
   ];
   it.each(good.map((g) => [JSON.stringify(g), g]))('section 2 read: %s', (_name, value) => {
     expect(parseRequest(value)).toEqual(value);
@@ -155,6 +228,11 @@ describe('section 2 what the phone may send for a bank rule: exactly the right s
     { id: 'abcdefgh', bankRule: { remove: 'x' }, confirmed: 'yes' },
     { id: 'abcdefgh', bankRule: { remove: 'x' }, seen: 'not hex!' },
     { id: 'abcdefgh', bankRule: { remove: 'x' }, more: 1 },
+    { id: 'abcdefgh', bankRule: { move: { id: 'x', direction: 'sideways' } } },
+    { id: 'abcdefgh', bankRule: { move: { id: '', direction: 'up' } } },
+    { id: 'abcdefgh', bankRule: { move: { direction: 'up' } } },
+    { id: 'abcdefgh', bankRule: { move: { id: 'x', direction: 'up', by: 2 } } },
+    { id: 'abcdefgh', bankRule: { move: 'x' } },
   ];
   it.each(bad.map((b) => [JSON.stringify(b), b]))('section 2 not read: %s', (_name, value) => {
     expect(parseRequest(value)).toBeNull();

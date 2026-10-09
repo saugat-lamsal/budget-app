@@ -51,6 +51,27 @@ describe('section 2 24c 13.5 bank rules on Settings', () => {
     expect(new Set(view.log.map((l) => l.key)).size).toBe(view.log.length);
   });
 
+  it('A27 13.5 a bank rule moved up or down is in the change log as a move, with the rule it passed and its place now', () => {
+    const book = openBook({ date: '2026-10-07', pots: { savings: 0, needs: 0, wants: 0, momReserve: 0, heldForOthers: 0 }, oldCardDebt: 0, lastPaycheckDate: '2026-10-02', settings: DEFAULT_SETTINGS, rules: [] });
+    const desk = new BankRulesDesk({
+      rules: checkBankRules([
+        { id: 'bank-rule-1', account: 'checking', contains: 'Zelle payment to', means: 'payment-to-person' },
+        { id: 'bank-rule-2', account: 'checking', contains: 'Zelle payment to MOM', means: 'transfer', other: 'savings' },
+      ]),
+      lines: () => [],
+      today: () => '2026-10-07',
+      bookLines: () => 0,
+    });
+    desk.apply({ move: { id: 'bank-rule-2', direction: 'up' } });
+    desk.apply({ move: { id: 'bank-rule-2', direction: 'down' } });
+    const view = settingsView({ today: '2026-10-07', book, bank: null, madeUpData: true, bankRules: { rules: desk.rules(), log: desk.log(), recentDays: 90 } });
+    if (view.state !== 'tracking') throw new Error('not tracking');
+    expect(view.log).toEqual([
+      { key: expect.any(String), date: '2026-10-07', kind: 'bank-rule-moved', direction: 'down', rule: desk.rules()[1], past: desk.rules()[0], position: 2 },
+      { key: expect.any(String), date: '2026-10-07', kind: 'bank-rule-moved', direction: 'up', rule: desk.rules()[1], past: desk.rules()[0], position: 1 },
+    ]);
+  });
+
   it('13.5 changes made on Setup day, before the book began, come first; with no bank rule changes the log is the book\'s', () => {
     const book = openBook({ date: '2026-10-07', pots: { savings: 0, needs: 0, wants: 0, momReserve: 0, heldForOthers: 0 }, oldCardDebt: 0, lastPaycheckDate: '2026-10-02', settings: DEFAULT_SETTINGS, rules: [] });
     const desk = new BankRulesDesk({ rules: [], lines: () => [], today: () => '2026-10-07', bookLines: () => 0 });
