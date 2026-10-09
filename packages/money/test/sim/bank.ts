@@ -162,6 +162,13 @@ export class SimBank {
     return this.#add({ kind: 'taken-back', id: this.#id('k'), takenId: copy.id, date, description: 'CORRECTION' });
   }
 
+  // ...or takes back a refund it gave, such as a return the store did not
+  // accept after all (4.10).
+  takeBackRefund(date: IsoDate, refund: Refund): TakenBack {
+    this.#owe(refund.account, refund.amount);
+    return this.#add({ kind: 'taken-back', id: this.#id('k'), takenId: refund.id, date, description: 'REFUND REVERSED' });
+  }
+
   cardCharge(date: IsoDate, card: Card, charge: 'fee' | 'interest', amount: Cents): CardCharge {
     this.#owe(card, amount);
     const description = charge === 'fee' ? 'LATE FEE' : 'INTEREST CHARGE';

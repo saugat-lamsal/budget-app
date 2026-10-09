@@ -3,7 +3,7 @@ import type { Page } from 'playwright';
 import { describe, expect, it } from 'vitest';
 import { ENGINES, centsAt, openScenario, phone, readCents, textAt, useEngine } from './harness.js';
 import { watchChoices } from './screens.js';
-import { answerHalf, openSetup, pickPaycheck, putTheRest, readAssign, ready, settled, tell, twinOf, typeAmount } from './setup-screens.js';
+import { answerHalf, lookBack, openSetup, pickPaycheck, putTheRest, readAssign, ready, settled, tell, twinOf, typeAmount } from './setup-screens.js';
 
 // Setup day (rulebook section 14, with A10, B42, B43, B48), used in a
 // browser like a person would. Every number shown is compared with a twin of
@@ -69,6 +69,35 @@ describe.each(ENGINES)('Setup day in %s', (_name, engine) => {
   it('B48 with nothing on its way, the step says so', async () => {
     const page = await openSetup(await browser().newContext(phone()), base(), 'setup-owes-more', 'transfers');
     expect(await textAt(page, 'transfers-none')).toContain('Nothing on its way');
+    await page.context().close();
+  });
+
+  it('A25 how far back it looks is a setting: fewer days asks about fewer transfers, drops answers about the rest, and the same number is refused in words', async () => {
+    const twin = twinOf('setup-day');
+    const page = await openSetup(await browser().newContext(phone()), base(), 'setup-day', 'transfers');
+    expect(await textAt(page, 'look-back-row')).toContain('The last 10 days');
+    await answerHalf(page, 'su-old-left', true);
+    tell(twin, { onItsWay: { half: 'su-old-left', answer: true } });
+    expect(await lookBack(page, '1')).toBeNull();
+    tell(twin, { lookBack: 1 });
+    expect(await textAt(page, 'look-back-row')).toContain('The last day');
+    const shown = async (): Promise<string[]> => (await page.locator('[data-testid^="half-"]').evaluateAll((cards) => cards.map((c) => c.getAttribute('data-testid') ?? ''))).map((t) => t.replace('half-', ''));
+    expect(await shown()).toEqual(ready(twin).halves.map((h) => h.id));
+    expect(await shown()).not.toContain('su-old-left');
+    expect(await centsAt(page, 'starting-money')).toBe(ready(twin).startingMoney);
+    expect(await lookBack(page, '1')).toBe('That is already the setting. Nothing was changed.');
+    await page.getByTestId('look-back-sheet').getByRole('button', { name: 'Close' }).click();
+    // Not a whole number: said on the sheet, and Save waits.
+    await page.getByTestId('look-back-row').click();
+    await page.getByTestId('look-back-sheet').getByTestId('look-back-days').fill('ten');
+    expect(await textAt(page, 'sheet-reading')).toContain('whole number');
+    expect(await page.getByTestId('look-back-sheet').getByTestId('sheet-save').isDisabled()).toBe(true);
+    await page.getByTestId('look-back-sheet').getByRole('button', { name: 'Close' }).click();
+    // Back to 10: the one dropped is asked about again, unanswered.
+    expect(await lookBack(page, '10')).toBeNull();
+    tell(twin, { lookBack: 10 });
+    expect(await page.getByTestId('half-su-old-left').getByTestId('answer').innerText()).toBe('Not answered yet');
+    expect(await centsAt(page, 'starting-money')).toBe(ready(twin).startingMoney);
     await page.context().close();
   });
 

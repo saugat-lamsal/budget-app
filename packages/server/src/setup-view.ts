@@ -24,12 +24,15 @@ import type { AccountLine, HalfLine, SetupMissing, SetupReadyView, SetupView } f
 
 // His answers so far.
 export interface SetupAnswers {
+  // A25: how many days back it asks; null until he changes it.
+  readonly halvesWithinDays: number | null;
   readonly onItsWay: ReadonlyMap<string, boolean>;
   readonly lastPaycheckDate: IsoDate | null;
   readonly assignment: StartingPots;
 }
 
 export const NO_ANSWERS: SetupAnswers = {
+  halvesWithinDays: null,
   onItsWay: new Map(),
   lastPaycheckDate: null,
   assignment: { savings: 0, needs: 0, wants: 0, momReserve: 0, heldForOthers: 0 },
@@ -44,9 +47,13 @@ export interface SetupViewInput {
   // What tracking starts with.
   readonly settings: Settings;
   readonly rules: readonly SortingRule[];
-  // How many days back setup day asks about halves on their way (QUESTIONS.md A25).
+  // How many days back setup day asks about halves on their way, to start
+  // with (A25: a setting, section 2; his answer replaces it).
   readonly halvesWithinDays: number;
 }
+
+// Section 2, A25: setup day looks back this many days, until he changes it.
+export const SETUP_LOOK_BACK_DAYS = 10;
 
 export function setupView(input: SetupViewInput): SetupView {
   const { bank, madeUpData, today, answers, settings } = input;
@@ -60,7 +67,8 @@ export function setupView(input: SetupViewInput): SetupView {
   const withPending = withPendingCharges(base.posted, charges);
   const line = (posted: Cents, account: AccountId, counted: Cents): AccountLine => ({ posted, pending: pendingOn(account), withPending: counted });
 
-  const halves: HalfLine[] = halvesInTransitIn(bank, today, input.halvesWithinDays).map((half) => ({
+  const within = answers.halvesWithinDays ?? input.halvesWithinDays;
+  const halves: HalfLine[] = halvesInTransitIn(bank, today, within).map((half) => ({
     id: half.id,
     kind: half.kind === 'transfer-sent' ? 'left' : 'arrived',
     from: half.from,
@@ -114,7 +122,7 @@ export function setupView(input: SetupViewInput): SetupView {
     oldCard: { posted: base.oldCardBalance, pending: pendingOn('old-card'), debt: startingDebt(base.oldCardBalance, charges) },
     bankSide: startingMoney(base.posted, charges),
     halves,
-    halvesWithinDays: input.halvesWithinDays,
+    halvesWithinDays: within,
     unanswered: halves.filter((h) => h.onItsWay === null).length,
     inTransit: addCents(...onItsWay.map((h) => h.effect)),
     startingMoney: money,

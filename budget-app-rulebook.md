@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 12)
+# Budget App Rulebook (draft 13)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -38,6 +38,8 @@ number so a test can point at it. Nothing gets coded until you approve this.
 - Old card promo end date: (you fill in)
 - Paycheck rule: how your pay shows up on the statement (set after first sync)
 - Pay schedule: every 14 days, counted from the last paycheck
+- Setup day looks back 10 days for transfers with only one side showing
+  (14.2). You can change it on the Setup day screen.
 - Mom rule: her name as it appears on transfers (you enter it in the app)
 - Bank rules: which bank items are transfers between your accounts,
   payments to people, and card fees or interest. Each is text the bank's
@@ -95,6 +97,10 @@ number so a test can point at it. Nothing gets coded until you approve this.
      for this one") matches it exactly as if the bank had, and cannot be
      undone in review. A likely purchase is on the same account, made on or
      before the refund, with at least the refund's amount not yet refunded.
+     A purchase or payment still waiting in review that is refunded in full
+     has nothing left to sort: it leaves review by itself and is kept as a
+     record, sorted nowhere. If the bank later takes the refund back (4.10),
+     it comes back to review to be sorted.
 4.6  A pending charge counts once. When it posts, the final charge replaces
      the pending one, even if the amount changed (a tip, for example). If
      the bank changes a pending charge's amount before it posts, the new
@@ -322,7 +328,11 @@ number so a test can point at it. Nothing gets coded until you approve this.
       balance) across savings, needs, wants, mom reserve, and held for
       others. Charges still pending that day are part of the starting
       money. If one later posts at a different amount, is refunded, or is
-      dropped, only the difference waits in review.
+      dropped, only the difference waits in review. Money on its way
+      between your accounts that day is part of it too (12.5): setup day
+      asks about each transfer with only one side showing from the last 10
+      days (section 2), and you say whether it is still on its way. Older
+      ones are history.
 14.3  The self-check must pass before tracking starts.
 
 
@@ -486,3 +496,12 @@ c.  Bank rules come with setup day and can be changed in Settings. Each
 d.  Only the split and the mom reserve wait for the next paycheck.
     Settings shows them for this pay period next to the next paycheck's;
     every other setting applies right away (13.1, A24).
+
+
+## 25. Answers after Setup day (Oct 9, 2026)
+
+a.  Setup day asks about transfers with only one side showing from the last
+    10 days, and 10 is a setting (section 2, 14.2, QUESTIONS.md A25).
+b.  A purchase or payment waiting in review that is refunded in full leaves
+    review by itself and is kept as a record. If the bank takes the refund
+    back, it comes back to review (4.5, QUESTIONS.md A26).

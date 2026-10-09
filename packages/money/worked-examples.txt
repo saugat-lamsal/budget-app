@@ -1145,3 +1145,31 @@ left: -1,756.47 - 150.00 - (-1,500.00) = -406.47.
 Safe to spend is Wants, below zero (B34): -406.47.
 
 Check: starting money -1,756.47 | savings 150.00 | needs -1,500.00 | wants -406.47 | safe to spend -406.47
+
+
+========================================================================
+EXAMPLE 39. A purchase refunded in full while it waits in review (rules 4.3, 4.5, 4.10, 11.1; QUESTIONS.md A26)
+========================================================================
+
+Needs 500.00, wants 300.00. No rule matches MADE UP OUTDOOR SHOP.
+
+Oct 3. A tent for 120.00 on the everyday card. No rule matches, so it waits
+       in review (4.2) and is held back from safe to spend (4.3):
+       Unsorted spending 120.00. Safe to spend: 300.00 - 120.00 = 180.00.
+       Waiting in review: 1.
+
+Oct 6. He sends it back, and the bank refunds 120.00, naming the purchase.
+       What is left of it: 120.00 - 120.00 = 0.00. Nothing is left to sort,
+       so it leaves review by itself and is kept as a record (A26).
+       Unsorted spending 0.00. Safe to spend 300.00. Waiting in review: 0.
+       Needs and wants did not move.
+
+Oct 9. The store says the return never arrived, and the bank takes the
+       refund back (4.10). The tent is 120.00 again and waits in review:
+       Unsorted spending 120.00. Safe to spend 180.00. Waiting in review: 1.
+
+Oct 10. He sorts it to wants: Wants 300.00 - 120.00 = 180.00.
+        Unsorted spending 0.00. Safe to spend 180.00.
+
+Check: refunded unsorted spending 0.00 | refunded safe to spend 300.00 | taken back unsorted spending 120.00 | taken back safe to spend 180.00
+Check: wants 180.00 | needs 500.00 | unsorted spending 0.00 | safe to spend 180.00

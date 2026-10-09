@@ -151,6 +151,10 @@ export function parseSetupRequest(value: unknown): SetupRequest | null {
     if (onlyKeys(assign, ['pot', 'amount']) && isWhole(assign['amount'])) step = { assign: { pot, amount: assign['amount'] } };
     else if (onlyKeys(assign, ['pot', 'rest']) && assign['rest'] === true) step = { assign: { pot, rest: true } };
     else return null;
+  } else if ('lookBack' in setup) {
+    const days = setup['lookBack'];
+    if (!isWhole(days) || days < 0) return null;
+    step = { lookBack: days };
   } else if ('start' in setup) {
     if (setup['start'] !== true) return null;
     step = { start: true };

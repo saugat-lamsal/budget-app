@@ -1265,5 +1265,33 @@
     "find": "      amount: dollars(item.amount),",
     "replace": "      amount: dollars(Math.abs(item.amount)),",
     "why": "[setup] the made-up bank loses the sign of money in"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-desk.ts",
+    "find": "const onItsWay = new Map([...this.#answers.onItsWay].filter(([half]) => asked.some((h) => h.id === half)));",
+    "replace": "const onItsWay = new Map(this.#answers.onItsWay);",
+    "why": "[a25] A25 keep answers about transfers it no longer asks about"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-view.ts",
+    "find": "const within = answers.halvesWithinDays ?? input.halvesWithinDays;",
+    "replace": "const within = input.halvesWithinDays;",
+    "why": "[a25] A25 ignore his setting"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/choices.ts",
+    "find": "if (!isWhole(days) || days < 0) return null;",
+    "replace": "if (!isWhole(days)) return null;",
+    "why": "[a25] A25 read a negative number of days"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-desk.ts",
+    "find": "if (days === view.halvesWithinDays) return refuse('refused', 'That is already the setting');",
+    "replace": "if (days === -1) return refuse('refused', 'That is already the setting');",
+    "why": "[a25] A25 the same number again is not refused"
   }
 ]

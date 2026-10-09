@@ -1840,9 +1840,12 @@ export class Book {
     if (entry.spendingKind === 'debt-payoff' && entry.txn.kind === 'transfer') effect.oldCardDebt = -entry.amount;
     this.#setEffect(entry, effect);
     // A charge the bank dropped (A2) or took back (4.10) with nothing left
-    // has nothing to sort.
+    // has nothing to sort. Nor has one refunded in full (4.5, A26): it leaves
+    // review by itself, kept as a record sorted nowhere, and comes back if
+    // the bank takes a refund back.
     const gone = entry.dropped === true || entry.takenBack === true;
-    if ('to' in now && now.to === 'unsorted' && !(gone && net === 0)) this.#review.add(entry.id);
+    const refundedInFull = entry.refunded > 0 && net === 0;
+    if ('to' in now && now.to === 'unsorted' && !((gone || refundedInFull) && net === 0)) this.#review.add(entry.id);
     else this.#review.delete(entry.id);
   }
 

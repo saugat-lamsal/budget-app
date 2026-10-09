@@ -200,6 +200,9 @@ export type SetupStep =
   // 14.2: whatever is left to assign goes in this bucket, worked out by the
   // money math, not the screen.
   | { readonly assign: { readonly pot: Pot; readonly rest: true } }
+  // A25: how many days back setup day asks about transfers with only one
+  // side showing. A setting (0.2): any whole number of days from zero up.
+  | { readonly lookBack: number }
   // 14.3: start tracking. Final, so it needs his yes.
   | { readonly start: true };
 
@@ -219,6 +222,8 @@ export type SetupDone =
   | { readonly step: 'on-its-way'; readonly half: string; readonly answer: boolean; readonly startingMoney: Cents }
   | { readonly step: 'last-paycheck'; readonly date: IsoDate; readonly nextPayday: IsoDate }
   | { readonly step: 'assign'; readonly pot: Pot; readonly amount: Cents; readonly leftToAssign: Cents }
+  // A25: asked is how many transfers setup day asks about now.
+  | { readonly step: 'look-back'; readonly days: number; readonly asked: number }
   // Tracking has started. stillToSet: the rules he has not set yet, for Settings.
   | { readonly step: 'started'; readonly startingMoney: Cents; readonly stillToSet: readonly ('paycheckRule' | 'momRule')[] };
 

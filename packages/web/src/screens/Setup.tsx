@@ -8,7 +8,7 @@ import { dayWithYear, shortDate } from '../ui/dates.js';
 import { Icon } from '../ui/Icon.js';
 import { POT_NAMES } from '../ui/names.js';
 import { paydayText } from './home-text.js';
-import { ACCOUNT_NAMES, answerText, bankRuleText, effectLead, halfText, missingText, stepCount } from './setup-text.js';
+import { ACCOUNT_NAMES, answerText, bankRuleText, effectLead, halfText, lookBackText, missingText, readDays, stepCount } from './setup-text.js';
 
 // Setup day (rulebook section 14), one step per screen: what the bank shows
 // today (14.1), transfers on their way (B48), the last paycheck (B42),
@@ -225,6 +225,7 @@ function AccountFigure({ name, line, owes = false, testId }: { readonly name: st
 
 // Step 2, B48: each transfer with one half showing, on its way or not.
 function TransfersStep({ view, sender }: { readonly view: SetupReadyView; readonly sender: Sender }) {
+  const [lookBack, setLookBack] = useState(false);
   return (
     <>
       <Hero
@@ -234,17 +235,57 @@ function TransfersStep({ view, sender }: { readonly view: SetupReadyView; readon
       >
         <Money cents={view.startingMoney} hero testId="starting-money" />
       </Hero>
+      <Card title="How far back" testId="look-back">
+        <ListRow title="Transfers from" detail={lookBackText(view.halvesWithinDays)} onClick={() => setLookBack(true)} testId="look-back-row" />
+        <p className="card__note">A transfer lands within a few days, so an older one is history. Changing this drops your answers about transfers it no longer asks about.</p>
+      </Card>
       {view.halves.length === 0 ? (
-        <StateMessage icon="check" title="Nothing on its way" detail={`Every transfer between your accounts in the last ${view.halvesWithinDays} days shows both sides.`} testId="transfers-none" />
+        <StateMessage icon="check" title="Nothing on its way" detail={`Every transfer between your accounts from ${lookBackText(view.halvesWithinDays).toLowerCase()} shows both sides.`} testId="transfers-none" />
       ) : (
         <Card title="Only one side shows" testId="halves">
-          <p className="card__note">From the last {view.halvesWithinDays} days. Say whether each is still on its way. The starting money follows your answers.</p>
+          <p className="card__note">Say whether each is still on its way. The starting money follows your answers.</p>
           {view.halves.map((half) => (
             <HalfDecision key={half.id} half={half} sender={sender} />
           ))}
         </Card>
       )}
+      {lookBack && <LookBackSheet view={view} sender={sender} onClose={() => setLookBack(false)} />}
     </>
+  );
+}
+
+// A25: how many days back setup day asks about transfers with one side showing.
+function LookBackSheet({ view, sender, onClose }: { readonly view: SetupReadyView; readonly sender: Sender; readonly onClose: () => void }) {
+  const [text, setText] = useState(String(view.halvesWithinDays));
+  const [problem, setProblem] = useState<string | null>(null);
+  const days = readDays(text);
+  const save = (): void => {
+    if (days === null) return;
+    void sender.send({ lookBack: days }, { inSheet: true }).then((answer) => {
+      if (answer === 'failed') setProblem(NO_SIGNAL);
+      else if (answer?.ok === true) onClose();
+      else if (answer !== null && !answer.ok) setProblem(answer.why);
+    });
+  };
+  return (
+    <BottomSheet open title="How far back" onClose={onClose} testId="look-back-sheet">
+      {problem !== null && (
+        <Notice tone="danger" icon="alert" testId="sheet-problem">
+          {problem}
+        </Notice>
+      )}
+      <div className="card" style={{ display: 'grid', gap: 'var(--space-3)', padding: 'var(--space-4)' }}>
+        <TextField label="Days back" kind="whole" value={text} onChange={setText} hint="0 is today only." testId="look-back-days" />
+        {days === null && text.trim() !== '' && (
+          <p className="field__hint" role="alert" data-testid="sheet-reading">
+            Enter a whole number of days, like 10
+          </p>
+        )}
+      </div>
+      <Button wide disabled={sender.sending || days === null} testId="sheet-save" onClick={save}>
+        {sender.sending ? 'Saving…' : 'Save'}
+      </Button>
+    </BottomSheet>
   );
 }
 

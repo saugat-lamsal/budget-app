@@ -670,6 +670,28 @@ const examples: Record<number, () => Record<string, Cents>> = {
     expect(result.book.selfCheck(bank).ok).toBe(true);
     return { ...buckets(result.book), 'starting money': money, 'safe to spend': result.book.safeToSpend('2026-10-07').amount };
   },
+  39: () => {
+    const d = parseDollars;
+    const book = openTestBook({ pots: { needs: d('500.00'), wants: d('300.00') } });
+    book.receive(purchase('tent', '2026-10-03', d('120.00'), 'MADE UP OUTDOOR SHOP'));
+    expect(book.reviewItems()).toHaveLength(1);
+    expect(book.safeToSpend('2026-10-03').amount).toBe(d('180.00'));
+    book.receive(refund('back', '2026-10-06', d('120.00'), 'tent'));
+    expect(book.reviewItems()).toHaveLength(0);
+    const refunded = { unsorted: book.pots().unsortedOut, safe: book.safeToSpend('2026-10-06').amount };
+    book.receive(takenBack('reversed', 'back', '2026-10-09'));
+    expect(book.reviewItems()).toHaveLength(1);
+    const reversed = { unsorted: book.pots().unsortedOut, safe: book.safeToSpend('2026-10-09').amount };
+    book.sort('tent', { to: 'wants' }, '2026-10-10');
+    return {
+      ...buckets(book),
+      'refunded unsorted spending': refunded.unsorted,
+      'refunded safe to spend': refunded.safe,
+      'taken back unsorted spending': reversed.unsorted,
+      'taken back safe to spend': reversed.safe,
+      'safe to spend': book.safeToSpend('2026-10-10').amount,
+    };
+  },
 };
 
 describe('worked examples (worked-examples.txt)', () => {

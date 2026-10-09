@@ -104,6 +104,55 @@ describe('B48 transfers on their way: he says which', () => {
   });
 });
 
+describe('A25 how far back setup day looks for transfers with one side showing is a setting', () => {
+  it('A25 it starts at 10 days, and changing it changes which transfers are asked about', () => {
+    const d = desk();
+    expect(ready(d).halvesWithinDays).toBe(10);
+    expect(ask(d, { lookBack: 1 })).toEqual({ ok: true, replayed: false, done: { step: 'look-back', days: 1, asked: 2 } });
+    expect(ready(d)).toMatchObject({ halvesWithinDays: 1, unanswered: 2 });
+    expect(ready(d).halves.map((h) => h.id)).toEqual(['landed', 'to-old']);
+  });
+
+  it('A25 exactly that many days back is asked about; one day more is not', () => {
+    const d = desk();
+    // 'left' is from Oct 5, two days before today.
+    ask(d, { lookBack: 2 });
+    expect(ready(d).halves.map((h) => h.id)).toContain('left');
+    ask(d, { lookBack: 1 });
+    expect(ready(d).halves.map((h) => h.id)).not.toContain('left');
+  });
+
+  it('A25 zero days: only today; nothing here is from today, so nothing is asked', () => {
+    const d = desk();
+    ask(d, { lookBack: 0 });
+    expect(ready(d)).toMatchObject({ halves: [], unanswered: 0, startingMoney: BANK_SIDE });
+    expect(ready(d).missing).not.toContain('halves');
+  });
+
+  it('A25 an answer to a transfer no longer asked about is dropped: it is history, and looking back further asks again', () => {
+    const d = desk();
+    ask(d, { onItsWay: { half: 'left', answer: true } });
+    expect(ready(d).startingMoney).toBe(BANK_SIDE + 20_000);
+    ask(d, { lookBack: 1 });
+    expect(ready(d).startingMoney).toBe(BANK_SIDE);
+    ask(d, { lookBack: 10 });
+    expect(ready(d).halves.find((h) => h.id === 'left')?.onItsWay).toBeNull();
+    expect(ready(d).startingMoney).toBe(BANK_SIDE);
+  });
+
+  it('A25 a very large number looks back over the whole history', () => {
+    const d = desk();
+    expect(ask(d, { lookBack: 100_000 })).toMatchObject({ ok: true, done: { asked: 3 } });
+  });
+
+  it('A25 the same number again changes nothing, and says so', () => {
+    const d = desk();
+    expect(refused(ask(d, { lookBack: 10 })).why).toBe('That is already the setting. Nothing was changed.');
+    ask(d, { lookBack: 3 });
+    expect(refused(ask(d, { lookBack: 3 })).why).toBe('That is already the setting. Nothing was changed.');
+  });
+});
+
 describe('B42 the date of his last paycheck', () => {
   it('B42 any day up to today; the next payday comes from the pay schedule (11.2)', () => {
     const d = desk();
@@ -338,6 +387,8 @@ describe('14 what the phone may send for setup day: exactly the right shape, or 
     { id: 'abcdefgh', setup: { assign: { pot: 'heldForOthers', amount: 0 } } },
     { id: 'abcdefgh', setup: { assign: { pot: 'momReserve', rest: true } } },
     { id: 'abcdefgh', setup: { start: true }, confirmed: true, seen: '0123abcd' },
+    { id: 'abcdefgh', setup: { lookBack: 0 } },
+    { id: 'abcdefgh', setup: { lookBack: 10 } },
   ];
   it.each(good.map((g) => [JSON.stringify(g), g]))('14 read: %s', (_name, value) => {
     expect(parseRequest(value)).toEqual(value);
@@ -362,6 +413,10 @@ describe('14 what the phone may send for setup day: exactly the right shape, or 
     { id: 'abcdefgh', setup: { start: true }, confirmed: 'yes' },
     { id: 'abcdefgh', setup: { start: true }, seen: 'not hex!' },
     { id: 'abcdefgh', setup: { start: true }, more: 1 },
+    { id: 'abcdefgh', setup: { lookBack: -1 } },
+    { id: 'abcdefgh', setup: { lookBack: 1.5 } },
+    { id: 'abcdefgh', setup: { lookBack: '10' } },
+    { id: 'abcdefgh', setup: { lookBack: 2 ** 53 } },
   ];
   it.each(bad.map((b) => [JSON.stringify(b), b]))('14 not read: %s', (_name, value) => {
     expect(parseRequest(value)).toBeNull();

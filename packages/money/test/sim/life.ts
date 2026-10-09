@@ -22,6 +22,7 @@ import {
   type Pots,
   type Purchase,
   type RecheckedItem,
+  type Refund,
   type ReviewItem,
   type SavingsWithdrawal,
   type Settings,
@@ -157,6 +158,8 @@ export const STAT_NAMES = [
   'momRuleSetWhileWaiting',
   'momPaymentsRefundedWhileWaiting',
   'paycheckRuleSetWhileWaiting',
+  'refundedInFullWhileWaiting',
+  'refundsTakenBack',
 ] as const;
 export type Stats = Record<(typeof STAT_NAMES)[number], number>;
 
@@ -229,8 +232,9 @@ type Intent =
 
 // Where a purchase stands, as the simulator keeps track of it: the bucket it
 // is in, waiting in review, split, counted on setup day, on the old card, or
-// taken back by the bank (4.10).
-type Standing = 'needs' | 'wants' | 'unsorted' | 'split' | 'setup' | 'old-card' | 'gone';
+// taken back by the bank (4.10), or refunded in full while it waited, so
+// kept as a record sorted nowhere (4.5, A26).
+type Standing = 'needs' | 'wants' | 'unsorted' | 'split' | 'setup' | 'old-card' | 'gone' | 'refunded';
 
 type PotName = keyof Pots;
 const POT_NAMES: readonly PotName[] = ['savings', 'needs', 'wants', 'momReserve', 'heldForOthers', 'unsortedIn', 'unsortedOut'];
@@ -294,6 +298,9 @@ class Life {
   // By the id a purchase first had; a posting's id leads back to it.
   readonly #standing = new Map<string, Standing>();
   readonly #firstId = new Map<string, string>();
+  // Purchases the person leaves waiting in review because they are sending
+  // them back for a full refund (A26).
+  readonly #awaitingReturn = new Set<string>();
   // How the person split each split purchase, by the id it first had.
   readonly #splitParts = new Map<string, { readonly needs: Cents; readonly wants: Cents }>();
   readonly #momSent = new Map<string, Cents>();
@@ -301,6 +308,10 @@ class Life {
   // a few days later. Payments to mom wait in review meanwhile, and the bank
   // refunds part of some of them. In the order they came.
   readonly #waitingForMomRule: { readonly txn: PersonPayment; refunded: Cents }[] = [];
+  // Payments to mom refunded in part, which setting the mom rule left
+  // waiting (13.2, B73), until the person sorts them. Setting the rule again
+  // leaves them waiting again.
+  #momLeftWaiting: { readonly txn: PersonPayment; readonly refunded: Cents }[] = [];
   // The same for the paycheck rule: the paycheck that waits for it, if any.
   #paycheckWaitingForRule: string | null = null;
 
@@ -860,8 +871,11 @@ class Life {
     const back = r.chance(3, 5) ? amount : Math.max(1, share(amount, r.int(20, 80)));
     const linked = r.chance(17, 20);
     const bucket = store.sorting === 'wants' ? 'wants' : 'needs';
+    const waitsForIt = this.#firstId.get(purchaseId) ?? purchaseId;
+    if (linked && back === amount && this.#standing.get(waitsForIt) === 'unsorted' && r.chance(1, 2)) this.#awaitingReturn.add(waitsForIt);
     this.#laterOn(addDays(this.#date, r.int(5, 20)), () => {
       const first = this.#firstId.get(purchaseId) ?? purchaseId;
+      this.#awaitingReturn.delete(first);
       const standing = this.#standing.get(first);
       const before = this.#book.pots();
       const txn = this.#bank.refund(this.#date, account, back, `${store.name} REFUND`, linked ? purchaseId : undefined);
@@ -879,13 +893,43 @@ class Life {
       // gives each bucket its part back; a partial one sends the purchase
       // back to review to be split again (4.5, A1).
       if (standing === 'needs' || standing === 'wants') this.#expectChange(before, { [standing]: back }, '4.5 a refund goes back to its bucket', txn.id);
-      else if (standing === 'unsorted') this.#expectChange(before, { unsortedOut: -back }, '4.5 a refund of a purchase not sorted yet', txn.id);
-      else if (standing === 'split') {
+      else if (standing === 'unsorted') {
+        this.#expectChange(before, { unsortedOut: -back }, '4.5 a refund of a purchase not sorted yet', txn.id);
+        if (back === amount) this.#refundedInFull(first, txn);
+      } else if (standing === 'split') {
         const parts = this.#splitParts.get(first);
         if (back === amount && parts) this.#expectChange(before, { needs: parts.needs, wants: parts.wants }, '4.5 a full refund of a split purchase', txn.id);
         else this.#standing.set(first, 'unsorted');
       }
     });
+  }
+
+  // A26: a purchase waiting in review and refunded in full has nothing left
+  // to sort. It leaves review by itself and is kept as a record. Now and then
+  // the bank takes the refund back (4.10), and it comes back to be sorted.
+  #refundedInFull(first: string, refund: Refund): void {
+    if (this.#book.reviewItems().some((i) => i.id === first)) throw new CheckFailed('4.5 A26 a purchase refunded in full leaves review', `${first} still waits after ${refund.id}`);
+    this.#standing.set(first, 'refunded');
+    this.#stats.refundedInFullWhileWaiting++;
+    if (this.#random.chance(1, 2)) this.#laterOn(addDays(this.#date, this.#random.int(1, 8)), () => this.#takeBackRefund(first, refund));
+  }
+
+  #takeBackRefund(first: string, refund: Refund): void {
+    if (this.#standing.get(first) !== 'refunded') throw new CheckFailed('4.5 A26 a record refunded in full stays one', `${first} is ${String(this.#standing.get(first))}`);
+    const before = this.#book.pots();
+    const logBefore = this.#book.changeLog().length;
+    const txn = this.#bank.takeBackRefund(this.#date, refund);
+    const outcome = this.#receive(txn);
+    if (outcome !== 'taken-back') throw new CheckFailed('4.10 the bank takes back a refund', `${txn.id} came back as ${outcome}`);
+    this.#expectChange(before, { unsortedOut: refund.amount }, '4.10 A26 a refund taken back: its purchase waits in review again', txn.id);
+    const item = this.#book.reviewItems().find((i) => i.id === first);
+    if (item?.type !== 'spending' || item.amount !== refund.amount) throw new CheckFailed('4.10 A26 a refund taken back: its purchase waits in review again', `${first}: ${JSON.stringify(item)}`);
+    const logged = { date: this.#date, kind: 'bank-took-back', id: refund.id, description: refund.description, amount: refund.amount };
+    const log = this.#book.changeLog();
+    if (log.length !== logBefore + 1 || !same(log.at(-1), logged)) throw new CheckFailed('13.5 a take-back is logged (A14)', `expected ${JSON.stringify(logged)}, the log ends with ${JSON.stringify(log.at(-1))}`);
+    this.#tookBack.push({ id: refund.id, date: this.#date, description: refund.description, amount: refund.amount });
+    this.#standing.set(first, 'unsorted');
+    this.#stats.refundsTakenBack++;
   }
 
   #bill(name: string, amount: Cents, account: ChargeAccount): void {
@@ -1380,6 +1424,9 @@ class Life {
       if (outcome !== 'sorted') throw new CheckFailed('4.5 a refund of a payment waiting in review', `${refund.id} came back as ${outcome}`);
       this.#expectChange(ahead, { unsortedOut: -back }, '4.5 a refund of a payment waiting in review', refund.id);
       waiting.refunded += back;
+      // A26: refunded in full, nothing is left to sort, so it leaves review.
+      const stillWaits = this.#book.reviewItems().some((i) => i.id === txn.id);
+      if (stillWaits !== (back < txn.amount)) throw new CheckFailed('4.5 A26 a payment refunded in full leaves review, one refunded in part waits', `${txn.id}, ${back} of ${txn.amount} back`);
       this.#stats.momPaymentsRefundedWhileWaiting++;
     }
   }
@@ -1394,7 +1441,9 @@ class Life {
     const before = this.#book.pots();
     const patch = { momRule: { contains: MOM } };
     let reserve = before.momReserve;
-    const expected: RecheckedItem[] = this.#waitingForMomRule.map(({ txn, refunded }) => {
+    // A26: one refunded in full is not waiting any more, so the rule does not see it.
+    const waitingNow = [...this.#momLeftWaiting, ...this.#waitingForMomRule.filter(({ txn, refunded }) => refunded < txn.amount)];
+    const expected: RecheckedItem[] = waitingNow.map(({ txn, refunded }) => {
       const { id, date, amount, description } = txn;
       if (refunded > 0) return { kind: 'still-waiting', id, date, amount: amount - refunded, description, why: 'partly-refunded' };
       const fromReserve = Math.min(amount, Math.max(0, reserve));
@@ -1422,6 +1471,7 @@ class Life {
     // 8.2: each month the rule took payments from, once all are added.
     for (const { txn } of this.#waitingForMomRule) this.#checkMomMonth(txn.date);
     this.#waitingForMomRule.length = 0;
+    this.#momLeftWaiting = waitingNow.filter(({ refunded }) => refunded > 0);
     this.#stats.momRuleSetWhileWaiting++;
     this.#note(`mom rule set again: ${JSON.stringify(expected.map((i) => [i.id, i.kind]))}`);
   }
@@ -1460,7 +1510,10 @@ class Life {
     this.#maybeChangeSettings();
     // Most evenings the person goes through what is waiting.
     if (r.chance(17, 20)) {
-      for (const item of this.#book.reviewItems()) this.#handle(item);
+      for (const item of this.#book.reviewItems()) {
+        this.#handle(item);
+        if (!this.#book.reviewItems().some((i) => i.id === item.id)) this.#momLeftWaiting = this.#momLeftWaiting.filter((w) => w.txn.id !== item.id);
+      }
     }
     if (r.chance(1, 40)) this.#resort();
     if (r.chance(1, 150)) this.#notForMom();
@@ -1475,6 +1528,8 @@ class Life {
     if (!this.#book.reviewItems().some((i) => i.id === item.id)) return;
     // What waits for the mom rule or the paycheck rule to be set again waits for it.
     if (item.id === this.#paycheckWaitingForRule || this.#waitingForMomRule.some((w) => w.txn.id === item.id)) return;
+    // What is going back to the store waits for its refund (A26).
+    if (this.#awaitingReturn.has(item.id)) return;
     const before = this.#book.pots();
     switch (item.type) {
       case 'leftover': {
@@ -1915,6 +1970,9 @@ class Life {
     if (others.heldForOthers !== pots.heldForOthers || others.meaning !== meaning) throw new CheckFailed('7.3 held for others', JSON.stringify(others));
     // B3: never more than one leftover question for a bucket.
     const review = book.reviewItems();
+    // A26: nothing waits in review with nothing left to sort.
+    const empty = review.find((i) => i.type === 'spending' && i.amount === 0);
+    if (empty !== undefined) throw new CheckFailed('4.5 A26 nothing waits in review at $0.00', JSON.stringify(empty));
     for (const bucket of ['needs', 'wants'] as const) {
       if (review.filter((i) => i.type === 'leftover' && i.bucket === bucket).length > 1) throw new CheckFailed('3.4 one leftover question per bucket', `${bucket} has more than one`);
     }

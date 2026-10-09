@@ -110,6 +110,18 @@ export class SetupDesk {
       return { step: 'on-its-way', half, answer, startingMoney: this.#ready().startingMoney };
     }
 
+    // A25: how far back it asks. An answer about a transfer it no longer
+    // asks about is dropped: that transfer is history now.
+    if ('lookBack' in step) {
+      const days = step.lookBack;
+      if (days === view.halvesWithinDays) return refuse('refused', 'That is already the setting');
+      this.#answers = { ...this.#answers, halvesWithinDays: days };
+      const asked = this.#ready().halves;
+      const onItsWay = new Map([...this.#answers.onItsWay].filter(([half]) => asked.some((h) => h.id === half)));
+      this.#answers = { ...this.#answers, onItsWay };
+      return { step: 'look-back', days, asked: asked.length };
+    }
+
     // B42: the day of his last paycheck, on or before today.
     if ('lastPaycheck' in step) {
       const date = step.lastPaycheck;

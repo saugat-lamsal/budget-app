@@ -9,7 +9,7 @@ import { paydayView } from '../views/payday.js';
 import { reviewView } from '../views/review.js';
 import { SetupDesk } from '../setup-desk.js';
 import { settingsView } from '../views/settings.js';
-import { NO_ANSWERS, setupView } from '../setup-view.js';
+import { NO_ANSWERS, SETUP_LOOK_BACK_DAYS, setupView } from '../setup-view.js';
 import { madeUpHistory } from './made-up-bank.js';
 import { DEMO_SCENARIOS, SETUP_SCENARIOS, demoScenario, type DemoScenario } from './scenarios.js';
 
@@ -93,7 +93,7 @@ export function createDemoServer(options: { readonly webRoot: string; readonly o
       if (live.setup !== null) return live.setup.view();
       // A life with a book is set up; the one before setup day has no bank to read.
       if (live.input.book !== null) return { state: 'tracking', madeUpData: true };
-      return setupView({ today: live.input.today, madeUpData: true, bank: null, answers: NO_ANSWERS, settings: DEFAULT_SETTINGS, rules: [], halvesWithinDays: SETUP_HALVES_WITHIN_DAYS });
+      return setupView({ today: live.input.today, madeUpData: true, bank: null, answers: NO_ANSWERS, settings: DEFAULT_SETTINGS, rules: [], halvesWithinDays: SETUP_LOOK_BACK_DAYS });
     },
     setup: (request, answer) => {
       const live = liveOf(scenarioOf(request));
@@ -150,17 +150,13 @@ interface Live {
   readonly setup: SetupDesk | null;
 }
 
-// How many days back setup day asks about transfers with one half showing
-// (QUESTIONS.md A25).
-const SETUP_HALVES_WITHIN_DAYS = 10;
-
 // The setup desk of a made-up life not set up yet, on its made-up bank, with
 // the settings tracking starts with (section 2: the paycheck rule and the
 // mom rule are not set yet). Null for a life that has no bank to set up from.
 // Tests make their twin of a life with this too.
 export function demoSetupDesk(scenario: DemoScenario, today: IsoDate): SetupDesk | null {
   if (scenario.setup === undefined) return null;
-  return new SetupDesk({ bank: madeUpHistory(scenario.setup()), today: () => today, settings: DEFAULT_SETTINGS, halvesWithinDays: SETUP_HALVES_WITHIN_DAYS, madeUpData: true });
+  return new SetupDesk({ bank: madeUpHistory(scenario.setup()), today: () => today, settings: DEFAULT_SETTINGS, halvesWithinDays: SETUP_LOOK_BACK_DAYS, madeUpData: true });
 }
 
 // Where the demo listens: this computer only, unless --wifi.

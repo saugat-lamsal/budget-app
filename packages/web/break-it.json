@@ -1458,8 +1458,8 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Setup.tsx",
-    "find": "        <Money cents={view.startingMoney} hero testId=\"starting-money\" />\n      </Hero>\n      {view.halves.length === 0",
-    "replace": "        <Money cents={view.bankSide} hero testId=\"starting-money\" />\n      </Hero>\n      {view.halves.length === 0",
+    "find": "        <Money cents={view.startingMoney} hero testId=\"starting-money\" />\n      </Hero>\n      <Card title=\"How far back\"",
+    "replace": "        <Money cents={view.bankSide} hero testId=\"starting-money\" />\n      </Hero>\n      <Card title=\"How far back\"",
     "why": "[setup] B48 the starting money on Transfers leaves out what is on its way"
   },
   {
@@ -1489,5 +1489,33 @@
     "find": "<LinkButton href={setupPath(next)} wide testId=\"next\">",
     "replace": "<LinkButton href={setupPath(SETUP_STEPS[0])} wide testId=\"next\">",
     "why": "[setup] Next goes back to the first step"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/setup-text.ts",
+    "find": "return /^\\d{1,6}$/.test(text.trim())",
+    "replace": "return /^-?\\d{1,6}$/.test(text.trim())",
+    "why": "[a25] A25 read a negative number of days"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/setup-text.ts",
+    "find": "return days === 1 ? 'The last day' : `The last ${days} days`;",
+    "replace": "return `The last ${days + 1} days`;",
+    "why": "[a25] A25 say one day more than it looks back"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/setup-text.ts",
+    "find": "a transfer between ${accountPhrase(rule.account)} and ${accountPhrase(rule.other)}",
+    "replace": "a transfer with the ${accountPhrase(rule.other)}",
+    "why": "section 2 a bank rule says \"a transfer with the checking\" again"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Setup.tsx",
+    "find": "void sender.send({ lookBack: days }, { inSheet: true })",
+    "replace": "void sender.send({ lookBack: days + 1 }, { inSheet: true })",
+    "why": "[a25] A25 the sheet sends one day more than typed"
   }
 ]

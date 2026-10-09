@@ -331,9 +331,13 @@ A24. ANSWERED Oct 9. Your answer: option 1, as built. Rulebook 13.1 and
      both; option 2 would go on top of it, with nothing built thrown away.
 
 
-## Part A, added with Setup day (Phase 4, Oct 9). Waiting on your answer.
+## Part A, added with Setup day (Phase 4, Oct 9). All answered.
 
-A25. How far back Setup day asks about transfers with only one side showing
+A25. ANSWERED Oct 9, built. Your answer: option 1, the last 10 days, as a
+     setting. Rulebook section 2, 14.2 and 25a. The transfers step on Setup
+     day says how far back it looks, with a sheet to change it (any whole
+     number of days from 0, today only); the details are B134.
+     The question was: how far back Setup day asks about transfers with only one side showing
      (B48, B64). The rulebook says they are offered for you to confirm, but
      not from how long ago. A transfer whose other side is just before the
      start of the bank's history, or one whose other side no bank rule
@@ -347,12 +351,15 @@ A25. How far back Setup day asks about transfers with only one side showing
      not asked about", so you can see them.
      Recommendation: option 1. An old one is not on its way any more, and a
      long list of old card payments to answer "no" to would hide the one
-     that matters. Built: option 1 with 10 days, fixed in the demo, until you
-     answer (packages/server/src/demo/demo-server.ts,
-     SETUP_HALVES_WITHIN_DAYS). Making it a setting comes with the real
-     server.
+     that matters.
 
-A26. A payment refunded in full still waits in Review at $0.00 (4.5, B7,
+A26. ANSWERED Oct 9, built. Your answer: option 2. A purchase or payment
+     waiting in review that is refunded in full leaves review by itself, is
+     kept as a record, and comes back to review if the bank takes the
+     refund back. Rulebook 4.5 and 25b. Worked example 39. The simulated
+     life now leaves some online orders unsorted while they go back to the
+     store, and has the bank take some refunds back; the details are B135.
+     The question was: a payment refunded in full still waits in Review at $0.00 (4.5, B7,
      B11). When a purchase (a card or debit payment) is still waiting in
      Review and the bank refunds all of it, it stays in Review with nothing
      left to sort (checked: a 25.00 purchase, refunded 25.00, waits at
@@ -368,7 +375,7 @@ A26. A payment refunded in full still waits in Review at $0.00 (4.5, B7,
      Option 3: it stays, marked "Refunded in full, nothing to sort", with one
      "Got it" button, like a new purchase on the old card (5.4).
      Recommendation: option 2. Nothing is left to decide, and a reminder for
-     $0.00 teaches you to ignore reminders. Needs a line in 4.5. Not built.
+     $0.00 teaches you to ignore reminders. Needs a line in 4.5.
 
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
@@ -1276,3 +1283,30 @@ B132. Bank rules on Setup day: the ones that came with the bank connection,
 B133. A charge pending on the old card is shown with the old card, as part
       of its debt (12.4, A10), not in the list of charges that are part of
       the starting money.
+
+
+## Part B, added with your answers to A25 and A26 (Oct 9). Tell me if any is wrong.
+
+B134. How far back Setup day looks (A25). It starts at 10 days (section 2)
+      and is changed on the transfers step: any whole number of days, 0
+      meaning today only. A transfer exactly that many days old is asked
+      about; one a day older is not. A smaller number drops your answers
+      about the transfers it no longer asks about (they are history now),
+      so looking further back again asks about them again, unanswered.
+      The same number again says "That is already the setting" and changes
+      nothing. It is part of Setup day, like your other answers there, so
+      it is not on Settings: after setup day it has nothing left to do.
+
+B135. A purchase or payment refunded in full while it waits (A26). It leaves
+      review the moment the last cent comes back, whether the bank named the
+      purchase or you matched the refund to it (A18); a refund one cent short
+      leaves it waiting for that cent. It holds nothing back and is in no
+      bucket's list, since it was sorted nowhere. If the bank takes back a
+      refund (4.10), what is no longer refunded waits in review again, with
+      a take-back alert (10.6) as for anything taken back. A purchase that
+      was refunded in full while pending and then posts at a larger amount
+      waits for the difference. One already sorted into a bucket and then
+      refunded in full stays on that bucket's list at $0.00, as before
+      (B98). The same goes for a payment to a person waiting in review: one
+      refunded in full leaves review, so setting the mom rule does not see
+      it (13.2).
