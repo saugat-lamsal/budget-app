@@ -3,7 +3,7 @@ import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { chromium, devices, webkit, type Browser, type BrowserContext, type BrowserContextOptions, type BrowserType, type Page, type Request } from 'playwright';
-import { afterAll, beforeAll } from 'vitest';
+import { afterAll, beforeAll, beforeEach } from 'vitest';
 import { createDemoServer } from '../../../server/src/demo/demo-server.js';
 import { MINUS } from '../../src/ui/money-format.js';
 
@@ -87,36 +87,65 @@ export async function listen(server: Server): Promise<string> {
   return base;
 }
 
+// What the page's own code has asked for with fetch and is still waiting on,
+// kept inside the page, where it is exact: a fetch is counted the moment it
+// starts, and only counts as answered once the whole answer has arrived (the
+// body too, not just the headers). The events Playwright sends about requests
+// can arrive late (CI, Oct 8: WebKit on Linux, Chromium on Windows), so the
+// tests never decide anything from them; they are only reported when a page
+// gets stuck.
+interface PageFetches {
+  // How many are on their way.
+  count: number;
+  // When one last started or was answered (performance.now()).
+  changed: number;
+  // What each one on its way is, for the report.
+  readonly onTheirWay: Map<number, string>;
+}
+
+// Runs inside the page, before any of its own scripts.
+function trackFetches(): void {
+  const w = window as unknown as { __fetches?: PageFetches };
+  if (w.__fetches !== undefined) return;
+  const fetches: PageFetches = { count: 0, changed: performance.now(), onTheirWay: new Map() };
+  w.__fetches = fetches;
+  let next = 0;
+  const real = window.fetch.bind(window);
+  window.fetch = (input, init) => {
+    next += 1;
+    const id = next;
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    fetches.onTheirWay.set(id, `${init?.method ?? 'GET'} ${url}, started ${Math.round(performance.now())}ms after the page opened`);
+    fetches.count += 1;
+    fetches.changed = performance.now();
+    const done = (): void => {
+      if (!fetches.onTheirWay.delete(id)) return;
+      fetches.count -= 1;
+      fetches.changed = performance.now();
+    };
+    return real(input, init).then(
+      (response) => {
+        // Answered once the body has arrived too: a copy is read to the end for
+        // that, and the page reads its own.
+        response.clone().arrayBuffer().then(done, done);
+        return response;
+      },
+      (error: unknown) => {
+        done();
+        throw error;
+      },
+    );
+  };
+}
+
 // Follows a page's requests and console, for the report when it gets stuck.
 const pageWatch = new WeakMap<Page, { readonly pending: Map<Request, number>; readonly failed: string[]; readonly console: string[] }>();
 
-export function watchPage(page: Page): void {
+function followEvents(page: Page): void {
   if (pageWatch.has(page)) return;
   const watch = { pending: new Map<Request, number>(), failed: [] as string[], console: [] as string[] };
   pageWatch.set(page, watch);
   page.on('request', (r) => watch.pending.set(r, Date.now()));
-  void page.addInitScript(() => {
-    const w = window as unknown as { __fetchesOnTheirWay?: number };
-    if (w.__fetchesOnTheirWay !== undefined) return;
-    w.__fetchesOnTheirWay = 0;
-    const real = window.fetch.bind(window);
-    window.fetch = (...args) => {
-      w.__fetchesOnTheirWay = (w.__fetchesOnTheirWay ?? 0) + 1;
-      const done = (): void => {
-        w.__fetchesOnTheirWay = (w.__fetchesOnTheirWay ?? 1) - 1;
-      };
-      return real(...args).then(
-        (response) => {
-          done();
-          return response;
-        },
-        (error: unknown) => {
-          done();
-          throw error;
-        },
-      );
-    };
-  });
   page.on('requestfinished', (r) => watch.pending.delete(r));
   // Playwright reports "finished" only for answers it counts as loaded: an error
   // answer (500) never says so. It is an answer all the same.
@@ -129,56 +158,90 @@ export function watchPage(page: Page): void {
   page.on('pageerror', (e) => watch.console.push(`page error: ${e.message}`));
 }
 
-// Waits until nothing the page's own code asked for (fetch and XHR) is still on
-// its way, and nothing new has started for a moment. The page's own document is
-// left out: Playwright's WebKit on Windows did not always say it had finished.
-// A page closed (or left) with a request on its way cancels it, and WebKit then
-// loses the answer to the next request (see CLAUDE.md, found on Linux CI Oct 7,
-// and on Windows CI Oct 8). Waiting for "network idle" is no use for this: it
-// only waits the first time the page goes idle. After a change the screens ask
-// for their numbers again, and this waits for those answers. The page must
-// have been opened with watchPage.
-//
-// After a tap the screens ask again a moment later, so this waits for a few
-// checks in a row, 60 ms apart, to find nothing on its way. A page that has
-// just opened is better served by untilAnswered.
-export async function untilQuiet(page: Page): Promise<void> {
-  const watch = pageWatch.get(page);
-  if (watch === undefined) throw new Error('untilQuiet needs a page opened with watchPage');
-  const deadline = Date.now() + 15_000;
-  let calm = 0;
-  while (calm < 3) {
-    const onItsWay = [...watch.pending.keys()].filter((r) => r.resourceType() === 'fetch' || r.resourceType() === 'xhr');
-    if (Date.now() > deadline) throw new Error(`still waiting for: ${onItsWay.map((r) => `${r.method()} ${r.url()}`).join(', ')}`);
-    await page.waitForTimeout(60);
-    calm = onItsWay.length === 0 ? calm + 1 : 0;
+// Every page of the context has its fetches counted from its first document:
+// the script is in place before the context has a page.
+export async function watchContext(context: BrowserContext): Promise<void> {
+  await context.addInitScript(trackFetches);
+  for (const page of context.pages()) followEvents(page);
+  context.on('page', followEvents);
+}
+
+// For a page of a context that is not watched. Awaited before the page opens:
+// a script added without waiting can miss the page's first document, which
+// would then have nothing counting its fetches.
+export async function watchPage(page: Page): Promise<void> {
+  followEvents(page);
+  await page.addInitScript(trackFetches);
+}
+
+// Waits in the page, on its own count. A document that opened without the
+// count cannot be waited on: that is said at once, not after a timeout.
+async function waitInPage(page: Page, what: string, quietFor: number): Promise<void> {
+  const counted = await page.evaluate(() => (window as unknown as { __fetches?: unknown }).__fetches !== undefined);
+  if (!counted) throw new Error(`${what}: nothing in the page counts its requests (watchContext or watchPage must come before it opens)\n${await stuckReport(page)}`);
+  try {
+    await page.waitForFunction(
+      (ms) => {
+        const f = (window as unknown as { __fetches: PageFetches }).__fetches;
+        return f.count === 0 && performance.now() - f.changed >= ms;
+      },
+      quietFor,
+      { timeout: 15_000, polling: 20 },
+    );
+  } catch (error) {
+    throw new Error(`${what}: still waiting after 15000ms\n${await stuckReport(page)}`, { cause: error });
   }
 }
 
-// For a page that has just opened: waits until every fetch the page itself has
-// started is answered. The count is kept inside the page (watchPage puts it
-// there), where a fetch is counted the moment it starts, so it is exact; the
-// events Playwright sends can arrive after the screen has already moved on
-// (WebKit). It returns at once when nothing is on its way.
-export async function untilAnswered(page: Page): Promise<void> {
-  await page.waitForFunction(() => (window as unknown as { __fetchesOnTheirWay?: number }).__fetchesOnTheirWay === 0, undefined, { timeout: 15_000 });
+// Waits until nothing the page's own code asked for is still on its way, and
+// nothing has started or been answered for a moment. A page closed (or left)
+// with a request on its way cancels it, and WebKit then loses the answer to the
+// next request (see CLAUDE.md, found on Linux CI Oct 7, and on Windows CI Oct
+// 8). Waiting for "network idle" is no use for this: it only waits the first
+// time the page goes idle. After a change the screens ask for their numbers
+// again, one request at a time (src/app/api.ts), the next as soon as the last
+// is answered; this waits until nothing has happened for 200 ms.
+export async function untilQuiet(page: Page): Promise<void> {
+  await waitInPage(page, 'untilQuiet', 200);
 }
 
-async function stuckReport(page: Page, base: string): Promise<string> {
+// For a page that has just opened: waits until every fetch the page itself has
+// started is answered. It returns at once when nothing is on its way.
+export async function untilAnswered(page: Page): Promise<void> {
+  await waitInPage(page, 'untilAnswered', 0);
+}
+
+// What a stuck page was doing: the page itself, what it was still waiting on
+// (its own count, and Playwright's events), what failed, its console, and what
+// the test server it talks to was asked and answered.
+export async function stuckReport(page: Page): Promise<string> {
   const now = Date.now();
   const watch = pageWatch.get(page);
   const state = await page
-    .evaluate(() => ({
-      readyState: document.readyState,
-      rendered: document.getElementById('root')?.childElementCount ?? -1,
-      home: document.querySelector('[data-testid="home"]')?.getAttribute('aria-busy') ?? 'no Home',
-      visibility: document.visibilityState,
-    }))
+    .evaluate(() => {
+      const f = (window as unknown as { __fetches?: PageFetches }).__fetches;
+      return {
+        readyState: document.readyState,
+        rendered: document.getElementById('root')?.childElementCount ?? -1,
+        busy: document.querySelector('main')?.getAttribute('aria-busy') ?? 'no main',
+        errorShown: document.querySelector('[data-testid$="-error"]')?.getAttribute('data-testid') ?? 'none',
+        visibility: document.visibilityState,
+        fetchesOnTheirWay: f === undefined ? 'not counted' : [...f.onTheirWay.values()],
+        msSinceAFetchStartedOrWasAnswered: f === undefined ? null : Math.round(performance.now() - f.changed),
+        msSincePageOpened: Math.round(performance.now()),
+      };
+    })
     .catch((error: unknown) => ({ evaluateFailed: String(error) }));
-  const server = (serverLogs.get(base) ?? []).slice(-12).map((e) => `${e.method} ${e.url} at -${now - e.at}ms: ${e.done === null ? 'NOT ANSWERED' : `${e.status} after ${e.done - e.at}ms`}`);
+  let origin = '';
+  try {
+    origin = new URL(page.url()).origin;
+  } catch {
+    // A page that never opened an address has no server.
+  }
+  const server = (serverLogs.get(origin) ?? []).slice(-12).map((e) => `${e.method} ${e.url} at -${now - e.at}ms: ${e.done === null ? 'NOT ANSWERED' : `${e.status} after ${e.done - e.at}ms`}`);
   return [
     `page ${page.url()}: ${JSON.stringify(state)}`,
-    `browser still waiting on: ${watch === undefined ? '(not watched)' : [...watch.pending].map(([r, at]) => `${r.method()} ${r.url()} for ${now - at}ms`).join('; ') || 'nothing'}`,
+    `Playwright's events say the browser still waits on: ${watch === undefined ? '(not followed)' : [...watch.pending].map(([r, at]) => `${r.method()} ${r.url()} for ${now - at}ms`).join('; ') || 'nothing'}`,
     `browser requests that failed: ${watch?.failed.join('; ') || 'none'}`,
     `console: ${watch?.console.slice(-10).join(' | ') || 'nothing'}`,
     `server, last requests: ${server.join('; ') || 'none'}`,
@@ -187,11 +250,11 @@ async function stuckReport(page: Page, base: string): Promise<string> {
 
 // Waits for something on the page; if it never comes, fails with what the
 // browser and the server were doing, instead of a bare timeout.
-export async function waitOrReport(page: Page, base: string, selector: string, timeout = 15_000): Promise<void> {
+export async function waitOrReport(page: Page, selector: string, timeout = 15_000): Promise<void> {
   try {
     await page.locator(selector).first().waitFor({ timeout });
   } catch (error) {
-    throw new Error(`waited ${timeout}ms for ${selector}\n${await stuckReport(page, base)}`, { cause: error });
+    throw new Error(`waited ${timeout}ms for ${selector}\n${await stuckReport(page)}`, { cause: error });
   }
 }
 
@@ -200,13 +263,43 @@ export async function close(server: Server): Promise<void> {
   await new Promise<void>((done) => server.close(() => done()));
 }
 
+// Every browser the tests launch, so that a failing test can say what each
+// page still open was doing.
+const launched = new Set<Browser>();
+
+// Launches a browser whose every context counts its pages' fetches from their
+// first document (watchContext), whoever opens the pages.
+export async function launch(engine: BrowserType): Promise<Browser> {
+  const browser = await engine.launch();
+  const newContext = browser.newContext.bind(browser);
+  browser.newContext = async (options?: BrowserContextOptions): Promise<BrowserContext> => {
+    const context = await newContext(options);
+    await watchContext(context);
+    return context;
+  };
+  launched.add(browser);
+  browser.on('disconnected', () => launched.delete(browser));
+  return browser;
+}
+
+// A browser test that fails reports every page still open: what it shows, what
+// it is still waiting on, and what its server was asked. A timeout alone says
+// nothing about why.
+beforeEach(({ onTestFailed }) => {
+  onTestFailed(async () => {
+    const pages = [...launched].flatMap((b) => b.contexts().flatMap((c) => c.pages()));
+    const reports = await Promise.all(pages.map((page) => stuckReport(page).catch((error: unknown) => `no report: ${String(error)}`)));
+    console.error(reports.length === 0 ? 'No page was open when the test failed.' : `Pages open when the test failed:\n${reports.join('\n\n')}`);
+  });
+});
+
 // One browser of an engine and one demo server for a test file.
 export function useEngine(engine: BrowserType): { browser: () => Browser; base: () => string } {
   let browser: Browser | undefined;
   let server: Server | undefined;
   let base = '';
   beforeAll(async () => {
-    browser = await engine.launch();
+    browser = await launch(engine);
     server = createDemoServer({ webRoot: WEB_ROOT });
     base = await listen(server);
   });
@@ -226,16 +319,17 @@ export function useEngine(engine: BrowserType): { browser: () => Browser; base: 
 // Opens Home with one of the demo's made-up lives.
 export async function openScenario(context: BrowserContext, base: string, scenario: string, path = '/home'): Promise<Page> {
   const page = await context.newPage();
-  watchPage(page);
+  await watchPage(page);
   await page.goto(`${base}/demo/${scenario}`);
   if (path !== '/home') {
     // Home loads its numbers first. Leave only once they are in: WebKit on
     // Linux can fail the next page when one is left mid-request (Oct 7, CI).
-    await waitOrReport(page, base, 'main[aria-busy="false"]');
+    await waitOrReport(page, 'main[aria-busy="false"]');
+    await untilAnswered(page);
     await page.goto(`${base}${path}`);
   }
   // Home, Buckets, and Review are ready once their numbers have loaded.
-  await waitOrReport(page, base, 'main[aria-busy="false"], [data-testid="settings"]');
+  await waitOrReport(page, 'main[aria-busy="false"], [data-testid="settings"]');
   // Home's numbers are asked for on every screen: the page is handed over only
   // once that is answered too, so a test that closes it cancels nothing.
   await untilAnswered(page);

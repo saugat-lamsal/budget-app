@@ -255,7 +255,7 @@ describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
   it('there is a loading state and an error state, with Try again', async () => {
     const context = await browser().newContext(phone());
     const slow = await context.newPage();
-    watchPage(slow);
+    await watchPage(slow);
     await slow.goto(`${base()}/demo/slow`);
     // Home's numbers come slowly too: leave only once they are in. Leaving with a
     // request on its way makes WebKit and Windows lose the next answer (CLAUDE.md, Oct 7 and 8).
@@ -276,7 +276,7 @@ describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
   it('using Settings runs under the security policy without a single error', async () => {
     const context = await browser().newContext(phone());
     const page = await context.newPage();
-    watchPage(page);
+    await watchPage(page);
     const errors: string[] = [];
     page.on('console', (m) => {
       // The desk answers "needs your OK first" with a 422 (http/server.ts), and the

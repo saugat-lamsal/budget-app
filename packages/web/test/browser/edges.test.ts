@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { START_DATE, appSide, openTestBook, purchase } from '../../../money/test/helpers.js';
 import { createAppServer } from '../../../server/src/http/server.js';
 import { homeView, type HomeInput } from '../../../server/src/views/home.js';
-import { ENGINES, WEB_ROOT, centsAt, close, listen, phone, waitOrReport, watchPage } from './harness.js';
+import { ENGINES, launch, WEB_ROOT, centsAt, close, listen, phone, waitOrReport, watchPage } from './harness.js';
 
 // Edges the made-up lives do not reach, each from a book built here with the
 // money math. Found by the break-it check.
@@ -23,7 +23,7 @@ describe.each(ENGINES)('edges on Home in %s', (_name, engine) => {
   beforeAll(async () => {
     server = createAppServer({ webRoot: WEB_ROOT, home: () => homeView(oneWaiting()) });
     base = await listen(server);
-    browser = await engine.launch();
+    browser = await launch(engine);
   });
   afterAll(async () => {
     await browser?.close();
@@ -34,9 +34,9 @@ describe.each(ENGINES)('edges on Home in %s', (_name, engine) => {
     const context = await browser.newContext(phone());
     const page = await context.newPage();
     page.setDefaultTimeout(15_000);
-    watchPage(page);
+    await watchPage(page);
     await page.goto(`${base}/home`);
-    await waitOrReport(page, base, '[data-testid="safe-to-spend"]');
+    await waitOrReport(page, '[data-testid="safe-to-spend"]');
     expect(await page.getByTestId('attention-review').locator('.row__title').innerText()).toBe('1 waiting in review');
     expect(await centsAt(page, 'held-back')).toBe(1);
     expect(await page.getByTestId('review-badge').innerText()).toBe('1');
@@ -53,9 +53,9 @@ describe.each(ENGINES)('edges on Home in %s', (_name, engine) => {
     // a body that looks like Home's numbers.
     const looksRight = JSON.stringify(homeView(oneWaiting()));
     await page.route('**/api/home', (route) => route.fulfill({ status: 503, body: looksRight, contentType: 'application/json' }));
-    watchPage(page);
+    await watchPage(page);
     await page.goto(`${base}/home`);
-    await waitOrReport(page, base, '[data-testid="home-error"]');
+    await waitOrReport(page, '[data-testid="home-error"]');
     expect(await page.locator('[data-money]').count()).toBe(0);
     await context.close();
   });

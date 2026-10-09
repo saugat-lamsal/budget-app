@@ -47,7 +47,7 @@ describe.each(ENGINES)('loading Home in %s', (_name, engine) => {
     const context = await browser().newContext(phone());
     const page = await context.newPage();
     page.setDefaultTimeout(15_000);
-    watchPage(page);
+    await watchPage(page);
     const failed: Request[] = [];
     page.on('requestfailed', (r) => failed.push(r));
     // Picks the made-up life without loading Home yet.
