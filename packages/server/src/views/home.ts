@@ -75,6 +75,10 @@ export type Attention =
   // 10.3: something waits in review. heldBack is the unsorted spending kept
   // out of safe to spend (4.3).
   | { readonly kind: 'review'; readonly waiting: number; readonly heldBack: Cents }
+  // Section 2, after setup day: the rules he has not set yet, for Settings.
+  // Until the paycheck rule is set no paycheck splits by itself, and until
+  // the mom rule is set no payment to mom comes out of the reserve.
+  | { readonly kind: 'still-to-set'; readonly settings: readonly ('paycheckRule' | 'momRule')[] }
   // 3.8: money still to move into the savings account.
   | {
       readonly kind: 'move-to-savings';
@@ -126,6 +130,8 @@ export function homeView(input: HomeInput): HomeView {
   }
   const waitingInReview = book.reviewItems().length;
   if (waitingInReview > 0) attention.push({ kind: 'review', waiting: waitingInReview, heldBack: pots.unsortedOut });
+  const stillToSet = (['paycheckRule', 'momRule'] as const).filter((key) => settings[key] === null);
+  if (stillToSet.length > 0) attention.push({ kind: 'still-to-set', settings: stillToSet });
   if (bank !== null) {
     const move = book.savingsTransfer(bank.savings);
     if (move.stillToMove > 0) {

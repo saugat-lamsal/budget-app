@@ -4,9 +4,9 @@ import { bucketLevel, type Alert, type AlertInput } from './alerts.js';
 import { isSpendingBucket, type SplitBucket } from './buckets.js';
 import type { CardPayment } from './reminders.js';
 import { addCents, assertCents, assertPositiveCents, subtractCents, type Cents } from './cents.js';
-import { addDays, assertIsoDate, daysBetween, monthOf, type IsoDate } from './dates.js';
+import { assertIsoDate, daysBetween, monthOf, type IsoDate } from './dates.js';
 import { MoneyError } from './errors.js';
-import { splitPaycheck, type PaycheckSplit, type SplitSettings } from './payday.js';
+import { nextPayday, splitPaycheck, type PaycheckSplit, type SplitSettings } from './payday.js';
 import { likelyPurchases, type LikelyPurchase, type PurchaseCandidate } from './likely-purchases.js';
 import { reviewOptions, type ReviewFacts, type ReviewOptions } from './review-options.js';
 import type { LeftoverReport, PaycheckReport, PaydayReport } from './payday-report.js';
@@ -814,11 +814,9 @@ export class Book {
   // with the days to the next payday from the pay schedule.
   safeToSpend(today: IsoDate): SafeToSpend {
     assertIsoDate(today, 'today');
-    const nextPayday = addDays(this.#lastPaycheckDate, this.#settings.payScheduleDays);
     return {
       amount: subtractCents(this.#totals.wants, this.#totals.unsortedOut),
-      nextPayday,
-      daysToPayday: daysBetween(today, nextPayday),
+      ...nextPayday(this.#lastPaycheckDate, this.#settings.payScheduleDays, today),
     };
   }
 

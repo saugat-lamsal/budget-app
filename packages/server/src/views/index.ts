@@ -7,3 +7,4 @@ export * from './activity.js';
 export * from './payday.js';
 export type * from './choice.js';
 export * from './settings.js';
+export * from './setup.js';

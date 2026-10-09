@@ -2,6 +2,7 @@ import type {
   AccountId,
   Cents,
   ConfirmReason,
+  IsoDate,
   DepositRuleChoice,
   LeftoverAnswer,
   PersonPaymentChoice,
@@ -182,4 +183,46 @@ export interface RuleDone {
 
 export type RuleResponse =
   | { readonly ok: true; readonly replayed: boolean; readonly done: RuleDone }
+  | { readonly ok: false; readonly code: RefusalCode; readonly why: string };
+
+// ----- Setup day (rulebook section 14; QUESTIONS.md B42, B43, B48) -----
+
+// One answer on the Setup day screens. Each is kept by the server until
+// tracking starts; the screen works nothing out.
+export type SetupStep =
+  // B48: whether a transfer with only one half showing is still on its way.
+  | { readonly onItsWay: { readonly half: string; readonly answer: boolean } }
+  // B42: the day of his last paycheck, which the pay schedule counts from.
+  | { readonly lastPaycheck: IsoDate }
+  // 14.2: how much of the starting money goes in one bucket. Any whole number
+  // of cents: zero, or below zero when the card owes more than he has (B43).
+  | { readonly assign: { readonly pot: Pot; readonly amount: Cents } }
+  // 14.2: whatever is left to assign goes in this bucket, worked out by the
+  // money math, not the screen.
+  | { readonly assign: { readonly pot: Pot; readonly rest: true } }
+  // 14.3: start tracking. Final, so it needs his yes.
+  | { readonly start: true };
+
+export interface SetupRequest {
+  // As for a choice: made once, sent again, the same, on a retry.
+  readonly id: string;
+  readonly setup: SetupStep;
+  // His yes, for starting.
+  readonly confirmed?: boolean;
+  // With his yes: the key of the last look he saw. If what tracking would
+  // start with is not that any more, it asks again.
+  readonly seen?: string;
+}
+
+// What the setup step did.
+export type SetupDone =
+  | { readonly step: 'on-its-way'; readonly half: string; readonly answer: boolean; readonly startingMoney: Cents }
+  | { readonly step: 'last-paycheck'; readonly date: IsoDate; readonly nextPayday: IsoDate }
+  | { readonly step: 'assign'; readonly pot: Pot; readonly amount: Cents; readonly leftToAssign: Cents }
+  // Tracking has started. stillToSet: the rules he has not set yet, for Settings.
+  | { readonly step: 'started'; readonly startingMoney: Cents; readonly stillToSet: readonly ('paycheckRule' | 'momRule')[] };
+
+export type SetupResponse =
+  | { readonly ok: true; readonly replayed: boolean; readonly done: SetupDone }
+  // Nothing was changed. why is for him to read.
   | { readonly ok: false; readonly code: RefusalCode; readonly why: string };

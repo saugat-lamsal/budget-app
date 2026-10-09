@@ -51,7 +51,7 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/reading.ts",
-    "find": "  if (amount === 0) return { kind: 'nothing' };\n",
+    "find": "  if (amount === 0) return { reading: { kind: 'nothing' }, rule: null };\n",
     "replace": "",
     "why": "reading: treat zero as money moving"
   },
@@ -65,8 +65,8 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/reading.ts",
-    "find": "  if (isCard(account)) return out ? { kind: 'purchase' } : { kind: 'refund' };",
-    "replace": "  if (isCard(account)) return out ? { kind: 'refund' } : { kind: 'purchase' };",
+    "find": "  if (isCard(account)) return { reading: out ? { kind: 'purchase' } : { kind: 'refund' }, rule: null };",
+    "replace": "  if (isCard(account)) return { reading: out ? { kind: 'refund' } : { kind: 'purchase' }, rule: null };",
     "why": "4.5 swap card purchases and refunds"
   },
   {
@@ -260,23 +260,23 @@
   },
   {
     "section": "bank",
-    "file": "packages/server/src/setup-day.ts",
+    "file": "packages/server/src/setup-history.ts",
     "find": "    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || !read.ok || read.item.amount <= 0) continue;",
     "replace": "    if (!item.pending || item.removed || role === undefined || !read.ok || read.item.amount === 0) continue;",
     "why": "14.2 count pending money in as a pending charge"
   },
   {
     "section": "bank",
-    "file": "packages/server/src/setup-day.ts",
+    "file": "packages/server/src/setup-history.ts",
     "find": "    startingMoney: startingMoney(history.posted, history.pendingCharges, inTransit),",
     "replace": "    startingMoney: startingMoney(history.posted, history.pendingCharges),",
     "why": "B48 leave money on its way out of the starting money"
   },
   {
     "section": "bank",
-    "file": "packages/server/src/setup-day.ts",
-    "find": "        updated.status = 'waiting';",
-    "replace": "        updated.status = 'history';",
+    "file": "packages/server/src/setup-history.ts",
+    "find": "      updated.status = 'waiting';",
+    "replace": "      updated.status = 'history';",
     "why": "B36 never send a deposit that was pending on setup day"
   },
   {
@@ -296,8 +296,8 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/reading.ts",
-    "find": "  return out ? { kind: 'purchase' } : { kind: 'deposit' };",
-    "replace": "  return out && account === 'checking' ? { kind: 'purchase' } : { kind: 'deposit' };",
+    "find": "  return { reading: out ? { kind: 'purchase' } : { kind: 'deposit' }, rule: null };",
+    "replace": "  return { reading: out && account === 'checking' ? { kind: 'purchase' } : { kind: 'deposit' }, rule: null };",
     "why": "4.9 read money leaving savings as money in (A16)"
   },
   {
@@ -330,7 +330,7 @@
   },
   {
     "section": "bank",
-    "file": "packages/server/src/setup-day.ts",
+    "file": "packages/server/src/setup-history.ts",
     "find": "    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || !read.ok || read.item.amount <= 0) continue;",
     "replace": "    if (!item.pending || item.removed || item.kind !== 'purchase' || role === undefined || role === 'savings' || !read.ok || read.item.amount <= 0) continue;",
     "why": "14.2 leave a charge pending on savings out of the starting money (A16)"
@@ -849,8 +849,8 @@
   {
     "section": "review",
     "file": "packages/server/src/http/server.ts",
-    "find": "'move' in parsed\n      ? await handlers.move?.(request, parsed)\n      : 'settings' in parsed\n        ? await handlers.settingsChange?.(request, parsed)\n        : 'rule' in parsed\n          ? await handlers.ruleChange?.(request, parsed)\n          : await handlers.choice?.(request, parsed);",
-    "replace": "'move' in parsed\n      ? await handlers.choice?.(request, parsed as never)\n      : 'settings' in parsed\n        ? await handlers.settingsChange?.(request, parsed)\n        : 'rule' in parsed\n          ? await handlers.ruleChange?.(request, parsed)\n          : await handlers.move?.(request, parsed as never);",
+    "find": "'move' in parsed\n      ? await handlers.move?.(request, parsed)\n      : 'settings' in parsed\n        ? await handlers.settingsChange?.(request, parsed)\n        : 'rule' in parsed\n          ? await handlers.ruleChange?.(request, parsed)\n          : 'setup' in parsed\n            ? await handlers.setup?.(request, parsed)\n            : await handlers.choice?.(request, parsed);",
+    "replace": "'move' in parsed\n      ? await handlers.choice?.(request, parsed as never)\n      : 'settings' in parsed\n        ? await handlers.settingsChange?.(request, parsed)\n        : 'rule' in parsed\n          ? await handlers.ruleChange?.(request, parsed)\n          : 'setup' in parsed\n            ? await handlers.setup?.(request, parsed)\n            : await handlers.move?.(request, parsed as never);",
     "why": "[activity] B103 moves and choices go to each other's handler"
   },
   {
@@ -1146,5 +1146,124 @@
     "find": "        action = edit.move.direction === 'up' ? 'moved-up' : 'moved-down';",
     "replace": "        action = 'moved-up';",
     "why": "[a22] the answer says a rule moved up when it moved down"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-history.ts",
+    "find": "  if (bank.setUp) throw new SetupNotReady('setup day is done already');\n",
+    "replace": "",
+    "why": "[setup] 14 let setup day be done twice"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-history.ts",
+    "find": "daysBetween(h.date, today) <= withinDays);",
+    "replace": "daysBetween(h.date, today) < withinDays);",
+    "why": "[setup] B48 A25 leave out a half from the last day asked about"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-history.ts",
+    "find": "return readBankItemWithRule(role, read.item.amount, read.item.description, history.rules).rule;",
+    "replace": "return null;",
+    "why": "[setup] section 2 never name the bank rule that read a half"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-history.ts",
+    "find": "const withPending = withPendingCharges(history.posted, history.pendingCharges);",
+    "replace": "const withPending = history.posted;",
+    "why": "[setup] 12.1 check day one against the posted balances, without the pending charges"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-desk.ts",
+    "find": "    this.#done.set(request.id, { fingerprint, done: answered });\n",
+    "replace": "",
+    "why": "[setup] B92 forget decision numbers, so a repeat is done again"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-desk.ts",
+    "find": "setUp: bank.setUp || this.#started !== null",
+    "replace": "setUp: bank.setUp",
+    "why": "[setup] 14 after tracking starts, setup day can start it again"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-desk.ts",
+    "find": "if (request.confirmed !== true || request.seen !== view.key) {",
+    "replace": "if (request.confirmed !== true) {",
+    "why": "[setup] 14.3 start on a yes to a last look that has changed since"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-desk.ts",
+    "find": "if (request.confirmed !== true || request.seen !== view.key) {",
+    "replace": "if (request.seen !== view.key) {",
+    "why": "[setup] 14.3 start without his yes, when the last look is named"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-desk.ts",
+    "find": "amount = addCents(this.#answers.assignment[pot], view.leftToAssign);",
+    "replace": "amount = view.leftToAssign;",
+    "why": "[setup] 14.2 the rest replaces what the bucket had instead of adding to it"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-desk.ts",
+    "find": "if (daysBetween(date, today) < 0) return refuse",
+    "replace": "if (daysBetween(date, today) < -1) return refuse",
+    "why": "[setup] B42 take a last paycheck dated tomorrow"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-view.ts",
+    "find": "  if (halves.some((h) => h.onItsWay === null)) missing.push('halves');\n",
+    "replace": "",
+    "why": "[setup] 14.3 start with transfers not answered"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-view.ts",
+    "find": "inTransit: addCents(...onItsWay.map((h) => h.effect)),",
+    "replace": "inTransit: addCents(...halves.map((h) => h.effect)),",
+    "why": "[setup] B48 count every half as on its way in the total"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-view.ts",
+    "find": "kind: half.kind === 'transfer-sent' ? 'left' : 'arrived',",
+    "replace": "kind: half.kind === 'transfer-sent' ? 'arrived' : 'left',",
+    "why": "[setup] B48 call money that arrived money that left"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/choices.ts",
+    "find": "if (onlyKeys(assign, ['pot', 'amount']) && isWhole(assign['amount']))",
+    "replace": "if (onlyKeys(assign, ['pot', 'amount']) && typeof assign['amount'] === 'number')",
+    "why": "[setup] 0.1 take a fraction of a cent from the phone"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/http/server.ts",
+    "find": "          : 'setup' in parsed\n            ? await handlers.setup?.(request, parsed)\n            : await handlers.choice?.(request, parsed);",
+    "replace": "          : await handlers.choice?.(request, parsed as never);",
+    "why": "[setup] setup answers go to the choice desk"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/views/home.ts",
+    "find": "const stillToSet = (['paycheckRule', 'momRule'] as const).filter((key) => settings[key] === null);",
+    "replace": "const stillToSet = (['paycheckRule', 'momRule'] as const).filter((key) => settings[key] !== null);",
+    "why": "[setup] 14 Home says the rules that are set are still to set"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/demo/made-up-bank.ts",
+    "find": "      amount: dollars(item.amount),",
+    "replace": "      amount: dollars(Math.abs(item.amount)),",
+    "why": "[setup] the made-up bank loses the sign of money in"
   }
 ]

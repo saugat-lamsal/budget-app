@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { ChoiceDesk } from '../../server/src/choices.js';
-import { demoScenario } from '../../server/src/demo/scenarios.js';
+import { demoSetupDesk } from '../../server/src/demo/demo-server.js';
+import { DEMO_TODAY, demoScenario } from '../../server/src/demo/scenarios.js';
+import type { SetupStep } from '../../server/src/views/choice.js';
 import { bucketsView } from '../../server/src/views/buckets.js';
 import { homeView } from '../../server/src/views/home.js';
 import { reviewView } from '../../server/src/views/review.js';
 import { activityView } from '../../server/src/views/activity.js';
 import { paydayView } from '../../server/src/views/payday.js';
 import { settingsView } from '../../server/src/views/settings.js';
-import { ACTIVITY_EXAMPLES, BUCKETS_EXAMPLES, EXAMPLE_LIVES, HOME_EXAMPLES, MARKED_EXAMPLES, MOVES_EXAMPLES, PAYDAY_EXAMPLES, REVIEW_EXAMPLES, SETTINGS_EXAMPLES, checksOf, exampleNumbers } from './worked-examples.js';
+import { ACTIVITY_EXAMPLES, BUCKETS_EXAMPLES, EXAMPLE_LIVES, HOME_EXAMPLES, MARKED_EXAMPLES, MOVES_EXAMPLES, PAYDAY_EXAMPLES, REVIEW_EXAMPLES, SETTINGS_EXAMPLES, SETUP_EXAMPLES, checksOf, exampleNumbers } from './worked-examples.js';
 
 // Every example in packages/web/worked-examples.txt, against what the server
 // sends Home for the same made-up life.
@@ -22,7 +24,7 @@ function homeOf(number: number) {
 
 describe('worked examples: the Home screen', () => {
   it('every example in the file has a made-up life', () => {
-    expect(exampleNumbers()).toEqual([...HOME_EXAMPLES, ...BUCKETS_EXAMPLES, ...REVIEW_EXAMPLES, ...ACTIVITY_EXAMPLES, ...MOVES_EXAMPLES, ...PAYDAY_EXAMPLES, ...MARKED_EXAMPLES, ...SETTINGS_EXAMPLES]);
+    expect(exampleNumbers()).toEqual([...HOME_EXAMPLES, ...BUCKETS_EXAMPLES, ...REVIEW_EXAMPLES, ...ACTIVITY_EXAMPLES, ...MOVES_EXAMPLES, ...PAYDAY_EXAMPLES, ...MARKED_EXAMPLES, ...SETTINGS_EXAMPLES, ...SETUP_EXAMPLES]);
     for (const n of exampleNumbers()) expect(EXAMPLE_LIVES[n], `example ${n}`).toBeDefined();
   });
 
@@ -326,5 +328,57 @@ describe('worked examples: the bucket lists, moving money, and Payday', () => {
       expect(label in got, `example 17: unknown check "${label}"`).toBe(true);
       expect(got[label], `example 17: ${label}`).toBe(expected);
     }
+  });
+});
+
+describe('worked examples: Setup day', () => {
+  // Each example's answers, given to the life's setup desk the way the screens give them.
+  const answers: Readonly<Record<number, readonly SetupStep[]>> = {
+    18: [
+      { onItsWay: { half: 'su-old-left', answer: true } },
+      { onItsWay: { half: 'su-card-left', answer: true } },
+      { onItsWay: { half: 'su-sav-landed', answer: true } },
+      { lastPaycheck: '2026-10-02' },
+      { assign: { pot: 'savings', amount: 800_000 } },
+      { assign: { pot: 'momReserve', amount: 120_000 } },
+      { assign: { pot: 'wants', amount: 40_000 } },
+      { assign: { pot: 'needs', rest: true } },
+    ],
+    19: [{ lastPaycheck: '2026-10-02' }, { assign: { pot: 'savings', amount: 15_000 } }, { assign: { pot: 'needs', amount: -150_000 } }, { assign: { pot: 'wants', rest: true } }],
+  };
+
+  it.each(SETUP_EXAMPLES)('example %i: every Check line is what the Setup day screens and then Home are sent', (n) => {
+    const scenario = demoScenario(EXAMPLE_LIVES[n] ?? '');
+    const desk = scenario === undefined ? null : demoSetupDesk(scenario, DEMO_TODAY);
+    if (desk === null) throw new Error(`example ${n} has no life to set up`);
+    let id = 0;
+    const tell = (setup: SetupStep, more = {}) => desk.decide({ id: `example-decision-${(id += 1)}`, setup, ...more });
+    const first = desk.view();
+    if (first.state !== 'not-set-up' || !first.ready) throw new Error('not ready');
+    for (const step of answers[n] ?? []) expect(tell(step).ok, JSON.stringify(step)).toBe(true);
+    const last = desk.view();
+    if (last.state !== 'not-set-up' || !last.ready) throw new Error('not ready');
+    expect(tell({ start: true }, { confirmed: true, seen: last.key }).ok).toBe(true);
+    const started = desk.started();
+    if (started === null) throw new Error('did not start');
+    const home = homeView({ today: DEMO_TODAY, book: started.book, bank: started.bank, needsLogin: false, statements: [], madeUpData: true, seenTakeBacks: new Set(), lastChecked: null });
+    if (home.state !== 'tracking') throw new Error('Home is not tracking');
+    const savings = home.attention.find((a) => a.kind === 'move-to-savings');
+    const got: Record<string, number | undefined> = {
+      'bank side': first.bankSide,
+      'old card debt': first.oldCard.debt,
+      'starting money': last.startingMoney,
+      needs: last.assignment.needs,
+      wants: last.assignment.wants,
+      'left to assign': last.leftToAssign,
+      'safe to spend': home.safeToSpend.shown ? home.safeToSpend.amount : undefined,
+      'still to move': savings?.kind === 'move-to-savings' ? savings.stillToMove : undefined,
+      'days to payday': home.payday.days,
+    };
+    for (const [label, expected] of checksOf(n)) {
+      expect(label in got, `example ${n}: unknown check "${label}"`).toBe(true);
+      expect(got[label], `example ${n}: ${label}`).toBe(expected);
+    }
+    expect(home.attention.some((a) => a.kind === 'still-to-set')).toBe(true);
   });
 });

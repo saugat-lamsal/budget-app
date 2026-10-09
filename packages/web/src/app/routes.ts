@@ -36,7 +36,32 @@ export type Route =
   // What went in and out of one bucket this pay period.
   | { readonly screen: 'activity'; readonly pot: Pot }
   // What the last paycheck did, and the pay period that just ended.
-  | { readonly screen: 'payday' };
+  | { readonly screen: 'payday' }
+  // Setup day, one step at a time (section 14).
+  | { readonly screen: 'setup'; readonly step: SetupStepName };
+
+// ----- Setup day (section 14) -----
+
+// The steps, in order: what the bank shows, transfers on their way, the last
+// paycheck, handing out the starting money, and a last look. Each has its own
+// address, /setup/bank and so on. The server answers each with the app
+// (packages/server/src/http/server.ts, SETUP_PATHS; a test checks).
+export const SETUP_STEPS = ['bank', 'transfers', 'paycheck', 'assign', 'check'] as const;
+export type SetupStepName = (typeof SETUP_STEPS)[number];
+
+export const SETUP_STEP_TITLES: Readonly<Record<SetupStepName, string>> = {
+  bank: 'What the bank shows',
+  transfers: 'Transfers on their way',
+  paycheck: 'Your last paycheck',
+  assign: 'Hand out your starting money',
+  check: 'A last look',
+};
+
+export const SETUP_ROUTES: readonly Route[] = Object.freeze(SETUP_STEPS.map((step): Route => ({ screen: 'setup', step })));
+
+export function setupPath(step: SetupStepName): string {
+  return `/setup/${step}`;
+}
 
 // The screens that are not tabs. The server answers each address with the
 // app (packages/server/src/http/server.ts, SCREEN_PATHS; a test checks).
@@ -56,6 +81,8 @@ export function pathOfRoute(route: Route): string {
       return activityPath(route.pot);
     case 'payday':
       return '/payday';
+    case 'setup':
+      return setupPath(route.step);
   }
 }
 
@@ -65,6 +92,8 @@ export function routeOf(pathname: string): Route | null {
   if (tab !== null) return { screen: 'tab', tab };
   const path = pathname.replace(/\/$/, '');
   if (path === '/payday') return { screen: 'payday' };
+  const step = /^\/setup\/([^/]+)$/.exec(path)?.[1];
+  if (step !== undefined && (SETUP_STEPS as readonly string[]).includes(step)) return { screen: 'setup', step: step as SetupStepName };
   const slug = /^\/buckets\/([^/]+)$/.exec(path)?.[1];
   if (slug !== undefined && Object.hasOwn(POT_SLUGS, slug)) {
     const pot = POT_SLUGS[slug];
@@ -74,9 +103,9 @@ export function routeOf(pathname: string): Route | null {
 }
 
 // Which tab is lit while a screen is showing: a bucket's screen and Payday
-// are about the buckets.
+// are about the buckets; Setup day leads to Home.
 export function tabOfRoute(route: Route): Tab {
-  return route.screen === 'tab' ? route.tab : 'buckets';
+  return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : 'buckets';
 }
 
 export function routeTitle(route: Route): string {
@@ -87,6 +116,8 @@ export function routeTitle(route: Route): string {
       return `${POT_NAMES[route.pot]} · Budget`;
     case 'payday':
       return 'Payday · Budget';
+    case 'setup':
+      return 'Setup day · Budget';
   }
 }
 
@@ -99,6 +130,8 @@ export function routeLabel(route: Route): string {
       return POT_NAMES[route.pot];
     case 'payday':
       return 'Payday';
+    case 'setup':
+      return SETUP_STEP_TITLES[route.step];
   }
 }
 

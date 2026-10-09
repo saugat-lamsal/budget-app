@@ -17,3 +17,12 @@ export function dueText(daysLeft: number): string {
   if (daysLeft === 0) return 'due today';
   return `due in ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`;
 }
+
+// After setup day: the rules not set yet (section 2), and what waits for them.
+export function stillToSetText(settings: readonly ('paycheckRule' | 'momRule')[]): { readonly title: string; readonly detail: string } {
+  const paycheck = settings.includes('paycheckRule');
+  const mom = settings.includes('momRule');
+  if (paycheck && mom) return { title: 'Still to set: the paycheck rule and the mom rule', detail: 'Until then your paycheck and payments to mom wait in Review. Set them in Settings.' };
+  if (paycheck) return { title: 'Still to set: the paycheck rule', detail: 'Until then your paycheck waits in Review. Set it in Settings.' };
+  return { title: 'Still to set: the mom rule', detail: 'Until then payments to mom wait in Review. Set it in Settings.' };
+}

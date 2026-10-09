@@ -1,5 +1,5 @@
 import { addCents, withPendingCharges, type AccountId, type BankBalances, type Cents, type PendingCharge } from '@budget-app/money';
-import type { StoredAccount } from '../db/store.js';
+import type { StoredAccount } from './stored-account.js';
 import type { StoredItem } from '../sync/plan.js';
 import { BankDataError } from '../errors.js';
 import { centsFromPlaid } from './amounts.js';

@@ -238,6 +238,8 @@ button.row:active {
   border-radius: 12px;
   border: 0;
   font-weight: var(--weight-bold);
+  /* A link made to look like a button (LinkButton) has no underline. */
+  text-decoration: none;
   cursor: pointer;
   transition: opacity var(--duration) var(--ease), transform var(--duration) var(--ease);
 }

@@ -1,0 +1,605 @@
+import { formatDollars, parseDollars, type Cents, type Pot } from '@budget-app/money';
+import type { HalfLine, SetupReadyView, SetupResponse, SetupStep, SetupView } from '@budget-app/server/views';
+import { useRef, useState, type ReactNode } from 'react';
+import { newDecisionId, sendChoice, type Load, type Reload } from '../app/api.js';
+import { SETUP_STEPS, SETUP_STEP_TITLES, pathOf, setupPath, type SetupStepName } from '../app/routes.js';
+import { BackLink, BottomSheet, Button, ButtonRow, Card, Decision, Hero, LinkButton, ListRow, MadeUpPill, Money, Notice, Skeleton, StateMessage, TextField } from '../ui/blocks.js';
+import { dayWithYear, shortDate } from '../ui/dates.js';
+import { Icon } from '../ui/Icon.js';
+import { POT_NAMES } from '../ui/names.js';
+import { paydayText } from './home-text.js';
+import { ACCOUNT_NAMES, answerText, bankRuleText, effectLead, halfText, missingText, stepCount } from './setup-text.js';
+
+// Setup day (rulebook section 14), one step per screen: what the bank shows
+// today (14.1), transfers on their way (B48), the last paycheck (B42),
+// handing out the starting money (14.2), and a last look before tracking
+// starts (14.3). Every number comes from the server, worked out by the money
+// math; the screen only shows it. His answers go to the server one at a time
+// (the same desk, with decision numbers); starting asks first.
+
+const POTS: readonly Pot[] = ['savings', 'needs', 'wants', 'momReserve', 'heldForOthers'];
+
+export function SetupScreen({ step, load, onRetry, onStarted }: { readonly step: SetupStepName; readonly load: Load<SetupView>; readonly onRetry: Reload; readonly onStarted: () => void }) {
+  const index = SETUP_STEPS.indexOf(step);
+  const previous = SETUP_STEPS[index - 1];
+  return (
+    <main className="screen" aria-busy={load.status === 'loading'} data-testid="setup">
+      <BackLink href={previous === undefined ? pathOf('home') : setupPath(previous)} label={previous === undefined ? 'Home' : SETUP_STEP_TITLES[previous]} testId="back" />
+      <div className="eyebrow">
+        <span data-testid="setup-step">Setup day · {stepCount(index, SETUP_STEPS.length)}</span>
+        {load.status === 'ready' && load.value.madeUpData && <MadeUpPill />}
+      </div>
+      <h1 className="screen-title">{SETUP_STEP_TITLES[step]}</h1>
+      {load.status === 'loading' && <SetupLoading />}
+      {load.status === 'error' && (
+        <StateMessage icon="alert" tone="danger" title="Couldn't load setup day" detail="Check your connection, then try again." testId="setup-error">
+          <Button onClick={() => onRetry()} testId="retry">
+            Try again
+          </Button>
+        </StateMessage>
+      )}
+      {load.status === 'ready' && load.value.state === 'tracking' && (
+        <StateMessage icon="check" title="Setup day is done" detail="Tracking has started. Your numbers are on Home." testId="setup-done">
+          <LinkButton href={pathOf('home')} testId="open-home">
+            Open Home
+          </LinkButton>
+        </StateMessage>
+      )}
+      {load.status === 'ready' && load.value.state === 'not-set-up' && !load.value.ready && (
+        <StateMessage icon="bank" title="Setup day can't start yet" detail={`${capitalize(load.value.why)}.`} testId="setup-not-ready" />
+      )}
+      {load.status === 'ready' && load.value.state === 'not-set-up' && load.value.ready && <SetupReady key={step} step={step} view={load.value} reload={onRetry} onStarted={onStarted} />}
+    </main>
+  );
+}
+
+function SetupLoading() {
+  return (
+    <div data-testid="setup-loading" style={{ display: 'contents' }}>
+      <span className="sr-only">Loading setup day</span>
+      <div className="hero" aria-hidden="true">
+        <Skeleton width="7rem" height="1rem" />
+        <Skeleton width="13rem" height="3rem" />
+        <Skeleton width="10rem" height="1rem" />
+      </div>
+      <div className="card card--padded" aria-hidden="true" style={{ display: 'grid', gap: '12px' }}>
+        <Skeleton width="60%" height="1rem" />
+        <Skeleton width="80%" height="1rem" />
+        <Skeleton width="50%" height="1rem" />
+      </div>
+    </div>
+  );
+}
+
+// ----- Sending his answers -----
+
+interface Sender {
+  readonly sending: boolean;
+  readonly problem: string | null;
+  // Sends one answer. A retry of the same answer keeps its decision number.
+  // A sheet says what went wrong itself (inSheet); otherwise the screen does.
+  // Null while another answer is on its way; 'failed' when no answer came.
+  readonly send: (step: SetupStep, options?: { readonly yes?: { readonly seen: string }; readonly inSheet?: boolean }) => Promise<SetupResponse | 'failed' | null>;
+}
+
+const NO_SIGNAL = "Couldn't save that. Check your connection and try again. Nothing is counted twice.";
+
+function useSender(reload: Reload): Sender {
+  const [sending, setSending] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  // A second tap before the screen has redrawn must not send a second request.
+  const lock = useRef(false);
+  const attempt = useRef<{ readonly key: string; readonly id: string } | null>(null);
+  const send = async (step: SetupStep, options: { readonly yes?: { readonly seen: string }; readonly inSheet?: boolean } = {}): Promise<SetupResponse | 'failed' | null> => {
+    if (lock.current) return null;
+    const { yes, inSheet = false } = options;
+    const key = JSON.stringify([step, yes ?? null]);
+    const id = attempt.current?.key === key ? attempt.current.id : newDecisionId();
+    attempt.current = { key, id };
+    lock.current = true;
+    setSending(true);
+    setProblem(null);
+    try {
+      const answer = await sendChoice({ id, setup: step, ...(yes === undefined ? {} : { confirmed: true, seen: yes.seen }) });
+      if (answer.ok) {
+        attempt.current = null;
+        reload('after');
+      } else if (answer.code !== 'needs-confirmation' && !inSheet) setProblem(answer.why);
+      return answer;
+    } catch {
+      if (!inSheet) setProblem(NO_SIGNAL);
+      return 'failed';
+    } finally {
+      lock.current = false;
+      setSending(false);
+    }
+  };
+  return { sending, problem, send };
+}
+
+// ----- The steps -----
+
+function SetupReady({ step, view, reload, onStarted }: { readonly step: SetupStepName; readonly view: SetupReadyView; readonly reload: Reload; readonly onStarted: () => void }) {
+  const sender = useSender(reload);
+  const next = SETUP_STEPS[SETUP_STEPS.indexOf(step) + 1];
+  return (
+    <>
+      {sender.problem !== null && (
+        <Notice tone="danger" icon="alert" testId="setup-problem" sticky>
+          {sender.problem}
+        </Notice>
+      )}
+      {step === 'bank' && <BankStep view={view} />}
+      {step === 'transfers' && <TransfersStep view={view} sender={sender} />}
+      {step === 'paycheck' && <PaycheckStep view={view} sender={sender} />}
+      {step === 'assign' && <AssignStep view={view} sender={sender} />}
+      {step === 'check' && <CheckStep view={view} sender={sender} reload={reload} onStarted={onStarted} />}
+      {next !== undefined && (
+        <LinkButton href={setupPath(next)} wide testId="next">
+          Next: {SETUP_STEP_TITLES[next]}
+        </LinkButton>
+      )}
+    </>
+  );
+}
+
+// Step 1, 14.1: each account as the bank shows it, with its charges pending.
+function BankStep({ view }: { readonly view: SetupReadyView }) {
+  return (
+    <>
+      <Hero label="Starting money" sub="Checking + savings − everyday card, with the charges still pending. Transfers on their way come next." testId="setup-hero">
+        <Money cents={view.bankSide} hero testId="bank-side" />
+      </Hero>
+      <Card title="Your accounts today" testId="accounts">
+        <dl className="figures">
+          <AccountFigure name="Checking" line={view.checking} testId="checking" />
+          <AccountFigure name="Savings" line={view.savings} testId="savings" />
+          <AccountFigure name="Everyday card owes" line={view.everydayCard} testId="everyday-card" owes />
+          <dt className="figures__total">Starting money</dt>
+          <dd className="figures__total">
+            <Money cents={view.bankSide} testId="bank-side-total" />
+          </dd>
+        </dl>
+      </Card>
+      <Card title="Charges still pending" testId="pending">
+        {view.pendingCharges.filter((c) => c.account !== 'old-card').length === 0 ? (
+          <p className="card__note" data-testid="pending-none">
+            Nothing is pending.
+          </p>
+        ) : (
+          view.pendingCharges.filter((c) => c.account !== 'old-card').map((c) => (
+            <ListRow key={c.id} title={c.description} detail={`${ACCOUNT_NAMES[c.account]} · ${shortDate(c.date)}`} trailing={<Money cents={c.amount} testId={`pending-${c.id}`} />} testId={`pending-row-${c.id}`} />
+          ))
+        )}
+        <p className="card__note">They count now, from the day of the purchase. Money still pending into your accounts counts once it posts.</p>
+      </Card>
+      <Card title="Old card" testId="old-card">
+        <dl className="figures">
+          <dt>Owes, as the bank shows it</dt>
+          <dd>
+            <Money cents={view.oldCard.posted} testId="old-posted" />
+          </dd>
+          <dt>Charges pending</dt>
+          <dd>
+            <Money cents={view.oldCard.pending} testId="old-pending" />
+          </dd>
+          <dt className="figures__total">Debt to pay off</dt>
+          <dd className="figures__total">
+            <Money cents={view.oldCard.debt} testId="old-debt" />
+          </dd>
+        </dl>
+        {view.pendingCharges
+          .filter((c) => c.account === 'old-card')
+          .map((c) => (
+            <ListRow key={c.id} title={c.description} detail={`Pending · ${shortDate(c.date)}`} trailing={<Money cents={c.amount} testId={`pending-${c.id}`} />} testId={`pending-row-${c.id}`} />
+          ))}
+        <p className="card__note">Tracked apart as debt. It is not part of the starting money.</p>
+      </Card>
+    </>
+  );
+}
+
+function AccountFigure({ name, line, owes = false, testId }: { readonly name: string; readonly line: SetupReadyView['checking']; readonly owes?: boolean; readonly testId: string }) {
+  return (
+    <>
+      <dt>
+        {name}
+        <span className="row__detail" style={{ display: 'block' }} data-testid={`${testId}-detail`}>
+          {' '}
+          The bank shows <Money cents={line.posted} testId={`${testId}-posted`} />
+          {line.pending === 0 ? (
+            ', nothing pending.'
+          ) : (
+            <>
+              , {owes ? 'plus' : 'less'} <Money cents={line.pending} testId={`${testId}-pending`} /> pending.
+            </>
+          )}
+        </span>
+      </dt>
+      <dd>
+        <Money cents={line.withPending} testId={`${testId}-counts`} />
+      </dd>
+    </>
+  );
+}
+
+// Step 2, B48: each transfer with one half showing, on its way or not.
+function TransfersStep({ view, sender }: { readonly view: SetupReadyView; readonly sender: Sender }) {
+  return (
+    <>
+      <Hero
+        label="Starting money"
+        sub={view.halves.length === 0 ? 'Nothing to answer here.' : view.unanswered === 0 ? 'Every transfer is answered.' : `${view.unanswered} still to answer.`}
+        testId="setup-hero"
+      >
+        <Money cents={view.startingMoney} hero testId="starting-money" />
+      </Hero>
+      {view.halves.length === 0 ? (
+        <StateMessage icon="check" title="Nothing on its way" detail={`Every transfer between your accounts in the last ${view.halvesWithinDays} days shows both sides.`} testId="transfers-none" />
+      ) : (
+        <Card title="Only one side shows" testId="halves">
+          <p className="card__note">From the last {view.halvesWithinDays} days. Say whether each is still on its way. The starting money follows your answers.</p>
+          {view.halves.map((half) => (
+            <HalfDecision key={half.id} half={half} sender={sender} />
+          ))}
+        </Card>
+      )}
+    </>
+  );
+}
+
+function HalfDecision({ half, sender }: { readonly half: HalfLine; readonly sender: Sender }) {
+  return (
+    <Decision
+      title={half.description}
+      amount={<Money cents={half.amount} />}
+      detail={halfText(half)}
+      testId={`half-${half.id}`}
+      actions={
+        <ButtonRow>
+          <Button variant={half.onItsWay === true ? 'primary' : 'secondary'} disabled={sender.sending || half.onItsWay === true} testId="on-its-way" onClick={() => void sender.send({ onItsWay: { half: half.id, answer: true } })}>
+            {half.onItsWay === true && <Icon name="check" size={16} />}
+            On its way
+          </Button>
+          <Button variant={half.onItsWay === false ? 'primary' : 'secondary'} disabled={sender.sending || half.onItsWay === false} testId="not-on-its-way" onClick={() => void sender.send({ onItsWay: { half: half.id, answer: false } })}>
+            {half.onItsWay === false && <Icon name="check" size={16} />}
+            Not on its way
+          </Button>
+        </ButtonRow>
+      }
+    >
+      <p className="decision__detail" data-testid="effect">
+        <span>
+          {half.effect === 0 ? (
+            effectLead(half)
+          ) : (
+            <>
+              If it is on its way: <Money cents={half.effect} signed testId="effect-amount" /> to the starting money. {effectLead(half)}
+            </>
+          )}
+        </span>
+      </p>
+      <p className="decision__detail" data-testid="rule">
+        <span>{half.rule === null ? 'No bank rule names it.' : `Read as a transfer by the bank rule ${bankRuleText(half.rule)}.`}</span>
+      </p>
+      <p className="decision__detail" data-testid="answer">
+        <strong>{answerText(half.onItsWay)}</strong>
+      </p>
+    </Decision>
+  );
+}
+
+// Step 3, B42: his last paycheck, which the pay schedule counts from.
+function PaycheckStep({ view, sender }: { readonly view: SetupReadyView; readonly sender: Sender }) {
+  const [open, setOpen] = useState(false);
+  const last = view.lastPaycheck;
+  return (
+    <>
+      <Hero label="Next payday" sub={last === null ? 'Enter your last paycheck to see it.' : paydayText(last.daysToPayday)} testId="setup-hero">
+        <span className="hero__count" data-testid="next-payday">
+          {last === null ? 'Not yet' : shortDate(last.nextPayday)}
+        </span>
+      </Hero>
+      <Card title="Your last paycheck" testId="paycheck">
+        <ListRow title="Day it came in" detail={last === null ? 'Not entered yet' : dayWithYear(last.date)} onClick={() => setOpen(true)} testId="last-paycheck" />
+        <p className="card__note">Paydays are every {view.payScheduleDays} days, counted from your last paycheck, until the next one comes in. It can be today, not after.</p>
+      </Card>
+      {open && <DateSheet view={view} sender={sender} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+function DateSheet({ view, sender, onClose }: { readonly view: SetupReadyView; readonly sender: Sender; readonly onClose: () => void }) {
+  const [date, setDate] = useState(view.lastPaycheck?.date ?? '');
+  const [problem, setProblem] = useState<string | null>(null);
+  const save = (): void => {
+    if (date === '') {
+      setProblem('Pick a date');
+      return;
+    }
+    void sender.send({ lastPaycheck: date }, { inSheet: true }).then((answer) => {
+      if (answer === 'failed') setProblem(NO_SIGNAL);
+      else if (answer?.ok === true) onClose();
+      else if (answer !== null && !answer.ok) setProblem(answer.why);
+    });
+  };
+  return (
+    <BottomSheet open title="Your last paycheck" onClose={onClose} testId="date-sheet">
+      {problem !== null && (
+        <Notice tone="danger" icon="alert" testId="sheet-problem">
+          {problem}
+        </Notice>
+      )}
+      <div className="card" style={{ display: 'grid', gap: 'var(--space-3)', padding: 'var(--space-4)' }}>
+        <TextField label="Day it came in" kind="date" value={date} onChange={setDate} testId="date" />
+      </div>
+      <Button wide disabled={sender.sending} testId="sheet-save" onClick={save}>
+        {sender.sending ? 'Saving…' : 'Save'}
+      </Button>
+    </BottomSheet>
+  );
+}
+
+// Step 4, 14.2: the starting money handed out across the buckets. What is
+// left to assign comes from the server after every amount.
+function AssignStep({ view, sender }: { readonly view: SetupReadyView; readonly sender: Sender }) {
+  const [editing, setEditing] = useState<Pot | null>(null);
+  return (
+    <>
+      <Hero label="Left to assign" sub={<LeftWords view={view} />} testId="setup-hero">
+        <Money cents={view.leftToAssign} hero testId="left-to-assign" />
+      </Hero>
+      <Card title="Where it goes" testId="assignment">
+        {POTS.map((pot) => (
+          <ListRow key={pot} title={POT_NAMES[pot]} trailing={<Money cents={view.assignment[pot]} testId={`assigned-${pot}`} />} onClick={() => setEditing(pot)} testId={`assign-${pot}`} />
+        ))}
+        <dl className="figures">
+          <dt>Assigned</dt>
+          <dd>
+            <Money cents={view.assigned} testId="assigned" />
+          </dd>
+          <dt>Starting money</dt>
+          <dd>
+            <Money cents={view.startingMoney} testId="starting-money" />
+          </dd>
+        </dl>
+        <p className="card__note">Tracking starts only when it is handed out to the cent. Below zero is allowed: when the card owes more than you have, that is where it starts.</p>
+      </Card>
+      {editing !== null && <AmountSheet pot={editing} view={view} sender={sender} onClose={() => setEditing(null)} />}
+    </>
+  );
+}
+
+function LeftWords({ view }: { readonly view: SetupReadyView }): ReactNode {
+  if (view.leftToAssign === 0) return 'All of it is handed out, to the cent.';
+  if (view.leftToAssign > 0) return 'Still to hand out.';
+  return 'More is handed out than there is. Take some back.';
+}
+
+function AmountSheet({ pot, view, sender, onClose }: { readonly pot: Pot; readonly view: SetupReadyView; readonly sender: Sender; readonly onClose: () => void }) {
+  const [text, setText] = useState(() => typed(view.assignment[pot]));
+  const [problem, setProblem] = useState<string | null>(null);
+  const amount = readAmount(text);
+  const finish = (answer: SetupResponse | 'failed' | null): void => {
+    if (answer === 'failed') setProblem(NO_SIGNAL);
+    else if (answer?.ok === true) onClose();
+    else if (answer !== null && !answer.ok) setProblem(answer.why);
+  };
+  return (
+    <BottomSheet open title={POT_NAMES[pot]} onClose={onClose} testId="amount-sheet">
+      {problem !== null && (
+        <Notice tone="danger" icon="alert" testId="sheet-problem">
+          {problem}
+        </Notice>
+      )}
+      <div className="card" style={{ display: 'grid', gap: 'var(--space-3)', padding: 'var(--space-4)' }}>
+        <TextField label="Amount" money value={text} onChange={setText} hint="Like 1,500.00. Below zero starts with a minus sign." testId="amount" />
+        {amount === null && text.trim() !== '' && (
+          <p className="field__hint" role="alert" data-testid="sheet-reading">
+            Enter an amount like 1,500.00
+          </p>
+        )}
+      </div>
+      <Button wide disabled={sender.sending || amount === null} testId="sheet-save" onClick={() => amount !== null && void sender.send({ assign: { pot, amount } }, { inSheet: true }).then(finish)}>
+        {sender.sending ? 'Saving…' : 'Save'}
+      </Button>
+      <Button variant="secondary" wide disabled={sender.sending || view.leftToAssign === 0} testId="sheet-rest" onClick={() => void sender.send({ assign: { pot, rest: true } }, { inSheet: true }).then(finish)}>
+        Put what is left here
+      </Button>
+      <p className="sheet__note">What is left to assign is worked out for you after you save.</p>
+    </BottomSheet>
+  );
+}
+
+// An amount as typed: 1,500.00, -1,756.47, or with the minus sign the app shows.
+function readAmount(text: string): Cents | null {
+  try {
+    return parseDollars(text.trim().replace(/^[−–]/, '-'));
+  } catch {
+    return null;
+  }
+}
+
+function typed(cents: Cents): string {
+  return formatDollars(cents).replace('$', '');
+}
+
+// Step 5, 14.3: a last look at everything, then start. It asks first.
+function CheckStep({ view, sender, reload, onStarted }: { readonly view: SetupReadyView; readonly sender: Sender; readonly reload: Reload; readonly onStarted: () => void }) {
+  const [asked, setAsked] = useState<{ readonly why: string; readonly key: string } | null>(null);
+  // What the server said after his yes, when it did not start.
+  const [after, setAfter] = useState<string | null>(null);
+  const [sheetProblem, setSheetProblem] = useState<string | null>(null);
+  const start = (yes?: { readonly seen: string }): void => {
+    setAfter(null);
+    setSheetProblem(null);
+    void sender.send({ start: true }, yes === undefined ? {} : { yes, inSheet: true }).then((answer) => {
+      if (answer === null) return;
+      if (answer === 'failed') {
+        setSheetProblem(NO_SIGNAL);
+        return;
+      }
+      if (answer.ok) {
+        setAsked(null);
+        onStarted();
+      } else if (answer.code === 'needs-confirmation' && yes === undefined) {
+        setAsked({ why: answer.why, key: view.key });
+      } else {
+        // Refused after his yes, or what he saw has changed: he looks again first.
+        setAsked(null);
+        setAfter(answer.why);
+        reload();
+      }
+    });
+  };
+  return (
+    <>
+      <Hero label="Starting money" sub="Checking + savings − everyday card, with charges pending and money on its way." testId="setup-hero">
+        <Money cents={view.startingMoney} hero testId="starting-money" />
+      </Hero>
+      {after !== null && (
+        <Notice tone="warning" icon="alert" testId="setup-after">
+          {after}
+        </Notice>
+      )}
+      {view.missing.length > 0 ? (
+        <Notice tone="warning" icon="alert" testId="missing">
+          <p>Before tracking can start:</p>
+          <ul>
+            {view.missing.map((m) => (
+              <li key={m} data-testid={`missing-${m}`}>
+                {missingText(m, view.unanswered)}
+                {m === 'assignment' && (
+                  <>
+                    {' '}
+                    Left to assign: <Money cents={view.leftToAssign} testId="missing-left" />.
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </Notice>
+      ) : (
+        view.selfCheck !== null && (
+          <>
+            <Notice tone="ok" icon="check" testId="self-check-passes">
+              The self-check passes: the bank and money on its way match your buckets to the cent.
+            </Notice>
+            <Card title="Self-check" testId="self-check">
+              <dl className="figures">
+                <dt>The bank: checking + savings − everyday card</dt>
+                <dd>
+                  <Money cents={view.selfCheck.bankSide} testId="check-bank" />
+                </dd>
+                <dt>Money on its way between your accounts</dt>
+                <dd>
+                  <Money cents={view.selfCheck.inTransit} testId="check-transit" />
+                </dd>
+                <dt>Your buckets added up</dt>
+                <dd>
+                  <Money cents={view.selfCheck.appSide} testId="check-app" />
+                </dd>
+                <dt className="figures__total">Difference</dt>
+                <dd className="figures__total">
+                  <Money cents={view.selfCheck.difference} testId="check-difference" />
+                </dd>
+              </dl>
+            </Card>
+          </>
+        )
+      )}
+      <Card title="Starting money" testId="check-money">
+        <dl className="figures">
+          <dt>The bank, with charges pending</dt>
+          <dd>
+            <Money cents={view.bankSide} testId="check-bank-side" />
+          </dd>
+          <dt>Money on its way</dt>
+          <dd>
+            <Money cents={view.inTransit} testId="check-in-transit" />
+          </dd>
+          <dt className="figures__total">Starting money</dt>
+          <dd className="figures__total">
+            <Money cents={view.startingMoney} testId="check-starting-money" />
+          </dd>
+        </dl>
+      </Card>
+      <Card title="Where it goes" testId="check-assignment">
+        <dl className="figures">
+          {POTS.map((pot) => (
+            <Fragmented key={pot} label={POT_NAMES[pot]}>
+              <Money cents={view.assignment[pot]} testId={`check-${pot}`} />
+            </Fragmented>
+          ))}
+          <dt className="figures__total">Left to assign</dt>
+          <dd className="figures__total">
+            <Money cents={view.leftToAssign} testId="check-left" />
+          </dd>
+        </dl>
+      </Card>
+      <Card title="Paydays and the old card" testId="check-other">
+        <ListRow title="Last paycheck" detail={view.lastPaycheck === null ? 'Not entered yet' : `${dayWithYear(view.lastPaycheck.date)}. Next payday ${shortDate(view.lastPaycheck.nextPayday)}.`} testId="check-paycheck" />
+        <ListRow title="Old card debt" detail="Tracked apart, not part of the starting money." trailing={<Money cents={view.oldCard.debt} testId="check-old-debt" />} testId="check-old" />
+      </Card>
+      <Card title="Bank rules" testId="bank-rules">
+        <p className="card__note">How the app tells your transfers, payments to people, and card fees from purchases. They come with the bank connection.</p>
+        {view.bankRules.length === 0 ? (
+          <p className="card__note" data-testid="bank-rules-none">
+            None yet.
+          </p>
+        ) : (
+          view.bankRules.map((rule) => <ListRow key={rule.id} title={bankRuleText(rule)} testId={`bank-rule-${rule.id}`} />)
+        )}
+      </Card>
+      <Button wide disabled={sender.sending} testId="start" onClick={() => start()}>
+        {sender.sending && asked === null ? 'Checking…' : 'Start tracking'}
+      </Button>
+      <p className="sheet__note">Once tracking starts, setup day is done. Amounts can still be moved between buckets by hand.</p>
+      <BottomSheet open={asked !== null} title="Start tracking?" onClose={() => setAsked(null)} testId="start-sheet">
+        {asked !== null && (
+          <>
+            <Notice tone="warning" icon="alert" testId="confirm-ask">
+              {asked.why}
+            </Notice>
+            {sheetProblem !== null && (
+              <Notice tone="danger" icon="alert" testId="sheet-problem">
+                {sheetProblem}
+              </Notice>
+            )}
+            <div className="card">
+              <dl className="figures">
+                <dt>Starting money</dt>
+                <dd>
+                  <Money cents={view.startingMoney} testId="confirm-starting-money" />
+                </dd>
+                <dt>Last paycheck</dt>
+                <dd>{view.lastPaycheck === null ? 'Not entered' : shortDate(view.lastPaycheck.date)}</dd>
+              </dl>
+            </div>
+            <ButtonRow>
+              <Button wide disabled={sender.sending} testId="confirm-yes" onClick={() => start({ seen: asked.key })}>
+                {sender.sending ? 'Starting…' : 'Yes, start tracking'}
+              </Button>
+              <Button variant="secondary" wide disabled={sender.sending} testId="confirm-cancel" onClick={() => setAsked(null)}>
+                Cancel
+              </Button>
+            </ButtonRow>
+          </>
+        )}
+      </BottomSheet>
+    </>
+  );
+}
+
+function Fragmented({ label, children }: { readonly label: string; readonly children: ReactNode }) {
+  return (
+    <>
+      <dt>{label}</dt>
+      <dd>{children}</dd>
+    </>
+  );
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}

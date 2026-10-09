@@ -5,11 +5,12 @@ import type { Pot } from '@budget-app/money';
 import { parseRequest } from '../choices.js';
 import { POT_SLUGS, potOfSlug, type ActivityView } from '../views/activity.js';
 import type { BucketsView } from '../views/buckets.js';
-import type { ChoiceRequest, ChoiceResponse, MoveRequest, MoveResponse, RuleRequest, RuleResponse, SettingsRequest, SettingsResponse } from '../views/choice.js';
+import type { ChoiceRequest, ChoiceResponse, MoveRequest, MoveResponse, RuleRequest, RuleResponse, SettingsRequest, SettingsResponse, SetupRequest, SetupResponse } from '../views/choice.js';
 import type { HomeView } from '../views/home.js';
 import type { PaydayView } from '../views/payday.js';
 import type { ReviewView } from '../views/review.js';
 import type { SettingsView } from '../views/settings.js';
+import type { SetupView } from '../views/setup.js';
 
 // The web server for the screens (Phase 4): the built app from packages/web,
 // and its numbers as JSON. It only reads. Hosting and login come later
@@ -23,6 +24,10 @@ export const APP_PATHS: readonly string[] = ['/', '/home', '/buckets', '/review'
 // The screens that are not tabs: the activity of each bucket and Payday. They
 // get the app too. Must match packages/web/src/app/routes.ts (a test checks).
 export const SCREEN_PATHS: readonly string[] = ['/payday', ...Object.keys(POT_SLUGS).map((slug) => `/buckets/${slug}`)];
+
+// The Setup day screens, one address per step (section 14). They get the app
+// too. Must match packages/web/src/app/routes.ts (a test checks).
+export const SETUP_PATHS: readonly string[] = ['bank', 'transfers', 'paycheck', 'assign', 'check'].map((step) => `/setup/${step}`);
 
 export interface AppServerOptions {
   // The built screens (packages/web/dist).
@@ -55,6 +60,10 @@ export interface AppServerOptions {
   // and says when it needs his yes first. Without them, none can be sent.
   readonly settingsChange?: SettingsHandler;
   readonly ruleChange?: RuleHandler;
+  // Setup day (section 14): the screens' numbers, and his answers. The money
+  // math decides; starting to track asks first. Without them, none can be sent.
+  readonly setupView?: (request: IncomingMessage) => SetupView | Promise<SetupView>;
+  readonly setup?: SetupHandler;
 }
 
 export type Seen = { readonly kind: 'bank-took-back'; readonly id: string };
@@ -63,6 +72,7 @@ export type ChoiceHandler = (request: IncomingMessage, choice: ChoiceRequest) =>
 export type MoveHandler = (request: IncomingMessage, move: MoveRequest) => MoveResponse | Promise<MoveResponse>;
 export type SettingsHandler = (request: IncomingMessage, change: SettingsRequest) => SettingsResponse | Promise<SettingsResponse>;
 export type RuleHandler = (request: IncomingMessage, change: RuleRequest) => RuleResponse | Promise<RuleResponse>;
+export type SetupHandler = (request: IncomingMessage, answer: SetupRequest) => SetupResponse | Promise<SetupResponse>;
 
 // What handles each kind of request sent to /api/choice.
 interface ChoiceHandlers {
@@ -70,6 +80,7 @@ interface ChoiceHandlers {
   readonly move: MoveHandler | undefined;
   readonly settingsChange: SettingsHandler | undefined;
   readonly ruleChange: RuleHandler | undefined;
+  readonly setup: SetupHandler | undefined;
 }
 
 // The most a "seen" request may carry; the real one is under 100 bytes.
@@ -144,7 +155,8 @@ async function takeChoice(request: IncomingMessage, response: ServerResponse, ha
     send(response, 400, 'text/plain; charset=utf-8', 'Not a choice that can be made.', 'no-store');
     return;
   }
-  // A hand move, a settings change, a rule change, or a choice for an item:
+  // A hand move, a settings change, a rule change, a setup day answer, or a
+  // choice for an item:
   // each goes to what handles it, and when nothing does, it is as if the
   // address were not there.
   const answer =
@@ -154,7 +166,9 @@ async function takeChoice(request: IncomingMessage, response: ServerResponse, ha
         ? await handlers.settingsChange?.(request, parsed)
         : 'rule' in parsed
           ? await handlers.ruleChange?.(request, parsed)
-          : await handlers.choice?.(request, parsed);
+          : 'setup' in parsed
+            ? await handlers.setup?.(request, parsed)
+            : await handlers.choice?.(request, parsed);
   if (answer === undefined) {
     send(response, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'not-found' }), 'no-store');
     return;
@@ -225,7 +239,7 @@ export function createAppServer(options: AppServerOptions): Server {
     }
     // His choices, moves, and changes to the settings: they change the app's
     // books, never the bank (0.4).
-    const handlers: ChoiceHandlers = { choice: options.choice, move: options.move, settingsChange: options.settingsChange, ruleChange: options.ruleChange };
+    const handlers: ChoiceHandlers = { choice: options.choice, move: options.move, settingsChange: options.settingsChange, ruleChange: options.ruleChange, setup: options.setup };
     if (path === '/api/choice' && Object.values(handlers).some((handler) => handler !== undefined)) {
       if (request.method !== 'POST') {
         response.setHeader('Allow', 'POST');
@@ -257,9 +271,10 @@ export function createAppServer(options: AppServerOptions): Server {
       ['buckets', options.buckets],
       ['review', options.review],
       ['settings', options.settings],
+      ['setup', options.setupView],
     ] as const) {
       if (path !== `/api/${name}` || make === undefined) continue;
-      let view: BucketsView | ReviewView | SettingsView;
+      let view: BucketsView | ReviewView | SettingsView | SetupView;
       try {
         view = await make(request);
       } catch (error) {
@@ -305,7 +320,7 @@ export function createAppServer(options: AppServerOptions): Server {
     }
     if (options.extra !== undefined && (await options.extra(request, response, path))) return;
 
-    if (APP_PATHS.includes(path) || SCREEN_PATHS.includes(path)) {
+    if (APP_PATHS.includes(path) || SCREEN_PATHS.includes(path) || SETUP_PATHS.includes(path)) {
       await sendFile(response, join(webRoot, 'index.html'), 'no-cache');
       return;
     }

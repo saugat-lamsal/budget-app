@@ -2,7 +2,7 @@
 // come from the "Check:" line in the text file itself, so the file you
 // check by hand and the test can never drift apart.
 import { describe, expect, it } from 'vitest';
-import { parseDollars, payoffCountdown, startTracking, withPendingCharges, type Book, type Cents } from '../src/index.js';
+import { checkAssignment, nextPayday, parseDollars, payoffCountdown, startTracking, startingMoney, withPendingCharges, type Book, type Cents } from '../src/index.js';
 import text from '../worked-examples.txt?raw';
 import { MOM_NAME, TEST_SETTINGS, appSide, arrived, cardCharge, deposit, dropped, openTestBook, payPerson, paycheck, pendingChanged, posted, purchase, refund, sent, takenBack, transfer, withdrawal } from './helpers.js';
 
@@ -614,6 +614,61 @@ const examples: Record<number, () => Record<string, Cents>> = {
     expect(book.rules().map((r) => r.id)).toEqual(['big', 'store']);
     expect(book.changeLog()).toMatchObject([{ kind: 'rule-moved', direction: 'up', position: 1 }]);
     return buckets(book);
+  },
+  37: () => {
+    const d = parseDollars;
+    const bank = { checking: d('3,214.56'), savings: d('8,000.00'), everydayCard: d('612.48') };
+    const pending = [
+      purchase('grocery', '2026-10-06', d('86.43'), 'GROCERY OUTLET #12', { account: 'checking', pending: true }),
+      { ...withdrawal('water', '2026-10-06', d('64.10'), 'BILL PAY WATER UTILITY'), pending: true },
+      purchase('gas', '2026-10-06', d('41.20'), 'CORNER GAS STATION', { pending: true }),
+      purchase('coffee', '2026-10-07', d('6.25'), 'BLUE DOOR COFFEE', { pending: true }),
+      purchase('hardware', '2026-10-05', d('19.99'), 'MADE UP HARDWARE', { account: 'old-card', pending: true }),
+    ];
+    const onItsWay = [
+      sent('card', '2026-10-06', d('300.00'), 'checking', 'everyday-card'),
+      arrived('landed', '2026-10-07', d('150.00'), 'checking', 'savings'),
+      sent('old', '2026-10-05', d('200.00'), 'checking', 'old-card'),
+    ];
+    const money = startingMoney(bank, pending, onItsWay);
+    const assign = (needs: string) => ({ savings: d('8,000.00'), momReserve: d('1,200.00'), wants: d('400.00'), heldForOthers: 0, needs: d(needs) });
+    const input = { date: '2026-10-07', bankBalances: bank, pendingCharges: pending, transfersInTransit: onItsWay, oldCardBalance: d('2,980.00'), lastPaycheckDate: '2026-10-02', settings: TEST_SETTINGS };
+    const short = startTracking({ ...input, assignment: assign('954.09') });
+    const result = startTracking({ ...input, assignment: assign('954.10') });
+    if (short.ok || !result.ok) throw new Error('example 37 did not start as it says');
+    const book = result.book;
+    const withPending = withPendingCharges(bank, pending);
+    const check = book.selfCheck(withPending);
+    expect(check.ok).toBe(true);
+    expect(nextPayday('2026-10-02', TEST_SETTINGS.payScheduleDays, '2026-10-07')).toEqual({ nextPayday: '2026-10-16', daysToPayday: 9 });
+    return {
+      ...buckets(book),
+      'starting money': money,
+      'bank side': check.bankSide,
+      'in transit': check.inTransit,
+      'old card debt': book.oldCardDebt(),
+      'one cent short left': short.difference,
+      'left to assign': checkAssignment(money, assign('954.10')).leftToAssign,
+      'safe to spend': book.safeToSpend('2026-10-07').amount,
+      'still to move': book.savingsTransfer(withPending.savings).stillToMove,
+    };
+  },
+  38: () => {
+    const d = parseDollars;
+    const bank = { checking: d('412.30'), savings: d('150.00'), everydayCard: d('2,318.77') };
+    const money = startingMoney(bank, []);
+    const result = startTracking({
+      date: '2026-10-07',
+      bankBalances: bank,
+      pendingCharges: [],
+      oldCardBalance: 0,
+      assignment: { savings: d('150.00'), needs: d('-1,500.00'), wants: d('-406.47'), momReserve: 0, heldForOthers: 0 },
+      lastPaycheckDate: '2026-10-02',
+      settings: TEST_SETTINGS,
+    });
+    if (!result.ok) throw new Error('example 38 did not start');
+    expect(result.book.selfCheck(bank).ok).toBe(true);
+    return { ...buckets(result.book), 'starting money': money, 'safe to spend': result.book.safeToSpend('2026-10-07').amount };
   },
 };
 

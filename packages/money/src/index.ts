@@ -22,7 +22,7 @@ export {
   type TextRule,
 } from './settings.js';
 export { ACCOUNTS, type AccountId } from './accounts.js';
-export { splitPaycheck, type PaycheckSplit, type SplitSettings } from './payday.js';
+export { nextPayday, splitPaycheck, type PaycheckSplit, type SplitSettings } from './payday.js';
 export type {
   BankTransaction,
   CardCharge,
@@ -93,4 +93,4 @@ export { reviewOptions, type PickTo, type ReviewFacts, type ReviewOptions, type 
 export { MOST_LIKELY_SHOWN, likelyPurchases, type LikelyPurchase, type PurchaseCandidate, type RefundToMatch } from './likely-purchases.js';
 export { bucketLevel, type Alert, type AlertInput, type BucketLevel } from './alerts.js';
 export { bankSide, withPendingCharges, type BankBalances, type PendingCharge } from './self-check.js';
-export { startTracking, startingMoney, type SetupInput, type SetupResult } from './setup.js';
+export { checkAssignment, inTransitEffect, startTracking, startingDebt, startingMoney, type SetupInput, type SetupResult } from './setup.js';

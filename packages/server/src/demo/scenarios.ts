@@ -13,6 +13,8 @@ import {
   type SortingRule,
 } from '@budget-app/money';
 import type { HomeInput } from '../views/home.js';
+import type { MadeUpBank } from './made-up-bank.js';
+import { SETUP_OWES_MORE, SETUP_PENDING } from './setup-lives.js';
 
 // Made-up lives for the demo (npm run demo) and the browser tests. Every
 // name, amount, and date here is invented. Each one is played through the
@@ -292,6 +294,11 @@ function story(s: Story): HomeInput {
   };
 }
 
+// Home before setup day: no book yet.
+function notSetUp(): HomeInput {
+  return { today: DEMO_TODAY, book: null, bank: null, needsLogin: false, statements: [], madeUpData: true, seenTakeBacks: new Set(), lastChecked: null };
+}
+
 export interface DemoScenario {
   readonly name: string;
   readonly title: string;
@@ -299,6 +306,9 @@ export interface DemoScenario {
   readonly input: (() => HomeInput) | null;
   // How long Home's numbers take to arrive, to see the loading state.
   readonly delayMs?: number;
+  // A life not set up yet whose bank can be read: its made-up bank history,
+  // for the Setup day screens (section 14).
+  readonly setup?: () => MadeUpBank;
 }
 
 export const DEMO_SCENARIOS: readonly DemoScenario[] = [
@@ -321,17 +331,20 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   { name: 'review-marked-savings', title: 'Review: a bill from savings marked by mistake as a payment to the old card', input: () => story({ markedFromSavings: true }) },
   { name: 'settings-busy', title: 'Settings: changes along the way, a new split waiting for the next paycheck, a promo end date', input: () => story({ settingsBusy: true, chargedTwice: true }) },
   { name: 'settings-first-sync', title: 'Settings: no paycheck rule or mom rule yet, the paycheck and mom waiting in review', input: () => story({ firstSync: true }) },
-  {
-    name: 'not-set-up',
-    title: 'Before setup day',
-    input: () => ({ today: DEMO_TODAY, book: null, bank: null, needsLogin: false, statements: [], madeUpData: true, seenTakeBacks: new Set(), lastChecked: null }),
-  },
+  { name: 'not-set-up', title: 'Before setup day', input: notSetUp },
   { name: 'slow', title: 'Slow to load (3 seconds)', input: () => story({}), delayMs: 3_000 },
   { name: 'error', title: 'Cannot load', input: null },
 ];
 
+// Lives not set up yet, with a made-up bank to do setup day with (section
+// 14). Kept apart from the others: each has a bank history instead of a book.
+export const SETUP_SCENARIOS: readonly DemoScenario[] = [
+  { name: 'setup-day', title: 'Setup day: charges still pending, and a card payment on its way', input: notSetUp, setup: () => SETUP_PENDING },
+  { name: 'setup-owes-more', title: 'Setup day: the everyday card owes more than checking and savings hold', input: notSetUp, setup: () => SETUP_OWES_MORE },
+];
+
 export function demoScenario(name: string): DemoScenario | undefined {
-  return DEMO_SCENARIOS.find((s) => s.name === name);
+  return [...DEMO_SCENARIOS, ...SETUP_SCENARIOS].find((s) => s.name === name);
 }
 
 // For tests: the book a scenario's Home is worked out from.

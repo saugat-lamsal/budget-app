@@ -15,6 +15,9 @@ import type {
   SettingsRequest,
   SettingsResponse,
   SettingsView,
+  SetupRequest,
+  SetupResponse,
+  SetupView,
 } from '@budget-app/server/views';
 
 // The screens' numbers, from the server. The screens never work money out
@@ -30,6 +33,7 @@ const READS = {
   '/api/review': () => fetch('/api/review', READ),
   '/api/payday': () => fetch('/api/payday', READ),
   '/api/settings': () => fetch('/api/settings', READ),
+  '/api/setup': () => fetch('/api/setup', READ),
   '/api/activity/savings': () => fetch('/api/activity/savings', READ),
   '/api/activity/needs': () => fetch('/api/activity/needs', READ),
   '/api/activity/wants': () => fetch('/api/activity/wants', READ),
@@ -77,7 +81,10 @@ export async function sendChoice(request: ChoiceRequest): Promise<ChoiceResponse
 export async function sendChoice(request: MoveRequest): Promise<MoveResponse>;
 export async function sendChoice(request: SettingsRequest): Promise<SettingsResponse>;
 export async function sendChoice(request: RuleRequest): Promise<RuleResponse>;
-export async function sendChoice(request: ChoiceRequest | MoveRequest | SettingsRequest | RuleRequest): Promise<ChoiceResponse | MoveResponse | SettingsResponse | RuleResponse> {
+export async function sendChoice(request: SetupRequest): Promise<SetupResponse>;
+export async function sendChoice(
+  request: ChoiceRequest | MoveRequest | SettingsRequest | RuleRequest | SetupRequest,
+): Promise<ChoiceResponse | MoveResponse | SettingsResponse | RuleResponse | SetupResponse> {
   const response = await fetch('/api/choice', {
     method: 'POST',
     cache: 'no-store',
@@ -85,7 +92,7 @@ export async function sendChoice(request: ChoiceRequest | MoveRequest | Settings
     body: JSON.stringify(request),
   });
   if (response.status !== 200 && response.status !== 422) throw new Error(`sending the choice answered ${response.status}`);
-  const answer = (await response.json()) as ChoiceResponse | MoveResponse | SettingsResponse | RuleResponse;
+  const answer = (await response.json()) as ChoiceResponse | MoveResponse | SettingsResponse | RuleResponse | SetupResponse;
   if (typeof answer !== 'object' || answer === null || typeof answer.ok !== 'boolean') throw new Error('the choice was answered with something unexpected');
   return answer;
 }
@@ -179,4 +186,5 @@ export const useBuckets = (): [Load<BucketsView>, Reload] => useView<BucketsView
 export const useReview = (): [Load<ReviewView>, Reload] => useView<ReviewView>('/api/review');
 export const usePayday = (): [Load<PaydayView>, Reload] => useView<PaydayView>('/api/payday');
 export const useSettings = (): [Load<SettingsView>, Reload] => useView<SettingsView>('/api/settings');
+export const useSetup = (): [Load<SetupView>, Reload] => useView<SetupView>('/api/setup');
 export const useActivity = (pot: Pot): [Load<ActivityView>, Reload] => useView<ActivityView>(ACTIVITY_URL[pot]);
