@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { canonical, itemKey } from './item-key.js';
 import {
   ACCOUNTS,
   FROM_NEXT_PAYCHECK,
@@ -17,6 +18,7 @@ import {
   type LeftoverChoice,
   type PickTo,
   type Pot,
+  type ResortDetail,
   type ReviewDetail,
   type ReviewOptions,
   type Settings,
@@ -72,6 +74,8 @@ const SPLIT_BUCKETS: readonly ChoicePart['bucket'][] = ['needs', 'wants', 'not-m
 const BUCKET_WORDS: Readonly<Record<string, string>> = { needs: 'Needs', wants: 'Wants', 'not-mine': 'Not mine', savings: 'Savings', momReserve: 'Mom reserve', heldForOthers: 'Held for others' };
 
 const ID_FORMAT = /^[A-Za-z0-9_-]{8,64}$/;
+// An item's key as a screen saw it (item-key.ts).
+const KEY_FORMAT = /^[0-9a-f]{16}$/;
 const MAX_ITEM_LENGTH = 200;
 const MAX_TEXT_LENGTH = 200;
 
@@ -80,8 +84,8 @@ const MAX_TEXT_LENGTH = 200;
 // The request, if it is exactly the right shape, otherwise null. Nothing is
 // guessed or repaired.
 export function parseChoiceRequest(value: unknown): ChoiceRequest | null {
-  if (!isRecord(value) || !onlyKeys(value, ['id', 'item', 'choice', 'always', 'confirmed', 'resort'])) return null;
-  const { id, item, choice, always, confirmed, resort } = value;
+  if (!isRecord(value) || !onlyKeys(value, ['id', 'item', 'choice', 'always', 'confirmed', 'resort', 'seen'])) return null;
+  const { id, item, choice, always, confirmed, resort, seen } = value;
   if (typeof id !== 'string' || !ID_FORMAT.test(id)) return null;
   if (typeof item !== 'string' || item === '' || item.length > MAX_ITEM_LENGTH) return null;
   const parsed = parseChoice(choice);
@@ -95,7 +99,16 @@ export function parseChoiceRequest(value: unknown): ChoiceRequest | null {
   }
   if (confirmed !== undefined && typeof confirmed !== 'boolean') return null;
   if (resort !== undefined && resort !== true) return null;
-  return { id, item, choice: parsed, ...(rule === undefined ? {} : { always: rule }), ...(confirmed === undefined ? {} : { confirmed }), ...(resort === undefined ? {} : { resort: true as const }) };
+  if (seen !== undefined && (typeof seen !== 'string' || !KEY_FORMAT.test(seen))) return null;
+  return {
+    id,
+    item,
+    choice: parsed,
+    ...(rule === undefined ? {} : { always: rule }),
+    ...(confirmed === undefined ? {} : { confirmed }),
+    ...(resort === undefined ? {} : { resort: true as const }),
+    ...(seen === undefined ? {} : { seen }),
+  };
 }
 
 // A hand move, if it is exactly an id, two buckets, and a whole number of
@@ -439,6 +452,9 @@ export class ChoiceDesk {
     const detail = details.find((d) => d.item.id === request.item);
     let subject: Subject;
     if (detail !== undefined) {
+      // Step 3: an answer about an item that changed since the screen showed
+      // it (a sync brought something new about it) is refused, with how it is now.
+      if (request.seen !== undefined && request.seen !== itemKey(detail)) return refuse('changed', changedWhy(detail));
       subject = { options: detail.options, net: detail.item.type === 'spending' ? detail.item.amount : 0, storeRefund: detail.item.type === 'money-in' && detail.item.reason === 'refund', now: null };
     } else {
       // Only a tap on the list of what went in and out of a bucket may change
@@ -446,6 +462,7 @@ export class ChoiceDesk {
       const sorted = request.resort === true ? this.#book.resortDetail(request.item) : null;
       if (sorted === null) return refuse('not-waiting', 'That one was already dealt with.');
       if (!sorted.resortable) return refuse('refused', sorted.why);
+      if (request.seen !== undefined && request.seen !== itemKey(sorted)) return refuse('changed', changedWhy(sorted));
       subject = { options: sorted.options, net: sorted.type === 'spending' ? sorted.amount : 0, storeRefund: sorted.refund, now: sorted.now };
     }
 
@@ -662,11 +679,13 @@ export class ChoiceDesk {
     if (options.type !== 'sort') return no;
     // A21: only for a payment marked from savings, and never by a rule.
     if ('unmark' in c) return options.unmark && request.always === undefined ? null : no;
-    // A18: only one of the likely purchases offered, only for a refund, and
-    // never by a rule.
+    // A18, A29: only one of the likely purchases the money math offers (for
+    // a refund, or money in to checking), and never by a rule.
     if ('refundOf' in c) {
       if (request.always !== undefined) return "A rule can't do that for this item.";
-      if (!subject.storeRefund) return no;
+      // Money in with no purchase to match has no such choice; a store
+      // refund is told why.
+      if (!subject.storeRefund && options.match.length === 0) return no;
       return options.match.includes(c.refundOf) ? null : "That purchase isn't one this refund can belong to.";
     }
     const unavailable = options.unavailable.find((u) => ('to' in c && c.to === 'paycheck' && u.what === 'paycheck') || ('transfer' in c && u.what === 'transfer'));
@@ -740,6 +759,13 @@ function askingAboutRules(patch: Partial<Settings>): string {
       : 'Clearing the mom rule needs your OK first: payments to her will wait in review until you set it again';
   }
   return `Changing ${names} needs your OK first`;
+}
+
+// Why an answer about an item that changed is refused: how it is now.
+function changedWhy(now: ReviewDetail | Extract<ResortDetail, { resortable: true }>): string {
+  const again = 'Look at it again, then choose';
+  if ('item' in now) return `${capitalize(nameOf(now))} changed since you looked: it is now ${formatDollars(now.item.amount)}${now.pending ? ', still pending' : ''}. ${again}`;
+  return `${now.description} changed since you looked: it is now ${formatDollars(now.amount)}${now.pending ? ', still pending' : ''}. ${again}`;
 }
 
 // A name for exactly this preview: the same preview always gets the same key,
@@ -842,15 +868,5 @@ function escape(text: string): string {
 }
 
 // The same request always gives the same text, whatever order its keys were
-// written in, so a repeat is recognized.
-export function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  if (isRecord(value)) {
-    return `{${Object.keys(value)
-      .sort()
-      .filter((key) => value[key] !== undefined)
-      .map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`)
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
-}
+// written in, so a repeat is recognized (item-key.ts).
+export { canonical };

@@ -409,9 +409,13 @@ A27. ANSWERED Oct 9, built. Your answer: option 1. The first bank rule in
      Move down yet.
 
 
-## Part A, added with the real server keeping everything (Oct 9). Waiting on your answer.
+## Part A, added with the real server keeping everything (Oct 9). All answered.
 
-A28. When the replay check finds a difference. Every time the real server
+A28. ANSWERED Oct 10, built. Your answer: option 1. npm run replay-check
+     shows each event whose totals would change, before and after, and with
+     your typed yes takes the new totals from the first of them on; the
+     change log says so. Rulebook 0.6 and 27a; the details are B155 to B157.
+     The question was: when the replay check finds a difference. Every time the real server
      starts, it replays the book's history and compares the totals after each
      event with the ones saved then. If they differ, it does not start, and
      says at which event (as you asked). That is right when the code changed
@@ -432,7 +436,11 @@ A28. When the replay check finds a difference. Every time the real server
      it first, and the past stays explained. Built: the server does not start
      and says at which event; there is no way past it yet.
 
-A29. A store's refund to the debit card. The bank connection reads money
+A29. ANSWERED Oct 10, built. Your answer: option 2. Money in to checking
+     lists its likely purchases on checking under "A refund to your debit
+     card?", each with "This refund is for this one". Rulebook 4.5, 6.1 and
+     27b; the details are B158 and B159.
+     The question was: a store's refund to the debit card. The bank connection reads money
      coming into checking as a deposit (6.1): it cannot tell a store's refund
      from any other money in. So a refund to the debit card waits in review
      with the deposit choices, and cannot be matched to the purchase it is for
@@ -450,6 +458,58 @@ A29. A store's refund to the debit card. The bank connection reads money
      Recommendation: option 2. It works whatever the bank writes, and is the
      same choice you already have for a card refund. Built: option 1, as it
      always was.
+
+
+## Part A, added with your answers to A28 and A29 (Oct 10). Waiting on your answer.
+
+A30. An old event the money math now refuses (0.6). A28 covers an event
+     whose totals change. But a fix can also make an old answer impossible:
+     say a fix finds that a purchase you sorted in March could never have
+     been sorted that way. Then the history cannot be replayed at all, and
+     there are no new totals to take. The rulebook does not say what then.
+     Option 1: the server stays stopped; npm run replay-check says which
+     event and why, and nothing can be taken. The fix has to keep the old
+     answer working (or a person decides by hand, in a later chunk).
+     Option 2: the command offers to drop that one answer from the history
+     (with your yes, logged), so the item goes back to Review to be answered
+     again.
+     Option 3: the command offers to replace that answer with one you pick
+     now, from the choices the money math gives today (with your yes,
+     logged).
+     Recommendation: option 1 for now. It should be rare, nothing about
+     money changes without a person looking, and options 2 or 3 can be added
+     the first time it happens, when we know what the fix was. Built: option
+     1 (the command says which event and why, and the server stays stopped).
+
+
+## Part A, added with syncing on a timer (Step 3, Oct 10). Waiting on your answer.
+
+A31. What counts as "something a sync just changed". You asked that an
+     answer about something a sync just changed be refused with why, and
+     nothing change. The rulebook does not say what counts as changed.
+     Option 1: an item (waiting in Review, on a bucket's list, or a payday
+     question) that is not what the screen showed when you tapped: its
+     amount, day, description, pending or posted, what a payday question
+     asks, where it is sorted now, or what "this is my paycheck" would do.
+     The screen sends back what it showed; if the item is not that any
+     more, the answer is refused with how it is now ("MADE UP CAFE changed
+     since you looked: it is now $13.50. Look at it again, then choose.
+     Nothing was changed."), and the screen shows it again. What it is
+     offered is not part of it: a new purchase joining a refund's likely
+     purchases does not refuse the purchase you picked, and a choice no
+     longer offered is refused anyway. A hand move and the settings are not
+     about one item: a move still asks first if it would leave a bucket
+     below zero (13.4), and the paycheck rule and the mom rule ask again
+     when what they would do has changed (B113).
+     Option 2: only its amount. A pending charge that posts at the same
+     amount, or with a new description, goes through.
+     Option 3: any sync that brought anything new refuses every answer from
+     a screen shown before it, whatever it was about.
+     Option 4: option 1, and a hand move too, when a bucket it takes from or
+     gives to changed since the screen showed it.
+     Recommendation: option 1. It refuses exactly what you could have seen
+     differently, and nothing else; a refusal costs one more tap. Built:
+     option 1 (the details are B172 and B173).
 
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
@@ -1528,7 +1588,158 @@ B154. The real server: npm run serve. This computer only, Plaid's test bank
       only (the sandbox lock), no login yet. The books are in
       data/budget.sqlite (git leaves data/ out). --connect connects the test
       bank with made-up accounts like yours and sets the four accounts by
-      their last four digits; --sync syncs once. Nothing syncs by itself
-      yet. Setup day starts tracking with the settings in section 2, so the
+      their last four digits; --sync syncs once. (Since Step 3 it also syncs
+      by itself, every 60 minutes: B167 to B172.) Setup day starts tracking with the settings in section 2, so the
       paycheck rule and the mom rule are set afterwards on Settings, as in
       the demo. The demo is separate and never opens the database.
+
+
+## Part B, added with your answers to A28 and A29 (Oct 10). Tell me if any is wrong.
+
+B155. What npm run replay-check shows (A28, 0.6). Every event whose saved
+      totals differ from what it replays to now, in order, each with its
+      number, its day, what it was ("his answer: sort", "from the bank:
+      purchase ..."), and each total that differs, before and after, in
+      dollars. After the first such event usually every later one differs
+      too, since the buckets carry on; each is listed. It changes nothing
+      until you type yes (exactly "yes"); anything else leaves everything as
+      it was. Run it with the server stopped; it never talks to the bank.
+
+B156. Your yes is for exactly what you saw (like B113): if the history
+      replays to anything else by the time you answer, nothing is changed
+      and it says to run it again. The new totals are saved for every event
+      listed, all in one step, together with the change log line.
+
+B157. The change log line (13.5): "History took new totals", dated today in
+      your home time zone, with the first event that changed (what and its
+      day), how many events changed, and what changed at the first one
+      ("There: Wants $176.55 → $200.00, ..."). The line keeps every event's
+      before and after in the database. It sits among the other changes in
+      the order they happened. Totals edited by hand in the database are
+      shown and taken the same way.
+
+B158. Money in to checking only (A29): a deposit to savings is never a
+      debit card refund, so it has nothing to match. A paycheck-looking
+      deposit held back under 3.7 gets it too. The likely purchases are the
+      same as for a card refund (20d, A15): on checking, made on or before
+      the day the money came in, with at least that much not yet refunded,
+      and the same name or the same amount. With none, nothing extra shows.
+
+B159. A matched deposit becomes that refund (4.5): it is sorted nowhere
+      else, it cannot be sorted again (asked again, it is refused the way a
+      matched card refund is), and if the bank later takes it back (4.10),
+      the refund is undone as for one the bank matched. One already sorted
+      as payback can still be matched from its bucket's list, as A18 allows
+      for a card refund; the payback is undone first.
+
+
+## Part B, added with passkey login (Step 2, Oct 10). Tell me if any is wrong.
+
+B160. What needs a login on the real server: every screen (Home, Buckets,
+      Review, Settings, Payday, each bucket's list, the Setup day steps, and
+      the bare address), every screen's numbers, and everything the screens
+      send (his answers, a take-back seen, how often to sync with the bank). Without a login, a screen sends
+      him to the login page and the numbers are refused (401, nothing of
+      his). Open: the login page, the app's own files it needs (scripts,
+      styles, icons: nothing of his), and the login's own addresses (whether
+      he is logged in and whether a passkey exists yet; asking to log in;
+      the one-time code). A test lists every address and checks each.
+
+B161. The one-time code: 12 digits in three groups (1234-5678-9012), typed
+      with or without the dashes (the phone's digit pad has none). npm run
+      serve prints one in its own window when there is no passkey yet; npm
+      run login-code prints one any time, on this computer. Only the newest
+      code is good, once, for 15 minutes (at 14 minutes 59 seconds yes, at
+      15 no). After 10 wrong codes in a row, no code is good until a new one
+      is printed; a good code typed in between starts the count again (since
+      Oct 10: before, 10 wrong ones in all voided it). A code makes a passkey on the device it is typed on, and
+      logs that device in.
+
+B162. Logging in: one passkey for this app, checked with Face ID, Touch ID,
+      or the computer's own check (the check is required). Each login
+      question can be answered once, within 5 minutes. A passkey whose use
+      count goes backwards (a copy) is refused. Passkeys are made for the
+      app's host name: on this computer, http://localhost:5190 (npm run
+      serve prints it); http://127.0.0.1:5190 sends you there. The phone
+      gets its own address with hosting (Phase 6).
+
+B163. Staying logged in (section 2): 30 days on a device from when you
+      logged in, then the login page again. A setting on Settings, a whole
+      number of days from 1 to 365; a change applies right away to every
+      device logged in (13.1) and is logged. Log out (Settings) ends the
+      login on that device only.
+
+B164. Another passkey (Settings, "Add a passkey"): only logged in, it asks
+      first, and the passkey is made on the device you are using. The same
+      passkey cannot be added twice. Removing a passkey is not built yet.
+
+B165. The change log (13.5): "Logged in", "Logged out", "Passkey added"
+      (each with the device in words, such as "Safari on iPhone") and "Stay
+      logged in" (before → after), dated, among the other changes in the
+      order they happened. Not logged: a wrong code or a refused passkey.
+
+B166. Kept in the database: his passkeys' public keys only (the private key
+      never leaves his device), each device's login only as a hash (the
+      login itself is only in that device's cookie), and the one-time codes
+      only as a hash. The cookie is HttpOnly and SameSite=Strict, for the
+      whole app; Secure once the app has a https address (Phase 6). Every
+      POST must come from the app's own address, or it is refused.
+
+
+## Part B, added with syncing on a timer (Step 3, Oct 10). Tell me if any is wrong.
+
+B167. How often (section 2, 27d): a whole number of minutes, 15 to 1,440
+      (once a day), 60 to start. On Settings, real server only, in a Bank
+      card with when it last read the bank. A change applies right away
+      (13.1) and is logged ("Sync with the bank: every 60 minutes → every 30
+      minutes"). The demo has no bank, so it has no Bank card.
+
+B168. When a sync is due: one interval of real time after the last sync
+      started, whether it worked or not, so a clock change never moves it.
+      Across Nov 1 the syncs come at 1:30 AM EDT, then 1:30 AM EST; across
+      Mar 14 at 1:30 AM EST, then 3:30 AM EDT. When the server starts, one
+      interval after the last time it read the bank: due by then, it syncs
+      at once; one that never read the bank syncs at once. With no bank
+      connection yet there is nothing to sync, and it looks again each
+      minute. It sleeps at most a minute at a time, so a computer waking up,
+      or a shorter setting, is noticed within a minute.
+
+B169. What a sync asks the bank: /transactions/sync, /accounts/get and
+      /liabilities/get, as --sync always did; never /transactions/refresh. A
+      test checks every call over a simulated day, and that nothing in the
+      server makes that call. Never two syncs at once: the timer and --sync
+      share the books' own lock; asked again while one is on its way, it is
+      that one.
+
+B170. A sync that fails (the bank cannot be reached, or answers something
+      the app cannot read) saves nothing: not the bank's activity, not where
+      the next sync starts, not Checked at. The next one is one interval
+      later. When the bank wants you to log in again (10.5), the sync keeps
+      only that, as before: Home says so, shows the last checked safe to
+      spend (0.5), and Checked at stays at the last read.
+
+B171. Checked at: the moment the last sync read the bank, whether or not it
+      brought anything new, saved with what the sync saved, in the same step
+      (database step 4). Home shows it under safe to spend, in your home
+      time zone: "Checked at 3:05 PM" on the same day there, "Checked at Fri,
+      Oct 9, 3:05 PM" on another. Nothing shows before the first read. The
+      "As of" time of the last checked safe to spend (0.5) is now shown in
+      your home time zone too (it was the phone's), so the two never
+      disagree. The demo shows a made-up time, this morning.
+
+B172. A sync and your answers never write at the same time. An answer that
+      comes while a sync is reading the bank is saved first, and the sync's
+      save works from it. The sync's save and the books in memory reading it
+      again are one step, so an answer after it is given to the book with
+      the sync in it. Found while building this: before, an answer arriving
+      the instant a sync had saved could be saved against the book from
+      before the sync, with totals that do not replay, and the server would
+      then not start (0.6). A test now sends one at exactly that moment.
+
+B173. How the screen says what it showed (A31): each item on Review, on
+      Payday and on a bucket's list comes with a short fingerprint of what
+      it is, and the tap sends it back. A refusal for a change says how it
+      is now, the sheet closes, and the screen asks for its numbers again.
+      The same decision number can be sent again after it (B150: a refusal
+      keeps nothing). The demo works the same way; it has no syncs, so
+      there nothing changes under a screen.

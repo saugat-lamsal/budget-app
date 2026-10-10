@@ -1,4 +1,5 @@
 import { MOVABLE_POTS, type Book, type BucketActivity, type Cents, type IsoDate, type Pot } from '@budget-app/money';
+import { itemKey } from '../item-key.js';
 
 // What the screen for one bucket shows (QUESTIONS.md B97 to B102), worked out
 // on the server from the book: what went in and out of it this pay period,
@@ -25,6 +26,9 @@ export type ActivityView =
       readonly activity: BucketActivity;
       // What every bucket holds now, for the form that moves money (13.3).
       readonly balances: Readonly<Record<Pot, Cents>>;
+      // Step 3: each row's key, by its id, sent back with an answer about it
+      // (seen), so an answer about an item a sync has changed since is refused.
+      readonly keys: Readonly<Record<string, string>>;
     };
 
 export function activityView(input: ActivityInput): ActivityView {
@@ -32,7 +36,9 @@ export function activityView(input: ActivityInput): ActivityView {
   if (book === null) return { state: 'not-set-up', madeUpData };
   const pots = book.pots();
   const balances = Object.fromEntries(MOVABLE_POTS.map((p) => [p, pots[p]])) as Record<Pot, Cents>;
-  return { state: 'tracking', madeUpData, today, pot, activity: book.activity(pot), balances };
+  const activity = book.activity(pot);
+  const keys = Object.fromEntries(activity.rows.map((row) => [row.id, itemKey(row.resort)]));
+  return { state: 'tracking', madeUpData, today, pot, activity, balances, keys };
 }
 
 // Each bucket's name in an address: /buckets/needs, /api/activity/needs.

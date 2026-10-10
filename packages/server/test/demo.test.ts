@@ -52,7 +52,7 @@ describe('the made-up lives', () => {
     // 4.10: the copy's money went back, so safe to spend is what it is in the normal life.
     expect(viewOf('took-back').safeToSpend).toEqual(viewOf('normal').safeToSpend);
     // B82: this morning's check came before the 6.25 coffee.
-    expect(viewOf('bank-not-read').safeToSpend).toEqual({ shown: false, why: 'bank-not-read', lastChecked: { amount: 62_244 + 625, at: '2026-10-07T07:15:00-05:00' } });
+    expect(viewOf('bank-not-read').safeToSpend).toEqual({ shown: false, why: 'bank-not-read', lastChecked: { amount: 62_244 + 625, at: '2026-10-07T07:15:00-04:00' } });
     expect(homeView(demoScenario('not-set-up')!.input!())).toEqual({ state: 'not-set-up', madeUpData: true });
     expect(demoScenario('error')!.input).toBeNull();
   });
@@ -363,7 +363,11 @@ describe('the demo is made-up data only', () => {
       'errors.ts',
       // What the history checks after each event: the money math only.
       'history/history.ts',
+      // The made-up "Checked at" in his home time zone (Step 3): no clock, no database.
+      'history/today.ts',
       'http/server.ts',
+      // An item's key as a screen shows it (Step 3): no Node, no database.
+      'item-key.ts',
       'plaid/types.ts',
       'setup-desk.ts',
       'setup-history.ts',
@@ -374,8 +378,12 @@ describe('the demo is made-up data only', () => {
       'views/buckets.ts',
       'views/choice.ts',
       'views/home.ts',
+      // What Settings shows about logging in (Step 2): a type only; the demo has no login.
+      'views/login.ts',
       'views/payday.ts',
       'views/review.ts',
+      // The change log's lines the server keeps (A28, logins): a type only.
+      'views/server-log.ts',
       'views/settings.ts',
       'views/setup.ts',
     ]);

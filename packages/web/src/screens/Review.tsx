@@ -1,5 +1,5 @@
 import type { PickTo, ReviewDetail } from '@budget-app/money';
-import type { ReviewView } from '@budget-app/server/views';
+import type { KeyedDetail, ReviewView } from '@budget-app/server/views';
 import { newDecisionId, type Load, type Reload } from '../app/api.js';
 import { Button, ButtonRow, Card, Decision, Hero, HeroCount, MadeUpPill, Money, Skeleton, StateMessage } from '../ui/blocks.js';
 import { longDate, shortDate } from '../ui/dates.js';
@@ -57,7 +57,7 @@ function ReviewLoading() {
 
 type Tracking = Extract<ReviewView, { state: 'tracking' }>;
 
-const targetOf = (detail: ReviewDetail): Target => ({ id: detail.item.id, label: titleOf(detail.item), kind: detail.item.type });
+const targetOf = (detail: KeyedDetail): Target => ({ id: detail.item.id, label: titleOf(detail.item), kind: detail.item.type, seen: detail.key });
 
 function ReviewReady({ view, reload, onChanged }: { readonly view: Tracking; readonly reload: Reload; readonly onChanged: Reload }) {
   const flow = useChoiceFlow({ resort: false, reload, onChanged });
@@ -66,7 +66,7 @@ function ReviewReady({ view, reload, onChanged }: { readonly view: Tracking; rea
   const byId = new Map(view.items.map((d) => [d.item.id, d]));
   const open = sheet === null ? undefined : byId.get(sheet.item);
 
-  const groups: { readonly type: Kind; readonly items: ReviewDetail[] }[] = [];
+  const groups: { readonly type: Kind; readonly items: KeyedDetail[] }[] = [];
   for (const d of view.items) {
     const last = groups.at(-1);
     if (last?.type === d.item.type) last.items.push(d);
@@ -147,7 +147,7 @@ function ItemCard({
   onSend,
   onMore,
 }: {
-  readonly detail: ReviewDetail;
+  readonly detail: KeyedDetail;
   readonly busy: boolean;
   readonly onChoose: Choose;
   readonly onSend: (pending: Pending) => void;
@@ -172,7 +172,7 @@ function ItemCard({
             wide
             disabled={busy}
             testId="acknowledge"
-            onClick={() => onSend({ id: newDecisionId(), item: item.id, label: titleOf(item), kind: item.type, choice: { acknowledge: true } })}
+            onClick={() => onSend({ id: newDecisionId(), item: item.id, label: titleOf(item), kind: item.type, choice: { acknowledge: true }, seen: detail.key })}
           >
             Got it
           </Button>
@@ -215,7 +215,7 @@ function ItemCard({
           </>
         }
       >
-        {item.type === 'money-in' && item.reason === 'refund' && subject !== null && <LikelyPurchases subject={subject} busy={busy} onChoose={onChoose} />}
+        {item.type === 'money-in' && subject !== null && (subject.refund || subject.likely.length > 0) && <LikelyPurchases subject={subject} busy={busy} onChoose={onChoose} />}
       </Decision>
     );
   }

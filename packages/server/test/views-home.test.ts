@@ -504,3 +504,34 @@ describe('Home view, for random books', () => {
     );
   });
 });
+
+describe('Step 3: "Checked at", when the bank was last read', () => {
+  it('Step 3 Checked at is the moment the bank was last read, in his home time zone, with that zone', () => {
+    const book = openTestBook();
+    const view = tracking(homeView(input(book, { checkedAt: { at: '2026-10-09T15:05:00-04:00', timeZone: 'America/New_York' } })));
+    expect(view.checkedAt).toEqual({ at: '2026-10-09T15:05:00-04:00', timeZone: 'America/New_York' });
+    expect(view.timeZone).toBe('America/New_York');
+  });
+
+  it('Step 3 before the first read there is none to show', () => {
+    expect(tracking(homeView(input(openTestBook()))).checkedAt).toBeNull();
+    expect(tracking(homeView(input(openTestBook(), { checkedAt: null }))).checkedAt).toBeNull();
+  });
+
+  it('Step 3 0.5 10.5 it stays when the bank cannot be read: the last read, next to the last checked safe to spend', () => {
+    const book = openTestBook();
+    const view = tracking(homeView(input(book, { bank: null, needsLogin: true, lastChecked: { amount: 61_250, at: '2026-10-09T15:05:00-04:00' }, checkedAt: { at: '2026-10-09T15:05:00-04:00', timeZone: 'America/New_York' } })));
+    expect(view.safeToSpend).toEqual({ shown: false, why: 'bank-not-read', lastChecked: { amount: 61_250, at: '2026-10-09T15:05:00-04:00' } });
+    expect(view.checkedAt?.at).toBe('2026-10-09T15:05:00-04:00');
+  });
+
+  it('Step 3 the times on Home are in his home time zone, the setting (section 2)', () => {
+    const book = openTestBook();
+    book.changeSettings({ homeTimeZone: 'America/Chicago' }, START_DATE);
+    expect(tracking(homeView(input(book))).timeZone).toBe('America/Chicago');
+  });
+
+  it('Step 3 a time that is not a time with its offset is refused', () => {
+    for (const at of ['2026-10-09T15:05:00', 'soon', '2026-10-09']) expect(() => homeView(input(openTestBook(), { checkedAt: { at, timeZone: 'America/New_York' } })), at).toThrow();
+  });
+});

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { markTakeBackSeen, type Load, type Reload } from '../app/api.js';
 import { pathOf, setupPath } from '../app/routes.js';
 import { Banner, BottomSheet, BucketBar, Button, Card, LinkButton, ListRow, MadeUpPill, Money, Skeleton, StateMessage, StatusLabel } from '../ui/blocks.js';
-import { asOfText, longDate, shortDate } from '../ui/dates.js';
+import { asOfText, checkedAtText, longDate, shortDate } from '../ui/dates.js';
 import { Icon } from '../ui/Icon.js';
 import { dueText, paydayText, stillToSetText, waitingText } from './home-text.js';
 
@@ -115,7 +115,7 @@ function HomeReady({ view, onChanged }: { readonly view: Tracking; readonly onCh
           <Money cents={safeToSpend.lastChecked.amount} hero stale testId="safe-to-spend-stale" />
           <p className="hero__stale" data-testid="as-of">
             <Icon name="clock" size={16} />
-            <span>As of {asOfText(safeToSpend.lastChecked.at)}. Can't reach the bank to check it now.</span>
+            <span>As of {asOfText(safeToSpend.lastChecked.at, view.timeZone)}. Can't reach the bank to check it now.</span>
           </p>
           {paydayLine}
         </section>
@@ -124,6 +124,14 @@ function HomeReady({ view, onChanged }: { readonly view: Tracking; readonly onCh
           <p className="banner__body">Safe to spend is hidden until the bank can be read again.</p>
           {paydayLine}
         </Banner>
+      )}
+
+      {view.checkedAt !== null && (
+        // Step 3: when the bank was last read, in his home time zone.
+        <p className="checked-at" data-testid="checked-at">
+          <Icon name="clock" size={16} />
+          <span>Checked at {checkedAtText(view.checkedAt.at, view.today, view.checkedAt.timeZone)}</span>
+        </p>
       )}
 
       <Card title="Needs attention" testId="attention">

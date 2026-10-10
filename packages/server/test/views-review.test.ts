@@ -1,3 +1,4 @@
+import { itemKey } from '../src/item-key.js';
 import type { Book } from '@budget-app/money';
 import { describe, expect, it } from 'vitest';
 import { busyBook } from '../../money/test/busy-book.js';
@@ -45,10 +46,12 @@ describe('10.3 B32 everything waiting in review is listed', () => {
     expect(tracking(reviewView(input(book))).heldBack).toBe(3_467);
   });
 
-  it('each item carries its choices, its account, the likely purchases, and the paycheck preview, as the money math gives them', () => {
+  it('each item carries its choices, its account, the likely purchases, and the paycheck preview, as the money math gives them, and its key (Step 3)', () => {
     const book = busyBook();
     const v = tracking(reviewView(input(book)));
-    expect([...v.items].sort((a, b) => (a.item.id < b.item.id ? -1 : 1))).toEqual([...book.reviewDetails()].sort((a, b) => (a.item.id < b.item.id ? -1 : 1)));
+    const keyed = book.reviewDetails().map((d) => ({ ...d, key: itemKey(d) }));
+    expect([...v.items].sort((a, b) => (a.item.id < b.item.id ? -1 : 1))).toEqual(keyed.sort((a, b) => (a.item.id < b.item.id ? -1 : 1)));
+    expect(new Set(v.items.map((i) => i.key)).size).toBe(v.items.length);
   });
 });
 

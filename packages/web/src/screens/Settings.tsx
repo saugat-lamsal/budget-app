@@ -1,5 +1,5 @@
 import { formatDollars, parseDollars, type Cents, type LeftoverChoice, type Settings } from '@budget-app/money';
-import type { BankRuleChange, LogRow, RuleRequest, RuleRow, RuleSpec, SettingsPreviewView, SettingsRequest, SettingsView } from '@budget-app/server/views';
+import type { BankRuleChange, LoginView, LogRow, RuleRequest, RuleRow, RuleSpec, SettingsPreviewView, SettingsRequest, SettingsView, SyncView } from '@budget-app/server/views';
 import { useRef, useState, type ReactNode } from 'react';
 import { newDecisionId, sendChoice, type Load, type Reload } from '../app/api.js';
 import { pathOf } from '../app/routes.js';
@@ -9,16 +9,21 @@ import { POT_NAMES } from '../ui/names.js';
 import { BankRuleRows, BankRuleSheet, type Editing as BankEditing } from './bank-rules.js';
 import { bankRuleDoneText } from './bank-rules-text.js';
 import { SaidNotice, type Said } from './choose.js';
+import { LoginCard } from './login-card.js';
+import { SyncCard } from './sync-card.js';
 import { bankRuleText } from './setup-text.js';
 import {
   LEFTOVER_NAMES,
+  LOGIN_LINES,
   RULE_CHOICE_NAMES,
   RULE_KINDS,
   RULE_KIND_DETAIL,
   SETTING_NAMES,
   daysText,
+  minutesText,
   leftoverText,
   recheckedText,
+  retotaledText,
   reminderText,
   ruleDoneText,
   ruleText,
@@ -58,10 +63,24 @@ export function SettingsScreen({ load, onRetry, onChanged }: { readonly load: Lo
         <>
           {load.value.madeUpData && <MadeUpPill />}
           <StateMessage icon="settings" title="No settings yet" detail="Setup day reads your bank and starts your buckets. Your settings and rules show here after that." testId="settings-not-set-up" />
+          {(load.value.login !== undefined || load.value.sync !== undefined) && <NotSetUpCards login={load.value.login} sync={load.value.sync} reload={onRetry} />}
         </>
       )}
       {load.status === 'ready' && load.value.state === 'tracking' && <SettingsReady view={load.value} reload={onRetry} onChanged={onChanged} />}
     </main>
+  );
+}
+
+// Before setup day there are no settings, but he can still log out (Step 2),
+// and the server already syncs with the bank (Step 3).
+function NotSetUpCards({ login, sync, reload }: { readonly login: LoginView | undefined; readonly sync: SyncView | undefined; readonly reload: Reload }) {
+  const [said, setSaid] = useState<Said | null>(null);
+  return (
+    <>
+      {said !== null && <SaidNotice said={said} sending={false} onRetry={() => undefined} onDismiss={() => setSaid(null)} sticky />}
+      {sync !== undefined && <SyncCard sync={sync} onSaid={setSaid} reload={reload} />}
+      {login !== undefined && <LoginCard login={login} onSaid={setSaid} reload={reload} />}
+    </>
   );
 }
 
@@ -278,6 +297,28 @@ function SettingsReady({ view, reload, onChanged }: { readonly view: Tracking; r
         <ListRow icon="settings" title="Add a bank rule" onClick={() => openBank({ start: null, title: 'New bank rule' })} testId="row-add-bank-rule" />
       </Card>
 
+      {view.sync !== undefined && (
+        <SyncCard
+          sync={view.sync}
+          onSaid={setSaid}
+          reload={(when) => {
+            reload(when);
+            onChanged(when);
+          }}
+        />
+      )}
+
+      {view.login !== undefined && (
+        <LoginCard
+          login={view.login}
+          onSaid={setSaid}
+          reload={(when) => {
+            reload(when);
+            onChanged(when);
+          }}
+        />
+      )}
+
       <Card title="Change log" testId="log">
         {view.log.length === 0 ? (
           <StateMessage icon="clock" title="Nothing changed yet" detail="Every change to your settings and rules, and every hand move, shows here with its date." testId="log-empty" />
@@ -371,6 +412,16 @@ function LogLine({ line }: { readonly line: LogRow }) {
           testId={testId}
         />
       );
+    case 'history-retotaled':
+      return <ListRow icon="undo" title="History took new totals" detail={`${retotaledText(line)} · ${when}`} testId={testId} />;
+    case 'logged-in':
+    case 'logged-out':
+    case 'passkey-added':
+      return <ListRow icon="lock" title={LOGIN_LINES[line.kind]} detail={`${line.device} · ${when}`} testId={testId} />;
+    case 'stay-logged-in-changed':
+      return <ListRow icon="lock" title="Stay logged in" detail={`${daysText(line.before)} → ${daysText(line.after)} · ${when}`} testId={testId} />;
+    case 'sync-every-changed':
+      return <ListRow icon="clock" title="Sync with the bank" detail={`Every ${minutesText(line.before)} → every ${minutesText(line.after)} · ${when}`} testId={testId} />;
   }
 }
 

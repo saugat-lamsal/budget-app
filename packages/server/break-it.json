@@ -723,14 +723,14 @@
   {
     "section": "review",
     "file": "packages/server/src/choices.ts",
-    "find": "      if (request.always !== undefined) return \"A rule can't do that for this item.\";\n      if (!subject.storeRefund) return no;",
-    "replace": "      if (!subject.storeRefund) return no;",
+    "find": "      if (request.always !== undefined) return \"A rule can't do that for this item.\";\n      // Money in with no purchase to match",
+    "replace": "      // Money in with no purchase to match",
     "why": "[review] [pre-merge] A18 a rule that matches a refund is not refused up front"
   },
   {
     "section": "review",
     "file": "packages/server/src/choices.ts",
-    "find": "      if (!subject.storeRefund) return no;\n",
+    "find": "      if (!subject.storeRefund && options.match.length === 0) return no;\n",
     "replace": "",
     "why": "[review] [pre-merge] A18 matching something that is not a refund gets the refund reason"
   },
@@ -1647,8 +1647,8 @@
   {
     "section": "history",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "        writes();\n        this.#beforeCommit?.();\n      })();\n    } catch (error) {\n      this.reload();",
-    "replace": "        writes();\n        this.#beforeCommit?.();\n      })();\n    } catch (error) {",
+    "find": "      this.#lastSeq = lastSeqOf(this.#db);\n    } catch (error) {\n      this.reload();",
+    "replace": "      this.#lastSeq = lastSeqOf(this.#db);\n    } catch (error) {",
     "why": "[keeper] keep in memory an answer whose save did not go through"
   },
   {
@@ -1748,5 +1748,607 @@
     "find": "'3333': 'everyday-card', '4444': 'old-card'",
     "replace": "'3333': 'old-card', '4444': 'everyday-card'",
     "why": "[keeper] --connect takes the old card for the everyday card"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/choices.ts",
+    "find": "      if (!subject.storeRefund && options.match.length === 0) return no;",
+    "replace": "      if (!subject.storeRefund) return no;",
+    "why": "[a29] the desk refuses matching money in to checking"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/retotal.ts",
+    "find": "    if (found.key !== key) return",
+    "replace": "    if (found.key === 'never') return",
+    "why": "[a28] a yes to a list he did not see is taken"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/retotal.ts",
+    "find": "    for (const e of found.events) update.run(JSON.stringify(e.after), e.seq);",
+    "replace": "    for (const e of found.events) update.run(JSON.stringify(e.before), e.seq);",
+    "why": "[a28] the yes keeps the old totals"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/retotal.ts",
+    "find": "      date: todayIn(found.timeZone ?? DEFAULT_SETTINGS.homeTimeZone, now),",
+    "replace": "      date: now.toISOString().slice(0, 10),",
+    "why": "[a28] the log line is dated in UTC, not his home time zone"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/retotal.ts",
+    "find": "    if (stored.sealed && !sameTotals(stored.totals, totals)) changed.push(",
+    "replace": "    if (stored.sealed && !sameTotals(stored.totals, totals) && stored.event.kind === 'answer') changed.push(",
+    "why": "[a28] only his answers are listed, not what the bank sent"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/replay-check-command.ts",
+    "find": "  if (reply.trim() !== 'yes') {",
+    "replace": "  if (!reply.trim().toLowerCase().startsWith('y')) {",
+    "why": "[a28] anything starting with y counts as his yes"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history-db.ts",
+    "find": "    check\n      ? (stored, now) => {",
+    "replace": "    false\n      ? (stored, now) => {",
+    "why": "[a28] the replay check checks nothing"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/views/settings.ts",
+    "find": "if (line.afterBankLines === upTo) outside.push(",
+    "replace": "if (line.afterBankLines === upTo + 1) outside.push(",
+    "why": "[a28] a server line goes one bank rule line too late on the change log"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/views/settings.ts",
+    "find": ".filter((name) => before[name] !== after[name])",
+    "replace": ".filter((name) => before[name] === after[name])",
+    "why": "[a28] the log line lists the totals that did not change"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "    if (!(this.#now().getTime() < until)) return null;",
+    "replace": "    if (!(this.#now().getTime() <= until)) return null;",
+    "why": "[login] 27c a login at exactly the end of the setting still counts"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth-db.ts",
+    "find": "  return row !== undefined && now < row.expires_at;",
+    "replace": "  return row !== undefined && now <= row.expires_at;",
+    "why": "[login] B161 a code at exactly 15 minutes still works"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "      useCode(this.#db, code, now);\n",
+    "replace": "",
+    "why": "[login] B161 a used code works again"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth-db.ts",
+    "find": "    db.prepare('UPDATE login_codes SET used_at = ? WHERE used_at IS NULL').run(createdAt);\n",
+    "replace": "",
+    "why": "[login] B161 an older code still works after a new one is printed"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth-db.ts",
+    "find": "  db.prepare('UPDATE login_codes SET used_at = ? WHERE used_at IS NULL').run(now);",
+    "replace": "  db.prepare('UPDATE login_codes SET used_at = ? WHERE used_at IS NULL AND 0').run(now);",
+    "why": "[login] B161 ten wrong codes void nothing"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "    if (this.#wrongCodes >= WRONG_CODES_ALLOWED) voidCodes(",
+    "replace": "    if (this.#wrongCodes > WRONG_CODES_ALLOWED) voidCodes(",
+    "why": "[login] B161 it takes 11 wrong codes, not 10"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "    saveCode(this.#db, code, now.toISOString(), new Date(now.getTime() + CODE_MINUTES * 60_000).toISOString());\n    this.#wrongCodes = 0;\n",
+    "replace": "    saveCode(this.#db, code, now.toISOString(), new Date(now.getTime() + CODE_MINUTES * 60_000).toISOString());\n",
+    "why": "[login] B161 a new code does not start the count of wrong ones again"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "      this.#wrongCodes = 0;\n      return code;",
+    "replace": "      return code;",
+    "why": "[login] B161 a good code typed in between does not start the count again"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "    this.#challenges.delete(challenge);\n",
+    "replace": "",
+    "why": "[login] B162 a login question can be answered twice"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "    return found !== undefined && this.#now().getTime() < found.until ? found.what : undefined;",
+    "replace": "    return found !== undefined ? found.what : undefined;",
+    "why": "[login] B162 a login question never runs out"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "[...passkey.transports] },\n        requireUserVerification: true,",
+    "replace": "[...passkey.transports] },\n        requireUserVerification: false,",
+    "why": "[login] B162 log in without Face ID or the computer's own check"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "        expectedRPID: this.#rpId(),\n        requireUserVerification: true,",
+    "replace": "        expectedRPID: this.#rpId(),\n        requireUserVerification: false,",
+    "why": "[login] B162 make a passkey without Face ID or the computer's own check"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "counter: passkey.counter,",
+    "replace": "counter: 0,",
+    "why": "[login] B162 a copied passkey's count going backwards is not noticed"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "      savePasskeyCounter(this.#db, passkey.id, verified.authenticationInfo.newCounter);\n",
+    "replace": "",
+    "why": "[login] B162 a passkey's count is not kept after a login"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "${LOGIN_COOKIE}=${token}; HttpOnly; SameSite=Strict;",
+    "replace": "${LOGIN_COOKIE}=${token}; SameSite=Strict;",
+    "why": "[login] B166 the login cookie can be read by the page's scripts"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "${LOGIN_COOKIE}=${token}; HttpOnly; SameSite=Strict;",
+    "replace": "${LOGIN_COOKIE}=${token}; HttpOnly; SameSite=Lax;",
+    "why": "[login] B166 the login cookie goes along with links from other sites"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "Max-Age=${stayLoggedInDays(this.#db) * 24 * 60 * 60}",
+    "replace": "Max-Age=${stayLoggedInDays(this.#db) * 24 * 60}",
+    "why": "[login] 27c the login cookie lasts minutes, not days"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth-db.ts",
+    "find": "  return createHash('sha256').update(secret).digest('hex');",
+    "replace": "  return secret;",
+    "why": "[login] B166 a login and a code are kept in the clear"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "      endSession(this.#db, session.token);\n",
+    "replace": "",
+    "why": "[login] B163 log out leaves the device logged in"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "    saveSession(this.#db, token, { device, passkeyId, createdAt: now });\n    this.#line({ action: 'logged-in', device });\n",
+    "replace": "    saveSession(this.#db, token, { device, passkeyId, createdAt: now });\n",
+    "why": "[login] B165 a login is not in the change log"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "      this.#line({ action: 'logged-out', device: session.device });\n",
+    "replace": "",
+    "why": "[login] B165 a log out is not in the change log"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "      useCode(this.#db, code, now);\n      this.#line({ action: 'passkey-added', device });\n",
+    "replace": "      useCode(this.#db, code, now);\n",
+    "why": "[login] B165 the first passkey is not in the change log"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "      savePasskey(this.#db, { ...made.passkey, device, createdAt: this.#now().toISOString() });\n      this.#line({ action: 'passkey-added', device });\n",
+    "replace": "      savePasskey(this.#db, { ...made.passkey, device, createdAt: this.#now().toISOString() });\n",
+    "why": "[login] B165 another passkey is not in the change log"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "days < 1 || days > MOST_DAYS",
+    "replace": "days < 0 || days > MOST_DAYS",
+    "why": "[login] B163 stay logged in for 0 days"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "      this.#line({ action: 'stay-logged-in-changed', before, after: days });\n",
+    "replace": "",
+    "why": "[login] B165 the stay logged in setting's change is not in the change log"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "    if (!confirmed) return { ok: false, code: 'needs-confirmation'",
+    "replace": "    if (false) return { ok: false, code: 'needs-confirmation'",
+    "why": "[login] B164 adding a passkey does not ask first"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "    if (readPasskeys(this.#db).some((p) => p.id === made.passkey.id)) return",
+    "replace": "    if (false) return",
+    "why": "[login] B164 the same passkey can be added twice"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/http.ts",
+    "find": "  if (session === null) return { status: 401, body: { error: 'login-needed' } };\n",
+    "replace": "",
+    "why": "[login] B160 the login's own code takes what needs a login without one"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/http.ts",
+    "find": "loggedIn: session !== null, passkeys",
+    "replace": "loggedIn: true, passkeys",
+    "why": "[login] B160 the login page is told he is logged in when he is not"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/http/server.ts",
+    "find": "  if (loggedIn || path === LOGIN_PATH) return false;",
+    "replace": "  if (true) return false;",
+    "why": "[login] B160 the gate lets every request through"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/http/server.ts",
+    "find": "    if (route.login && !loggedIn) {",
+    "replace": "    if (false) {",
+    "why": "[login] B160 the gate passes the login's own addresses on without a login"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/http/server.ts",
+    "find": "    response.setHeader('Location', LOGIN_PATH);",
+    "replace": "    response.setHeader('Location', '/home');",
+    "why": "[login] B160 a screen without a login is not sent to the login page"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/http/server.ts",
+    "find": "  { method: 'POST', path: '/api/seen', login: true },\n",
+    "replace": "",
+    "why": "[login] B160 the list of routes forgets an address"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/http/server.ts",
+    "find": "    if (request.headers.origin !== own.origin || (site",
+    "replace": "    if ((request.headers.origin ?? own.origin) !== own.origin || (site",
+    "why": "[login] B166 a POST with no Origin is let through"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/http/server.ts",
+    "find": "  if (host !== own.host) {",
+    "replace": "  if (false) {",
+    "why": "[login] B162 a request to another host name is answered"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      response.setHeader('Location', `${own.origin}${request.url ?? '/'}`);",
+    "replace": "      response.setHeader('Location', request.url ?? '/');",
+    "why": "[login] B162 127.0.0.1 is not sent to localhost"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "        loggedIn: (request) => auth.session(request.headers.cookie) !== null,",
+    "replace": "        loggedIn: (request) => request.headers.cookie !== undefined,",
+    "why": "[login] B160 any cookie counts as a login"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "      input.afterSave?.(result);\n",
+    "replace": "",
+    "why": "[sync] B172 the books are not read again right after a sync saves"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "        if (result.changed || lastSeqOf(this.#db) !== this.#lastSeq) this.reload();",
+    "replace": "        if (false) this.reload();",
+    "why": "[sync] B172 the running books never see what a sync saved"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    if (this.#syncing !== null) return this.#syncing;",
+    "replace": "    if (false) return this.#syncing;",
+    "why": "[sync] B169 two syncs at once"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    if (this.#syncing !== null) return this.#syncing;\n    this.#lastTry = this.#now().getTime();",
+    "replace": "    if (this.#syncing !== null) return this.#syncing;",
+    "why": "[sync] B168 the next sync is counted from the last read, so a failed one is tried again at once"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "return this.#lastTry + this.syncEveryMinutes() * 60_000 - this.#now().getTime();",
+    "replace": "return this.#lastTry + this.syncEveryMinutes() * 1_000 - this.#now().getTime();",
+    "why": "[sync] section 2 the minutes read as seconds"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    if (this.#lastTry === null) return 0;",
+    "replace": "    if (this.#lastTry === null) return 60_000;",
+    "why": "[sync] B168 a server that never read the bank waits a minute first"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    this.#lastTry = lastRead === null ? null : Date.parse(lastRead);",
+    "replace": "    this.#lastTry = null;",
+    "why": "[sync] B168 after a restart it syncs at once even when none is due"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    if (readConnection(this.#db) === null) return null;\n",
+    "replace": "",
+    "why": "[sync] B168 with no bank connection it tries to sync anyway"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/bank-reads.ts",
+    "find": "export const SYNC_EVERY_MINUTES = 60;",
+    "replace": "export const SYNC_EVERY_MINUTES = 30;",
+    "why": "[sync] section 2 every 30 minutes to start, not 60"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "minutes < FEWEST_MINUTES",
+    "replace": "minutes < 1",
+    "why": "[sync] B167 every minute is allowed"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "minutes > MOST_MINUTES",
+    "replace": "minutes > 100_000",
+    "why": "[sync] B167 more than 1,440 minutes is allowed"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      saveServerLine(this.#db, { date: this.today(), action: 'sync-every-changed', before, after: minutes, afterBookLines: this.book()?.changeLog().length ?? 0 });\n",
+    "replace": "",
+    "why": "[sync] B167 a change to how often is not in the change log"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "  if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed });\n  if (!changed) return result;\n",
+    "replace": "  if (!changed) return result;\n",
+    "why": "[sync] B171 a sync with nothing new is not counted as a read"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "  if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed });\n",
+    "replace": "",
+    "why": "[sync] B171 no read is ever noted"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/bank-reads.ts",
+    "find": "  const row = db.prepare('SELECT at FROM bank_reads ORDER BY id DESC LIMIT 1').get()",
+    "replace": "  const row = db.prepare('SELECT at FROM bank_reads ORDER BY id LIMIT 1').get()",
+    "why": "[sync] B171 Checked at is the first read, not the last"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/serve/sync-timer.ts",
+    "find": "export const LONGEST_SLEEP_MS = 60_000;",
+    "replace": "export const LONGEST_SLEEP_MS = 3_600_000;",
+    "why": "[sync] B168 a shorter setting is noticed only an hour later"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/serve/sync-timer.ts",
+    "find": "    if (due === null || due > 0) {",
+    "replace": "    if (due === null || due > 60_000) {",
+    "why": "[sync] section 2 a sync up to a minute early"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/serve/sync-timer.ts",
+    "find": "      this.#running = null;\n      this.#look();",
+    "replace": "      this.#running = null;",
+    "why": "[sync] section 2 after the first sync, no other"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/serve/sync-timer.ts",
+    "find": "    if (this.#on) return;\n    this.#on = true;",
+    "replace": "    if (this.#on) return;",
+    "why": "[sync] section 2 started, it never syncs"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/serve/sync-timer.ts",
+    "find": "  async stop(): Promise<void> {\n    this.#on = false;",
+    "replace": "  async stop(): Promise<void> {",
+    "why": "[sync] section 2 stopped, it goes on syncing"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "return read === null ? null : { at: timeIn(zone, new Date(read)), timeZone: zone };",
+    "replace": "return read === null ? null : { at: new Date(read).toISOString().replace(/\\.\\d{3}Z$/, '+00:00'), timeZone: zone };",
+    "why": "[sync] B171 Checked at in UTC, not his home time zone"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/views/home.ts",
+    "find": "    checkedAt: checkedCheckedAt(input.checkedAt ?? null),",
+    "replace": "    checkedAt: null,",
+    "why": "[sync] B171 Home never says when the bank was read"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      readAt: () => this.#now().toISOString(),",
+    "replace": "      readAt: () => new Date(0).toISOString(),",
+    "why": "[sync] B171 the read is noted at the wrong moment"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/http/server.ts",
+    "find": "  { method: 'POST', path: SYNC_EVERY_PATH, login: true },\n",
+    "replace": "",
+    "why": "[sync] B160 the list of routes forgets the sync setting"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/http/server.ts",
+    "find": "Object.keys(sent).join() !== 'minutes'",
+    "replace": "false",
+    "why": "[sync] B167 the setting takes anything sent with it"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/choices.ts",
+    "find": "      if (request.seen !== undefined && request.seen !== itemKey(detail)) return refuse('changed', changedWhy(detail));\n",
+    "replace": "",
+    "why": "[a31] an answer about a waiting item a sync changed goes through"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/choices.ts",
+    "find": "      if (request.seen !== undefined && request.seen !== itemKey(sorted)) return refuse('changed', changedWhy(sorted));\n",
+    "replace": "",
+    "why": "[a31] sorting again a row a sync changed goes through"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/item-key.ts",
+    "find": "  if ('item' in detail) return { item: detail.item, account: detail.account, pending: detail.pending, paycheckPreview: detail.paycheckPreview };",
+    "replace": "  if ('item' in detail) return { item: { ...detail.item, amount: 0 }, account: detail.account, pending: detail.pending, paycheckPreview: detail.paycheckPreview };",
+    "why": "[a31] a new amount is not a change"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/item-key.ts",
+    "find": "account: detail.account, pending: detail.pending, paycheckPreview",
+    "replace": "account: detail.account, paycheckPreview",
+    "why": "[a31] posting is not a change"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/item-key.ts",
+    "find": "  if ('item' in detail) return { item: detail.item, account: detail.account, pending: detail.pending, paycheckPreview: detail.paycheckPreview };",
+    "replace": "  if ('item' in detail) return detail;",
+    "why": "[a31] a new likely purchase for a refund counts as a change"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/item-key.ts",
+    "find": "    hash = (hash * PRIME) & BITS;",
+    "replace": "    hash = hash & BITS;",
+    "why": "[a31] the key hardly changes with what it names"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/choices.ts",
+    "find": "  if (seen !== undefined && (typeof seen !== 'string' || !KEY_FORMAT.test(seen))) return null;",
+    "replace": "",
+    "why": "[a31] anything is taken as a key"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/choices.ts",
+    "find": "    ...(seen === undefined ? {} : { seen }),\n",
+    "replace": "",
+    "why": "[a31] the key sent with an answer is dropped on the way in"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/views/review.ts",
+    "find": "    .map(keyed);",
+    "replace": "",
+    "why": "[a31] Review sends no keys"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/views/activity.ts",
+    "find": "  const keys = Object.fromEntries(activity.rows.map((row) => [row.id, itemKey(row.resort)]));",
+    "replace": "  const keys = {};",
+    "why": "[a31] a bucket list sends no keys"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/views/payday.ts",
+    "find": ".filter((d) => d.item.type === 'leftover').map(keyed),",
+    "replace": ".filter((d) => d.item.type === 'leftover'),",
+    "why": "[a31] Payday sends no keys"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/choices.ts",
+    "find": "  if ('item' in now) return `${capitalize(nameOf(now))} changed since you looked: it is now ${formatDollars(now.item.amount)}${now.pending ? ', still pending' : ''}. ${again}`;",
+    "replace": "  if ('item' in now) return `${capitalize(nameOf(now))} changed since you looked. ${again}`;",
+    "why": "[a31] the refusal does not say how it is now"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "        if (result.changed || lastSeqOf(this.#db) !== this.#lastSeq) this.reload();",
+    "replace": "        if (result.changed) this.reload();",
+    "why": "[sync] B172 a sync another copy of the server saved never reaches the running books"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/serve/sync-timer.ts",
+    "find": "      due = this.#syncer.syncDueIn();\n    } catch (error) {\n",
+    "replace": "      due = this.#syncer.syncDueIn();\n    } catch (error) {\n      throw error;\n",
+    "why": "[sync] section 2 something going wrong while the timer looks stops the server"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/serve/sync-timer.ts",
+    "find": "      syncing = Promise.reject(error);",
+    "replace": "      throw error;",
+    "why": "[sync] section 2 a sync that cannot start stops the server"
   }
 ]

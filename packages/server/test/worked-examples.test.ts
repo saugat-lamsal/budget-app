@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 import { Book, DEFAULT_SETTINGS, bankSide, parseDollars, type Cents } from '@budget-app/money';
 import { describe, expect, it, vi } from 'vitest';
 import { readHistory } from '../src/history/history-db.js';
+import { acceptRetotal, checkRetotal } from '../src/history/retotal.js';
+import { serverLinesIn } from '../src/server-log.js';
 import { decision, lifeInAFile, noonInNewYork, setUpThroughTheDesk } from './keeper-harness.js';
 import { checkBankRules } from '../src/bank/reading.js';
 import { connectTestBank } from '../src/connect.js';
@@ -18,7 +20,9 @@ import { PlaidClient } from '../src/plaid/client.js';
 import { plaidKeysFromEnv } from '../src/plaid/sandbox-lock.js';
 import { setUpTracking, setupPreview } from '../src/setup-day.js';
 import { bankStatus } from '../src/status.js';
+import { SyncTimer } from '../src/serve/sync-timer.js';
 import { syncBank } from '../src/sync/sync.js';
+import { FakeClock } from './fake-clock.js';
 import { ACCOUNT_IDS, FakePlaid } from './fake-plaid.js';
 import { TOKEN_KEY, book, tracking } from './harness.js';
 import { REPLAY_KEYS, Replay, loadRecording } from './replay.js';
@@ -294,6 +298,123 @@ describe('worked examples: the real server keeps everything', () => {
       expect(life.keeper.today()).toBe(dates.get('after the change'));
       expect(life.keeper.book()?.changeLog().at(-1)?.date).toBe(dates.get('change made'));
     } finally {
+      life.done();
+    }
+  });
+
+  it('example 8, a fix to the money math changes what old answers did (0.6, A28)', async () => {
+    const checks = checksOf(8);
+    const dates = datesOf(8);
+    const life = await lifeInAFile();
+    try {
+      setUpThroughTheDesk(life);
+      for (const [day, id, amount, description] of [
+        ['2026-10-02', 'store-1', 2_345, 'CORNER STORE 12'],
+        ['2026-10-03', 'cafe', 650, 'MADE UP CAFE'],
+      ] as const) {
+        life.now = noonInNewYork(day);
+        life.h.fake.addPosted({ id, account: ACCOUNT_IDS.everyday, amount, date: day, description });
+        await life.sync();
+        expect(life.keeper.choice({ id: decision(), item: id, choice: { to: 'wants' } }).ok).toBe(true);
+      }
+      const sort = Book.prototype.sort;
+      vi.spyOn(Book.prototype, 'sort').mockImplementation(function (this: Book, id, choice, date) {
+        return sort.call(this, id, 'to' in choice && choice.to === 'wants' ? { to: 'needs' } : choice, date);
+      });
+      expect(() => life.reopen()).toThrow(/the totals differ$/);
+      const found = checkRetotal(life.h.db);
+      if (found.state !== 'changed') throw new Error('expected changes');
+      expect(found.events.map((e) => [e.what, e.date])).toEqual([
+        ['his answer: sort', dates.get('first event')],
+        ['from the bank: purchase cafe', '2026-10-03'],
+        ['his answer: sort', '2026-10-03'],
+      ]);
+      const [first, , last] = found.events;
+      expect(first?.before?.wants).toBe(checks.get('first wants before'));
+      expect(first?.after?.wants).toBe(checks.get('first wants after'));
+      expect(first?.after?.needs).toBe(checks.get('first needs after'));
+      expect(last?.before?.wants).toBe(checks.get('last wants before'));
+      expect(last?.after?.needs).toBe(checks.get('last needs after'));
+      expect(acceptRetotal(life.h.db, found.key, noonInNewYork(dates.get('logged') ?? ''))).toEqual({ ok: true, events: 3 });
+      expect(serverLinesIn(life.h.db)).toMatchObject([{ action: 'history-retotaled', date: dates.get('logged'), from: { date: dates.get('first event') } }]);
+      life.restart();
+      expect(life.keeper.book()?.pots()).toMatchObject({ wants: checks.get('first wants after'), needs: checks.get('last needs after') });
+    } finally {
+      vi.restoreAllMocks();
+      life.done();
+    }
+  });
+});
+
+// "Checked at:" lines: each time Home says the bank was last read, in order,
+// as "11:30 PM EDT" (New York time, EDT or EST by its offset).
+function checkedAtOf(number: number): string[] {
+  const block = text.split(/^EXAMPLE /m).find((b) => b.startsWith(`${number}.`));
+  const line = block?.match(/^Checked at: (.*)$/m)?.[1];
+  if (line === undefined) throw new Error(`no Checked at line in example ${number}`);
+  return line.split('|').map((part) => part.trim());
+}
+
+// "2026-11-01T01:30:00-05:00" as "1:30 AM EST".
+function wallClock(at: string): string {
+  const m = /T(\d{2}):(\d{2}):\d{2}(-0[45]):00$/.exec(at);
+  if (m === null) throw new Error(`not a New York time: ${at}`);
+  const hour = Number(m[1]);
+  return `${hour % 12 === 0 ? 12 : hour % 12}:${m[2]} ${hour < 12 ? 'AM' : 'PM'} ${m[3] === '-04' ? 'EDT' : 'EST'}`;
+}
+
+describe('worked examples: syncing on a timer (Step 3)', () => {
+  it('example 9, syncing by itself across the clock change, Checked at, and an answer about something the sync changed (A31)', async () => {
+    const checks = checksOf(9);
+    const said = checkedAtOf(9);
+    const life = await lifeInAFile();
+    const seen: string[] = [];
+    const timers: SyncTimer[] = [];
+    try {
+      setUpThroughTheDesk(life);
+      expect(life.keeper.book()?.pots().wants).toBe(20_000);
+      life.now = new Date('2026-11-01T03:30:00Z');
+      const look = (): void => {
+        const home = life.keeper.home();
+        if (home.state !== 'tracking' || home.checkedAt === null) throw new Error('no Checked at');
+        seen.push(wallClock(home.checkedAt.at));
+      };
+      life.h.fake.addPending({ id: 'cafe-1', account: ACCOUNT_IDS.everyday, amount: checks.get('cafe pending') ?? 0, date: '2026-10-31', description: 'MADE UP CAFE' });
+      const clock = new FakeClock(life);
+      const timer = new SyncTimer({ syncer: { syncDueIn: () => life.keeper.syncDueIn(), sync: () => life.keeper.sync({ plaid: life.h.plaid, box: life.h.box, log: memoryLog([]), pageSize: 3 }) }, clock, log: memoryLog([]) });
+      timers.push(timer);
+      const hour = (): Promise<void> => clock.advance(60 * 60_000, () => timer.idle());
+      timer.start();
+      await timer.idle();
+      look();
+      const review = life.keeper.review();
+      if (review.state !== 'tracking') throw new Error('not tracking');
+      const opened = review.items.find((d) => d.item.id === 'cafe-1');
+      expect(opened).toMatchObject({ item: { amount: checks.get('cafe pending') }, pending: true });
+      life.h.fake.postPending('cafe-1', { id: 'cafe-1-posted', date: '2026-11-01', amount: checks.get('cafe posted') ?? 0 });
+      for (let i = 0; i < 4; i += 1) {
+        await hour();
+        look();
+      }
+      const events = readHistory(life.h.db).length;
+      const answer = life.keeper.choice({ id: decision(), item: 'cafe-1', choice: { to: 'wants' }, seen: opened!.key });
+      expect(answer).toEqual({ ok: false, code: 'changed', why: 'MADE UP CAFE changed since you looked: it is now $13.50. Look at it again, then choose. Nothing was changed.' });
+      expect(life.keeper.book()?.pots().wants).toBe(20_000);
+      expect(readHistory(life.h.db)).toHaveLength(events);
+      const again = life.keeper.review();
+      if (again.state !== 'tracking') throw new Error('not tracking');
+      const now = again.items.find((d) => d.item.id === 'cafe-1')!;
+      expect(life.keeper.choice({ id: decision(), item: 'cafe-1', choice: { to: 'wants' }, seen: now.key }).ok).toBe(true);
+      expect(life.keeper.book()?.pots().wants).toBe(checks.get('wants after'));
+      life.h.fake.beforeCall = () => 'network';
+      await hour();
+      look();
+      life.h.fake.beforeCall = undefined;
+      await hour();
+      look();
+      expect(seen).toEqual(said);
+    } finally {
+      for (const timer of timers) await timer.stop();
       life.done();
     }
   });

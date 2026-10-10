@@ -4,7 +4,8 @@ import { join } from 'node:path';
 //   --db <file>   the books (BUDGET_DB too); data/budget.sqlite by default
 //   --port N      5190 by default; always on this computer only
 //   --connect     connect Plaid's test bank first, with made-up accounts like his
-//   --sync        sync with the test bank once before serving
+//   --sync        sync with the test bank once before serving (it also syncs by
+//                 itself every 60 minutes, and at once if one is due: Step 3)
 export interface ServeOptions {
   readonly db: string;
   readonly port: number;

@@ -150,6 +150,47 @@ const STEPS: readonly string[] = [
     at TEXT NOT NULL
   );
   `,
+  `
+  -- Step 3 (passkey login): his passkeys, by the public key only. The
+  -- private key never leaves his device.
+  CREATE TABLE passkeys (
+    id TEXT PRIMARY KEY,
+    public_key BLOB NOT NULL,
+    counter INTEGER NOT NULL,
+    transports TEXT NOT NULL,
+    device TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+
+  -- Each device logged in, by a hash of its login: the login itself is only
+  -- in that device's cookie.
+  CREATE TABLE sessions (
+    token_hash TEXT PRIMARY KEY,
+    device TEXT NOT NULL,
+    passkey_id TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+
+  -- One-time codes for making a passkey, by a hash. Good once, until expires_at.
+  CREATE TABLE login_codes (
+    code_hash TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used_at TEXT
+  );
+  `,
+  `
+  -- Step 4 (syncing on a timer): each time a sync read the bank, whether or
+  -- not it brought anything new. Home's "Checked at" is the last one, and the
+  -- next sync is due one interval after it. A sync that failed adds nothing.
+  CREATE TABLE bank_reads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- The moment the bank was read, as an instant (ISO, UTC).
+    at TEXT NOT NULL,
+    -- Whether it brought anything new (and so saved it).
+    changed INTEGER NOT NULL CHECK (changed IN (0, 1))
+  );
+  `,
 ];
 
 export const SCHEMA_VERSION = STEPS.length;

@@ -67,7 +67,7 @@ describe('worked examples: the Home screen', () => {
   });
 
   it("example 6 shows the time it was last checked, not today's number (0.5, B82)", () => {
-    expect(homeOf(6).view.safeToSpend).toEqual({ shown: false, why: 'bank-not-read', lastChecked: { amount: 62_869, at: '2026-10-07T07:15:00-05:00' } });
+    expect(homeOf(6).view.safeToSpend).toEqual({ shown: false, why: 'bank-not-read', lastChecked: { amount: 62_869, at: '2026-10-07T07:15:00-04:00' } });
   });
 });
 

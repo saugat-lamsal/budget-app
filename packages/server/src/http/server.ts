@@ -14,8 +14,10 @@ import type { SettingsView } from '../views/settings.js';
 import type { SetupView } from '../views/setup.js';
 
 // The web server for the screens (Phase 4): the built app from packages/web,
-// and its numbers as JSON. It only reads. Hosting and login come later
-// (Phase 6 and the passkey step); nothing here talks to the bank.
+// and its numbers as JSON. It changes the app's books only with his answers,
+// never the bank. On the real server every screen and every /api address
+// needs him logged in with a passkey (Step 2, the gate below); the demo has
+// no login. Hosting comes in Phase 6.
 
 // The screens' own addresses, one per tab, so a refresh or a notification
 // link opens the right one. Must match packages/web/src/app/routes.ts (a
@@ -29,6 +31,59 @@ export const SCREEN_PATHS: readonly string[] = ['/payday', ...Object.keys(POT_SL
 // The Setup day screens, one address per step (section 14). They get the app
 // too. Must match packages/web/src/app/routes.ts (a test checks).
 export const SETUP_PATHS: readonly string[] = ['bank', 'rules', 'transfers', 'paycheck', 'assign', 'check'].map((step) => `/setup/${step}`);
+
+// The login page (Step 2): on the real server, the one screen shown without a login.
+export const LOGIN_PATH = '/login';
+
+// Step 3: how often the real server syncs with the bank (section 2), changed on Settings.
+export const SYNC_EVERY_PATH = '/api/sync/every';
+
+export interface Route {
+  readonly method: 'GET' | 'POST';
+  readonly path: string;
+  // On the real server: refused without a good login.
+  readonly login: boolean;
+}
+
+// The login's own addresses (Step 2, auth/http.ts answers them). Open: the
+// login page's own; the rest need him logged in.
+export const AUTH_ROUTES: readonly Route[] = [
+  { method: 'GET', path: '/api/auth', login: false },
+  { method: 'POST', path: '/api/auth/login/options', login: false },
+  { method: 'POST', path: '/api/auth/login', login: false },
+  { method: 'POST', path: '/api/auth/code/options', login: false },
+  { method: 'POST', path: '/api/auth/code', login: false },
+  { method: 'POST', path: '/api/auth/passkey/options', login: true },
+  { method: 'POST', path: '/api/auth/passkey', login: true },
+  { method: 'POST', path: '/api/auth/logout', login: true },
+  { method: 'POST', path: '/api/auth/stay', login: true },
+];
+
+// Every address the real server answers with anything of his: every screen,
+// every screen's numbers, his answers, and the login's own (a test checks
+// each one against a login: login-guard.test.ts). The app's own files
+// (scripts, styles, icons) are open: the login page needs them, and they hold
+// nothing of his.
+export const ROUTES: readonly Route[] = [
+  ...[...APP_PATHS, ...SCREEN_PATHS, ...SETUP_PATHS].map((path): Route => ({ method: 'GET', path, login: true })),
+  { method: 'GET', path: LOGIN_PATH, login: false },
+  ...['home', 'buckets', 'review', 'settings', 'setup', 'payday', ...Object.keys(POT_SLUGS).map((slug) => `activity/${slug}`)].map((name): Route => ({ method: 'GET', path: `/api/${name}`, login: true })),
+  { method: 'POST', path: '/api/choice', login: true },
+  { method: 'POST', path: '/api/seen', login: true },
+  { method: 'POST', path: SYNC_EVERY_PATH, login: true },
+  ...AUTH_ROUTES,
+];
+
+// The real server's gate (Step 2): who is logged in, and the login's own
+// addresses. Without it (the demo) there is no login.
+export interface Gate {
+  // The app's own address, as the browser shows it (http://localhost:5190):
+  // every POST must come from it, and every request be addressed to it.
+  readonly origin: () => string;
+  readonly loggedIn: (request: IncomingMessage) => boolean;
+  // Answers one of AUTH_ROUTES: a status, a JSON body, and maybe a cookie.
+  readonly auth: (path: string, request: IncomingMessage, body: unknown) => Promise<{ readonly status: number; readonly body: unknown; readonly setCookie?: string }>;
+}
 
 export interface AppServerOptions {
   // The built screens (packages/web/dist).
@@ -68,6 +123,11 @@ export interface AppServerOptions {
   // His change to the bank rules (section 2, 24c), on Setup day or Settings.
   // It asks first, with what the rule would match. Without it, none can be sent.
   readonly bankRule?: BankRuleHandler;
+  // The real server's login (Step 2). Without it, no login: the demo.
+  readonly gate?: Gate;
+  // Step 3: how often the real server syncs with the bank, in minutes (section
+  // 2). The books check it. Without it (the demo, which has no bank), none can be sent.
+  readonly syncEvery?: (request: IncomingMessage, minutes: unknown) => { readonly ok: true } | { readonly ok: false; readonly why: string };
 }
 
 export type Seen = { readonly kind: 'bank-took-back'; readonly id: string };
@@ -91,6 +151,8 @@ interface ChoiceHandlers {
 
 // The most a "seen" request may carry; the real one is under 100 bytes.
 const SEEN_LIMIT = 1024;
+// A passkey's answer is a few kilobytes at most.
+const AUTH_LIMIT = 16_384;
 // A choice is small too: even a three-way split is under 400 bytes, and a
 // change to every setting at once under 1,000.
 const CHOICE_LIMIT = 4096;
@@ -234,6 +296,7 @@ export function createAppServer(options: AppServerOptions): Server {
       send(response, 400, 'text/plain; charset=utf-8', 'Bad address.', 'no-store');
       return;
     }
+    if (options.gate !== undefined && (await atTheGate(options.gate, request, response, path))) return;
     // The one thing the screens can send: that he has seen a notice. It
     // changes no money (0.4).
     if (path === '/api/seen' && options.seen !== undefined) {
@@ -243,6 +306,23 @@ export function createAppServer(options: AppServerOptions): Server {
         return;
       }
       await markSeen(request, response, options.seen);
+      return;
+    }
+    // How often the real server syncs with the bank: a setting, never the bank (0.4).
+    if (path === SYNC_EVERY_PATH && options.syncEvery !== undefined) {
+      if (request.method !== 'POST') {
+        response.setHeader('Allow', 'POST');
+        send(response, 405, 'text/plain; charset=utf-8', 'Only POST.', 'no-store');
+        return;
+      }
+      const sent = await readOwnJson(request, response, SEEN_LIMIT);
+      if (response.writableEnded || response.headersSent) return;
+      if (typeof sent !== 'object' || sent === null || Array.isArray(sent) || Object.keys(sent).join() !== 'minutes') {
+        send(response, 400, 'text/plain; charset=utf-8', 'Not a setting that can be changed.', 'no-store');
+        return;
+      }
+      const said = options.syncEvery(request, (sent as { minutes: unknown }).minutes);
+      send(response, said.ok ? 200 : 422, 'application/json; charset=utf-8', JSON.stringify(said), 'no-store');
       return;
     }
     // His choices, moves, and changes to the settings: they change the app's
@@ -328,7 +408,7 @@ export function createAppServer(options: AppServerOptions): Server {
     }
     if (options.extra !== undefined && (await options.extra(request, response, path))) return;
 
-    if (APP_PATHS.includes(path) || SCREEN_PATHS.includes(path) || SETUP_PATHS.includes(path)) {
+    if (APP_PATHS.includes(path) || SCREEN_PATHS.includes(path) || SETUP_PATHS.includes(path) || (options.gate !== undefined && path === LOGIN_PATH)) {
       await sendFile(response, join(webRoot, 'index.html'), 'no-cache');
       return;
     }
@@ -347,6 +427,72 @@ export function createAppServer(options: AppServerOptions): Server {
     // never change; everything else is checked again each time.
     await sendFile(response, file, path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache');
   }
+}
+
+// The real server's gate (Step 2). Answers the request itself, and returns
+// true, when it is not for the app's own address, a POST did not come from
+// the app's own page, it is one of the login's own addresses, or it needs a
+// login it does not have. Otherwise lets it through.
+async function atTheGate(gate: Gate, request: IncomingMessage, response: ServerResponse, path: string): Promise<boolean> {
+  const own = new URL(gate.origin());
+  const host = request.headers.host ?? '';
+  if (host !== own.host) {
+    // The same server under its other loopback name: sent to the app's own
+    // address, where the login and the passkeys are. Anything else is not for us.
+    const loopback = /^(localhost|127\.0\.0\.1)(:\d+)?$/.exec(host);
+    if (loopback !== null && (loopback[2] ?? '') === (own.port === '' ? '' : `:${own.port}`) && (request.method === 'GET' || request.method === 'HEAD')) {
+      for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.setHeader(name, value);
+      response.setHeader('Location', `${own.origin}${request.url ?? '/'}`);
+      response.setHeader('Cache-Control', 'no-store');
+      response.statusCode = 307;
+      response.end();
+      return true;
+    }
+    send(response, 421, 'text/plain; charset=utf-8', 'Not this address.', 'no-store');
+    return true;
+  }
+  // Every POST from the app's own page, and only from it.
+  if (request.method === 'POST') {
+    const site = request.headers['sec-fetch-site'];
+    if (request.headers.origin !== own.origin || (site !== undefined && site !== 'same-origin')) {
+      send(response, 403, 'text/plain; charset=utf-8', 'Only from the app itself.', 'no-store');
+      return true;
+    }
+  }
+  const loggedIn = gate.loggedIn(request);
+  const route = AUTH_ROUTES.find((r) => r.path === path);
+  if (route !== undefined) {
+    if (request.method !== route.method) {
+      response.setHeader('Allow', route.method);
+      send(response, 405, 'text/plain; charset=utf-8', `Only ${route.method}.`, 'no-store');
+      return true;
+    }
+    if (route.login && !loggedIn) {
+      send(response, 401, 'application/json; charset=utf-8', JSON.stringify({ error: 'login-needed' }), 'no-store');
+      return true;
+    }
+    const body = route.method === 'POST' ? await readOwnJson(request, response, AUTH_LIMIT) : undefined;
+    if (response.writableEnded || response.headersSent) return true;
+    const answer = await gate.auth(path, request, body);
+    if (answer.setCookie !== undefined) response.setHeader('Set-Cookie', answer.setCookie);
+    send(response, answer.status, 'application/json; charset=utf-8', JSON.stringify(answer.body), 'no-store');
+    return true;
+  }
+  if (loggedIn || path === LOGIN_PATH) return false;
+  if (path.startsWith('/api/')) {
+    send(response, 401, 'application/json; charset=utf-8', JSON.stringify({ error: 'login-needed' }), 'no-store');
+    return true;
+  }
+  if (path === '/' || APP_PATHS.includes(path) || SCREEN_PATHS.includes(path) || SETUP_PATHS.includes(path)) {
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.setHeader(name, value);
+    response.setHeader('Location', LOGIN_PATH);
+    response.setHeader('Cache-Control', 'no-store');
+    response.statusCode = 303;
+    response.end();
+    return true;
+  }
+  // The app's own files: the login page needs them.
+  return false;
 }
 
 async function sendFile(response: ServerResponse, file: string, cache: string): Promise<void> {

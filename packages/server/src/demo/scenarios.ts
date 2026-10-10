@@ -14,6 +14,7 @@ import {
   type SortingRule,
 } from '@budget-app/money';
 import { checkBankRules, type BankRule } from '../bank/reading.js';
+import { timeIn } from '../history/today.js';
 import type { HomeInput } from '../views/home.js';
 import type { MadeUpBank } from './made-up-bank.js';
 import { SETUP_OWES_MORE, SETUP_PENDING, SETUP_SUGGEST } from './setup-lives.js';
@@ -125,11 +126,14 @@ interface Story {
   // (5.6, A4): it waits in review for savings or needs, or "It was not a
   // payment to the old card" (A21).
   readonly markedFromSavings?: boolean;
+  // Shoes bought with the debit card and sent back: the store's refund shows
+  // up as money in to checking, and can be matched to them (4.5, A29).
+  readonly debitRefund?: boolean;
 }
 
 // When the bank was last read and matched, in the "bank-not-read" life:
 // 7:15 in the morning, Central time.
-const LAST_CHECKED_AT = '2026-10-07T07:15:00-05:00';
+const LAST_CHECKED_AT = '2026-10-07T07:15:00-04:00';
 
 function story(s: Story): HomeInput {
   const x = (cents: Cents): Cents => cents * (s.scale ?? 1);
@@ -276,6 +280,12 @@ function story(s: Story): HomeInput {
     cardExtra += 980;
   }
 
+  if (s.debitRefund === true) {
+    const shoes = buy('2026-10-03', 8_999, 'MADE UP SHOE STORE', 'checking');
+    book.sort(shoes, { to: 'wants' }, '2026-10-03');
+    feed({ kind: 'deposit', id: 'debit-refund', account: 'checking', date: DEMO_TODAY, amount: x(8_999), description: 'MADE UP SHOE STORE REFUND' });
+  }
+
   // The last time the bank was read and matched was before the coffee.
   const checkedThisMorning = book.safeToSpend(s.today ?? DEMO_TODAY).amount;
   buy('2026-10-07', 625, 'BLUE DOOR COFFEE', 'everyday-card', true);
@@ -320,6 +330,8 @@ function story(s: Story): HomeInput {
     madeUpData: true,
     seenTakeBacks: new Set(),
     lastChecked: s.bankNotRead === true ? { amount: checkedThisMorning, at: LAST_CHECKED_AT } : null,
+    // Step 3: when the made-up bank was last read: this morning.
+    checkedAt: { at: s.bankNotRead === true ? LAST_CHECKED_AT : timeIn(book.settings().homeTimeZone, new Date(`${s.today ?? DEMO_TODAY}T13:41:00Z`)), timeZone: book.settings().homeTimeZone },
   };
 }
 
@@ -357,6 +369,7 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   { name: 'activity-busy', title: 'Activity: every kind of row on the lists of what went in and out', input: () => story({ activityBusy: true }) },
   { name: 'activity-marked', title: 'Activity: the same, and a purchase marked as a payment to the old card, to undo', input: () => story({ activityBusy: true, markedOldCard: true }) },
   { name: 'payday-paid', title: 'Payday: the second paycheck just came in, two leftover questions open', input: () => story({ today: '2026-10-16', secondPaycheck: true, allDone: true, statements: [] }) },
+  { name: 'review-debit-refund', title: 'Review: a store refund to the debit card, shown as money in (A29)', input: () => story({ debitRefund: true }) },
   { name: 'review-marked-savings', title: 'Review: a bill from savings marked by mistake as a payment to the old card', input: () => story({ markedFromSavings: true }) },
   { name: 'settings-busy', title: 'Settings: changes along the way, a new split waiting for the next paycheck, a promo end date', input: () => story({ settingsBusy: true, chargedTwice: true }) },
   { name: 'settings-first-sync', title: 'Settings: no paycheck rule or mom rule yet, the paycheck and mom waiting in review', input: () => story({ firstSync: true }) },

@@ -47,6 +47,12 @@ export function appendEvent(db: Db, e: { readonly event: HistoryEvent; readonly 
   return Number(info.lastInsertRowid);
 }
 
+// The number of the last event in the history; 0 before the first.
+export function lastSeqOf(db: Db): number {
+  const row = db.prepare('SELECT MAX(seq) AS seq FROM book_events').get() as { seq: number | null };
+  return row.seq ?? 0;
+}
+
 // ----- Replaying -----
 
 // What the history comes to.
@@ -68,7 +74,7 @@ export class HistoryDoesNotReplay extends Error {
   readonly replayed: Totals | null;
 
   constructor(at: StoredEvent, why: string, saved: Totals | null, replayed: Totals | null) {
-    super(`The history does not replay to what was saved, at event ${at.seq} (${describe(at)}, ${at.date}): ${why}`);
+    super(`The history does not replay to what was saved, at event ${at.seq} (${describeEvent(at)}, ${at.date}): ${why}`);
     this.name = 'HistoryDoesNotReplay';
     this.at = { seq: at.seq, kind: at.event.kind, date: at.date };
     this.saved = saved;
@@ -76,7 +82,8 @@ export class HistoryDoesNotReplay extends Error {
   }
 }
 
-function describe(e: StoredEvent): string {
+// What an event was, in words.
+export function describeEvent(e: StoredEvent): string {
   switch (e.event.kind) {
     case 'setup':
       return 'setup day';
@@ -99,27 +106,43 @@ function describe(e: StoredEvent): string {
 // must be the ones saved with it; the first that differs, or an event the
 // code refuses now, stops it (HistoryDoesNotReplay).
 export function replayHistory(events: readonly StoredEvent[], check: boolean): Replayed {
+  const unsealed: { seq: number; totals: Totals | null }[] = [];
+  // Without the check, no totals are worked out: that takes time on every event.
+  const replayed = replayEach(
+    events,
+    check
+      ? (stored, now) => {
+          if (!stored.sealed) unsealed.push({ seq: stored.seq, totals: now });
+          else if (!sameTotals(stored.totals, now)) throw new HistoryDoesNotReplay(stored, 'the totals differ', stored.totals, now);
+        }
+      : null,
+  );
+  if (!replayed.ok) throw new HistoryDoesNotReplay(replayed.at, replayed.why, replayed.at.totals, null);
+  return { ...replayed.replayed, unsealed };
+}
+
+// Replays every event, in order, telling `after` (when given) the totals each
+// one comes to. An event the code refuses now stops it, and says which
+// (QUESTIONS.md A28: new totals cannot fix that).
+export function replayEach(
+  events: readonly StoredEvent[],
+  after: ((stored: StoredEvent, totals: Totals | null) => void) | null,
+): { readonly ok: true; readonly replayed: Omit<Replayed, 'unsealed'> } | { readonly ok: false; readonly at: StoredEvent; readonly why: string } {
   let book: Book | null = null;
   const seen = new Set<string>();
   let setupAnswers: SavedSetupAnswers | null = null;
-  const unsealed: { seq: number; totals: Totals | null }[] = [];
   for (const stored of events) {
     try {
       book = applyEvent(book, stored.event, seen, (answers) => {
         setupAnswers = answers;
       });
     } catch (error) {
-      if (error instanceof ReplayFailed || error instanceof MoneyError) {
-        throw new HistoryDoesNotReplay(stored, error.message, stored.totals, null);
-      }
+      if (error instanceof ReplayFailed || error instanceof MoneyError) return { ok: false, at: stored, why: error.message };
       throw error;
     }
-    if (!check) continue;
-    const now = totalsOf(book);
-    if (!stored.sealed) unsealed.push({ seq: stored.seq, totals: now });
-    else if (!sameTotals(stored.totals, now)) throw new HistoryDoesNotReplay(stored, 'the totals differ', stored.totals, now);
+    after?.(stored, totalsOf(book));
   }
-  return { book, seen, setupAnswers, unsealed };
+  return { ok: true, replayed: { book, seen, setupAnswers } };
 }
 
 function applyEvent(book: Book | null, event: HistoryEvent, seen: Set<string>, setSetup: (answers: SavedSetupAnswers) => void): Book | null {

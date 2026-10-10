@@ -28,6 +28,16 @@ export function asOfText(at: string, timeZone?: string): string {
     .replace(/\s/g, ' ');
 }
 
+// Step 3: when the bank was last read, in his home time zone: "3:05 PM" on
+// the day it is today there, "Fri, Oct 9, 3:05 PM" on any other day.
+export function checkedAtText(at: string, today: IsoDate, timeZone: string): string {
+  const moment = new Date(at);
+  if (Number.isNaN(moment.getTime())) throw new Error(`not a time: ${at}`);
+  const day = moment.toLocaleDateString('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
+  if (day === today) return moment.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone }).replace(/\s/g, ' ');
+  return asOfText(at, timeZone);
+}
+
 // "October": the calendar month named by "2026-10".
 export function monthName(month: string): string {
   return utc(`${month}-01`).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });

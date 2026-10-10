@@ -138,7 +138,7 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 14. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 15. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
@@ -150,7 +150,9 @@ This applies to every phase and every session, cloud or local.
   section 24 his answers after the Settings screen (A21 to A24: rules
   5.6, 13.1, 13.2, and the bank rules in section 2), section 25 his
   answers after Setup day (A25, A26: section 2, 4.5, 14.2), section 26
-  his answers after bank rules (A27, and the home time zone: section 2).
+  his answers after bank rules (A27, and the home time zone: section 2),
+  section 27 his answers after the real server (A28: rule 0.6; A29: 4.5,
+  6.1; 27c staying logged in, 27d syncing every 60 minutes, section 2).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -862,14 +864,147 @@ This applies to every phase and every session, cloud or local.
     the end of each day (test code only). Worked examples bank 6 and 7.
   - Break-it: new breaks tagged "[keeper]" and "[zone]" (server section
     "history").
-- One browser test is skipped in WebKit, on his say-so (Oct 9, 2026, PR #17,
-  to keep CI moving): setup.test.ts "B92 a quick double tap on an answer
-  sends it once". On CI's WebKit runner the second tap arrives after the first
-  answer and the screen's refresh, and the Setup day screen sends it (the
-  server refuses it, so nothing counts twice). It still runs in Chromium. To
-  do: fix the screen so an answer already given cannot be sent again, test
-  first, then run the test in WebKit again.
+- Next chunk, branch login-and-sync-timer (Oct 10, 2026), one pull request.
+  - Step 0, its own commit. The repo check (it is public): no .env, keys,
+    tokens or account numbers in any of the 146 commits, the commit
+    messages, or the PR text; his name (CLAUDE.md, his commits) and the old
+    card's rough balance (rulebook section 1) are in it, and he said carry
+    on. B92: Setup day's buttons stay off after an answer went through until
+    the numbers asked for after it are shown (useSender in Setup.tsx); the
+    double tap test runs in WebKit again, and a new test holds those numbers
+    at exactly that moment. The Review contrast and tap target checks: one
+    small test per sheet (design-screens.test.ts REVIEW_SHEETS), each
+    checked where it stands. Found doing it: axe gave up on the lower text
+    of every sheet ("could not be checked": it does not know the top layer
+    and took the tab bar for something on top). axeViolations
+    (design-helpers.ts) now hides what is under an open sheet, checks a
+    pinned notice in its place (its background must be solid), and counts
+    "could not be checked" as a problem; its own tests are
+    design-helpers.test.ts. Breaks "[b92]", "[review-sheets]", "[contrast]".
+  - Step 1, his answers to A28 and A29 (rulebook draft 15: 0.6, 4.5, 6.1,
+    section 27).
+    - A28: npm run replay-check (scripts/replay-check.mjs; the server's
+      commands are built by scripts/server-build.mjs). history/retotal.ts
+      (checkRetotal, acceptRetotal) and history/replay-check-command.ts (what
+      it prints and asks). The yes names the list it was shown; the new
+      totals and the change log line are saved in one step. The server's
+      own change log lines (server-log.ts, the type in views/server-log.ts)
+      sit in the change_log table like the bank rules' lines; Settings puts
+      all three in order (afterBookLines, afterBankLines). An event the code
+      refuses now cannot be fixed with new totals: QUESTIONS.md A30, built
+      as option 1. replayEach in history-db.ts; replaying without the check
+      works out no totals (doing so made every replay quadratic; the
+      simulated life went from seconds to past ten minutes).
+    - A29: money in to checking lists its likely purchases on checking
+      (Book #likelyFor); matched, it becomes that refund (#matchRefund).
+      Review says "A refund to your debit card?" over the list. Demo life
+      review-debit-refund. Worked examples money 40, bank 8.
+    - Breaks "[a28]", "[a29]"; six older breaks pointed at the code again.
+  - Step 2, passkey login (Oct 10, 2026; this computer only, the phone comes
+    with hosting in Phase 6). Library: SimpleWebAuthn (@simplewebauthn/server
+    14.0.3, @simplewebauthn/browser 14.0.0): every passkey check is its.
+    - packages/server/src/auth: auth.ts (Auth: one-time codes, making and
+      using passkeys, logins, log out, the stay-logged-in setting),
+      auth-db.ts (tables passkeys, sessions, login_codes: database step 3;
+      logins and codes kept only as hashes), http.ts (the login's own
+      addresses), device.ts (a device in words). Login lines go in the
+      change log through server-log.ts.
+    - http/server.ts: ROUTES (every address, with whether it needs a login),
+      AUTH_ROUTES, LOGIN_PATH, and the Gate: with one (the real server, from
+      Keeper.server(webRoot, origin)), every screen and /api address needs a
+      login; every POST must carry the app's own Origin; a request to another
+      host name is refused (127.0.0.1 is sent to localhost). Without one (the
+      demo), no login, as before.
+    - The cookie budget-login: HttpOnly, SameSite=Strict, Path=/, Max-Age the
+      setting (30 days to start; rulebook section 2, 27c); Secure once the
+      address is https. The code: 12 digits, good once for 15 minutes, only
+      the newest, void after 10 wrong tries; npm run serve prints one when
+      there is no passkey; npm run login-code prints one any time.
+    - Phone: screens/Login.tsx (the login page), screens/login-card.tsx (the
+      Login card on Settings: stay logged in, passkeys, add one (asks first),
+      log out), api.ts authState and authSend (read-only.test.ts lists them),
+      a 401 sends a screen to /login.
+    - Tests: server auth.test.ts (with a passkey made in software,
+      test/soft-passkey.ts), login-guard.test.ts (every route refused with no
+      login, an expired one, and one from another database; Origin; host;
+      no way in but a passkey), device.test.ts, database step 3; browser
+      login.test.ts (Chromium, a virtual passkey: the first code to Home, log
+      out, log in again). The tests' only way in is test/login-for-tests.ts,
+      which writes a login into the test's own database (real-server.test.ts
+      uses it); the guard test checks nothing in the server loads it.
+    - QUESTIONS.md B160 to B166.
+  - Step 2's follow-ups (Oct 10, a second session, same branch).
+    - Break-it "[login]": 37 server breaks (section "login") and 4 on the
+      screens. One survived at first: a login question answered twice was
+      only caught by the passkey's use count, and Apple's passkeys always
+      count 0; a test with such a passkey now catches it. New tests too: the
+      5-minute limit on a login question, a login without Face ID or for
+      another host, nothing kept in the clear, the gate refusing before the
+      login's code is asked, and "10 wrong codes in a row" (B161: a good
+      code typed in between now starts the count again; it did not).
+    - CI's WebKit job failed on PR #18: login.test.ts always launched
+      Chromium, which that job does not install. It runs only where Chromium
+      is one of the engines now (describe.runIf).
+    - Browser: login.test.ts also checks a screen whose login ended going to
+      /login, a device logged in skipping the login page, and adding a
+      passkey from Settings (it asks first). design-real-server.test.ts (both
+      engines): the login page in every state, the Login card and its sheets,
+      and Step 3's Checked at and Bank card. The loading page is checked with
+      motion reduced: its skeleton shimmers forever, and atRest waits for
+      every animation to end (it hung the test before).
+  - Step 3, syncing on a timer and "Checked at" (Oct 10, same branch).
+    Rulebook section 2 and 27d (his OK): sync with the bank every 60 minutes,
+    a setting.
+    - The timer: packages/server/src/serve/sync-timer.ts (SyncTimer, started
+      by npm run serve once it listens; stopped, it lets a sync on its way
+      finish). It only calls Keeper.sync, the same as --sync. Due one
+      interval of real time after the last sync started (Keeper.syncDueIn);
+      after a restart, after the last read; never read, at once; no bank
+      connection, nothing. It sleeps at most a minute at a time. Nothing
+      that goes wrong in it stops the server: it is logged, and it looks
+      again later.
+    - Database step 4: bank_reads (each read of the bank, with or without
+      anything new, saved in the sync's own transaction: SyncInput.readAt).
+      sync/bank-reads.ts: the last read, and the setting (settings table
+      sync-every-minutes, 15 to 1,440, default 60). Keeper.changeSyncEvery
+      logs a server line (sync-every-changed). POST /api/sync/every (logged
+      in only; ROUTES; the phone's sendSyncEvery; read-only.test.ts lists it).
+    - One at a time: Keeper.sync is the books' lock (a second caller gets the
+      sync on its way). syncBank's afterSave runs right after the commit, in
+      the same step, and the Keeper reads its books again there. Found doing
+      it (a test first): before, the books were read again only after the
+      sync's promise, so an answer arriving the instant a sync saved was
+      saved against the old book, with totals that do not replay, and the
+      server would not have started again (B172). After a sync the books
+      are read again when it saved anything, or when the history has more
+      than they have (another copy of the server saved a sync; Keeper
+      lastSeq). Keeper's beforeCommit test hook reaches the sync's save too.
+    - An answer about something a sync just changed (QUESTIONS.md A31, built
+      as option 1, waiting on his answer): item-key.ts (itemKey, FNV-1a over
+      what the item is: no Node, the phone's types read the views). Review
+      and Payday items carry key, a bucket list has keys by row id; the
+      phone sends it as seen (choose.tsx Target.seen); ChoiceDesk.decide
+      refuses with code 'changed' and how it is now; the phone closes the
+      sheet, says why, and asks for its numbers again.
+    - Home: "Checked at 3:05 PM" (HomeView checkedAt, in his home time zone;
+      ui/dates.ts checkedAtText), and "As of" in his home time zone too
+      (HomeView timeZone). The demo shows a made-up time (9:41 AM; 7:15 AM
+      when the bank cannot be read). Settings: the Bank card (sync-card.tsx),
+      real server only, before setup day too.
+    - Tests: server sync-timer (fake clock, test/fake-clock.ts: on time,
+      restarts, Nov 1 2026 and Mar 14 2027, never two at once, a failed one
+      saves nothing, 10.5, only the reading calls, the setting), sync-answers
+      (A31 cases; an answer mid-read and at the moment of the commit),
+      sync-answers-random (two servers, one restarted at random, a fresh copy
+      from the database after every step; SYNC_ANSWER_SCENARIOS, SEED; 300
+      passed), http-sync, views-home, database step 4; web format; browser
+      home (Checked at), sync.test.ts (real server, both engines), review
+      (the exact request now carries seen). Worked example bank 9.
+    - Break-it: "[sync]" and "[a31]" (server section "sync", 43 breaks;
+      screens section "home", 6), with the screens' "[login]" (4): every one
+      caught. Two older breaks pointed at the code again ("[review]" an item
+      already dealt with, "[keeper]" a save that did not go through).
+    - QUESTIONS.md A31, B167 to B173; B154, B160, B161 brought up to date.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
-  rule 9.5, depends on it), and QUESTIONS.md A28 (what happens when the
-  replay check finds a difference) and A29 (a store's refund to the debit
-  card).
+  rule 9.5, depends on it), QUESTIONS.md A30 (an old event the money math now
+  refuses), and A31 (what counts as something a sync just changed).

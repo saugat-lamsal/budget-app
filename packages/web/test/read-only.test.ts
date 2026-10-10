@@ -3,9 +3,12 @@ import { describe, expect, it } from 'vitest';
 
 // Rule 0.4 for the screens: they never move money. They ask the app's own
 // server for numbers, and the only things they ever send are that he has
-// seen a take-back (10.6, QUESTIONS.md B84) and his choice for an item in
-// review, which the server's money math decides. Both change the app's own
-// books, never the bank. Nothing about money is kept on the phone either.
+// seen a take-back (10.6, QUESTIONS.md B84), his choice for an item in
+// review, which the server's money math decides, and, on the real server, the
+// login's own requests (Step 2: who is logged in and with which passkeys,
+// never money) and how often it syncs with the bank (Step 3: a setting, never
+// money). None of it reaches the bank. Nothing about money is kept on
+// the phone either.
 const sourceDir = new URL('../src/', import.meta.url);
 
 function sourceFiles(): { name: string; text: string }[] {
@@ -38,14 +41,19 @@ describe('0.4 the screens never move money', () => {
   it("0.4 every request goes to the app's own server", () => {
     const calls = fetchCalls();
     expect(calls.length).toBeGreaterThan(1);
-    for (const { name, call } of calls) expect(call, name).toMatch(/^fetch\( ?'\/api\//);
+    // The login's requests go to one of its own /api/auth addresses (AuthPath in api.ts).
+    for (const { name, call } of calls) expect(call, name).toMatch(/^fetch\( ?('\/api\/|path, )/);
+    const api = sourceFiles().find(({ name }) => name.replaceAll('\\', '/') === 'app/api.ts')?.text ?? '';
+    expect(api).toMatch(/type AuthPath = ('\/api\/auth\/[a-z/]+'( \| )?)+;/);
   });
 
-  it('0.4 every request only reads, except the two that send his answers: a take-back seen, and a choice in review', () => {
+  it('0.4 every request only reads, except the ones that send his answers (a take-back seen, a choice in review), the login\'s own, and how often to sync', () => {
     const writes = fetchCalls().filter(({ call }) => /method|body/.test(call));
     expect(writes.map((w) => w.call)).toEqual([
       "fetch('/api/seen', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'bank-took-back', id }), })",
       "fetch('/api/choice', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request), })",
+      "fetch(path, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })",
+      "fetch('/api/sync/every', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ minutes }) })",
     ]);
   });
 

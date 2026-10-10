@@ -25,15 +25,44 @@ export async function atRest(page: Page): Promise<void> {
   });
 }
 
+// Every accessibility problem axe finds, and any text whose contrast it could
+// not check: that counts as a problem too, or faint text would pass unseen.
+//
+// A sheet is shown in the browser's top layer, over the whole page. axe does
+// not know the top layer: it took the page under the sheet (the tab bar) for
+// something overlapping the sheet's lower text, could not tell the colour
+// behind it, and so never checked it (found Oct 10, with faint text added to a
+// sheet on purpose). What is under an open sheet is hidden while axe runs; he
+// cannot see it there either. The same goes for a notice pinned at the top
+// while the page scrolls under it: its background is solid (checked here), so
+// it is checked in its place in the page, where axe can read its colours.
 export async function axeViolations(page: Page): Promise<string[]> {
   await page.addScriptTag({ content: AXE });
   await atRest(page);
-  const violations = await page.evaluate(async () => {
-    const axe = (window as unknown as { axe: { run: (context: Document, options: object) => Promise<{ violations: AxeViolation[] }> } }).axe;
-    const result = await axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] }, resultTypes: ['violations'] });
-    return result.violations;
+  return page.evaluate(async () => {
+    const axe = (window as unknown as { axe: { run: (context: Document, options: object) => Promise<{ violations: AxeViolation[]; incomplete: AxeViolation[] }> } }).axe;
+    const problems: string[] = [];
+    const sheet = document.querySelector('dialog[open]');
+    const under: HTMLElement[] = [];
+    for (let at: Element | null = sheet; at !== null && at !== document.body; at = at.parentElement) {
+      for (const other of at.parentElement?.children ?? []) if (other !== at && other instanceof HTMLElement && other.style.visibility !== 'hidden') under.push(other);
+    }
+    const pinned = [...document.querySelectorAll<HTMLElement>('.notice--sticky')];
+    for (const notice of pinned) {
+      const alpha = /rgba\([^)]*,\s*([\d.]+)\)$/.exec(getComputedStyle(notice).backgroundColor)?.[1];
+      if (alpha !== undefined && Number(alpha) < 1) problems.push(`pinned notice: ${notice.getAttribute('data-testid') ?? ''} has a see-through background, so what scrolls under it shows through`);
+    }
+    for (const e of under) e.style.visibility = 'hidden';
+    for (const e of pinned) e.style.position = 'static';
+    try {
+      const result = await axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] }, resultTypes: ['violations', 'incomplete'] });
+      const unchecked = result.incomplete.filter((v) => v.id === 'color-contrast');
+      return [...problems, ...[...result.violations, ...unchecked.map((v) => ({ ...v, id: 'color-contrast (could not be checked)' }))].flatMap((v) => v.nodes.map((n) => `${v.id}: ${n.target.join(' ')} ${n.failureSummary ?? ''}`))];
+    } finally {
+      for (const e of under) e.style.visibility = '';
+      for (const e of pinned) e.style.position = '';
+    }
   });
-  return violations.flatMap((v) => v.nodes.map((n) => `${v.id}: ${n.target.join(' ')} ${n.failureSummary ?? ''}`));
 }
 
 // Everything a finger can tap.

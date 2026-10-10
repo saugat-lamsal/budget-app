@@ -1,5 +1,5 @@
 import type { LeftoverChoice, RecheckedItem, Settings } from '@budget-app/money';
-import type { RuleDone, RuleSpec, SettingsDone } from '@budget-app/server/views';
+import type { LogRow, RuleDone, RuleSpec, SettingsDone } from '@budget-app/server/views';
 import { dayWithYear, shortDate } from '../ui/dates.js';
 import { moneyText } from '../ui/money-format.js';
 import { POT_NAMES } from '../ui/names.js';
@@ -93,6 +93,11 @@ export function daysText(days: number): string {
   return `${days} ${days === 1 ? 'day' : 'days'}`;
 }
 
+// Step 3: "60 minutes", "1,440 minutes".
+export function minutesText(minutes: number): string {
+  return `${minutes.toLocaleString('en-US')} ${minutes === 1 ? 'minute' : 'minutes'}`;
+}
+
 export function textRuleText(rule: Settings['paycheckRule']): string {
   return rule === null ? 'Not set' : `“${rule.contains}”`;
 }
@@ -183,3 +188,34 @@ export function ruleDoneText(done: RuleDone): string {
   if (done.action === 'removed') parts.push('What it sorted stays where it is.');
   return parts.join(' ');
 }
+
+// ----- The change log's lines from the server (13.5) -----
+
+type Retotaled = Extract<LogRow, { kind: 'history-retotaled' }>;
+
+// A28: what each total is called.
+export const TOTAL_NAMES: Readonly<Record<Retotaled['changes'][number]['name'], string>> = {
+  savings: 'Savings',
+  needs: 'Needs',
+  wants: 'Wants',
+  momReserve: 'Mom reserve',
+  heldForOthers: 'Held for others',
+  unsortedIn: 'Money in waiting',
+  unsortedOut: 'Spending waiting',
+  oldCardDebt: 'Old card owes',
+  inTransit: 'In transit',
+  waiting: 'Items in Review',
+};
+
+// A28: the history took new totals: from which event, how many, and what
+// changed at the first one.
+export function retotaledText(row: Retotaled): string {
+  const changes = row.changes.map((c) => `${TOTAL_NAMES[c.name]} ${c.name === 'waiting' ? c.before : moneyText(c.before)} → ${c.name === 'waiting' ? c.after : moneyText(c.after)}`);
+  return `From ${row.from.what}, ${shortDate(row.from.date)}: ${row.events === 1 ? '1 event' : `${row.events} events`}${changes.length === 0 ? '' : `. There: ${changes.join(', ')}`}`;
+}
+
+export const LOGIN_LINES: Readonly<Record<'logged-in' | 'logged-out' | 'passkey-added', string>> = {
+  'logged-in': 'Logged in',
+  'logged-out': 'Logged out',
+  'passkey-added': 'Passkey added',
+};

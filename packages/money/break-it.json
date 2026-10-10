@@ -2669,8 +2669,8 @@
   {
     "section": "6",
     "file": "packages/money/src/book.ts",
-    "find": "const older = txn.kind === 'deposit' && daysBetween(this.#lastPaycheckDate, txn.date) < 0;\n        const likely = txn.kind === 'refund' ? likelyPurchases({ account: txn.account, date: txn.date, amount: txn.amount, description: txn.description }, this.#purchaseCandidates()) : [];\n        const facts: ReviewFacts =",
-    "replace": "const older = txn.kind === 'deposit' && daysBetween(this.#lastPaycheckDate, txn.date) <= 0;\n        const likely = txn.kind === 'refund' ? likelyPurchases({ account: txn.account, date: txn.date, amount: txn.amount, description: txn.description }, this.#purchaseCandidates()) : [];\n        const facts: ReviewFacts =",
+    "find": "const older = txn.kind === 'deposit' && daysBetween(this.#lastPaycheckDate, txn.date) < 0;\n        const likely = this.#likelyFor(txn);\n        const facts: ReviewFacts =",
+    "replace": "const older = txn.kind === 'deposit' && daysBetween(this.#lastPaycheckDate, txn.date) <= 0;\n        const likely = this.#likelyFor(txn);\n        const facts: ReviewFacts =",
     "why": "[review] B54 a deposit on the day of the last paycheck cannot be my paycheck"
   },
   {
@@ -2746,8 +2746,8 @@
   {
     "section": "20",
     "file": "packages/money/src/book.ts",
-    "find": "const likely = txn.kind === 'refund' ? likelyPurchases({ account: txn.account, date: txn.date, amount: txn.amount, description: txn.description }, this.#purchaseCandidates()) : [];\n        const facts: ReviewFacts = {",
-    "replace": "const likely = false ? likelyPurchases({ account: txn.account, date: txn.date, amount: txn.amount, description: txn.description }, this.#purchaseCandidates()) : [];\n        const facts: ReviewFacts = {",
+    "find": "const likely = this.#likelyFor(txn);\n        const facts: ReviewFacts = {",
+    "replace": "const likely: LikelyPurchase[] = [];\n        const facts: ReviewFacts = {",
     "why": "[review] 20d a refund lists no purchases"
   },
   {
@@ -2781,15 +2781,15 @@
   {
     "section": "4",
     "file": "packages/money/src/review-options.ts",
-    "find": "match: f.reason === 'refund' ? [...f.likely] : [],",
-    "replace": "match: [],",
+    "find": "    match: [...f.likely],",
+    "replace": "    match: [],",
     "why": "[review] [pre-merge] A18 no purchase is offered to match a refund to"
   },
   {
     "section": "4",
     "file": "packages/money/src/review-options.ts",
-    "find": "match: f.reason === 'refund' ? [...f.likely] : [],",
-    "replace": "match: f.reason === 'refund' ? [...f.likely].slice(1) : [],",
+    "find": "    match: [...f.likely],",
+    "replace": "    match: [...f.likely].slice(1),",
     "why": "[review] [pre-merge] A18 the most likely purchase is not offered"
   },
   {
@@ -3540,5 +3540,33 @@
     "find": "check(isTimeZone(s.homeTimeZone), ",
     "replace": "check(true, ",
     "why": "[zone] section 2 take any text as a home time zone"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "    return likelyPurchases({ account: txn.account, date: txn.date, amount: txn.amount, description: txn.description }, this.#purchaseCandidates());",
+    "replace": "    return txn.kind === 'deposit' ? [] : likelyPurchases({ account: txn.account, date: txn.date, amount: txn.amount, description: txn.description }, this.#purchaseCandidates());",
+    "why": "[a29] money in to checking lists no likely purchases"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (entry.kind !== 'money-in' || !(entry.txn.kind === 'refund' || entry.txn.account === 'checking')) {",
+    "replace": "    if (entry.kind !== 'money-in' || entry.txn.kind !== 'refund') {",
+    "why": "[a29] money in to checking cannot be matched to a purchase"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/book.ts",
+    "find": "account: 'checking', date: entry.txn.date, amount: entry.txn.amount,",
+    "replace": "account: 'checking', date: entry.txn.date, amount: entry.txn.amount - 1,",
+    "why": "[a29] a matched deposit counts one cent less as a refund"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/review-options.ts",
+    "find": "    match: [...f.likely],",
+    "replace": "    match: f.reason === 'refund' ? [...f.likely] : [],",
+    "why": "[a29] only a bank refund is offered the match"
   }
 ]

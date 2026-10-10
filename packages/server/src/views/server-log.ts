@@ -1,0 +1,21 @@
+import type { IsoDate } from '@budget-app/money';
+import type { Totals } from '../history/history.js';
+
+// A line of the change log (13.5) that the server keeps, not the book: the
+// history taking new totals (QUESTIONS.md A28), logins, new passkeys, log
+// outs and the login setting, and how often it syncs with the bank (Step 3). afterBookLines and afterBankLines say how many
+// of the book's lines and the bank rules' lines there were when it was
+// written, so all three read as one list, in the order things happened.
+export type ServerLogLine =
+  | {
+      readonly date: IsoDate;
+      readonly action: 'history-retotaled';
+      // The first event whose totals changed.
+      readonly from: { readonly seq: number; readonly date: IsoDate; readonly what: string };
+      // Every event whose totals changed, before and after.
+      readonly events: readonly { readonly seq: number; readonly date: IsoDate; readonly what: string; readonly before: Totals | null; readonly after: Totals | null }[];
+      readonly afterBookLines: number;
+      readonly afterBankLines: number;
+    }
+  | { readonly date: IsoDate; readonly action: 'logged-in' | 'logged-out' | 'passkey-added'; readonly device: string; readonly afterBookLines: number; readonly afterBankLines: number }
+  | { readonly date: IsoDate; readonly action: 'stay-logged-in-changed' | 'sync-every-changed'; readonly before: number; readonly after: number; readonly afterBookLines: number; readonly afterBankLines: number };

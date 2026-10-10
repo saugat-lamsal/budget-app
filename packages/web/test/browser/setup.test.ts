@@ -240,19 +240,47 @@ describe.each(ENGINES)('Setup day in %s', (_name, engine) => {
     await context.close();
   });
 
-  // Skipped in WebKit only, on his say-so (Oct 9, 2026, PR #17), to keep CI
-  // moving. On CI's WebKit runner the second tap of the double tap arrives
-  // after the first answer and the screen's refresh, and is sent: the server
-  // refuses it ("That is already your answer"), so nothing counts twice, but
-  // the screen lets it through. It still runs in Chromium. Fix the screen,
-  // then run it in WebKit again.
-  it.skipIf(_name === 'webkit')('B92 a quick double tap on an answer sends it once', async () => {
+  it('B92 a quick double tap on an answer sends it once', async () => {
     const page = await openSetup(await browser().newContext(phone()), base(), 'setup-day', 'transfers');
     const posts = watchChoices(page);
     await page.getByTestId('half-su-card-left').getByTestId('on-its-way').dblclick();
     await page.getByTestId('half-su-card-left').getByTestId('answer').filter({ hasText: 'on its way' }).waitFor();
     await settled(page);
     expect(posts.posts.length).toBe(1);
+    await page.context().close();
+  });
+
+  // What CI's WebKit runner did (PR #17): the second tap came after the first
+  // answer was back but before the screen showed it. Here the screen's fresh
+  // numbers are held at exactly that moment, whatever the timing of the taps.
+  it('B92 an answer already given cannot be sent again while the screen is still showing the numbers from before it', async () => {
+    const page = await openSetup(await browser().newContext(phone()), base(), 'setup-day', 'transfers');
+    const posts = watchChoices(page);
+    const button = page.getByTestId('half-su-card-left').getByTestId('on-its-way');
+    let release = (): void => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    let asked = false;
+    await page.route('**/api/setup', async (route) => {
+      asked = true;
+      await held;
+      await route.continue();
+    });
+    await button.click();
+    // The answer is back and the screen has asked for its fresh numbers.
+    await expect.poll(() => asked).toBe(true);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 0)))));
+    expect(await button.isDisabled()).toBe(true);
+    await button.click({ force: true });
+    release();
+    await page.getByTestId('half-su-card-left').getByTestId('answer').filter({ hasText: 'on its way' }).waitFor();
+    await settled(page);
+    expect(posts.posts.length).toBe(1);
+    // Once the screen shows the answer, he can still change his mind.
+    await page.unrouteAll({ behavior: 'wait' });
+    await page.getByTestId('half-su-card-left').getByTestId('not-on-its-way').click();
+    await page.getByTestId('half-su-card-left').getByTestId('answer').filter({ hasText: 'not on its way' }).waitFor();
+    await settled(page);
+    expect(posts.posts.length).toBe(2);
     await page.context().close();
   });
 

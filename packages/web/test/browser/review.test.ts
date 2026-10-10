@@ -4,6 +4,7 @@ import type { Server } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { START_DATE, appSide, deposit, openTestBook, payPerson, purchase, refund } from '../../../money/test/helpers.js';
 import { demoScenario } from '../../../server/src/demo/scenarios.js';
+import { itemKey } from '../../../server/src/item-key.js';
 import { ENGINES, launch, centsAt, close, openScenario, phone, readCents, textAt, useEngine } from './harness.js';
 import { openLive, startLive } from './live.js';
 import { bucketsOf, bucketsOnScreen, item, listed, watchChoices } from './screens.js';
@@ -1176,14 +1177,15 @@ describe.each(ENGINES)('Review, details, in %s', (_name, engine) => {
     await context.close();
   });
 
-  it('a tap sends exactly the choice and its decision number, and nothing else', async () => {
+  it('a tap sends exactly the choice, its decision number, and what the screen showed of the item (Step 3, A31), and nothing else', async () => {
     const mine = life('review-busy');
     const id = idOf(mine.book, 'CORNER STORE');
+    const detail = mine.book.reviewDetails().find((d) => d.item.id === id)!;
     const page = await openReview(await browser().newContext(phone()), base(), 'review-busy');
     const watch = watchChoices(page);
     await item(page, id).getByTestId('pick-wants').click();
     await item(page, id).waitFor({ state: 'detached' });
-    expect(JSON.parse(watch.posts[0]!.postData() ?? '{}')).toEqual({ id: expect.stringMatching(/^[0-9a-f]{32}$/), item: id, choice: { to: 'wants' } });
+    expect(JSON.parse(watch.posts[0]!.postData() ?? '{}')).toEqual({ id: expect.stringMatching(/^[0-9a-f]{32}$/), item: id, choice: { to: 'wants' }, seen: itemKey(detail) });
     await page.context().close();
   });
 

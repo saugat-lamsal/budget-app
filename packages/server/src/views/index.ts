@@ -9,3 +9,5 @@ export type * from './choice.js';
 export * from './settings.js';
 export * from './setup.js';
 export type * from './bank-rules.js';
+export type * from './server-log.js';
+export type * from './login.js';

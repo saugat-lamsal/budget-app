@@ -14,8 +14,12 @@ import {
   type SplitSettings,
 } from '@budget-app/money';
 import type { BankRule } from '../bank/reading.js';
+import type { Totals } from '../history/history.js';
 import type { BankRuleLogLine } from './bank-rules.js';
 import type { RuleView } from './choice.js';
+import type { CheckedAt } from './home.js';
+import type { LoginView } from './login.js';
+import type { ServerLogLine } from './server-log.js';
 
 // What the Settings screen shows, worked out on the server from the book:
 // every setting in rulebook section 2, what is in force this pay period next
@@ -34,6 +38,22 @@ export interface SettingsInput {
   // Section 2, 24c: the bank rules, and the change log's lines for them
   // (13.5). None when left out.
   readonly bankRules?: { readonly rules: readonly BankRule[]; readonly log: readonly BankRuleLogLine[]; readonly recentDays: number };
+  // The change log's lines the server keeps (13.5): the history taking new
+  // totals (A28), and logins. None when left out (the demo).
+  readonly serverLog?: readonly ServerLogLine[];
+  // Step 2: the login card, on the real server only (the demo has no login).
+  readonly login?: LoginView;
+  // Step 3: syncing with the bank, on the real server only (the demo has no bank).
+  readonly sync?: SyncView;
+}
+
+// Step 3: how often the real server syncs with the bank (section 2), in
+// minutes, and when it last read the bank ("Checked at").
+export interface SyncView {
+  readonly everyMinutes: number;
+  readonly checkedAt: CheckedAt | null;
+  // Today in his home time zone, for "Checked at" (the time only, on the same day).
+  readonly today: IsoDate;
 }
 
 // A sorting rule, with its place among the rules of its kind: the first that
@@ -62,13 +82,33 @@ export type LogRow =
   | { readonly key: string; readonly date: IsoDate; readonly kind: 'bank-rule-changed'; readonly before: BankRule; readonly after: BankRule }
   // A27: moved one place up or down among the rules on its account, past
   // another; position is its place in the whole list now.
-  | { readonly key: string; readonly date: IsoDate; readonly kind: 'bank-rule-moved'; readonly direction: 'up' | 'down'; readonly rule: BankRule; readonly past: BankRule; readonly position: number };
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'bank-rule-moved'; readonly direction: 'up' | 'down'; readonly rule: BankRule; readonly past: BankRule; readonly position: number }
+  // A28: the history took new totals from an event on (a fix to the money
+  // math), with how many events changed and what changed at the first one.
+  | {
+      readonly key: string;
+      readonly date: IsoDate;
+      readonly kind: 'history-retotaled';
+      readonly from: { readonly date: IsoDate; readonly what: string };
+      readonly events: number;
+      readonly changes: readonly { readonly name: keyof Totals; readonly before: number; readonly after: number }[];
+    }
+  // Logins, new passkeys and log outs, by the device, and the login setting.
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'logged-in' | 'logged-out' | 'passkey-added'; readonly device: string }
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'stay-logged-in-changed'; readonly before: number; readonly after: number }
+  // Step 3: how often it syncs with the bank, in minutes.
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'sync-every-changed'; readonly before: number; readonly after: number };
 
 export type SettingsView =
-  | { readonly state: 'not-set-up'; readonly madeUpData: boolean }
+  // Before setup day there are no settings yet, but he can still log out.
+  | { readonly state: 'not-set-up'; readonly madeUpData: boolean; readonly login?: LoginView; readonly sync?: SyncView }
   | {
       readonly state: 'tracking';
       readonly madeUpData: boolean;
+      // Step 2: the login card, on the real server only.
+      readonly login?: LoginView;
+      // Step 3: syncing with the bank, on the real server only.
+      readonly sync?: SyncView;
       readonly today: IsoDate;
       // 0.5: Settings says so too when the totals do not match the bank.
       readonly check: { readonly state: 'matches' } | { readonly state: 'does-not-match'; readonly difference: Cents } | { readonly state: 'bank-not-read' };
@@ -112,7 +152,8 @@ export function ruleViewOf(rule: SortingRule): RuleView {
 
 export function settingsView(input: SettingsInput): SettingsView {
   const { today, book, bank, madeUpData } = input;
-  if (book === null) return { state: 'not-set-up', madeUpData };
+  const login = { ...(input.login === undefined ? {} : { login: input.login }), ...(input.sync === undefined ? {} : { sync: input.sync }) };
+  if (book === null) return { state: 'not-set-up', madeUpData, ...login };
 
   let check: Extract<SettingsView, { state: 'tracking' }>['check'];
   if (bank === null) check = { state: 'bank-not-read' };
@@ -145,26 +186,30 @@ export function settingsView(input: SettingsInput): SettingsView {
     ruleChoices: RULE_CHOICES,
     bankRules: input.bankRules?.rules ?? [],
     bankRulesRecentDays: input.bankRules?.recentDays ?? 0,
-    log: logRows(book, input.bankRules?.log ?? []),
+    log: logRows(book, input.bankRules?.log ?? [], input.serverLog ?? []),
+    ...login,
   };
 }
 
 // The change log as lines, newest first. A settings change is one line for
 // each setting it changed. The bank rules' lines (kept by the bank
-// connection, not the book) go where they happened among the book's (13.5).
-function logRows(book: Book, bankLog: readonly BankRuleLogLine[]): LogRow[] {
+// connection, not the book) and the server's own lines (A28, logins) go where
+// they happened among the book's (13.5).
+function logRows(book: Book, bankLog: readonly BankRuleLogLine[], serverLog: readonly ServerLogLine[]): LogRow[] {
   const log = book.changeLog();
   const rows: LogRow[] = [];
-  const bankRows = (i: number): LogRow[] =>
-    bankLog.flatMap((line, m): LogRow[] => {
-      if (line.afterBookLines !== i && !(i === log.length && line.afterBookLines > log.length)) return [];
-      const key = `b${m}-0`;
-      if (line.action === 'moved-up' || line.action === 'moved-down') {
-        return [{ key, date: line.date, kind: 'bank-rule-moved', direction: line.action === 'moved-up' ? 'up' : 'down', rule: line.rule, past: line.past, position: line.position }];
-      }
-      if (line.action === 'changed' && line.before !== null) return [{ key, date: line.date, kind: 'bank-rule-changed', before: line.before, after: line.rule }];
-      return [{ key, date: line.date, kind: line.action === 'removed' ? 'bank-rule-removed' : 'bank-rule-added', rule: line.rule }];
-    });
+  // The lines kept outside the book, in the order they were written: each
+  // server line goes after the bank rule lines there were when it was written.
+  const outside: { readonly afterBookLines: number; readonly row: LogRow }[] = [];
+  const serverRows = (upTo: number): void => {
+    for (const [j, line] of serverLog.entries()) if (line.afterBankLines === upTo) outside.push({ afterBookLines: line.afterBookLines, row: serverRow(line, `s${j}-0`) });
+  };
+  for (const [m, line] of bankLog.entries()) {
+    serverRows(m);
+    outside.push({ afterBookLines: line.afterBookLines, row: bankRow(line, `b${m}-0`) });
+  }
+  for (const [j, line] of serverLog.entries()) if (line.afterBankLines >= bankLog.length) outside.push({ afterBookLines: line.afterBookLines, row: serverRow(line, `s${j}-0`) });
+  const bankRows = (i: number): LogRow[] => outside.filter((o) => o.afterBookLines === i || (i === log.length && o.afterBookLines > log.length)).map((o) => o.row);
   rows.push(...bankRows(0));
   log.forEach((entry, i) => {
     const key = (j: number): string => `${i}-${j}`;
@@ -210,6 +255,31 @@ function logRows(book: Book, bankLog: readonly BankRuleLogLine[]): LogRow[] {
     byEntry.set(entry, [...(byEntry.get(entry) ?? []), row]);
   }
   return [...byEntry.values()].reverse().flat();
+}
+
+function bankRow(line: BankRuleLogLine, key: string): LogRow {
+  if (line.action === 'moved-up' || line.action === 'moved-down') {
+    return { key, date: line.date, kind: 'bank-rule-moved', direction: line.action === 'moved-up' ? 'up' : 'down', rule: line.rule, past: line.past, position: line.position };
+  }
+  if (line.action === 'changed' && line.before !== null) return { key, date: line.date, kind: 'bank-rule-changed', before: line.before, after: line.rule };
+  return { key, date: line.date, kind: line.action === 'removed' ? 'bank-rule-removed' : 'bank-rule-added', rule: line.rule };
+}
+
+function serverRow(line: ServerLogLine, key: string): LogRow {
+  switch (line.action) {
+    case 'history-retotaled': {
+      const first = line.events[0];
+      const before = first?.before ?? null;
+      const after = first?.after ?? null;
+      const changes = before === null || after === null ? [] : (Object.keys(after) as (keyof Totals)[]).filter((name) => before[name] !== after[name]).map((name) => ({ name, before: before[name], after: after[name] }));
+      return { key, date: line.date, kind: 'history-retotaled', from: { date: line.from.date, what: line.from.what }, events: line.events.length, changes };
+    }
+    case 'stay-logged-in-changed':
+    case 'sync-every-changed':
+      return { key, date: line.date, kind: line.action, before: line.before, after: line.after };
+    default:
+      return { key, date: line.date, kind: line.action, device: line.device };
+  }
 }
 
 // A rule as it was when the log line at index `at` was written: the last

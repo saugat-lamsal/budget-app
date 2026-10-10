@@ -189,7 +189,7 @@ function ActivityReady({ view, reload, onChanged }: { readonly view: Tracking; r
         )}
       </Card>
 
-      <ChoiceSheet flow={flow} itemId={open?.id} subject={open === undefined ? undefined : (subjectOfRow(open) ?? undefined)} title={open === undefined ? 'Details' : rowTitle(open)} testId="activity-sheet" likely>
+      <ChoiceSheet flow={flow} itemId={open?.id} subject={open === undefined ? undefined : (subjectOfRow(open, view.keys[open.id]) ?? undefined)} title={open === undefined ? 'Details' : rowTitle(open)} testId="activity-sheet" likely>
         {open !== undefined && <RowFacts row={open} bucket={name} />}
       </ChoiceSheet>
 

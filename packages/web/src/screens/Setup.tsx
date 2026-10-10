@@ -87,11 +87,15 @@ interface Sender {
 
 const NO_SIGNAL = "Couldn't save that. Check your connection and try again. Nothing is counted twice.";
 
-function useSender(reload: Reload): Sender {
+function useSender(reload: Reload, view: SetupReadyView): Sender {
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   // A second tap before the screen has redrawn must not send a second request.
   const lock = useRef(false);
+  // Nor one after an answer went through, while the screen still shows the
+  // numbers from before it (B92; CI's WebKit runner, PR #17): the buttons stay
+  // off until the numbers asked for after the answer are shown.
+  const [answeredOn, setAnsweredOn] = useState<SetupReadyView | null>(null);
   const attempt = useRef<{ readonly key: string; readonly id: string } | null>(null);
   const send = async (step: SetupStep, options: { readonly yes?: { readonly seen: string }; readonly inSheet?: boolean } = {}): Promise<SetupResponse | 'failed' | null> => {
     if (lock.current) return null;
@@ -106,6 +110,7 @@ function useSender(reload: Reload): Sender {
       const answer = await sendChoice({ id, setup: step, ...(yes === undefined ? {} : { confirmed: true, seen: yes.seen }) });
       if (answer.ok) {
         attempt.current = null;
+        setAnsweredOn(view);
         reload('after');
       } else if (answer.code !== 'needs-confirmation' && !inSheet) setProblem(answer.why);
       return answer;
@@ -117,13 +122,13 @@ function useSender(reload: Reload): Sender {
       setSending(false);
     }
   };
-  return { sending, problem, send };
+  return { sending: sending || answeredOn === view, problem, send };
 }
 
 // ----- The steps -----
 
 function SetupReady({ step, view, reload, onStarted }: { readonly step: SetupStepName; readonly view: SetupReadyView; readonly reload: Reload; readonly onStarted: () => void }) {
-  const sender = useSender(reload);
+  const sender = useSender(reload, view);
   const next = SETUP_STEPS[SETUP_STEPS.indexOf(step) + 1];
   return (
     <>
