@@ -240,7 +240,13 @@ describe.each(ENGINES)('Setup day in %s', (_name, engine) => {
     await context.close();
   });
 
-  it('B92 a quick double tap on an answer sends it once', async () => {
+  // Skipped in WebKit only, on his say-so (Oct 9, 2026, PR #17), to keep CI
+  // moving. On CI's WebKit runner the second tap of the double tap arrives
+  // after the first answer and the screen's refresh, and is sent: the server
+  // refuses it ("That is already your answer"), so nothing counts twice, but
+  // the screen lets it through. It still runs in Chromium. Fix the screen,
+  // then run it in WebKit again.
+  it.skipIf(_name === 'webkit')('B92 a quick double tap on an answer sends it once', async () => {
     const page = await openSetup(await browser().newContext(phone()), base(), 'setup-day', 'transfers');
     const posts = watchChoices(page);
     await page.getByTestId('half-su-card-left').getByTestId('on-its-way').dblclick();
