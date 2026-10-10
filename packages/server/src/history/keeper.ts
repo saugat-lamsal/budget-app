@@ -12,6 +12,7 @@ import { logChange, readAccounts, readBankRules, readConnection, readItems, read
 import { createAppServer, type Seen } from '../http/server.js';
 import type { Log } from '../log.js';
 import type { PlaidClient } from '../plaid/client.js';
+import { serverLinesIn } from '../server-log.js';
 import { SetupDesk } from '../setup-desk.js';
 import { NO_ANSWERS, SETUP_LOOK_BACK_DAYS, type SetupAnswers } from '../setup-view.js';
 import { syncBank, type SyncResult } from '../sync/sync.js';
@@ -186,7 +187,7 @@ export class Keeper {
 
   settings(): SettingsView {
     const rules = this.#state.bankRules;
-    return settingsView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false, bankRules: { rules: rules.rules(), log: rules.log(), recentDays: RECENT_DAYS } });
+    return settingsView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false, bankRules: { rules: rules.rules(), log: rules.log(), recentDays: RECENT_DAYS }, serverLog: serverLinesIn(this.#db) });
   }
 
   setupView(): SetupView {

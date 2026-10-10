@@ -138,7 +138,7 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 14. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 15. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
@@ -150,7 +150,9 @@ This applies to every phase and every session, cloud or local.
   section 24 his answers after the Settings screen (A21 to A24: rules
   5.6, 13.1, 13.2, and the bank rules in section 2), section 25 his
   answers after Setup day (A25, A26: section 2, 4.5, 14.2), section 26
-  his answers after bank rules (A27, and the home time zone: section 2).
+  his answers after bank rules (A27, and the home time zone: section 2),
+  section 27 his answers after the real server (A28: rule 0.6; A29: 4.5,
+  6.1).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -862,7 +864,42 @@ This applies to every phase and every session, cloud or local.
     the end of each day (test code only). Worked examples bank 6 and 7.
   - Break-it: new breaks tagged "[keeper]" and "[zone]" (server section
     "history").
+- Next chunk, branch login-and-sync-timer (Oct 10, 2026), one pull request.
+  - Step 0, its own commit. The repo check (it is public): no .env, keys,
+    tokens or account numbers in any of the 146 commits, the commit
+    messages, or the PR text; his name (CLAUDE.md, his commits) and the old
+    card's rough balance (rulebook section 1) are in it, and he said carry
+    on. B92: Setup day's buttons stay off after an answer went through until
+    the numbers asked for after it are shown (useSender in Setup.tsx); the
+    double tap test runs in WebKit again, and a new test holds those numbers
+    at exactly that moment. The Review contrast and tap target checks: one
+    small test per sheet (design-screens.test.ts REVIEW_SHEETS), each
+    checked where it stands. Found doing it: axe gave up on the lower text
+    of every sheet ("could not be checked": it does not know the top layer
+    and took the tab bar for something on top). axeViolations
+    (design-helpers.ts) now hides what is under an open sheet, checks a
+    pinned notice in its place (its background must be solid), and counts
+    "could not be checked" as a problem; its own tests are
+    design-helpers.test.ts. Breaks "[b92]", "[review-sheets]", "[contrast]".
+  - Step 1, his answers to A28 and A29 (rulebook draft 15: 0.6, 4.5, 6.1,
+    section 27).
+    - A28: npm run replay-check (scripts/replay-check.mjs; the server's
+      commands are built by scripts/server-build.mjs). history/retotal.ts
+      (checkRetotal, acceptRetotal) and history/replay-check-command.ts (what
+      it prints and asks). The yes names the list it was shown; the new
+      totals and the change log line are saved in one step. The server's
+      own change log lines (server-log.ts, the type in views/server-log.ts)
+      sit in the change_log table like the bank rules' lines; Settings puts
+      all three in order (afterBookLines, afterBankLines). An event the code
+      refuses now cannot be fixed with new totals: QUESTIONS.md A30, built
+      as option 1. replayEach in history-db.ts; replaying without the check
+      works out no totals (doing so made every replay quadratic; the
+      simulated life went from seconds to past ten minutes).
+    - A29: money in to checking lists its likely purchases on checking
+      (Book #likelyFor); matched, it becomes that refund (#matchRefund).
+      Review says "A refund to your debit card?" over the list. Demo life
+      review-debit-refund. Worked examples money 40, bank 8.
+    - Breaks "[a28]", "[a29]"; six older breaks pointed at the code again.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
-  rule 9.5, depends on it), and QUESTIONS.md A28 (what happens when the
-  replay check finds a difference) and A29 (a store's refund to the debit
-  card).
+  rule 9.5, depends on it), and QUESTIONS.md A30 (an old event the money
+  math now refuses).

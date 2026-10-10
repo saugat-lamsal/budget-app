@@ -44,6 +44,7 @@ try {
   if (error instanceof HistoryDoesNotReplay) {
     console.error(error.message);
     console.error('The server did not start, and nothing was changed.');
+    console.error('To see each event whose totals would change, and decide (QUESTIONS.md A28): npm run replay-check');
     process.exit(1);
   }
   throw error;

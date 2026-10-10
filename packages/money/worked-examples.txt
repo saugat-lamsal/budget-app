@@ -1173,3 +1173,34 @@ Oct 10. He sorts it to wants: Wants 300.00 - 120.00 = 180.00.
 
 Check: refunded unsorted spending 0.00 | refunded safe to spend 300.00 | taken back unsorted spending 120.00 | taken back safe to spend 180.00
 Check: wants 180.00 | needs 500.00 | unsorted spending 0.00 | safe to spend 180.00
+
+
+========================================================================
+EXAMPLE 40. A store refund to the debit card, matched to the purchase (rules 4.5, 6.1, 11.1, 12.2; QUESTIONS.md A1, A29)
+========================================================================
+
+Needs 500.00, wants 300.00.
+
+Oct 2. Shoes for 90.00 with the debit card (checking). He splits them:
+       needs 60.00, wants 30.00 (4.4).
+       Needs 500.00 - 60.00 = 440.00. Wants 300.00 - 30.00 = 270.00.
+
+A full refund. Oct 6: the store refunds all 90.00 to the debit card. The
+bank shows it as money in to checking, so it waits in review (6.1):
+       Unsorted money in 90.00. Safe to spend stays 270.00 (11.3).
+       Review lists the shoes as a likely purchase (same account, before
+       it, 90.00 not yet refunded). He picks "this refund is for this one".
+       It counts as if the bank had matched it: a full refund of a split
+       purchase goes back to each bucket as it was split (4.5, A1).
+       Needs 440.00 + 60.00 = 500.00. Wants 270.00 + 30.00 = 300.00.
+       Unsorted money in 0.00.
+
+A partial refund instead. Oct 6: the store refunds only 10.00. He matches
+it to the shoes the same way. What is left of them is 90.00 - 10.00 =
+80.00, and the split (60.00 + 30.00 = 90.00) no longer adds up, so the
+shoes go back to review to be split again (4.5, A1):
+       Needs 500.00 and wants 300.00, as before the shoes.
+       Unsorted spending 80.00. Safe to spend 300.00 - 80.00 = 220.00.
+
+Check: full needs 500.00 | full wants 300.00 | full unsorted money in 0.00
+Check: partial needs 500.00 | partial wants 300.00 | partial unsorted spending 80.00 | partial safe to spend 220.00

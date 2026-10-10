@@ -215,7 +215,7 @@ function ItemCard({
           </>
         }
       >
-        {item.type === 'money-in' && item.reason === 'refund' && subject !== null && <LikelyPurchases subject={subject} busy={busy} onChoose={onChoose} />}
+        {item.type === 'money-in' && subject !== null && (subject.refund || subject.likely.length > 0) && <LikelyPurchases subject={subject} busy={busy} onChoose={onChoose} />}
       </Decision>
     );
   }

@@ -662,11 +662,13 @@ export class ChoiceDesk {
     if (options.type !== 'sort') return no;
     // A21: only for a payment marked from savings, and never by a rule.
     if ('unmark' in c) return options.unmark && request.always === undefined ? null : no;
-    // A18: only one of the likely purchases offered, only for a refund, and
-    // never by a rule.
+    // A18, A29: only one of the likely purchases the money math offers (for
+    // a refund, or money in to checking), and never by a rule.
     if ('refundOf' in c) {
       if (request.always !== undefined) return "A rule can't do that for this item.";
-      if (!subject.storeRefund) return no;
+      // Money in with no purchase to match has no such choice; a store
+      // refund is told why.
+      if (!subject.storeRefund && options.match.length === 0) return no;
       return options.match.includes(c.refundOf) ? null : "That purchase isn't one this refund can belong to.";
     }
     const unavailable = options.unavailable.find((u) => ('to' in c && c.to === 'paycheck' && u.what === 'paycheck') || ('transfer' in c && u.what === 'transfer'));

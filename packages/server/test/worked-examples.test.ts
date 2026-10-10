@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 import { Book, DEFAULT_SETTINGS, bankSide, parseDollars, type Cents } from '@budget-app/money';
 import { describe, expect, it, vi } from 'vitest';
 import { readHistory } from '../src/history/history-db.js';
+import { acceptRetotal, checkRetotal } from '../src/history/retotal.js';
+import { serverLinesIn } from '../src/server-log.js';
 import { decision, lifeInAFile, noonInNewYork, setUpThroughTheDesk } from './keeper-harness.js';
 import { checkBankRules } from '../src/bank/reading.js';
 import { connectTestBank } from '../src/connect.js';
@@ -294,6 +296,49 @@ describe('worked examples: the real server keeps everything', () => {
       expect(life.keeper.today()).toBe(dates.get('after the change'));
       expect(life.keeper.book()?.changeLog().at(-1)?.date).toBe(dates.get('change made'));
     } finally {
+      life.done();
+    }
+  });
+
+  it('example 8, a fix to the money math changes what old answers did (0.6, A28)', async () => {
+    const checks = checksOf(8);
+    const dates = datesOf(8);
+    const life = await lifeInAFile();
+    try {
+      setUpThroughTheDesk(life);
+      for (const [day, id, amount, description] of [
+        ['2026-10-02', 'store-1', 2_345, 'CORNER STORE 12'],
+        ['2026-10-03', 'cafe', 650, 'MADE UP CAFE'],
+      ] as const) {
+        life.now = noonInNewYork(day);
+        life.h.fake.addPosted({ id, account: ACCOUNT_IDS.everyday, amount, date: day, description });
+        await life.sync();
+        expect(life.keeper.choice({ id: decision(), item: id, choice: { to: 'wants' } }).ok).toBe(true);
+      }
+      const sort = Book.prototype.sort;
+      vi.spyOn(Book.prototype, 'sort').mockImplementation(function (this: Book, id, choice, date) {
+        return sort.call(this, id, 'to' in choice && choice.to === 'wants' ? { to: 'needs' } : choice, date);
+      });
+      expect(() => life.reopen()).toThrow(/the totals differ$/);
+      const found = checkRetotal(life.h.db);
+      if (found.state !== 'changed') throw new Error('expected changes');
+      expect(found.events.map((e) => [e.what, e.date])).toEqual([
+        ['his answer: sort', dates.get('first event')],
+        ['from the bank: purchase cafe', '2026-10-03'],
+        ['his answer: sort', '2026-10-03'],
+      ]);
+      const [first, , last] = found.events;
+      expect(first?.before?.wants).toBe(checks.get('first wants before'));
+      expect(first?.after?.wants).toBe(checks.get('first wants after'));
+      expect(first?.after?.needs).toBe(checks.get('first needs after'));
+      expect(last?.before?.wants).toBe(checks.get('last wants before'));
+      expect(last?.after?.needs).toBe(checks.get('last needs after'));
+      expect(acceptRetotal(life.h.db, found.key, noonInNewYork(dates.get('logged') ?? ''))).toEqual({ ok: true, events: 3 });
+      expect(serverLinesIn(life.h.db)).toMatchObject([{ action: 'history-retotaled', date: dates.get('logged'), from: { date: dates.get('first event') } }]);
+      life.restart();
+      expect(life.keeper.book()?.pots()).toMatchObject({ wants: checks.get('first wants after'), needs: checks.get('last needs after') });
+    } finally {
+      vi.restoreAllMocks();
       life.done();
     }
   });

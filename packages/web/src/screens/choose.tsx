@@ -316,7 +316,7 @@ export function ChoiceSheet({
           {children}
           <div hidden={sheet.step !== 'choose'} style={sheet.step === 'choose' ? { display: 'contents' } : undefined}>
             {subject !== undefined && <Choices subject={subject} busy={sending} onChoose={choose} />}
-            {subject !== undefined && likely && subject.refund && <LikelyPurchases subject={subject} busy={sending} onChoose={choose} />}
+            {subject !== undefined && likely && (subject.refund || subject.likely.length > 0) && <LikelyPurchases subject={subject} busy={sending} onChoose={choose} />}
           </div>
           {sheet.step === 'confirm' && <Confirm pending={sheet.pending} busy={sending} onYes={() => submit({ ...sheet.pending, confirmed: true })} onBack={() => setSheet({ item: itemId, step: 'choose' })} />}
         </div>
@@ -360,13 +360,19 @@ export function askFor(preview: PaycheckSplit | null, date: IsoDate, to: PickTo)
 
 // 20d, A15: the purchases a refund likely belongs to. A18: each one the
 // money math offers can be picked as the one it is for; that is final, so it
-// asks first.
+// asks first. A29: money in to checking can be a store's refund to the debit
+// card, so it shows its likely purchases too, when it has any.
 export function LikelyPurchases({ subject, busy, onChoose }: { readonly subject: Subject; readonly busy: boolean; readonly onChoose: Choose }) {
   const list = subject.likely;
   const offered = subject.options.match;
   return (
     <div className="likely" data-testid="likely">
-      <p className="likely__title">Likely purchases</p>
+      <p className="likely__title">{subject.refund ? 'Likely purchases' : 'A refund to your debit card?'}</p>
+      {!subject.refund && (
+        <p className="likely__more" data-testid="likely-debit">
+          A store's refund to your debit card shows up like a deposit. If this is one, it is likely for one of these.
+        </p>
+      )}
       {list.length === 0 ? (
         <p className="likely__more" data-testid="likely-none">
           No likely purchase found.

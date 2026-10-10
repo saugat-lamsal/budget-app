@@ -692,6 +692,31 @@ const examples: Record<number, () => Record<string, Cents>> = {
       'safe to spend': book.safeToSpend('2026-10-10').amount,
     };
   },
+  40: () => {
+    const d = parseDollars;
+    const shoes = (refunded: Cents): Book => {
+      const book = openTestBook({ pots: { needs: d('500.00'), wants: d('300.00') } });
+      book.receive(purchase('shoes', '2026-10-02', d('90.00'), 'MADE UP SHOE STORE', { account: 'checking' }));
+      book.sort('shoes', { split: [{ bucket: 'needs', amount: d('60.00') }, { bucket: 'wants', amount: d('30.00') }] }, '2026-10-02');
+      book.receive(deposit('back', '2026-10-06', refunded, 'MADE UP SHOE STORE REFUND'));
+      expect(book.pots().unsortedIn).toBe(refunded);
+      expect(book.reviewDetails().find((r) => r.item.id === 'back')?.likelyPurchases.map((p) => p.id)).toEqual(['shoes']);
+      book.sort('back', { refundOf: 'shoes' }, '2026-10-06');
+      return book;
+    };
+    const full = shoes(d('90.00'));
+    const partial = shoes(d('10.00'));
+    expect(partial.reviewItems()).toMatchObject([{ id: 'shoes', reason: 'split-changed' }]);
+    return {
+      'full needs': full.pots().needs,
+      'full wants': full.pots().wants,
+      'full unsorted money in': full.pots().unsortedIn,
+      'partial needs': partial.pots().needs,
+      'partial wants': partial.pots().wants,
+      'partial unsorted spending': partial.pots().unsortedOut,
+      'partial safe to spend': partial.safeToSpend('2026-10-06').amount,
+    };
+  },
 };
 
 describe('worked examples (worked-examples.txt)', () => {

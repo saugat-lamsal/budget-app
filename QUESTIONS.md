@@ -409,9 +409,13 @@ A27. ANSWERED Oct 9, built. Your answer: option 1. The first bank rule in
      Move down yet.
 
 
-## Part A, added with the real server keeping everything (Oct 9). Waiting on your answer.
+## Part A, added with the real server keeping everything (Oct 9). All answered.
 
-A28. When the replay check finds a difference. Every time the real server
+A28. ANSWERED Oct 10, built. Your answer: option 1. npm run replay-check
+     shows each event whose totals would change, before and after, and with
+     your typed yes takes the new totals from the first of them on; the
+     change log says so. Rulebook 0.6 and 27a; the details are B155 to B157.
+     The question was: when the replay check finds a difference. Every time the real server
      starts, it replays the book's history and compares the totals after each
      event with the ones saved then. If they differ, it does not start, and
      says at which event (as you asked). That is right when the code changed
@@ -432,7 +436,11 @@ A28. When the replay check finds a difference. Every time the real server
      it first, and the past stays explained. Built: the server does not start
      and says at which event; there is no way past it yet.
 
-A29. A store's refund to the debit card. The bank connection reads money
+A29. ANSWERED Oct 10, built. Your answer: option 2. Money in to checking
+     lists its likely purchases on checking under "A refund to your debit
+     card?", each with "This refund is for this one". Rulebook 4.5, 6.1 and
+     27b; the details are B158 and B159.
+     The question was: a store's refund to the debit card. The bank connection reads money
      coming into checking as a deposit (6.1): it cannot tell a store's refund
      from any other money in. So a refund to the debit card waits in review
      with the deposit choices, and cannot be matched to the purchase it is for
@@ -450,6 +458,28 @@ A29. A store's refund to the debit card. The bank connection reads money
      Recommendation: option 2. It works whatever the bank writes, and is the
      same choice you already have for a card refund. Built: option 1, as it
      always was.
+
+
+## Part A, added with your answers to A28 and A29 (Oct 10). Waiting on your answer.
+
+A30. An old event the money math now refuses (0.6). A28 covers an event
+     whose totals change. But a fix can also make an old answer impossible:
+     say a fix finds that a purchase you sorted in March could never have
+     been sorted that way. Then the history cannot be replayed at all, and
+     there are no new totals to take. The rulebook does not say what then.
+     Option 1: the server stays stopped; npm run replay-check says which
+     event and why, and nothing can be taken. The fix has to keep the old
+     answer working (or a person decides by hand, in a later chunk).
+     Option 2: the command offers to drop that one answer from the history
+     (with your yes, logged), so the item goes back to Review to be answered
+     again.
+     Option 3: the command offers to replace that answer with one you pick
+     now, from the choices the money math gives today (with your yes,
+     logged).
+     Recommendation: option 1 for now. It should be rare, nothing about
+     money changes without a person looking, and options 2 or 3 can be added
+     the first time it happens, when we know what the fix was. Built: option
+     1 (the command says which event and why, and the server stays stopped).
 
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
@@ -1532,3 +1562,42 @@ B154. The real server: npm run serve. This computer only, Plaid's test bank
       yet. Setup day starts tracking with the settings in section 2, so the
       paycheck rule and the mom rule are set afterwards on Settings, as in
       the demo. The demo is separate and never opens the database.
+
+
+## Part B, added with your answers to A28 and A29 (Oct 10). Tell me if any is wrong.
+
+B155. What npm run replay-check shows (A28, 0.6). Every event whose saved
+      totals differ from what it replays to now, in order, each with its
+      number, its day, what it was ("his answer: sort", "from the bank:
+      purchase ..."), and each total that differs, before and after, in
+      dollars. After the first such event usually every later one differs
+      too, since the buckets carry on; each is listed. It changes nothing
+      until you type yes (exactly "yes"); anything else leaves everything as
+      it was. Run it with the server stopped; it never talks to the bank.
+
+B156. Your yes is for exactly what you saw (like B113): if the history
+      replays to anything else by the time you answer, nothing is changed
+      and it says to run it again. The new totals are saved for every event
+      listed, all in one step, together with the change log line.
+
+B157. The change log line (13.5): "History took new totals", dated today in
+      your home time zone, with the first event that changed (what and its
+      day), how many events changed, and what changed at the first one
+      ("There: Wants $176.55 → $200.00, ..."). The line keeps every event's
+      before and after in the database. It sits among the other changes in
+      the order they happened. Totals edited by hand in the database are
+      shown and taken the same way.
+
+B158. Money in to checking only (A29): a deposit to savings is never a
+      debit card refund, so it has nothing to match. A paycheck-looking
+      deposit held back under 3.7 gets it too. The likely purchases are the
+      same as for a card refund (20d, A15): on checking, made on or before
+      the day the money came in, with at least that much not yet refunded,
+      and the same name or the same amount. With none, nothing extra shows.
+
+B159. A matched deposit becomes that refund (4.5): it is sorted nowhere
+      else, it cannot be sorted again (asked again, it is refused the way a
+      matched card refund is), and if the bank later takes it back (4.10),
+      the refund is undone as for one the bank matched. One already sorted
+      as payback can still be matched from its bucket's list, as A18 allows
+      for a card refund; the payback is undone first.

@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 14)
+# Budget App Rulebook (draft 15)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -15,6 +15,13 @@ number so a test can point at it. Nothing gets coded until you approve this.
      a number it cannot back up. If the bank cannot be read, Home shows the
      last safe to spend that the bank backed up, greyed, with the day and
      time it was checked.
+0.6  What the bank sent and every answer you give are kept in order, each
+     with the totals after it. If they no longer replay to those totals (a
+     fix to the money math that changes what an old event does), the app
+     does not start. A separate command shows each event whose totals would
+     change, before and after, and with your yes takes the new totals from
+     that event on. It goes in the change log (13.5), dated, with what
+     changed.
 
 
 ## 1. Accounts (all Bank of America, one connection)
@@ -102,6 +109,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
      for this one") matches it exactly as if the bank had, and cannot be
      undone in review. A likely purchase is on the same account, made on or
      before the refund, with at least the refund's amount not yet refunded.
+     A store's refund to the debit card shows up as money in to checking,
+     so money in to checking also lists its likely purchases on checking,
+     and picking one makes it that refund (6.1).
      A purchase or payment still waiting in review that is refunded in full
      has nothing left to sort: it leaves review by itself and is kept as a
      record, sorted nowhere. If the bank later takes the refund back (4.10),
@@ -174,7 +184,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
      A paycheck-looking deposit held back under 3.7 gets the same
      choices. A store refund waiting in review is not income: it gets
      payback and not mine, and it can be matched to the purchase it belongs
-     to (4.5).
+     to (4.5). Money in to checking keeps the four choices and also offers
+     "this refund is for this one", with its likely purchases on checking
+     (4.5).
 6.2  A rule can make the choice automatic for a known source.
 
 
@@ -522,3 +534,15 @@ a.  When two bank rules fit one item, the first in the list wins, as with
 b.  Today is the date in his home time zone, a setting that starts at
     America/New_York, never the date in the server's own clock zone. Dates
     the bank sends stay exactly as sent (section 2).
+
+
+## 27. Answers after the real server keeps everything (Oct 10, 2026)
+
+a.  When the history no longer replays to the totals saved with it, the
+    server stays stopped. A separate command shows each event whose totals
+    would change, before and after, and with your yes takes the new totals
+    from that event on, logged in the change log (0.6, 13.5, QUESTIONS.md
+    A28).
+b.  Money in to checking also offers "this refund is for this one", with
+    the likely purchases on checking, the same as a card refund (4.5, 6.1,
+    QUESTIONS.md A29).

@@ -723,14 +723,14 @@
   {
     "section": "review",
     "file": "packages/server/src/choices.ts",
-    "find": "      if (request.always !== undefined) return \"A rule can't do that for this item.\";\n      if (!subject.storeRefund) return no;",
-    "replace": "      if (!subject.storeRefund) return no;",
+    "find": "      if (request.always !== undefined) return \"A rule can't do that for this item.\";\n      // Money in with no purchase to match",
+    "replace": "      // Money in with no purchase to match",
     "why": "[review] [pre-merge] A18 a rule that matches a refund is not refused up front"
   },
   {
     "section": "review",
     "file": "packages/server/src/choices.ts",
-    "find": "      if (!subject.storeRefund) return no;\n",
+    "find": "      if (!subject.storeRefund && options.match.length === 0) return no;\n",
     "replace": "",
     "why": "[review] [pre-merge] A18 matching something that is not a refund gets the refund reason"
   },
@@ -1748,5 +1748,68 @@
     "find": "'3333': 'everyday-card', '4444': 'old-card'",
     "replace": "'3333': 'old-card', '4444': 'everyday-card'",
     "why": "[keeper] --connect takes the old card for the everyday card"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/choices.ts",
+    "find": "      if (!subject.storeRefund && options.match.length === 0) return no;",
+    "replace": "      if (!subject.storeRefund) return no;",
+    "why": "[a29] the desk refuses matching money in to checking"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/retotal.ts",
+    "find": "    if (found.key !== key) return",
+    "replace": "    if (found.key === 'never') return",
+    "why": "[a28] a yes to a list he did not see is taken"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/retotal.ts",
+    "find": "    for (const e of found.events) update.run(JSON.stringify(e.after), e.seq);",
+    "replace": "    for (const e of found.events) update.run(JSON.stringify(e.before), e.seq);",
+    "why": "[a28] the yes keeps the old totals"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/retotal.ts",
+    "find": "      date: todayIn(found.timeZone ?? DEFAULT_SETTINGS.homeTimeZone, now),",
+    "replace": "      date: now.toISOString().slice(0, 10),",
+    "why": "[a28] the log line is dated in UTC, not his home time zone"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/retotal.ts",
+    "find": "    if (stored.sealed && !sameTotals(stored.totals, totals)) changed.push(",
+    "replace": "    if (stored.sealed && !sameTotals(stored.totals, totals) && stored.event.kind === 'answer') changed.push(",
+    "why": "[a28] only his answers are listed, not what the bank sent"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/replay-check-command.ts",
+    "find": "  if (reply.trim() !== 'yes') {",
+    "replace": "  if (!reply.trim().toLowerCase().startsWith('y')) {",
+    "why": "[a28] anything starting with y counts as his yes"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history-db.ts",
+    "find": "    check\n      ? (stored, now) => {",
+    "replace": "    false\n      ? (stored, now) => {",
+    "why": "[a28] the replay check checks nothing"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/views/settings.ts",
+    "find": "if (line.afterBankLines === upTo) outside.push(",
+    "replace": "if (line.afterBankLines === upTo + 1) outside.push(",
+    "why": "[a28] a server line goes one bank rule line too late on the change log"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/views/settings.ts",
+    "find": ".filter((name) => before[name] !== after[name])",
+    "replace": ".filter((name) => before[name] === after[name])",
+    "why": "[a28] the log line lists the totals that did not change"
   }
 ]

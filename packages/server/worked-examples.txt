@@ -288,3 +288,36 @@ The change itself is dated Oct 10, the day it was made.
 
 Dates: now 2026-10-02 | bank purchase 2026-10-03 | hand move 2026-10-02 | after the change 2026-10-09 | change made 2026-10-10
 Check: purchase 15.00 | moved 1.00
+
+
+========================================================================
+EXAMPLE 8. A fix to the money math changes what old answers did (rules 0.6, 13.5; QUESTIONS.md A28)
+========================================================================
+
+Setup day (Oct 1): Wants 200.00, Needs 2,350.00. After each event the
+totals are saved with it.
+
+Oct 2. CORNER STORE 23.45 on the everyday card; he sorts it to wants.
+       Saved: Wants 200.00 - 23.45 = 176.55, Needs 2,350.00.
+Oct 3. MADE UP CAFE 6.50 arrives and waits in review.
+       Saved: Wants 176.55, Needs 2,350.00, spending waiting 6.50.
+       He sorts it to wants. Saved: Wants 176.55 - 6.50 = 170.05.
+
+Then the money math changes (here on purpose, as a test): sorting to wants
+lands in needs. Replayed, the history no longer comes to what was saved, so
+the server does not start (0.6). npm run replay-check lists 3 events:
+
+  his answer: sort, Oct 2       Wants 176.55 → 200.00
+                                Needs 2,350.00 → 2,350.00 - 23.45 = 2,326.55
+  from the bank: cafe, Oct 3    Wants 176.55 → 200.00
+                                Needs 2,350.00 → 2,326.55
+  his answer: sort, Oct 3       Wants 170.05 → 200.00
+                                Needs 2,350.00 → 2,326.55 - 6.50 = 2,320.05
+
+He types yes on Oct 9. The new totals are saved for the 3 events, the
+change log says "History took new totals", dated Oct 9, from his answer of
+Oct 2, and the server starts: Wants 200.00, Needs 2,320.05.
+
+Dates: first event 2026-10-02 | logged 2026-10-09
+Check: first wants before 176.55 | first wants after 200.00 | first needs after 2,326.55
+Check: last wants before 170.05 | last needs after 2,320.05

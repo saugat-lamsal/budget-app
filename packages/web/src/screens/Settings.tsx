@@ -12,6 +12,7 @@ import { SaidNotice, type Said } from './choose.js';
 import { bankRuleText } from './setup-text.js';
 import {
   LEFTOVER_NAMES,
+  LOGIN_LINES,
   RULE_CHOICE_NAMES,
   RULE_KINDS,
   RULE_KIND_DETAIL,
@@ -19,6 +20,7 @@ import {
   daysText,
   leftoverText,
   recheckedText,
+  retotaledText,
   reminderText,
   ruleDoneText,
   ruleText,
@@ -371,6 +373,14 @@ function LogLine({ line }: { readonly line: LogRow }) {
           testId={testId}
         />
       );
+    case 'history-retotaled':
+      return <ListRow icon="undo" title="History took new totals" detail={`${retotaledText(line)} · ${when}`} testId={testId} />;
+    case 'logged-in':
+    case 'logged-out':
+    case 'passkey-added':
+      return <ListRow icon="lock" title={LOGIN_LINES[line.kind]} detail={`${line.device} · ${when}`} testId={testId} />;
+    case 'stay-logged-in-changed':
+      return <ListRow icon="lock" title="Stay logged in" detail={`${daysText(line.before)} → ${daysText(line.after)} · ${when}`} testId={testId} />;
   }
 }
 

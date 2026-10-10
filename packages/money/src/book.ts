@@ -1171,7 +1171,7 @@ export class Book {
         const txn = entry.txn;
         // 3.7, B54: a deposit older than the last paycheck cannot start a pay period.
         const older = txn.kind === 'deposit' && daysBetween(this.#lastPaycheckDate, txn.date) < 0;
-        const likely = txn.kind === 'refund' ? likelyPurchases({ account: txn.account, date: txn.date, amount: txn.amount, description: txn.description }, this.#purchaseCandidates()) : [];
+        const likely = this.#likelyFor(txn);
         const options = reviewOptions({ type: 'money-in', reason: entry.reason, account: txn.account, olderThanLastPaycheck: older, likely: likely.map((p) => p.id) });
         if (options.type !== 'sort') throw new MoneyError('broken-book', 'money in has no choices');
         return Object.freeze({
@@ -1997,9 +1997,15 @@ export class Book {
   // matched it, and like a matched refund it cannot be sorted again. A
   // refund already put back into a bucket can still be matched; that is
   // undone first.
+  //
+  // QUESTIONS.md A29: money in to checking can be a store's refund to the
+  // debit card, which the bank shows as a deposit. Matched, it becomes that
+  // refund, as if the bank had said so.
   #matchRefund(entry: Entry, purchaseId: unknown): void {
-    if (entry.kind !== 'money-in' || entry.txn.kind !== 'refund') throw new MoneyError('bad-choice', `only a store refund can be matched to a purchase, and ${entry.id} is not one`);
-    const txn = entry.txn;
+    if (entry.kind !== 'money-in' || !(entry.txn.kind === 'refund' || entry.txn.account === 'checking')) {
+      throw new MoneyError('bad-choice', `only a store refund or money in to checking can be matched to a purchase, and ${entry.id} is not one`);
+    }
+    const txn: Refund = entry.txn.kind === 'refund' ? entry.txn : { kind: 'refund', id: entry.txn.id, account: 'checking', date: entry.txn.date, amount: entry.txn.amount, description: entry.txn.description };
     const target = typeof purchaseId === 'string' ? this.#entries.get(this.#aliases.get(purchaseId) ?? purchaseId) : undefined;
     if (target?.kind !== 'spend' || !this.#couldBelongTo(txn, target)) {
       throw new MoneyError('bad-choice', 'that is not a purchase this refund can belong to: it must be on the same account, on or before the refund, with at least the refund left to refund');
@@ -2008,6 +2014,13 @@ export class Book {
       this.#remove(entry);
       this.#applyRefund(txn, target);
     });
+  }
+
+  // 20d, A15: the purchases a refund likely belongs to; A29: money in to
+  // checking too, which can be a store's refund to the debit card. Money in
+  // to savings has none: nothing is bought from savings.
+  #likelyFor(txn: Deposit | Refund): LikelyPurchase[] {
+    return likelyPurchases({ account: txn.account, date: txn.date, amount: txn.amount, description: txn.description }, this.#purchaseCandidates());
   }
 
   // 4.5: a purchase a refund can belong to: on the same account, made on or
@@ -2695,7 +2708,7 @@ export class Book {
         const txn = entry.txn;
         // 3.7, B54: a deposit older than the last paycheck cannot start a pay period.
         const older = txn.kind === 'deposit' && daysBetween(this.#lastPaycheckDate, txn.date) < 0;
-        const likely = txn.kind === 'refund' ? likelyPurchases({ account: txn.account, date: txn.date, amount: txn.amount, description: txn.description }, this.#purchaseCandidates()) : [];
+        const likely = this.#likelyFor(txn);
         const facts: ReviewFacts = { type: 'money-in', reason: entry.reason, account: txn.account, olderThanLastPaycheck: older, likely: likely.map((p) => p.id) };
         return {
           item,

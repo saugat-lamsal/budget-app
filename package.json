@@ -13,7 +13,8 @@
     "typecheck": "tsc -p tsconfig.json && npm run typecheck --workspaces --if-present",
     "demo": "node scripts/demo.mjs",
     "screenshots": "node scripts/screenshots.mjs",
-    "serve": "node scripts/serve.mjs"
+    "serve": "node scripts/serve.mjs",
+    "replay-check": "node scripts/replay-check.mjs"
   },
   "engines": {
     "node": ">=22.12.0"

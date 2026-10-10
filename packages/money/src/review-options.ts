@@ -40,7 +40,9 @@ export type ReviewOptions =
       // Which picks "always do this" can make a rule for (13.6); empty when none.
       readonly always: readonly PickTo[];
       readonly unavailable: readonly Unavailable[];
-      // A18: the purchases a refund can be matched to (its likely purchases, 20d). Matching is final.
+      // A18: the purchases a refund can be matched to (its likely purchases, 20d),
+      // and A29: money in to checking too, which can be a store's refund to the
+      // debit card. Matching is final.
       readonly match: readonly string[];
       // What marking it a transfer with each account does (5.6 with 5.1 to 5.3).
       readonly transferOutcome: Readonly<Partial<Record<AccountId, TransferOutcome>>>;
@@ -62,7 +64,8 @@ export type ReviewFacts =
       readonly account: 'checking' | 'savings' | 'everyday-card' | 'old-card';
       // B54: older than the last paycheck, so it cannot start a pay period.
       readonly olderThanLastPaycheck: boolean;
-      // 20d: for a refund, the purchases it likely belongs to.
+      // 20d: for a refund, or money in to checking (A29), the purchases it
+      // likely belongs to.
       readonly likely: readonly string[];
     }
   | {
@@ -123,8 +126,9 @@ function moneyInOptions(f: Extract<ReviewFacts, { type: 'money-in' }>): ReviewOp
     split: null,
     transfer,
     transferOutcome: Object.fromEntries(transfer.map((a) => [a, 'no-bucket-change'])),
-    // A18: a refund can be matched to a purchase it likely belongs to (4.5).
-    match: f.reason === 'refund' ? [...f.likely] : [],
+    // A18: a refund can be matched to a purchase it likely belongs to (4.5);
+    // A29: so can money in to checking.
+    match: [...f.likely],
     // 6.2, B17, B55: a deposit rule can pick anything but my paycheck, and an
     // early paycheck or a refund never gets a rule.
     always: f.reason === 'deposit' ? ['other-income', ...BUCKET_PAYBACKS, 'not-mine'] : [],

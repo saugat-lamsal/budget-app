@@ -1678,5 +1678,19 @@
     "find": "Number(alpha) < 1)",
     "replace": "Number(alpha) < 0)",
     "why": "[contrast] a see-through pinned notice is not a problem"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Review.tsx",
+    "find": "(subject.refund || subject.likely.length > 0) && <LikelyPurchases",
+    "replace": "subject.refund && <LikelyPurchases",
+    "why": "[a29] Review shows no likely purchases for money in to checking"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "{subject.refund ? 'Likely purchases' : 'A refund to your debit card?'}",
+    "replace": "{'Likely purchases'}",
+    "why": "[a29] money in is not said to be maybe a debit card refund"
   }
 ]
