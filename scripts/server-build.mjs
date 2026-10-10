@@ -13,6 +13,7 @@ export const path = (p) => fileURLToPath(new URL(p, root));
 const COMMANDS = {
   serve: 'packages/server/src/serve/main.ts',
   'replay-check': 'packages/server/src/serve/replay-check.ts',
+  'login-code': 'packages/server/src/serve/login-code.ts',
 };
 
 export async function buildServer() {

@@ -374,6 +374,8 @@ describe('the demo is made-up data only', () => {
       'views/buckets.ts',
       'views/choice.ts',
       'views/home.ts',
+      // What Settings shows about logging in (Step 2): a type only; the demo has no login.
+      'views/login.ts',
       'views/payday.ts',
       'views/review.ts',
       // The change log's lines the server keeps (A28, logins): a type only.

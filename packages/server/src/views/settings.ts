@@ -17,6 +17,7 @@ import type { BankRule } from '../bank/reading.js';
 import type { Totals } from '../history/history.js';
 import type { BankRuleLogLine } from './bank-rules.js';
 import type { RuleView } from './choice.js';
+import type { LoginView } from './login.js';
 import type { ServerLogLine } from './server-log.js';
 
 // What the Settings screen shows, worked out on the server from the book:
@@ -39,6 +40,8 @@ export interface SettingsInput {
   // The change log's lines the server keeps (13.5): the history taking new
   // totals (A28), and logins. None when left out (the demo).
   readonly serverLog?: readonly ServerLogLine[];
+  // Step 2: the login card, on the real server only (the demo has no login).
+  readonly login?: LoginView;
 }
 
 // A sorting rule, with its place among the rules of its kind: the first that
@@ -83,10 +86,13 @@ export type LogRow =
   | { readonly key: string; readonly date: IsoDate; readonly kind: 'stay-logged-in-changed'; readonly before: number; readonly after: number };
 
 export type SettingsView =
-  | { readonly state: 'not-set-up'; readonly madeUpData: boolean }
+  // Before setup day there are no settings yet, but he can still log out.
+  | { readonly state: 'not-set-up'; readonly madeUpData: boolean; readonly login?: LoginView }
   | {
       readonly state: 'tracking';
       readonly madeUpData: boolean;
+      // Step 2: the login card, on the real server only.
+      readonly login?: LoginView;
       readonly today: IsoDate;
       // 0.5: Settings says so too when the totals do not match the bank.
       readonly check: { readonly state: 'matches' } | { readonly state: 'does-not-match'; readonly difference: Cents } | { readonly state: 'bank-not-read' };
@@ -130,7 +136,8 @@ export function ruleViewOf(rule: SortingRule): RuleView {
 
 export function settingsView(input: SettingsInput): SettingsView {
   const { today, book, bank, madeUpData } = input;
-  if (book === null) return { state: 'not-set-up', madeUpData };
+  const login = input.login === undefined ? {} : { login: input.login };
+  if (book === null) return { state: 'not-set-up', madeUpData, ...login };
 
   let check: Extract<SettingsView, { state: 'tracking' }>['check'];
   if (bank === null) check = { state: 'bank-not-read' };
@@ -164,6 +171,7 @@ export function settingsView(input: SettingsInput): SettingsView {
     bankRules: input.bankRules?.rules ?? [],
     bankRulesRecentDays: input.bankRules?.recentDays ?? 0,
     log: logRows(book, input.bankRules?.log ?? [], input.serverLog ?? []),
+    ...login,
   };
 }
 

@@ -1,5 +1,7 @@
-import type { Server } from 'node:http';
+import type { IncomingMessage, Server } from 'node:http';
 import { DEFAULT_SETTINGS, type BankBalances, type Book, type CardStatement, type IsoDate, type Pot } from '@budget-app/money';
+import { Auth } from '../auth/auth.js';
+import { answerAuth, loginViewOf } from '../auth/http.js';
 import { BankRulesDesk } from '../bank-rules-desk.js';
 import { bankLinesIn, bankRuleLogIn, saveBankRuleLine } from '../bank-rules-db.js';
 import { RECENT_DAYS } from '../bank-rules.js';
@@ -48,6 +50,10 @@ import { timeIn, todayIn } from './today.js';
 export interface KeeperInput {
   readonly db: Db;
   readonly now: () => Date;
+  // The app's own address, as the browser shows it (http://localhost:5190):
+  // passkeys are made for it, and every request must be addressed to it
+  // (Step 2). Known once the server listens; tests that never serve leave it out.
+  readonly origin?: () => string;
   readonly log?: Log;
   // For tests: runs inside each save, after everything is written and
   // before it is committed. A throw there stops the save halfway.
@@ -70,12 +76,17 @@ export class Keeper {
   readonly #db: Db;
   readonly #now: () => Date;
   readonly #beforeCommit: (() => void) | undefined;
+  // Step 2: his passkeys and logins.
+  readonly #auth: Auth;
+  #origin: () => string;
   #state!: State;
 
   private constructor(input: KeeperInput) {
     this.#db = input.db;
     this.#now = input.now;
     this.#beforeCommit = input.beforeCommit;
+    this.#origin = input.origin ?? (() => 'http://localhost:5190');
+    this.#auth = new Auth({ db: input.db, now: input.now, origin: () => this.#origin(), today: () => this.today(), bookLines: () => this.book()?.changeLog().length ?? 0 });
   }
 
   // Opens the books kept in the database, after checking that the history
@@ -185,9 +196,30 @@ export class Keeper {
     return paydayView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false });
   }
 
-  settings(): SettingsView {
+  // With the request, the login card for the device asking (Step 2).
+  settings(request?: IncomingMessage): SettingsView {
     const rules = this.#state.bankRules;
-    return settingsView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false, bankRules: { rules: rules.rules(), log: rules.log(), recentDays: RECENT_DAYS }, serverLog: serverLinesIn(this.#db) });
+    const session = request === undefined ? null : this.#auth.session(request.headers.cookie);
+    return settingsView({
+      today: this.today(),
+      book: this.book(),
+      bank: this.#bank(),
+      madeUpData: false,
+      bankRules: { rules: rules.rules(), log: rules.log(), recentDays: RECENT_DAYS },
+      serverLog: serverLinesIn(this.#db),
+      ...(session === null ? {} : { login: loginViewOf(this.#auth, session) }),
+    });
+  }
+
+  // ----- Login (Step 2) -----
+
+  // A new one-time code for making a passkey: good once, for 15 minutes.
+  loginCode(): string {
+    return this.#auth.newCode();
+  }
+
+  hasPasskeys(): boolean {
+    return this.#auth.hasPasskeys();
   }
 
   setupView(): SetupView {
@@ -274,17 +306,26 @@ export class Keeper {
     }
   }
 
-  // The web server for the screens, with these books behind it.
-  server(webRoot: string, onError?: (error: unknown) => void): Server {
+  // The web server for the screens, with these books behind it. Every
+  // screen and every /api address needs a login (Step 2), checked against
+  // the app's own address, `origin`.
+  server(webRoot: string, origin: () => string, onError?: (error: unknown) => void): Server {
+    this.#origin = origin;
+    const auth = this.#auth;
     return createAppServer({
       webRoot,
       ...(onError === undefined ? {} : { onError }),
+      gate: {
+        origin,
+        loggedIn: (request) => auth.session(request.headers.cookie) !== null,
+        auth: (path, request, body) => answerAuth(auth, path, request, body, auth.session(request.headers.cookie)),
+      },
       home: () => this.home(),
       buckets: () => this.buckets(),
       review: () => this.review(),
       activity: (_request, pot) => this.activity(pot),
       payday: () => this.payday(),
-      settings: () => this.settings(),
+      settings: (request) => this.settings(request),
       setupView: () => this.setupView(),
       choice: (_request, choice) => this.choice(choice),
       move: (_request, move) => this.move(move),

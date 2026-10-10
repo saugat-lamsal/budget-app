@@ -5,6 +5,10 @@ import { POT_NAMES } from '../ui/names.js';
 // opens the right screen. The server answers each of these addresses with
 // the app (packages/server/src/http/server.ts, APP_PATHS; a test checks).
 export const TABS = ['home', 'buckets', 'review', 'settings'] as const;
+
+// The login page, on the real server only (Step 2). Must match
+// packages/server/src/http/server.ts LOGIN_PATH (a test checks).
+export const LOGIN_PATH = '/login';
 export type Tab = (typeof TABS)[number];
 
 export const TAB_LABELS: Readonly<Record<Tab, string>> = { home: 'Home', buckets: 'Buckets', review: 'Review', settings: 'Settings' };

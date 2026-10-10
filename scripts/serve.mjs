@@ -2,7 +2,8 @@
 //
 // Builds the screens and the real server, then starts it: the screens from
 // the database (data/budget.sqlite unless --db says another file). Plaid's test
-// bank only, this computer only, no login yet. It needs PLAID_ENV=sandbox,
+// bank only, this computer only, a passkey login (with no passkey yet it
+// prints a one-time code to make the first). It needs PLAID_ENV=sandbox,
 // PLAID_CLIENT_ID, PLAID_SECRET and BANK_TOKEN_KEY in .env.
 //   --connect   connects the test bank first, with made-up accounts like his
 //   --sync      syncs with the test bank once before serving

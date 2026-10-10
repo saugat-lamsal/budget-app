@@ -1601,3 +1601,55 @@ B159. A matched deposit becomes that refund (4.5): it is sorted nowhere
       the refund is undone as for one the bank matched. One already sorted
       as payback can still be matched from its bucket's list, as A18 allows
       for a card refund; the payback is undone first.
+
+
+## Part B, added with passkey login (Step 2, Oct 10). Tell me if any is wrong.
+
+B160. What needs a login on the real server: every screen (Home, Buckets,
+      Review, Settings, Payday, each bucket's list, the Setup day steps, and
+      the bare address), every screen's numbers, and everything the screens
+      send (his answers, a take-back seen). Without a login, a screen sends
+      him to the login page and the numbers are refused (401, nothing of
+      his). Open: the login page, the app's own files it needs (scripts,
+      styles, icons: nothing of his), and the login's own addresses (whether
+      he is logged in and whether a passkey exists yet; asking to log in;
+      the one-time code). A test lists every address and checks each.
+
+B161. The one-time code: 12 digits in three groups (1234-5678-9012), typed
+      with or without the dashes (the phone's digit pad has none). npm run
+      serve prints one in its own window when there is no passkey yet; npm
+      run login-code prints one any time, on this computer. Only the newest
+      code is good, once, for 15 minutes (at 14 minutes 59 seconds yes, at
+      15 no). After 10 wrong codes in a row, no code is good until a new one
+      is printed. A code makes a passkey on the device it is typed on, and
+      logs that device in.
+
+B162. Logging in: one passkey for this app, checked with Face ID, Touch ID,
+      or the computer's own check (the check is required). Each login
+      question can be answered once, within 5 minutes. A passkey whose use
+      count goes backwards (a copy) is refused. Passkeys are made for the
+      app's host name: on this computer, http://localhost:5190 (npm run
+      serve prints it); http://127.0.0.1:5190 sends you there. The phone
+      gets its own address with hosting (Phase 6).
+
+B163. Staying logged in (section 2): 30 days on a device from when you
+      logged in, then the login page again. A setting on Settings, a whole
+      number of days from 1 to 365; a change applies right away to every
+      device logged in (13.1) and is logged. Log out (Settings) ends the
+      login on that device only.
+
+B164. Another passkey (Settings, "Add a passkey"): only logged in, it asks
+      first, and the passkey is made on the device you are using. The same
+      passkey cannot be added twice. Removing a passkey is not built yet.
+
+B165. The change log (13.5): "Logged in", "Logged out", "Passkey added"
+      (each with the device in words, such as "Safari on iPhone") and "Stay
+      logged in" (before → after), dated, among the other changes in the
+      order they happened. Not logged: a wrong code or a refused passkey.
+
+B166. Kept in the database: his passkeys' public keys only (the private key
+      never leaves his device), each device's login only as a hash (the
+      login itself is only in that device's cookie), and the one-time codes
+      only as a hash. The cookie is HttpOnly and SameSite=Strict, for the
+      whole app; Secure once the app has a https address (Phase 6). Every
+      POST must come from the app's own address, or it is refused.

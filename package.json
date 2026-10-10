@@ -14,7 +14,8 @@
     "demo": "node scripts/demo.mjs",
     "screenshots": "node scripts/screenshots.mjs",
     "serve": "node scripts/serve.mjs",
-    "replay-check": "node scripts/replay-check.mjs"
+    "replay-check": "node scripts/replay-check.mjs",
+    "login-code": "node scripts/login-code.mjs"
   },
   "engines": {
     "node": ">=22.12.0"

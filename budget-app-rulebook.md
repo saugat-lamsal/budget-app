@@ -40,6 +40,8 @@ number so a test can point at it. Nothing gets coded until you approve this.
 - Low-bucket alert: 20% of what the bucket started the pay period with
 - Card reminders: 7 days and 2 days before the due date
 - Daily review time: 8:00 PM
+- Stay logged in: 30 days on a device, counted from the login. Logins, new
+  passkeys and log outs are logged (13.5).
 - Home time zone: America/New_York. The app's today is the date there,
   whatever time zone the server's own clock is set to. Dates the bank sends
   stay exactly as sent.
@@ -546,3 +548,5 @@ a.  When the history no longer replays to the totals saved with it, the
 b.  Money in to checking also offers "this refund is for this one", with
     the likely purchases on checking, the same as a card refund (4.5, 6.1,
     QUESTIONS.md A29).
+c.  You stay logged in for 30 days on a device, and that is a setting
+    (section 2).

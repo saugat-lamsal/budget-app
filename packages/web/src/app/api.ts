@@ -2,6 +2,7 @@ import type { Pot } from '@budget-app/money';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   ActivityView,
+  AuthState,
   BankRuleRequest,
   BankRuleResponse,
   BucketsView,
@@ -52,8 +53,15 @@ const ACTIVITY_URL: Readonly<Record<Pot, ViewUrl>> = {
 };
 type ViewUrl = keyof typeof READS;
 
+// On the real server, a screen whose login has ended goes to the login page
+// (Step 2). The demo has no login, so it never answers 401.
+function toLogin(response: Response): void {
+  if (response.status === 401) window.location.assign('/login');
+}
+
 async function fetchView<T extends { readonly state: string }>(url: ViewUrl): Promise<T> {
   const response = await READS[url]();
+  toLogin(response);
   if (!response.ok) throw new Error(`${url} answered ${response.status}`);
   const view = (await response.json()) as T;
   if (view.state !== 'tracking' && view.state !== 'not-set-up') throw new Error(`${url} sent something unexpected`);
@@ -94,10 +102,35 @@ export async function sendChoice(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
   });
+  toLogin(response);
   if (response.status !== 200 && response.status !== 422) throw new Error(`sending the choice answered ${response.status}`);
   const answer = (await response.json()) as ChoiceResponse | MoveResponse | SettingsResponse | RuleResponse | SetupResponse | BankRuleResponse;
   if (typeof answer !== 'object' || answer === null || typeof answer.ok !== 'boolean') throw new Error('the choice was answered with something unexpected');
   return answer;
+}
+
+// ----- Logging in (Step 2, the real server only) -----
+
+// Whether this device is logged in, and whether any passkey exists yet.
+export async function authState(): Promise<AuthState> {
+  const response = await fetch('/api/auth', READ);
+  if (!response.ok) throw new Error(`the login page's state answered ${response.status}`);
+  return (await response.json()) as AuthState;
+}
+
+// The login's own addresses. They change who is logged in, and which
+// passkeys can log in; never money (0.4).
+type AuthPath = '/api/auth/login/options' | '/api/auth/login' | '/api/auth/code/options' | '/api/auth/code' | '/api/auth/passkey/options' | '/api/auth/passkey' | '/api/auth/logout' | '/api/auth/stay';
+
+// What the server answers: done (with the passkey question, when one was
+// asked for), or refused with why. No signal throws.
+export type AuthReply = { readonly ok: true; readonly options?: unknown } | { readonly ok: false; readonly why: string; readonly code?: string };
+
+export async function authSend(path: AuthPath, body: object): Promise<AuthReply> {
+  const response = await fetch(path, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (response.status === 401) return { ok: false, why: 'You are not logged in any more. Log in again.' };
+  if (response.status !== 200 && response.status !== 422) throw new Error(`${path} answered ${response.status}`);
+  return (await response.json()) as AuthReply;
 }
 
 // A new number for a decision, made once when it is made and kept for every

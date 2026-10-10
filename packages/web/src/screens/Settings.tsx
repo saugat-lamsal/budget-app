@@ -1,5 +1,5 @@
 import { formatDollars, parseDollars, type Cents, type LeftoverChoice, type Settings } from '@budget-app/money';
-import type { BankRuleChange, LogRow, RuleRequest, RuleRow, RuleSpec, SettingsPreviewView, SettingsRequest, SettingsView } from '@budget-app/server/views';
+import type { BankRuleChange, LoginView, LogRow, RuleRequest, RuleRow, RuleSpec, SettingsPreviewView, SettingsRequest, SettingsView } from '@budget-app/server/views';
 import { useRef, useState, type ReactNode } from 'react';
 import { newDecisionId, sendChoice, type Load, type Reload } from '../app/api.js';
 import { pathOf } from '../app/routes.js';
@@ -9,6 +9,7 @@ import { POT_NAMES } from '../ui/names.js';
 import { BankRuleRows, BankRuleSheet, type Editing as BankEditing } from './bank-rules.js';
 import { bankRuleDoneText } from './bank-rules-text.js';
 import { SaidNotice, type Said } from './choose.js';
+import { LoginCard } from './login-card.js';
 import { bankRuleText } from './setup-text.js';
 import {
   LEFTOVER_NAMES,
@@ -60,10 +61,22 @@ export function SettingsScreen({ load, onRetry, onChanged }: { readonly load: Lo
         <>
           {load.value.madeUpData && <MadeUpPill />}
           <StateMessage icon="settings" title="No settings yet" detail="Setup day reads your bank and starts your buckets. Your settings and rules show here after that." testId="settings-not-set-up" />
+          {load.value.login !== undefined && <NotSetUpLogin login={load.value.login} reload={onRetry} />}
         </>
       )}
       {load.status === 'ready' && load.value.state === 'tracking' && <SettingsReady view={load.value} reload={onRetry} onChanged={onChanged} />}
     </main>
+  );
+}
+
+// Before setup day there are no settings, but he can still log out (Step 2).
+function NotSetUpLogin({ login, reload }: { readonly login: LoginView; readonly reload: Reload }) {
+  const [said, setSaid] = useState<Said | null>(null);
+  return (
+    <>
+      {said !== null && <SaidNotice said={said} sending={false} onRetry={() => undefined} onDismiss={() => setSaid(null)} sticky />}
+      <LoginCard login={login} onSaid={setSaid} reload={reload} />
+    </>
   );
 }
 
@@ -279,6 +292,17 @@ function SettingsReady({ view, reload, onChanged }: { readonly view: Tracking; r
         )}
         <ListRow icon="settings" title="Add a bank rule" onClick={() => openBank({ start: null, title: 'New bank rule' })} testId="row-add-bank-rule" />
       </Card>
+
+      {view.login !== undefined && (
+        <LoginCard
+          login={view.login}
+          onSaid={setSaid}
+          reload={(when) => {
+            reload(when);
+            onChanged(when);
+          }}
+        />
+      )}
 
       <Card title="Change log" testId="log">
         {view.log.length === 0 ? (

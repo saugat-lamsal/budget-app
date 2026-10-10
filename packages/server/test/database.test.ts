@@ -20,7 +20,7 @@ describe('the database', () => {
     const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[]).map(
       (t) => t.name,
     );
-    expect(tables).toEqual(['accounts', 'attention', 'bank_items', 'book_events', 'change_log', 'connection', 'decisions', 'last_checked', 'settings', 'statements', 'syncs']);
+    expect(tables).toEqual(['accounts', 'attention', 'bank_items', 'book_events', 'change_log', 'connection', 'decisions', 'last_checked', 'login_codes', 'passkeys', 'sessions', 'settings', 'statements', 'syncs']);
     expect(db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION);
     expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
     db.close();
@@ -87,6 +87,21 @@ describe('the database', () => {
     // Numbers go on after the last one, never reused.
     db.prepare("INSERT INTO book_events (sync, kind, date, payload, totals) VALUES (NULL, 'answer', '2026-10-04', '{}', 'null')").run();
     expect(db.prepare('SELECT MAX(seq) AS seq FROM book_events').get()).toEqual({ seq: 4 });
+    db.close();
+  });
+
+  it('step 3 (passkey login) keeps everything as it was and adds the login tables, empty: nobody is logged in and there is no passkey', () => {
+    const path = tempFile();
+    const old = openDatabase(path, { upTo: 2 });
+    expect(old.pragma('user_version', { simple: true })).toBe(2);
+    old.prepare("INSERT INTO book_events (sync, kind, date, payload, totals) VALUES (NULL, 'answer', '2026-10-04', '{}', 'null')").run();
+    old.prepare("INSERT INTO change_log (date, what, detail) VALUES ('2026-10-04', 'setup day', '{}')").run();
+    old.close();
+    const db = openDatabase(path);
+    expect(db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION);
+    expect(db.prepare('SELECT seq, kind, date FROM book_events').all()).toEqual([{ seq: 1, kind: 'answer', date: '2026-10-04' }]);
+    expect(db.prepare('SELECT what FROM change_log').all()).toEqual([{ what: 'setup day' }]);
+    for (const table of ['passkeys', 'sessions', 'login_codes']) expect(db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get(), table).toEqual({ n: 0 });
     db.close();
   });
 

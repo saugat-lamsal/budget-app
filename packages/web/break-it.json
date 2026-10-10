@@ -345,7 +345,7 @@
   {
     "section": "home",
     "file": "packages/web/src/main.tsx",
-    "find": "if (routeOf(window.location.pathname) === null) window.history.replaceState(null, '', pathOf('home'));",
+    "find": "if (!login && routeOf(window.location.pathname) === null) window.history.replaceState(null, '', pathOf('home'));",
     "replace": "",
     "why": "the bare address does not say /home"
   },
@@ -1080,8 +1080,8 @@
   {
     "section": "home",
     "file": "packages/web/src/main.tsx",
-    "find": "if (routeOf(window.location.pathname) === null) window.history.replaceState",
-    "replace": "if (window.location.pathname !== '/home' && window.location.pathname !== '/buckets' && window.location.pathname !== '/review' && window.location.pathname !== '/settings') window.history.replaceState",
+    "find": "if (!login && routeOf(window.location.pathname) === null) window.history.replaceState",
+    "replace": "if (!login && window.location.pathname !== '/home' && window.location.pathname !== '/buckets' && window.location.pathname !== '/review' && window.location.pathname !== '/settings') window.history.replaceState",
     "why": "[activity] B97 opening a bucket's address opens Home"
   },
   {

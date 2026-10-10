@@ -152,7 +152,7 @@ This applies to every phase and every session, cloud or local.
   answers after Setup day (A25, A26: section 2, 4.5, 14.2), section 26
   his answers after bank rules (A27, and the home time zone: section 2),
   section 27 his answers after the real server (A28: rule 0.6; A29: 4.5,
-  6.1).
+  6.1; 27c staying logged in, section 2).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -900,6 +900,44 @@ This applies to every phase and every session, cloud or local.
       Review says "A refund to your debit card?" over the list. Demo life
       review-debit-refund. Worked examples money 40, bank 8.
     - Breaks "[a28]", "[a29]"; six older breaks pointed at the code again.
+  - Step 2, passkey login (Oct 10, 2026; this computer only, the phone comes
+    with hosting in Phase 6). Library: SimpleWebAuthn (@simplewebauthn/server
+    14.0.3, @simplewebauthn/browser 14.0.0): every passkey check is its.
+    - packages/server/src/auth: auth.ts (Auth: one-time codes, making and
+      using passkeys, logins, log out, the stay-logged-in setting),
+      auth-db.ts (tables passkeys, sessions, login_codes: database step 3;
+      logins and codes kept only as hashes), http.ts (the login's own
+      addresses), device.ts (a device in words). Login lines go in the
+      change log through server-log.ts.
+    - http/server.ts: ROUTES (every address, with whether it needs a login),
+      AUTH_ROUTES, LOGIN_PATH, and the Gate: with one (the real server, from
+      Keeper.server(webRoot, origin)), every screen and /api address needs a
+      login; every POST must carry the app's own Origin; a request to another
+      host name is refused (127.0.0.1 is sent to localhost). Without one (the
+      demo), no login, as before.
+    - The cookie budget-login: HttpOnly, SameSite=Strict, Path=/, Max-Age the
+      setting (30 days to start; rulebook section 2, 27c); Secure once the
+      address is https. The code: 12 digits, good once for 15 minutes, only
+      the newest, void after 10 wrong tries; npm run serve prints one when
+      there is no passkey; npm run login-code prints one any time.
+    - Phone: screens/Login.tsx (the login page), screens/login-card.tsx (the
+      Login card on Settings: stay logged in, passkeys, add one (asks first),
+      log out), api.ts authState and authSend (read-only.test.ts lists them),
+      a 401 sends a screen to /login.
+    - Tests: server auth.test.ts (with a passkey made in software,
+      test/soft-passkey.ts), login-guard.test.ts (every route refused with no
+      login, an expired one, and one from another database; Origin; host;
+      no way in but a passkey), device.test.ts, database step 3; browser
+      login.test.ts (Chromium, a virtual passkey: the first code to Home, log
+      out, log in again). The tests' only way in is test/login-for-tests.ts,
+      which writes a login into the test's own database (real-server.test.ts
+      uses it); the guard test checks nothing in the server loads it.
+    - QUESTIONS.md B160 to B166.
+  - Left for the next session (see the PR): Step 2's break-it run ("[login]"
+    breaks to add), the login page's design tests (contrast, taps, states,
+    text size, in both engines), screenshots, and all of Step 3 (syncing on a
+    timer, the "Checked at" line). This PC: a game was using much of the CPU
+    on Oct 10, so full runs went past time limits; each file passed alone.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
   rule 9.5, depends on it), and QUESTIONS.md A30 (an old event the money
   math now refuses).

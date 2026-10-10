@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { POT_SLUGS } from '../../../server/src/views/activity.js';
 import { readHistory } from '../../../server/src/history/history-db.js';
 import { ACCOUNT_IDS } from '../../../server/test/fake-plaid.js';
+import { loginCookieForTests } from '../../../server/test/login-for-tests.js';
 import { decision, lifeInAFile, noonInNewYork, setUpThroughTheDesk, type Life } from '../../../server/test/keeper-harness.js';
 import { ENGINES, WEB_ROOT, close, launch, listen, phone, untilAnswered, untilQuiet, waitOrReport } from './harness.js';
 
@@ -70,9 +71,12 @@ describe.each(ENGINES)('the real server, restarted, in %s', (_name, engine) => {
     let server: Server | undefined;
     try {
       await midPeriod(life);
-      server = life.keeper.server(WEB_ROOT);
-      let base = await listen(server);
+      let base = '';
+      server = life.keeper.server(WEB_ROOT, () => base);
+      base = await listen(server);
       const context = await browser!.newContext(phone());
+      // Logged in the tests' way (Step 2): a login written into the test's own database.
+      await context.addCookies([loginCookieForTests(life.h.db, life.now, base)]);
       const page = await context.newPage();
       // A tap on Review: the bookshop goes to wants.
       await readScreen(page, base, '/review');
@@ -89,7 +93,7 @@ describe.each(ENGINES)('the real server, restarted, in %s', (_name, engine) => {
       server = undefined;
       const events = readHistory(life.h.db).length;
       life.restart();
-      server = life.keeper.server(WEB_ROOT);
+      server = life.keeper.server(WEB_ROOT, () => base);
       base = await listen(server);
       const after = await readAll(page, base);
       for (const path of SCREENS) expect(after[path], path).toBe(before[path]);
