@@ -24,6 +24,14 @@ export interface HomeInput {
   // an ISO time with its offset. Shown greyed while the bank cannot be read
   // (QUESTIONS.md B82). Null if there has not been one.
   readonly lastChecked: LastChecked | null;
+  // Step 3: when the bank was last read, as a time with its offset in his
+  // home time zone, and that zone, for "Checked at". Null before the first read.
+  readonly checkedAt?: CheckedAt | null;
+}
+
+export interface CheckedAt {
+  readonly at: string;
+  readonly timeZone: string;
 }
 
 export interface LastChecked {
@@ -45,6 +53,10 @@ export type HomeView =
       readonly buckets: { readonly needs: BucketBar; readonly wants: BucketBar };
       // Everything waiting in review (B32), for the Review tab's badge.
       readonly waitingInReview: number;
+      // Step 3: "Checked at", when the bank was last read; null before the first read.
+      readonly checkedAt: CheckedAt | null;
+      // His home time zone (section 2): the times on Home are shown in it.
+      readonly timeZone: string;
     };
 
 export type SafeToSpendView =
@@ -162,11 +174,19 @@ export function homeView(input: HomeInput): HomeView {
     attention,
     buckets: { needs: bar(pots.needs, started.needs), wants: bar(pots.wants, started.wants) },
     waitingInReview,
+    checkedAt: checkedCheckedAt(input.checkedAt ?? null),
+    timeZone: settings.homeTimeZone,
   };
 }
 
 // An ISO time with its offset, such as 2026-10-07T07:15:00-05:00.
 const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+
+function checkedCheckedAt(checked: CheckedAt | null): CheckedAt | null {
+  if (checked === null) return null;
+  if (!ISO_TIME.test(checked.at) || Number.isNaN(Date.parse(checked.at))) throw new Error(`not a time with its offset: ${checked.at}`);
+  return { at: checked.at, timeZone: checked.timeZone };
+}
 
 function checkedLastChecked(last: LastChecked | null): LastChecked | null {
   if (last === null) return null;

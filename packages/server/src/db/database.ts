@@ -179,6 +179,18 @@ const STEPS: readonly string[] = [
     used_at TEXT
   );
   `,
+  `
+  -- Step 4 (syncing on a timer): each time a sync read the bank, whether or
+  -- not it brought anything new. Home's "Checked at" is the last one, and the
+  -- next sync is due one interval after it. A sync that failed adds nothing.
+  CREATE TABLE bank_reads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- The moment the bank was read, as an instant (ISO, UTC).
+    at TEXT NOT NULL,
+    -- Whether it brought anything new (and so saved it).
+    changed INTEGER NOT NULL CHECK (changed IN (0, 1))
+  );
+  `,
 ];
 
 export const SCHEMA_VERSION = STEPS.length;

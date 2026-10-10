@@ -14,6 +14,7 @@ import {
   type SortingRule,
 } from '@budget-app/money';
 import { checkBankRules, type BankRule } from '../bank/reading.js';
+import { timeIn } from '../history/today.js';
 import type { HomeInput } from '../views/home.js';
 import type { MadeUpBank } from './made-up-bank.js';
 import { SETUP_OWES_MORE, SETUP_PENDING, SETUP_SUGGEST } from './setup-lives.js';
@@ -132,7 +133,7 @@ interface Story {
 
 // When the bank was last read and matched, in the "bank-not-read" life:
 // 7:15 in the morning, Central time.
-const LAST_CHECKED_AT = '2026-10-07T07:15:00-05:00';
+const LAST_CHECKED_AT = '2026-10-07T07:15:00-04:00';
 
 function story(s: Story): HomeInput {
   const x = (cents: Cents): Cents => cents * (s.scale ?? 1);
@@ -329,6 +330,8 @@ function story(s: Story): HomeInput {
     madeUpData: true,
     seenTakeBacks: new Set(),
     lastChecked: s.bankNotRead === true ? { amount: checkedThisMorning, at: LAST_CHECKED_AT } : null,
+    // Step 3: when the made-up bank was last read: this morning.
+    checkedAt: { at: s.bankNotRead === true ? LAST_CHECKED_AT : timeIn(book.settings().homeTimeZone, new Date(`${s.today ?? DEMO_TODAY}T13:41:00Z`)), timeZone: book.settings().homeTimeZone },
   };
 }
 

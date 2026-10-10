@@ -47,6 +47,12 @@ export function appendEvent(db: Db, e: { readonly event: HistoryEvent; readonly 
   return Number(info.lastInsertRowid);
 }
 
+// The number of the last event in the history; 0 before the first.
+export function lastSeqOf(db: Db): number {
+  const row = db.prepare('SELECT MAX(seq) AS seq FROM book_events').get() as { seq: number | null };
+  return row.seq ?? 0;
+}
+
 // ----- Replaying -----
 
 // What the history comes to.

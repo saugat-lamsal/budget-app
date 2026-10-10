@@ -3,7 +3,7 @@ import fc from 'fast-check';
 import { parseDollars } from '@budget-app/money';
 import { MINUS, moneyText, moneyWords } from '../src/ui/money-format.js';
 import { barFill } from '../src/ui/bar-fill.js';
-import { asOfText, longDate, shortDate } from '../src/ui/dates.js';
+import { asOfText, checkedAtText, longDate, shortDate } from '../src/ui/dates.js';
 import { dueText, paydayText, waitingText } from '../src/screens/home-text.js';
 
 // How the screens write money, dates, and counts. Made-up numbers only.
@@ -143,5 +143,30 @@ describe('0.5 when safe to spend was last checked, in words (B82)', () => {
 
   it('0.5 refuses something that is not a time', () => {
     expect(() => asOfText('yesterday', 'UTC')).toThrow();
+  });
+});
+
+describe('Step 3 "Checked at": when the bank was last read, in his home time zone', () => {
+  it('Step 3 today there: the time only', () => {
+    expect(checkedAtText('2026-10-09T15:05:00-04:00', '2026-10-09', 'America/New_York')).toBe('3:05 PM');
+  });
+
+  it('Step 3 another day there: the day and the time', () => {
+    expect(checkedAtText('2026-10-08T23:59:00-04:00', '2026-10-09', 'America/New_York')).toBe('Thu, Oct 8, 11:59 PM');
+  });
+
+  it("Step 3 in his home time zone, whatever the phone's: 12:30 AM in New York is the next day in Chicago's 11:30 PM", () => {
+    expect(checkedAtText('2026-10-09T00:30:00-04:00', '2026-10-09', 'America/New_York')).toBe('12:30 AM');
+    expect(checkedAtText('2026-10-09T00:30:00-04:00', '2026-10-09', 'America/Chicago')).toBe('Thu, Oct 8, 11:30 PM');
+  });
+
+  it('Step 3 across both clock changes: 1:30 AM twice on Nov 1, 2026, and 3:30 AM right after 1:59 on Mar 14, 2027', () => {
+    expect(checkedAtText('2026-11-01T05:30:00Z', '2026-11-01', 'America/New_York')).toBe('1:30 AM');
+    expect(checkedAtText('2026-11-01T06:30:00Z', '2026-11-01', 'America/New_York')).toBe('1:30 AM');
+    expect(checkedAtText('2027-03-14T07:30:00Z', '2027-03-14', 'America/New_York')).toBe('3:30 AM');
+  });
+
+  it('Step 3 refuses something that is not a time', () => {
+    expect(() => checkedAtText('soon', '2026-10-09', 'America/New_York')).toThrow();
   });
 });

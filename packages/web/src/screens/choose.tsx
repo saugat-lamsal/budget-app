@@ -1,5 +1,5 @@
 import { parseDollars, type AccountId, type ActivityRow, type Cents, type IsoDate, type LikelyPurchase, type PaycheckSplit, type PickTo, type ReviewDetail, type ReviewOptions, type SortedNow } from '@budget-app/money';
-import type { ChoiceOf, ChoicePart, ChoiceRequest } from '@budget-app/server/views';
+import type { ChoiceOf, ChoicePart, ChoiceRequest, KeyedDetail } from '@budget-app/server/views';
 import { useRef, useState, type ReactNode } from 'react';
 import { newDecisionId, sendChoice, type Reload } from '../app/api.js';
 import { BottomSheet, Button, ButtonRow, Card, Decision, ListRow, Money, Notice, TextField, ToggleRow } from '../ui/blocks.js';
@@ -24,6 +24,9 @@ export interface Target {
   readonly id: string;
   readonly label: string;
   readonly kind: Kind;
+  // Step 3: the item's key as the screen shows it, sent with the choice: if a
+  // sync has changed the item since, the server refuses it and says how it is now.
+  readonly seen?: string;
 }
 
 // An item that can be sorted: what the sheet of choices needs to know.
@@ -57,6 +60,8 @@ export interface Pending {
   readonly choice: ChoiceOf;
   readonly always?: { readonly contains: string };
   readonly confirmed?: boolean;
+  // Step 3: the item's key as the screen showed it (Target).
+  readonly seen?: string;
   // What the confirm step says.
   readonly ask?: ReactNode;
   // What the choice pointed at, for the answer (doneText).
@@ -84,11 +89,11 @@ export interface Said {
 
 // ----- What each kind of item is, for the sheet -----
 
-export function subjectOfReview(detail: ReviewDetail): Subject | null {
+export function subjectOfReview(detail: KeyedDetail): Subject | null {
   const { item, options } = detail;
   if ((item.type !== 'spending' && item.type !== 'money-in') || options.type !== 'sort') return null;
   return {
-    target: { id: item.id, label: item.description, kind: item.type },
+    target: { id: item.id, label: item.description, kind: item.type, seen: detail.key },
     amount: item.amount,
     date: item.date,
     account: detail.account,
@@ -105,11 +110,11 @@ export function subjectOfReview(detail: ReviewDetail): Subject | null {
 }
 
 // A row of a bucket's list, if it can be sorted again (B100).
-export function subjectOfRow(row: ActivityRow): Subject | null {
+export function subjectOfRow(row: ActivityRow, seen: string | undefined): Subject | null {
   const r = row.resort;
   if (!r.resortable) return null;
   return {
-    target: { id: r.id, label: r.description, kind: r.type },
+    target: { id: r.id, label: r.description, kind: r.type, ...(seen === undefined ? {} : { seen }) },
     amount: r.amount,
     date: r.date,
     account: r.account,
@@ -162,6 +167,7 @@ export function useChoiceFlow(options: { readonly resort: boolean; readonly relo
       ...(pending.always === undefined ? {} : { always: pending.always }),
       ...(pending.confirmed === true ? { confirmed: true } : {}),
       ...(options.resort ? { resort: true as const } : {}),
+      ...(pending.seen === undefined ? {} : { seen: pending.seen }),
     };
     sendChoice(request).then(
       (answer) => {
@@ -170,9 +176,12 @@ export function useChoiceFlow(options: { readonly resort: boolean; readonly relo
         if (answer.ok) {
           setSheet(null);
           setSaid({ tone: 'ok', text: doneText(pending.label, pending.kind, answer.done, pending.about) });
-        } else if (answer.code === 'not-waiting') {
+        } else if (answer.code === 'not-waiting' || answer.code === 'changed') {
+          // Not waiting any more, or changed since it was shown (Step 3): the
+          // numbers are asked for again, and he looks at it as it is now. A
+          // change already says what it is about.
           setSheet(null);
-          setSaid({ tone: 'warning', text: `${pending.label}: ${answer.why}` });
+          setSaid({ tone: 'warning', text: answer.code === 'changed' ? answer.why : `${pending.label}: ${answer.why}` });
         } else {
           // Refused: nothing changed. Back to the choices, with the reason.
           setSheet((current) => (current === null ? null : { item: current.item, step: 'choose' }));
@@ -198,6 +207,7 @@ export function useChoiceFlow(options: { readonly resort: boolean; readonly relo
       label: target.label,
       kind: target.kind,
       choice,
+      ...(target.seen === undefined ? {} : { seen: target.seen }),
       ...(extra.always === undefined ? {} : { always: extra.always }),
       ...(extra.ask === undefined ? {} : { ask: extra.ask }),
       ...(extra.about === undefined ? {} : { about: extra.about }),
@@ -240,11 +250,11 @@ export function SaidNotice({ said, sending, onRetry, onDismiss, sticky = false }
 
 // ----- A payday question (3.4): the same card in Review and on Payday -----
 
-export function LeftoverDecision({ detail, busy, onChoose }: { readonly detail: ReviewDetail; readonly busy: boolean; readonly onChoose: Choose }) {
+export function LeftoverDecision({ detail, busy, onChoose }: { readonly detail: KeyedDetail; readonly busy: boolean; readonly onChoose: Choose }) {
   const { item, options } = detail;
   if (item.type !== 'leftover' || options.type !== 'leftover') return null;
   const bucket = BUCKET_NAMES[item.bucket] ?? item.bucket;
-  const target: Target = { id: item.id, label: titleOf(item), kind: item.type };
+  const target: Target = { id: item.id, label: titleOf(item), kind: item.type, seen: detail.key };
   return (
     <Decision
       testId={`item-${item.id}`}

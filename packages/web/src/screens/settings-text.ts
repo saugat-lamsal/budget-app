@@ -93,6 +93,11 @@ export function daysText(days: number): string {
   return `${days} ${days === 1 ? 'day' : 'days'}`;
 }
 
+// Step 3: "60 minutes", "1,440 minutes".
+export function minutesText(minutes: number): string {
+  return `${minutes.toLocaleString('en-US')} ${minutes === 1 ? 'minute' : 'minutes'}`;
+}
+
 export function textRuleText(rule: Settings['paycheckRule']): string {
   return rule === null ? 'Not set' : `“${rule.contains}”`;
 }

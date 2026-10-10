@@ -46,8 +46,11 @@ export class SoftPasskey {
   }
 
   // What the browser sends back after navigator.credentials.create.
-  register(options: Options, origin: string, change: { readonly rpId?: string; readonly type?: string; readonly userVerified?: boolean } = {}): unknown {
+  // count: the use count it reports from then on; 0 is a passkey that counts
+  // nothing, as Apple's passkeys do.
+  register(options: Options, origin: string, change: { readonly rpId?: string; readonly type?: string; readonly userVerified?: boolean; readonly count?: number } = {}): unknown {
     const rpId = change.rpId ?? options.rp?.id ?? new URL(origin).hostname;
+    if (change.count !== undefined) this.#count = change.count - 1;
     this.#userHandle = options.user?.id ?? '';
     const jwk = this.#public.export({ format: 'jwk' });
     const cose = new Map<number, Cbor>([

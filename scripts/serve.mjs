@@ -7,6 +7,8 @@
 // PLAID_CLIENT_ID, PLAID_SECRET and BANK_TOKEN_KEY in .env.
 //   --connect   connects the test bank first, with made-up accounts like his
 //   --sync      syncs with the test bank once before serving
+// It syncs by itself every 60 minutes (a setting on Settings), and at once
+// when it starts if one is due.
 // The demo (npm run demo) is separate and never opens the database.
 import { build } from 'vite';
 import { buildServer, path, runCommand } from './server-build.mjs';

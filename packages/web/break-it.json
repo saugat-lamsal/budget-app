@@ -674,8 +674,8 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/choose.tsx",
-    "find": "} else if (answer.code === 'not-waiting') {",
-    "replace": "} else if (false) {",
+    "find": "} else if (answer.code === 'not-waiting' || answer.code === 'changed') {",
+    "replace": "} else if (answer.code === 'changed') {",
     "why": "[review] an item already dealt with is treated as a refusal"
   },
   {
@@ -1692,5 +1692,75 @@
     "find": "{subject.refund ? 'Likely purchases' : 'A refund to your debit card?'}",
     "replace": "{'Likely purchases'}",
     "why": "[a29] money in is not said to be maybe a debit card refund"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "      ...(pending.seen === undefined ? {} : { seen: pending.seen }),\n",
+    "replace": "",
+    "why": "[a31] the screen does not say what it showed"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "        } else if (answer.code === 'not-waiting' || answer.code === 'changed') {",
+    "replace": "        } else if (answer.code === 'not-waiting') {",
+    "why": "[a31] a change is answered like any refusal: the sheet stays and the numbers are not asked for again"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "Checked at {checkedAtText(view.checkedAt.at, view.today, view.checkedAt.timeZone)}",
+    "replace": "Checked at {asOfText(view.checkedAt.at)}",
+    "why": "[sync] B171 Checked at in the phone's time zone, with the day always"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "As of {asOfText(safeToSpend.lastChecked.at, view.timeZone)}.",
+    "replace": "As of {asOfText(safeToSpend.lastChecked.at)}.",
+    "why": "[sync] B171 As of in the phone's time zone"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/dates.ts",
+    "find": "  if (day === today) return moment",
+    "replace": "  if (day !== today) return moment",
+    "why": "[sync] B171 the day is left out when it is not today"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/sync-card.tsx",
+    "find": "      const reply = await sendSyncEvery(value);",
+    "replace": "      const reply = await sendSyncEvery(60);",
+    "why": "[sync] B167 the sheet sends 60 whatever is typed"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/api.ts",
+    "find": "  if (response.status === 401) window.location.assign('/login');",
+    "replace": "  if (response.status === 0) window.location.assign('/login');",
+    "why": "[login] B160 a screen whose login ended stays put"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Login.tsx",
+    "find": "        if (state.loggedIn) window.location.assign(pathOf('home'));",
+    "replace": "        if (false) window.location.assign(pathOf('home'));",
+    "why": "[login] a device logged in that opens the login page stays there"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Login.tsx",
+    "find": "      setProblem(reply.why);",
+    "replace": "      setProblem('That did not work.');",
+    "why": "[login] a refused code does not say why"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/login-card.tsx",
+    "find": "      const asked = await authSend('/api/auth/passkey/options', { confirmed: true });",
+    "replace": "      const asked = await authSend('/api/auth/passkey/options', { confirmed: false });",
+    "why": "[login] B164 the yes to adding a passkey is not sent"
   }
 ]

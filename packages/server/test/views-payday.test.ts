@@ -1,3 +1,4 @@
+import { itemKey } from '../src/item-key.js';
 import { type BankBalances, type Book } from '@budget-app/money';
 import { describe, expect, it } from 'vitest';
 import { MOM_NAME, START_DATE, openTestBook, payPerson, paycheck, posted, purchase } from '../../money/test/helpers.js';
@@ -57,7 +58,8 @@ describe('B104 B105 B106 the report is the money math\'s own', () => {
     const book = aBook();
     const v = view(book, bank(book, 0));
     expect(v.questions.map((q) => q.item.id)).toEqual(['leftover:p1:needs', 'leftover:p1:wants']);
-    expect(v.questions).toEqual(book.reviewDetails().filter((d) => d.item.type === 'leftover'));
+    // Each with its key (Step 3), sent back with an answer about it.
+    expect(v.questions).toEqual(book.reviewDetails().filter((d) => d.item.type === 'leftover').map((d) => ({ ...d, key: itemKey(d) })));
     expect(v.questions.every((q) => q.options.type === 'leftover' && q.options.answers.length === 2)).toBe(true);
     // And the report points at the same questions.
     expect(v.report.leftovers.map((l) => l.question)).toEqual(v.questions.map((q) => q.item.id));

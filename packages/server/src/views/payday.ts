@@ -1,4 +1,5 @@
-import type { BankBalances, Book, IsoDate, PaydayReport, ReviewDetail, SavingsTransfer } from '@budget-app/money';
+import type { BankBalances, Book, IsoDate, PaydayReport, SavingsTransfer } from '@budget-app/money';
+import { keyed, type KeyedDetail } from './review.js';
 
 // What the Payday screen shows (QUESTIONS.md B104 to B107), worked out on the
 // server from the book: what the last paycheck did (the mom reserve first,
@@ -28,7 +29,7 @@ export type PaydayView =
       readonly report: PaydayReport;
       // 3.4: the leftover questions still open, to answer here or in review
       // (B107). The same items review lists.
-      readonly questions: readonly ReviewDetail[];
+      readonly questions: readonly KeyedDetail[];
       // 3.8: what the savings account should hold and how much is still to move.
       readonly toSavings: { readonly state: 'known'; readonly transfer: SavingsTransfer } | { readonly state: 'bank-not-read' };
     };
@@ -43,7 +44,7 @@ export function paydayView(input: PaydayInput): PaydayView {
     today,
     payday: { next: plain.nextPayday, days: plain.daysToPayday },
     report: book.paydayReport(),
-    questions: book.reviewDetails().filter((d) => d.item.type === 'leftover'),
+    questions: book.reviewDetails().filter((d) => d.item.type === 'leftover').map(keyed),
     toSavings: bank === null ? { state: 'bank-not-read' } : { state: 'known', transfer: book.savingsTransfer(bank.savings) },
   };
 }

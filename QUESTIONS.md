@@ -482,6 +482,36 @@ A30. An old event the money math now refuses (0.6). A28 covers an event
      1 (the command says which event and why, and the server stays stopped).
 
 
+## Part A, added with syncing on a timer (Step 3, Oct 10). Waiting on your answer.
+
+A31. What counts as "something a sync just changed". You asked that an
+     answer about something a sync just changed be refused with why, and
+     nothing change. The rulebook does not say what counts as changed.
+     Option 1: an item (waiting in Review, on a bucket's list, or a payday
+     question) that is not what the screen showed when you tapped: its
+     amount, day, description, pending or posted, what a payday question
+     asks, where it is sorted now, or what "this is my paycheck" would do.
+     The screen sends back what it showed; if the item is not that any
+     more, the answer is refused with how it is now ("MADE UP CAFE changed
+     since you looked: it is now $13.50. Look at it again, then choose.
+     Nothing was changed."), and the screen shows it again. What it is
+     offered is not part of it: a new purchase joining a refund's likely
+     purchases does not refuse the purchase you picked, and a choice no
+     longer offered is refused anyway. A hand move and the settings are not
+     about one item: a move still asks first if it would leave a bucket
+     below zero (13.4), and the paycheck rule and the mom rule ask again
+     when what they would do has changed (B113).
+     Option 2: only its amount. A pending charge that posts at the same
+     amount, or with a new description, goes through.
+     Option 3: any sync that brought anything new refuses every answer from
+     a screen shown before it, whatever it was about.
+     Option 4: option 1, and a hand move too, when a bucket it takes from or
+     gives to changed since the screen showed it.
+     Recommendation: option 1. It refuses exactly what you could have seen
+     differently, and nothing else; a refusal costs one more tap. Built:
+     option 1 (the details are B172 and B173).
+
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 B1. Paycheck smaller than the mom reserve (3.2).
@@ -1558,8 +1588,8 @@ B154. The real server: npm run serve. This computer only, Plaid's test bank
       only (the sandbox lock), no login yet. The books are in
       data/budget.sqlite (git leaves data/ out). --connect connects the test
       bank with made-up accounts like yours and sets the four accounts by
-      their last four digits; --sync syncs once. Nothing syncs by itself
-      yet. Setup day starts tracking with the settings in section 2, so the
+      their last four digits; --sync syncs once. (Since Step 3 it also syncs
+      by itself, every 60 minutes: B167 to B172.) Setup day starts tracking with the settings in section 2, so the
       paycheck rule and the mom rule are set afterwards on Settings, as in
       the demo. The demo is separate and never opens the database.
 
@@ -1608,7 +1638,7 @@ B159. A matched deposit becomes that refund (4.5): it is sorted nowhere
 B160. What needs a login on the real server: every screen (Home, Buckets,
       Review, Settings, Payday, each bucket's list, the Setup day steps, and
       the bare address), every screen's numbers, and everything the screens
-      send (his answers, a take-back seen). Without a login, a screen sends
+      send (his answers, a take-back seen, how often to sync with the bank). Without a login, a screen sends
       him to the login page and the numbers are refused (401, nothing of
       his). Open: the login page, the app's own files it needs (scripts,
       styles, icons: nothing of his), and the login's own addresses (whether
@@ -1621,7 +1651,8 @@ B161. The one-time code: 12 digits in three groups (1234-5678-9012), typed
       run login-code prints one any time, on this computer. Only the newest
       code is good, once, for 15 minutes (at 14 minutes 59 seconds yes, at
       15 no). After 10 wrong codes in a row, no code is good until a new one
-      is printed. A code makes a passkey on the device it is typed on, and
+      is printed; a good code typed in between starts the count again (since
+      Oct 10: before, 10 wrong ones in all voided it). A code makes a passkey on the device it is typed on, and
       logs that device in.
 
 B162. Logging in: one passkey for this app, checked with Face ID, Touch ID,
@@ -1653,3 +1684,62 @@ B166. Kept in the database: his passkeys' public keys only (the private key
       only as a hash. The cookie is HttpOnly and SameSite=Strict, for the
       whole app; Secure once the app has a https address (Phase 6). Every
       POST must come from the app's own address, or it is refused.
+
+
+## Part B, added with syncing on a timer (Step 3, Oct 10). Tell me if any is wrong.
+
+B167. How often (section 2, 27d): a whole number of minutes, 15 to 1,440
+      (once a day), 60 to start. On Settings, real server only, in a Bank
+      card with when it last read the bank. A change applies right away
+      (13.1) and is logged ("Sync with the bank: every 60 minutes → every 30
+      minutes"). The demo has no bank, so it has no Bank card.
+
+B168. When a sync is due: one interval of real time after the last sync
+      started, whether it worked or not, so a clock change never moves it.
+      Across Nov 1 the syncs come at 1:30 AM EDT, then 1:30 AM EST; across
+      Mar 14 at 1:30 AM EST, then 3:30 AM EDT. When the server starts, one
+      interval after the last time it read the bank: due by then, it syncs
+      at once; one that never read the bank syncs at once. With no bank
+      connection yet there is nothing to sync, and it looks again each
+      minute. It sleeps at most a minute at a time, so a computer waking up,
+      or a shorter setting, is noticed within a minute.
+
+B169. What a sync asks the bank: /transactions/sync, /accounts/get and
+      /liabilities/get, as --sync always did; never /transactions/refresh. A
+      test checks every call over a simulated day, and that nothing in the
+      server makes that call. Never two syncs at once: the timer and --sync
+      share the books' own lock; asked again while one is on its way, it is
+      that one.
+
+B170. A sync that fails (the bank cannot be reached, or answers something
+      the app cannot read) saves nothing: not the bank's activity, not where
+      the next sync starts, not Checked at. The next one is one interval
+      later. When the bank wants you to log in again (10.5), the sync keeps
+      only that, as before: Home says so, shows the last checked safe to
+      spend (0.5), and Checked at stays at the last read.
+
+B171. Checked at: the moment the last sync read the bank, whether or not it
+      brought anything new, saved with what the sync saved, in the same step
+      (database step 4). Home shows it under safe to spend, in your home
+      time zone: "Checked at 3:05 PM" on the same day there, "Checked at Fri,
+      Oct 9, 3:05 PM" on another. Nothing shows before the first read. The
+      "As of" time of the last checked safe to spend (0.5) is now shown in
+      your home time zone too (it was the phone's), so the two never
+      disagree. The demo shows a made-up time, this morning.
+
+B172. A sync and your answers never write at the same time. An answer that
+      comes while a sync is reading the bank is saved first, and the sync's
+      save works from it. The sync's save and the books in memory reading it
+      again are one step, so an answer after it is given to the book with
+      the sync in it. Found while building this: before, an answer arriving
+      the instant a sync had saved could be saved against the book from
+      before the sync, with totals that do not replay, and the server would
+      then not start (0.6). A test now sends one at exactly that moment.
+
+B173. How the screen says what it showed (A31): each item on Review, on
+      Payday and on a bucket's list comes with a short fingerprint of what
+      it is, and the tap sends it back. A refusal for a change says how it
+      is now, the sheet closes, and the screen asks for its numbers again.
+      The same decision number can be sent again after it (B150: a refusal
+      keeps nothing). The demo works the same way; it has no syncs, so
+      there nothing changes under a screen.

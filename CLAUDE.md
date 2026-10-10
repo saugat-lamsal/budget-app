@@ -152,7 +152,7 @@ This applies to every phase and every session, cloud or local.
   answers after Setup day (A25, A26: section 2, 4.5, 14.2), section 26
   his answers after bank rules (A27, and the home time zone: section 2),
   section 27 his answers after the real server (A28: rule 0.6; A29: 4.5,
-  6.1; 27c staying logged in, section 2).
+  6.1; 27c staying logged in, 27d syncing every 60 minutes, section 2).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -933,11 +933,78 @@ This applies to every phase and every session, cloud or local.
       which writes a login into the test's own database (real-server.test.ts
       uses it); the guard test checks nothing in the server loads it.
     - QUESTIONS.md B160 to B166.
-  - Left for the next session (see the PR): Step 2's break-it run ("[login]"
-    breaks to add), the login page's design tests (contrast, taps, states,
-    text size, in both engines), screenshots, and all of Step 3 (syncing on a
-    timer, the "Checked at" line). This PC: a game was using much of the CPU
-    on Oct 10, so full runs went past time limits; each file passed alone.
+  - Step 2's follow-ups (Oct 10, a second session, same branch).
+    - Break-it "[login]": 37 server breaks (section "login") and 4 on the
+      screens. One survived at first: a login question answered twice was
+      only caught by the passkey's use count, and Apple's passkeys always
+      count 0; a test with such a passkey now catches it. New tests too: the
+      5-minute limit on a login question, a login without Face ID or for
+      another host, nothing kept in the clear, the gate refusing before the
+      login's code is asked, and "10 wrong codes in a row" (B161: a good
+      code typed in between now starts the count again; it did not).
+    - CI's WebKit job failed on PR #18: login.test.ts always launched
+      Chromium, which that job does not install. It runs only where Chromium
+      is one of the engines now (describe.runIf).
+    - Browser: login.test.ts also checks a screen whose login ended going to
+      /login, a device logged in skipping the login page, and adding a
+      passkey from Settings (it asks first). design-real-server.test.ts (both
+      engines): the login page in every state, the Login card and its sheets,
+      and Step 3's Checked at and Bank card. The loading page is checked with
+      motion reduced: its skeleton shimmers forever, and atRest waits for
+      every animation to end (it hung the test before).
+  - Step 3, syncing on a timer and "Checked at" (Oct 10, same branch).
+    Rulebook section 2 and 27d (his OK): sync with the bank every 60 minutes,
+    a setting.
+    - The timer: packages/server/src/serve/sync-timer.ts (SyncTimer, started
+      by npm run serve once it listens; stopped, it lets a sync on its way
+      finish). It only calls Keeper.sync, the same as --sync. Due one
+      interval of real time after the last sync started (Keeper.syncDueIn);
+      after a restart, after the last read; never read, at once; no bank
+      connection, nothing. It sleeps at most a minute at a time. Nothing
+      that goes wrong in it stops the server: it is logged, and it looks
+      again later.
+    - Database step 4: bank_reads (each read of the bank, with or without
+      anything new, saved in the sync's own transaction: SyncInput.readAt).
+      sync/bank-reads.ts: the last read, and the setting (settings table
+      sync-every-minutes, 15 to 1,440, default 60). Keeper.changeSyncEvery
+      logs a server line (sync-every-changed). POST /api/sync/every (logged
+      in only; ROUTES; the phone's sendSyncEvery; read-only.test.ts lists it).
+    - One at a time: Keeper.sync is the books' lock (a second caller gets the
+      sync on its way). syncBank's afterSave runs right after the commit, in
+      the same step, and the Keeper reads its books again there. Found doing
+      it (a test first): before, the books were read again only after the
+      sync's promise, so an answer arriving the instant a sync saved was
+      saved against the old book, with totals that do not replay, and the
+      server would not have started again (B172). After a sync the books
+      are read again when it saved anything, or when the history has more
+      than they have (another copy of the server saved a sync; Keeper
+      lastSeq). Keeper's beforeCommit test hook reaches the sync's save too.
+    - An answer about something a sync just changed (QUESTIONS.md A31, built
+      as option 1, waiting on his answer): item-key.ts (itemKey, FNV-1a over
+      what the item is: no Node, the phone's types read the views). Review
+      and Payday items carry key, a bucket list has keys by row id; the
+      phone sends it as seen (choose.tsx Target.seen); ChoiceDesk.decide
+      refuses with code 'changed' and how it is now; the phone closes the
+      sheet, says why, and asks for its numbers again.
+    - Home: "Checked at 3:05 PM" (HomeView checkedAt, in his home time zone;
+      ui/dates.ts checkedAtText), and "As of" in his home time zone too
+      (HomeView timeZone). The demo shows a made-up time (9:41 AM; 7:15 AM
+      when the bank cannot be read). Settings: the Bank card (sync-card.tsx),
+      real server only, before setup day too.
+    - Tests: server sync-timer (fake clock, test/fake-clock.ts: on time,
+      restarts, Nov 1 2026 and Mar 14 2027, never two at once, a failed one
+      saves nothing, 10.5, only the reading calls, the setting), sync-answers
+      (A31 cases; an answer mid-read and at the moment of the commit),
+      sync-answers-random (two servers, one restarted at random, a fresh copy
+      from the database after every step; SYNC_ANSWER_SCENARIOS, SEED; 300
+      passed), http-sync, views-home, database step 4; web format; browser
+      home (Checked at), sync.test.ts (real server, both engines), review
+      (the exact request now carries seen). Worked example bank 9.
+    - Break-it: "[sync]" and "[a31]" (server section "sync", 43 breaks;
+      screens section "home", 6), with the screens' "[login]" (4): every one
+      caught. Two older breaks pointed at the code again ("[review]" an item
+      already dealt with, "[keeper]" a save that did not go through).
+    - QUESTIONS.md A31, B167 to B173; B154, B160, B161 brought up to date.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
-  rule 9.5, depends on it), and QUESTIONS.md A30 (an old event the money
-  math now refuses).
+  rule 9.5, depends on it), QUESTIONS.md A30 (an old event the money math now
+  refuses), and A31 (what counts as something a sync just changed).

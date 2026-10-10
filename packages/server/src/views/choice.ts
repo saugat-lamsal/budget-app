@@ -60,6 +60,10 @@ export interface ChoiceRequest {
   // bucket (4.7, QUESTIONS.md B100): the item may be one that is not waiting
   // in review. Without it, only an item waiting in review can be sorted.
   readonly resort?: true;
+  // Step 3: the item's key as the screen showed it (its key in the screen's
+  // numbers). If the item is not that any more (a sync brought something new
+  // about it), the answer is refused with how it is now, and nothing changes.
+  readonly seen?: string;
 }
 
 // What was done.
@@ -85,7 +89,9 @@ export type RefusalCode =
   // The decision number was used for a different choice.
   | 'id-reused'
   // The money math refused it.
-  | 'refused';
+  | 'refused'
+  // Step 3: the item changed since the screen showed it (seen).
+  | 'changed';
 
 export type ChoiceResponse =
   | { readonly ok: true; readonly replayed: boolean; readonly done: Done }

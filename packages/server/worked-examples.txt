@@ -321,3 +321,38 @@ Oct 2, and the server starts: Wants 200.00, Needs 2,320.05.
 Dates: first event 2026-10-02 | logged 2026-10-09
 Check: first wants before 176.55 | first wants after 200.00 | first needs after 2,326.55
 Check: last wants before 170.05 | last needs after 2,320.05
+
+
+========================================================================
+EXAMPLE 9. Syncing by itself, "Checked at", and an answer about something the sync changed (section 2, 4.6, 0.5; Step 3; QUESTIONS.md A31)
+========================================================================
+
+The server syncs with the bank every 60 minutes of real time, counted from
+when the last sync started. Setup day was Oct 1: Wants 200.00. Home shows
+"Checked at" with the time the bank was last read, in New York time.
+
+Sat Oct 31, 11:30 PM in New York (EDT, 4 hours behind UTC): the server
+starts. The bank has never been read since it was set up, so it syncs at
+once. MADE UP CAFE 11.50 shows on the everyday card, pending, and waits in
+review. He opens Review: it shows the cafe at 11.50, pending.
+
+Clocks in New York go back an hour at 2:00 AM on Nov 1 (EDT to EST, 5 hours
+behind UTC). The syncs come 60 minutes apart all the same:
+  Oct 31 11:30 PM EDT   Checked at 11:30 PM (the first)
+  Nov 1  12:30 AM EDT   the cafe has posted at 13.50, with a tip (4.6)
+          1:30 AM EDT
+          1:30 AM EST   one hour later, though the clock says 1:30 again
+          2:30 AM EST
+
+Then he taps Wants on the cafe, on the Review he opened at 11:30 PM. It
+showed 11.50, pending, so the answer is refused: "MADE UP CAFE changed
+since you looked: it is now $13.50. Look at it again, then choose. Nothing
+was changed." Wants is still 200.00, and nothing is added to the history.
+He looks again and taps Wants: 200.00 - 13.50 = 186.50.
+
+At 3:30 AM EST the bank cannot be reached: that sync saves nothing, and
+Home still says Checked at 2:30 AM. The next sync is one interval later,
+at 4:30 AM EST, and reads the bank.
+
+Check: cafe pending 11.50 | cafe posted 13.50 | wants after 186.50
+Checked at: 11:30 PM EDT | 12:30 AM EDT | 1:30 AM EDT | 1:30 AM EST | 2:30 AM EST | 2:30 AM EST | 4:30 AM EST

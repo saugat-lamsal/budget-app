@@ -6,7 +6,8 @@ import { describe, expect, it } from 'vitest';
 // seen a take-back (10.6, QUESTIONS.md B84), his choice for an item in
 // review, which the server's money math decides, and, on the real server, the
 // login's own requests (Step 2: who is logged in and with which passkeys,
-// never money). None of it reaches the bank. Nothing about money is kept on
+// never money) and how often it syncs with the bank (Step 3: a setting, never
+// money). None of it reaches the bank. Nothing about money is kept on
 // the phone either.
 const sourceDir = new URL('../src/', import.meta.url);
 
@@ -46,12 +47,13 @@ describe('0.4 the screens never move money', () => {
     expect(api).toMatch(/type AuthPath = ('\/api\/auth\/[a-z/]+'( \| )?)+;/);
   });
 
-  it('0.4 every request only reads, except the ones that send his answers (a take-back seen, a choice in review) and the login\'s own', () => {
+  it('0.4 every request only reads, except the ones that send his answers (a take-back seen, a choice in review), the login\'s own, and how often to sync', () => {
     const writes = fetchCalls().filter(({ call }) => /method|body/.test(call));
     expect(writes.map((w) => w.call)).toEqual([
       "fetch('/api/seen', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'bank-took-back', id }), })",
       "fetch('/api/choice', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request), })",
       "fetch(path, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })",
+      "fetch('/api/sync/every', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ minutes }) })",
     ]);
   });
 

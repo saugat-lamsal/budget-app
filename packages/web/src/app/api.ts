@@ -133,6 +133,15 @@ export async function authSend(path: AuthPath, body: object): Promise<AuthReply>
   return (await response.json()) as AuthReply;
 }
 
+// Step 3: how often the real server syncs with the bank (section 2), in
+// minutes. A setting of the server's, never money (0.4); the server checks it.
+export async function sendSyncEvery(minutes: number): Promise<AuthReply> {
+  const response = await fetch('/api/sync/every', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ minutes }) });
+  if (response.status === 401) return { ok: false, why: 'You are not logged in any more. Log in again.' };
+  if (response.status !== 200 && response.status !== 422) throw new Error(`/api/sync/every answered ${response.status}`);
+  return (await response.json()) as AuthReply;
+}
+
 // A new number for a decision, made once when it is made and kept for every
 // retry of it. Random, but needs no secure connection (the demo runs over
 // plain http on the home wifi).

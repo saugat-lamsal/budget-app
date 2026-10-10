@@ -123,11 +123,14 @@ export class Auth {
   }
 
   // The code as typed, with or without its dashes (the phone's digit pad has
-  // none), if it is good now. Ten wrong ones and no code is good.
+  // none), if it is good now. Ten wrong ones in a row and no code is good.
   #goodCode(typed: unknown): string | null {
     const digits = typeof typed === 'string' && typed.length <= 32 ? typed.replace(/[\s-]/g, '') : '';
     const code = /^\d{12}$/.test(digits) ? `${digits.slice(0, 4)}-${digits.slice(4, 8)}-${digits.slice(8)}` : null;
-    if (code !== null && goodCode(this.#db, code, this.#now().toISOString())) return code;
+    if (code !== null && goodCode(this.#db, code, this.#now().toISOString())) {
+      this.#wrongCodes = 0;
+      return code;
+    }
     this.#wrongCodes += 1;
     if (this.#wrongCodes >= WRONG_CODES_ALLOWED) voidCodes(this.#db, this.#now().toISOString());
     return null;

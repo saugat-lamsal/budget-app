@@ -42,6 +42,10 @@ number so a test can point at it. Nothing gets coded until you approve this.
 - Daily review time: 8:00 PM
 - Stay logged in: 30 days on a device, counted from the login. Logins, new
   passkeys and log outs are logged (13.5).
+- Sync with the bank: every 60 minutes, of real time, counted from when the
+  last sync started (a clock change does not move it). When the app starts,
+  it syncs at once if one is due. A sync that fails changes nothing and is
+  tried again at the next time. A change to this is logged (13.5).
 - Home time zone: America/New_York. The app's today is the date there,
   whatever time zone the server's own clock is set to. Dates the bank sends
   stay exactly as sent.
@@ -550,3 +554,5 @@ b.  Money in to checking also offers "this refund is for this one", with
     QUESTIONS.md A29).
 c.  You stay logged in for 30 days on a device, and that is a setting
     (section 2).
+d.  The app syncs with the bank by itself every 60 minutes, and that is a
+    setting (section 2).

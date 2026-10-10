@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -141,6 +142,27 @@ describe('login: the one-time code and the first passkey', () => {
     expect((await w.auth.codeOptions(w.auth.newCode())).ok).toBe(true);
   });
 
+  it('login a new code starts the count of wrong ones again: 9 wrong, a new code, 9 more wrong, and the new code still works', async () => {
+    const w = world();
+    w.auth.newCode();
+    for (let i = 0; i < 9; i += 1) expect((await w.auth.codeOptions(`0000-0000-000${i}`)).ok).toBe(false);
+    const code = w.auth.newCode();
+    for (let i = 0; i < 9; i += 1) expect((await w.auth.codeOptions(`0000-0000-000${i}`)).ok).toBe(false);
+    expect((await w.auth.codeOptions(code)).ok).toBe(true);
+  });
+
+  it('login 10 wrong codes in a row: the good code typed in between starts the count again', async () => {
+    const w = world();
+    const code = w.auth.newCode();
+    for (let i = 0; i < 9; i += 1) expect((await w.auth.codeOptions(`0000-0000-000${i}`)).ok).toBe(false);
+    expect((await w.auth.codeOptions(code)).ok).toBe(true);
+    for (let i = 0; i < 9; i += 1) expect((await w.auth.codeOptions(`0000-0000-000${i}`)).ok).toBe(false);
+    expect((await w.auth.codeOptions(code)).ok).toBe(true);
+    // The tenth in a row does void it.
+    for (let i = 0; i < 10; i += 1) expect((await w.auth.codeOptions(`0000-0000-000${i}`)).ok).toBe(false);
+    expect((await w.auth.codeOptions(code)).ok).toBe(false);
+  });
+
   it('login a passkey made for another address, or not checked with Face ID, or answering another question, is refused', async () => {
     for (const change of [{ rpId: 'example.com' }, { userVerified: false }, { type: 'webauthn.get' }]) {
       const w = world();
@@ -186,6 +208,45 @@ describe('login: logging in with a passkey', () => {
     const answer = key.answer(options, ORIGIN);
     expect((await w.auth.login(answer, DEVICE)).ok).toBe(true);
     expect((await w.auth.login(answer, DEVICE)).ok).toBe(false);
+  });
+
+  it("login a passkey that counts nothing (Apple's always say 0): the same answer sent again is refused all the same", async () => {
+    const w = world();
+    const key = new SoftPasskey();
+    const code = w.auth.newCode();
+    const asked = await w.auth.codeOptions(code);
+    if (!asked.ok) throw new Error(asked.why);
+    cookieOf(await w.auth.codePasskey(code, key.register(asked.options, ORIGIN, { count: 0 }), DEVICE));
+    expect(readPasskeys(w.db)[0]?.counter).toBe(0);
+    const options = await w.auth.loginOptions();
+    const answer = key.answer(options, ORIGIN, { count: 0 });
+    expect((await w.auth.login(answer, DEVICE)).ok).toBe(true);
+    expect(await w.auth.login(answer, DEVICE)).toEqual({ ok: false, why: 'That login was not asked for, or was answered already. Nothing was changed.' });
+    // A new question, answered with the same count of 0: in.
+    expect((await w.auth.login(key.answer(await w.auth.loginOptions(), ORIGIN, { count: 0 }), DEVICE)).ok).toBe(true);
+  });
+
+  it('login a login question can be answered for 5 minutes: at 4 minutes 59 it works, at exactly 5 it is refused', async () => {
+    const w = world();
+    const { key } = await firstPasskey(w);
+    const options = await w.auth.loginOptions();
+    minutes(w, 4 + 59 / 60);
+    expect((await w.auth.login(key.answer(options, ORIGIN), DEVICE)).ok).toBe(true);
+    const later = await w.auth.loginOptions();
+    minutes(w, 5);
+    expect(await w.auth.login(key.answer(later, ORIGIN), DEVICE)).toEqual({ ok: false, why: 'That login was not asked for, or was answered already. Nothing was changed.' });
+  });
+
+  it("login without Face ID or the computer's own check, for another host name, or from another address, is refused, and nobody is logged in", async () => {
+    const w = world();
+    const { key } = await firstPasskey(w);
+    expect((await logIn(w, key, { userVerified: false })).ok).toBe(false);
+    expect((await logIn(w, key, { rpId: 'example.com' })).ok).toBe(false);
+    const options = await w.auth.loginOptions();
+    expect((await w.auth.login(key.answer(options, 'http://localhost:9999'), DEVICE)).ok).toBe(false);
+    expect(serverLinesIn(w.db).filter((l) => l.action === 'logged-in')).toHaveLength(1);
+    // The same passkey, checked, from the app's own address: in.
+    expect((await logIn(w, key)).ok).toBe(true);
   });
 
   it('login a copied passkey shows itself: its count going backwards is refused', async () => {
@@ -256,6 +317,19 @@ describe('login: staying logged in, and logging out', () => {
     await firstPasskey(b);
     expect(a.auth.session(cookie)).not.toBeNull();
     expect(b.auth.session(cookie)).toBeNull();
+  });
+
+  it('login the database keeps no login and no code in the clear: only their hashes', async () => {
+    const w = world();
+    const code = w.auth.newCode();
+    const asked = await w.auth.codeOptions(code);
+    if (!asked.ok) throw new Error(asked.why);
+    const cookie = cookieOf(await w.auth.codePasskey(code, new SoftPasskey().register(asked.options, ORIGIN), DEVICE));
+    const login = cookie.slice(LOGIN_COOKIE.length + 1);
+    const tables = (w.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((t) => t.name);
+    const everything = JSON.stringify(tables.map((name) => w.db.prepare(`SELECT * FROM "${name}"`).all()));
+    for (const secret of [login, code, code.replaceAll('-', '')]) expect(everything).not.toContain(secret);
+    expect(everything).toContain(createHash('sha256').update(login).digest('hex'));
   });
 
   it('login a made-up or garbled cookie is refused', () => {

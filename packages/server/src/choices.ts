@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { canonical, itemKey } from './item-key.js';
 import {
   ACCOUNTS,
   FROM_NEXT_PAYCHECK,
@@ -17,6 +18,7 @@ import {
   type LeftoverChoice,
   type PickTo,
   type Pot,
+  type ResortDetail,
   type ReviewDetail,
   type ReviewOptions,
   type Settings,
@@ -72,6 +74,8 @@ const SPLIT_BUCKETS: readonly ChoicePart['bucket'][] = ['needs', 'wants', 'not-m
 const BUCKET_WORDS: Readonly<Record<string, string>> = { needs: 'Needs', wants: 'Wants', 'not-mine': 'Not mine', savings: 'Savings', momReserve: 'Mom reserve', heldForOthers: 'Held for others' };
 
 const ID_FORMAT = /^[A-Za-z0-9_-]{8,64}$/;
+// An item's key as a screen saw it (item-key.ts).
+const KEY_FORMAT = /^[0-9a-f]{16}$/;
 const MAX_ITEM_LENGTH = 200;
 const MAX_TEXT_LENGTH = 200;
 
@@ -80,8 +84,8 @@ const MAX_TEXT_LENGTH = 200;
 // The request, if it is exactly the right shape, otherwise null. Nothing is
 // guessed or repaired.
 export function parseChoiceRequest(value: unknown): ChoiceRequest | null {
-  if (!isRecord(value) || !onlyKeys(value, ['id', 'item', 'choice', 'always', 'confirmed', 'resort'])) return null;
-  const { id, item, choice, always, confirmed, resort } = value;
+  if (!isRecord(value) || !onlyKeys(value, ['id', 'item', 'choice', 'always', 'confirmed', 'resort', 'seen'])) return null;
+  const { id, item, choice, always, confirmed, resort, seen } = value;
   if (typeof id !== 'string' || !ID_FORMAT.test(id)) return null;
   if (typeof item !== 'string' || item === '' || item.length > MAX_ITEM_LENGTH) return null;
   const parsed = parseChoice(choice);
@@ -95,7 +99,16 @@ export function parseChoiceRequest(value: unknown): ChoiceRequest | null {
   }
   if (confirmed !== undefined && typeof confirmed !== 'boolean') return null;
   if (resort !== undefined && resort !== true) return null;
-  return { id, item, choice: parsed, ...(rule === undefined ? {} : { always: rule }), ...(confirmed === undefined ? {} : { confirmed }), ...(resort === undefined ? {} : { resort: true as const }) };
+  if (seen !== undefined && (typeof seen !== 'string' || !KEY_FORMAT.test(seen))) return null;
+  return {
+    id,
+    item,
+    choice: parsed,
+    ...(rule === undefined ? {} : { always: rule }),
+    ...(confirmed === undefined ? {} : { confirmed }),
+    ...(resort === undefined ? {} : { resort: true as const }),
+    ...(seen === undefined ? {} : { seen }),
+  };
 }
 
 // A hand move, if it is exactly an id, two buckets, and a whole number of
@@ -439,6 +452,9 @@ export class ChoiceDesk {
     const detail = details.find((d) => d.item.id === request.item);
     let subject: Subject;
     if (detail !== undefined) {
+      // Step 3: an answer about an item that changed since the screen showed
+      // it (a sync brought something new about it) is refused, with how it is now.
+      if (request.seen !== undefined && request.seen !== itemKey(detail)) return refuse('changed', changedWhy(detail));
       subject = { options: detail.options, net: detail.item.type === 'spending' ? detail.item.amount : 0, storeRefund: detail.item.type === 'money-in' && detail.item.reason === 'refund', now: null };
     } else {
       // Only a tap on the list of what went in and out of a bucket may change
@@ -446,6 +462,7 @@ export class ChoiceDesk {
       const sorted = request.resort === true ? this.#book.resortDetail(request.item) : null;
       if (sorted === null) return refuse('not-waiting', 'That one was already dealt with.');
       if (!sorted.resortable) return refuse('refused', sorted.why);
+      if (request.seen !== undefined && request.seen !== itemKey(sorted)) return refuse('changed', changedWhy(sorted));
       subject = { options: sorted.options, net: sorted.type === 'spending' ? sorted.amount : 0, storeRefund: sorted.refund, now: sorted.now };
     }
 
@@ -744,6 +761,13 @@ function askingAboutRules(patch: Partial<Settings>): string {
   return `Changing ${names} needs your OK first`;
 }
 
+// Why an answer about an item that changed is refused: how it is now.
+function changedWhy(now: ReviewDetail | Extract<ResortDetail, { resortable: true }>): string {
+  const again = 'Look at it again, then choose';
+  if ('item' in now) return `${capitalize(nameOf(now))} changed since you looked: it is now ${formatDollars(now.item.amount)}${now.pending ? ', still pending' : ''}. ${again}`;
+  return `${now.description} changed since you looked: it is now ${formatDollars(now.amount)}${now.pending ? ', still pending' : ''}. ${again}`;
+}
+
 // A name for exactly this preview: the same preview always gets the same key,
 // and a different one, a different key.
 function previewKey(preview: SettingsPreview): string {
@@ -844,15 +868,5 @@ function escape(text: string): string {
 }
 
 // The same request always gives the same text, whatever order its keys were
-// written in, so a repeat is recognized.
-export function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  if (isRecord(value)) {
-    return `{${Object.keys(value)
-      .sort()
-      .filter((key) => value[key] !== undefined)
-      .map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`)
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
-}
+// written in, so a repeat is recognized (item-key.ts).
+export { canonical };

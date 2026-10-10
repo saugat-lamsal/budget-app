@@ -1,10 +1,12 @@
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { request as httpRequest, type Server } from 'node:http';
+import { request as httpRequest, type IncomingMessage, type Server } from 'node:http';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { LOGIN_COOKIE } from '../src/auth/auth.js';
+import { Auth, LOGIN_COOKIE } from '../src/auth/auth.js';
+import { answerAuth } from '../src/auth/http.js';
 import { createDemoServer } from '../src/demo/demo-server.js';
-import { APP_PATHS, LOGIN_PATH, ROUTES, SCREEN_PATHS, SETUP_PATHS } from '../src/http/server.js';
+import { APP_PATHS, AUTH_ROUTES, LOGIN_PATH, ROUTES, SCREEN_PATHS, SETUP_PATHS, createAppServer } from '../src/http/server.js';
+import { serverLinesIn } from '../src/server-log.js';
 import { lifeInAFile, setUpThroughTheDesk, type Life } from './keeper-harness.js';
 import { loginForTests } from './login-for-tests.js';
 
@@ -166,6 +168,50 @@ describe('login: every route on the real server needs a login', () => {
         const answer = await ask(r, 'POST', route.path, { cookie, ...o });
         expect(answer.status, `${route.path} ${JSON.stringify(o)}`).toBe(403);
       }
+    }
+  });
+
+  it("login the gate itself refuses the login's own addresses that need a login, before the login's code is asked; the open ones it passes on", async () => {
+    const asked: string[] = [];
+    let origin = '';
+    const server = createAppServer({
+      webRoot: join(process.cwd(), 'no-such-folder'),
+      home: () => {
+        throw new Error('not asked');
+      },
+      gate: {
+        origin: () => origin,
+        loggedIn: () => false,
+        auth: (path) => {
+          asked.push(path);
+          return Promise.resolve({ status: 200, body: { ok: true } });
+        },
+      },
+    });
+    await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+    try {
+      const address = server.address();
+      const port = typeof address === 'object' && address !== null ? address.port : 0;
+      origin = `http://localhost:${port}`;
+      const r = { port, origin } as Running;
+      for (const route of AUTH_ROUTES.filter((x) => x.login)) refused(await ask(r, route.method, route.path), route.path);
+      expect(asked).toEqual([]);
+      for (const route of AUTH_ROUTES.filter((x) => !x.login)) expect((await ask(r, route.method, route.path)).status, route.path).toBe(200);
+      expect(asked).toEqual(AUTH_ROUTES.filter((x) => !x.login).map((x) => x.path));
+    } finally {
+      await new Promise<void>((done) => server.close(() => done()));
+    }
+  });
+
+  it("login the login's own code refuses what needs a login without one, even when asked directly", async () => {
+    const life = await lifeInAFile();
+    try {
+      const auth = new Auth({ db: life.h.db, now: () => life.now, origin: 'http://localhost:5190', today: () => '2026-10-01', bookLines: () => 0 });
+      const request = { headers: {} } as IncomingMessage;
+      for (const route of AUTH_ROUTES.filter((x) => x.login)) expect(await answerAuth(auth, route.path, request, {}, null), route.path).toEqual({ status: 401, body: { error: 'login-needed' } });
+      expect(serverLinesIn(life.h.db)).toEqual([]);
+    } finally {
+      life.done();
     }
   });
 

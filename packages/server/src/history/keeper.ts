@@ -14,21 +14,22 @@ import { logChange, readAccounts, readBankRules, readConnection, readItems, read
 import { createAppServer, type Seen } from '../http/server.js';
 import type { Log } from '../log.js';
 import type { PlaidClient } from '../plaid/client.js';
-import { serverLinesIn } from '../server-log.js';
+import { saveServerLine, serverLinesIn } from '../server-log.js';
 import { SetupDesk } from '../setup-desk.js';
 import { NO_ANSWERS, SETUP_LOOK_BACK_DAYS, type SetupAnswers } from '../setup-view.js';
+import { FEWEST_MINUTES, MOST_MINUTES, readLastRead, saveSyncEveryMinutes, syncEveryMinutes } from '../sync/bank-reads.js';
 import { syncBank, type SyncResult } from '../sync/sync.js';
 import { activityView, type ActivityView } from '../views/activity.js';
 import type { BankRuleRequest, BankRuleResponse } from '../views/bank-rules.js';
 import { bucketsView, type BucketsView } from '../views/buckets.js';
 import type { ChoiceRequest, ChoiceResponse, MoveRequest, MoveResponse, RuleRequest, RuleResponse, SettingsRequest, SettingsResponse, SetupRequest, SetupResponse } from '../views/choice.js';
-import { homeView, type HomeView } from '../views/home.js';
+import { homeView, type CheckedAt, type HomeView } from '../views/home.js';
 import { paydayView, type PaydayView } from '../views/payday.js';
 import { reviewView, type ReviewView } from '../views/review.js';
 import { settingsView, type SettingsView } from '../views/settings.js';
 import type { SetupView } from '../views/setup.js';
 import { recorderOf, totalsOf, type Answer, type Recorder, type SavedSetupAnswers } from './history.js';
-import { appendEvent, readDecision, readHistory, readLastChecked, replayHistory, saveDecision, saveLastChecked, sealHistory, type DeskName } from './history-db.js';
+import { appendEvent, lastSeqOf, readDecision, readHistory, readLastChecked, replayHistory, saveDecision, saveLastChecked, sealHistory, type DeskName } from './history-db.js';
 import { timeIn, todayIn } from './today.js';
 
 // The real server's books (Step 1): everything he answers is kept in the
@@ -55,8 +56,9 @@ export interface KeeperInput {
   // (Step 2). Known once the server listens; tests that never serve leave it out.
   readonly origin?: () => string;
   readonly log?: Log;
-  // For tests: runs inside each save, after everything is written and
-  // before it is committed. A throw there stops the save halfway.
+  // For tests: runs inside each save (an answer's, and a sync's), after
+  // everything is written and before it is committed. A throw there stops the
+  // save halfway.
   readonly beforeCommit?: () => void;
 }
 
@@ -70,6 +72,14 @@ interface State {
   readonly setup: SetupDesk | null;
 }
 
+// What a sync needs to reach the bank.
+export interface SyncBank {
+  readonly plaid: PlaidClient;
+  readonly box: TokenBox;
+  readonly log: Log;
+  readonly pageSize?: number;
+}
+
 const NOUNS: Readonly<Record<DeskName, string>> = { choice: 'choice', move: 'move', settings: 'change', rule: 'change', setup: 'answer', 'bank-rule': 'change' };
 
 export class Keeper {
@@ -80,6 +90,12 @@ export class Keeper {
   readonly #auth: Auth;
   #origin: () => string;
   #state!: State;
+  // Step 3: the sync on its way, if any, and when the last one started (an
+  // instant, in milliseconds); when the server starts, the last read.
+  #syncing: Promise<SyncResult> | null = null;
+  #lastTry: number | null;
+  // The last event of the history the books in memory have.
+  #lastSeq = 0;
 
   private constructor(input: KeeperInput) {
     this.#db = input.db;
@@ -87,6 +103,8 @@ export class Keeper {
     this.#beforeCommit = input.beforeCommit;
     this.#origin = input.origin ?? (() => 'http://localhost:5190');
     this.#auth = new Auth({ db: input.db, now: input.now, origin: () => this.#origin(), today: () => this.today(), bookLines: () => this.book()?.changeLog().length ?? 0 });
+    const lastRead = readLastRead(input.db);
+    this.#lastTry = lastRead === null ? null : Date.parse(lastRead);
   }
 
   // Opens the books kept in the database, after checking that the history
@@ -100,7 +118,8 @@ export class Keeper {
   // Reads everything from the database again: after a sync, or a save that
   // did not go through.
   reload(): void {
-    const replayed = replayHistory(readHistory(this.#db), true);
+    const history = readHistory(this.#db);
+    const replayed = replayHistory(history, true);
     sealHistory(this.#db, replayed.unsealed);
     const recorder = replayed.book === null ? null : recorderOf(replayed.book);
     const book = recorder?.book ?? null;
@@ -126,6 +145,7 @@ export class Keeper {
       });
     }
     this.#state = { recorder, seen: replayed.seen, bankRules, choices: book === null ? null : new ChoiceDesk(book, today), setup };
+    this.#lastSeq = history.at(-1)?.seq ?? 0;
   }
 
   book(): Book | null {
@@ -174,10 +194,18 @@ export class Keeper {
       madeUpData: false,
       seenTakeBacks: this.#state.seen,
       lastChecked: readLastChecked(this.#db),
+      checkedAt: this.#checkedAt(),
     });
     // 0.5, B82: the last safe to spend the bank backed up, and when.
     if (view.state === 'tracking' && view.safeToSpend.shown) saveLastChecked(this.#db, { amount: view.safeToSpend.amount, at: timeIn(this.timeZone(), this.#now()) });
     return view;
+  }
+
+  // Step 3: "Checked at": the last read of the bank, in his home time zone.
+  #checkedAt(): CheckedAt | null {
+    const read = this.lastRead();
+    const zone = this.timeZone();
+    return read === null ? null : { at: timeIn(zone, new Date(read)), timeZone: zone };
   }
 
   buckets(): BucketsView {
@@ -208,6 +236,7 @@ export class Keeper {
       bankRules: { rules: rules.rules(), log: rules.log(), recentDays: RECENT_DAYS },
       serverLog: serverLinesIn(this.#db),
       ...(session === null ? {} : { login: loginViewOf(this.#auth, session) }),
+      sync: { everyMinutes: this.syncEveryMinutes(), checkedAt: this.#checkedAt(), today: this.today() },
     });
   }
 
@@ -297,13 +326,72 @@ export class Keeper {
     return true;
   }
 
-  // One sync with the bank, then everything read again.
-  async sync(bank: { readonly plaid: PlaidClient; readonly box: TokenBox; readonly log: Log; readonly pageSize?: number }): Promise<SyncResult> {
-    try {
-      return await syncBank({ db: this.#db, plaid: bank.plaid, box: bank.box, log: bank.log, today: this.today(), ...(bank.pageSize === undefined ? {} : { pageSize: bank.pageSize }) });
-    } finally {
-      this.reload();
+  // ----- Syncing with the bank (Step 3) -----
+
+  // One sync with the bank. Never two at once: asked again while one is on
+  // its way (by the timer, or by --sync), it is that one, and gets its result.
+  // What it brings is saved in one transaction (sync.ts) together with the
+  // moment the bank was read, and the books in memory are read again right
+  // after, in the same step: an answer that comes in meanwhile is saved
+  // before the sync's save (which then works from it), or after it, against
+  // the book with the sync in it, never in between. A sync that fails saves
+  // nothing.
+  sync(bank: SyncBank): Promise<SyncResult> {
+    if (this.#syncing !== null) return this.#syncing;
+    this.#lastTry = this.#now().getTime();
+    const running = syncBank({
+      db: this.#db,
+      plaid: bank.plaid,
+      box: bank.box,
+      log: bank.log,
+      today: this.today(),
+      ...(bank.pageSize === undefined ? {} : { pageSize: bank.pageSize }),
+      readAt: () => this.#now().toISOString(),
+      ...(this.#beforeCommit === undefined ? {} : { beforeCommit: this.#beforeCommit }),
+      // Read again when it saved anything, or when the history has more than
+      // the books in memory (another copy of the server saved a sync).
+      afterSave: (result) => {
+        if (result.changed || lastSeqOf(this.#db) !== this.#lastSeq) this.reload();
+      },
+    }).finally(() => {
+      this.#syncing = null;
+    });
+    this.#syncing = running;
+    return running;
+  }
+
+  // How long until the next sync is due, in milliseconds of real time: one
+  // interval (section 2) after the last one started, or after the last read
+  // when the server has just started. 0 or less: due now. Null while there is
+  // no bank connection to read.
+  syncDueIn(): number | null {
+    if (readConnection(this.#db) === null) return null;
+    if (this.#lastTry === null) return 0;
+    return this.#lastTry + this.syncEveryMinutes() * 60_000 - this.#now().getTime();
+  }
+
+  // When the bank was last read, as an instant; null before the first read.
+  lastRead(): string | null {
+    return readLastRead(this.#db);
+  }
+
+  syncEveryMinutes(): number {
+    return syncEveryMinutes(this.#db);
+  }
+
+  // Section 2: how often to sync, a whole number of minutes from 15 to 1,440.
+  // It applies right away (13.1) and is logged (13.5).
+  changeSyncEvery(minutes: unknown): { readonly ok: true } | { readonly ok: false; readonly why: string } {
+    if (typeof minutes !== 'number' || !Number.isInteger(minutes) || minutes < FEWEST_MINUTES || minutes > MOST_MINUTES) {
+      return { ok: false, why: `Syncing with the bank takes a whole number of minutes, ${FEWEST_MINUTES} to ${MOST_MINUTES.toLocaleString('en-US')}. Nothing was changed.` };
     }
+    const before = this.syncEveryMinutes();
+    if (minutes === before) return { ok: false, why: 'That is already the setting. Nothing was changed.' };
+    this.#db.transaction(() => {
+      saveSyncEveryMinutes(this.#db, minutes);
+      saveServerLine(this.#db, { date: this.today(), action: 'sync-every-changed', before, after: minutes, afterBookLines: this.book()?.changeLog().length ?? 0 });
+    })();
+    return { ok: true };
   }
 
   // The web server for the screens, with these books behind it. Every
@@ -334,6 +422,7 @@ export class Keeper {
       setup: (_request, answer) => this.setup(answer),
       bankRule: (_request, change) => this.bankRule(change),
       seen: (_request, what) => this.seen(what),
+      syncEvery: (_request, minutes) => this.changeSyncEvery(minutes),
     });
   }
 
@@ -418,6 +507,7 @@ export class Keeper {
         writes();
         this.#beforeCommit?.();
       })();
+      this.#lastSeq = lastSeqOf(this.#db);
     } catch (error) {
       this.reload();
       throw error;

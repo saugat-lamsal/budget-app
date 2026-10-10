@@ -21,6 +21,7 @@ import type { Log } from '../log.js';
 import { BankKey, PlaidError, type PlaidClient } from '../plaid/client.js';
 import type { AccountsGetResponse, LiabilitiesGetResponse, PlaidCreditCard, TransactionsSyncResponse } from '../plaid/types.js';
 import { appendEvent } from '../history/history-db.js';
+import { saveBankRead } from './bank-reads.js';
 import { planSync, type Attention } from './plan.js';
 
 // One sync: everything Plaid has that is new since the last one, then the
@@ -44,6 +45,14 @@ export interface SyncInput {
   // For tests: runs inside the save, after the changes are written and
   // before they are committed.
   readonly beforeCommit?: () => void;
+  // The moment the bank was read (Step 3): noted with what the sync saves, in
+  // the same transaction, whether or not it brought anything new (database
+  // step 4). Without it, a sync with nothing new writes nothing at all.
+  readonly readAt?: () => string;
+  // Runs right after the save is committed, in the same step, before anything
+  // else can run: the real server reads its books again there, so an answer
+  // that comes in next is given to the book with the sync in it.
+  readonly afterSave?: (result: SyncResult) => void;
 }
 
 export interface SyncResult {
@@ -89,6 +98,7 @@ export async function syncBank(input: SyncInput): Promise<SyncResult> {
     }
     const result = db.transaction(() => save(input, connection.cursor, fetched))();
     if (result !== 'cursor-moved') {
+      input.afterSave?.(result);
       log.info('sync done', { changed: result.changed, added: result.added, modified: result.modified, removed: result.removed, sent: result.sent, attention: result.attention.length });
       return result;
     }
@@ -217,6 +227,7 @@ function save(input: SyncInput, startCursor: string | null, fetched: Fetched): S
     attention: plan.attention,
     historyComplete,
   };
+  if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed });
   if (!changed) return result;
 
   for (const account of changedAccounts) saveAccount(db, account, JSON.stringify(account), sync);

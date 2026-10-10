@@ -35,6 +35,9 @@ export const SETUP_PATHS: readonly string[] = ['bank', 'rules', 'transfers', 'pa
 // The login page (Step 2): on the real server, the one screen shown without a login.
 export const LOGIN_PATH = '/login';
 
+// Step 3: how often the real server syncs with the bank (section 2), changed on Settings.
+export const SYNC_EVERY_PATH = '/api/sync/every';
+
 export interface Route {
   readonly method: 'GET' | 'POST';
   readonly path: string;
@@ -67,6 +70,7 @@ export const ROUTES: readonly Route[] = [
   ...['home', 'buckets', 'review', 'settings', 'setup', 'payday', ...Object.keys(POT_SLUGS).map((slug) => `activity/${slug}`)].map((name): Route => ({ method: 'GET', path: `/api/${name}`, login: true })),
   { method: 'POST', path: '/api/choice', login: true },
   { method: 'POST', path: '/api/seen', login: true },
+  { method: 'POST', path: SYNC_EVERY_PATH, login: true },
   ...AUTH_ROUTES,
 ];
 
@@ -121,6 +125,9 @@ export interface AppServerOptions {
   readonly bankRule?: BankRuleHandler;
   // The real server's login (Step 2). Without it, no login: the demo.
   readonly gate?: Gate;
+  // Step 3: how often the real server syncs with the bank, in minutes (section
+  // 2). The books check it. Without it (the demo, which has no bank), none can be sent.
+  readonly syncEvery?: (request: IncomingMessage, minutes: unknown) => { readonly ok: true } | { readonly ok: false; readonly why: string };
 }
 
 export type Seen = { readonly kind: 'bank-took-back'; readonly id: string };
@@ -299,6 +306,23 @@ export function createAppServer(options: AppServerOptions): Server {
         return;
       }
       await markSeen(request, response, options.seen);
+      return;
+    }
+    // How often the real server syncs with the bank: a setting, never the bank (0.4).
+    if (path === SYNC_EVERY_PATH && options.syncEvery !== undefined) {
+      if (request.method !== 'POST') {
+        response.setHeader('Allow', 'POST');
+        send(response, 405, 'text/plain; charset=utf-8', 'Only POST.', 'no-store');
+        return;
+      }
+      const sent = await readOwnJson(request, response, SEEN_LIMIT);
+      if (response.writableEnded || response.headersSent) return;
+      if (typeof sent !== 'object' || sent === null || Array.isArray(sent) || Object.keys(sent).join() !== 'minutes') {
+        send(response, 400, 'text/plain; charset=utf-8', 'Not a setting that can be changed.', 'no-store');
+        return;
+      }
+      const said = options.syncEvery(request, (sent as { minutes: unknown }).minutes);
+      send(response, said.ok ? 200 : 422, 'application/json; charset=utf-8', JSON.stringify(said), 'no-store');
       return;
     }
     // His choices, moves, and changes to the settings: they change the app's

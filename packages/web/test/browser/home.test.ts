@@ -26,6 +26,20 @@ describe.each(ENGINES)('Home in %s', (_name, engine) => {
     await page.context().close();
   });
 
+  it('Step 3 Checked at says when the bank was last read, in his home time zone, with a clock: the time only, on the same day', async () => {
+    const input = demoScenario('normal')!.input!();
+    expect(input.checkedAt).toEqual({ at: '2026-10-07T09:41:00-04:00', timeZone: 'America/New_York' });
+    // The phone is in Chicago here (harness.ts): the time is still New York's.
+    const page = await openScenario(await browser().newContext(phone()), base(), 'normal');
+    expect(await textAt(page, 'checked-at')).toBe('Checked at 9:41 AM');
+    expect(await page.getByTestId('checked-at').locator('[data-icon="clock"]').count()).toBe(1);
+    // When the bank cannot be read it stays, at the last read, next to the last checked safe to spend.
+    const stale = await openScenario(page.context(), base(), 'bank-not-read');
+    expect(await textAt(stale, 'checked-at')).toBe('Checked at 7:15 AM');
+    expect(await textAt(stale, 'as-of')).toBe("As of Wed, Oct 7, 7:15 AM. Can't reach the bank to check it now.");
+    await page.context().close();
+  });
+
   it('11.2 the days to payday and the date, from the pay schedule', async () => {
     const { book, today } = life('normal');
     const page = await openScenario(await browser().newContext(phone()), base(), 'normal');

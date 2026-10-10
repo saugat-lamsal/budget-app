@@ -17,6 +17,7 @@ import type { BankRule } from '../bank/reading.js';
 import type { Totals } from '../history/history.js';
 import type { BankRuleLogLine } from './bank-rules.js';
 import type { RuleView } from './choice.js';
+import type { CheckedAt } from './home.js';
 import type { LoginView } from './login.js';
 import type { ServerLogLine } from './server-log.js';
 
@@ -42,6 +43,17 @@ export interface SettingsInput {
   readonly serverLog?: readonly ServerLogLine[];
   // Step 2: the login card, on the real server only (the demo has no login).
   readonly login?: LoginView;
+  // Step 3: syncing with the bank, on the real server only (the demo has no bank).
+  readonly sync?: SyncView;
+}
+
+// Step 3: how often the real server syncs with the bank (section 2), in
+// minutes, and when it last read the bank ("Checked at").
+export interface SyncView {
+  readonly everyMinutes: number;
+  readonly checkedAt: CheckedAt | null;
+  // Today in his home time zone, for "Checked at" (the time only, on the same day).
+  readonly today: IsoDate;
 }
 
 // A sorting rule, with its place among the rules of its kind: the first that
@@ -83,16 +95,20 @@ export type LogRow =
     }
   // Logins, new passkeys and log outs, by the device, and the login setting.
   | { readonly key: string; readonly date: IsoDate; readonly kind: 'logged-in' | 'logged-out' | 'passkey-added'; readonly device: string }
-  | { readonly key: string; readonly date: IsoDate; readonly kind: 'stay-logged-in-changed'; readonly before: number; readonly after: number };
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'stay-logged-in-changed'; readonly before: number; readonly after: number }
+  // Step 3: how often it syncs with the bank, in minutes.
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'sync-every-changed'; readonly before: number; readonly after: number };
 
 export type SettingsView =
   // Before setup day there are no settings yet, but he can still log out.
-  | { readonly state: 'not-set-up'; readonly madeUpData: boolean; readonly login?: LoginView }
+  | { readonly state: 'not-set-up'; readonly madeUpData: boolean; readonly login?: LoginView; readonly sync?: SyncView }
   | {
       readonly state: 'tracking';
       readonly madeUpData: boolean;
       // Step 2: the login card, on the real server only.
       readonly login?: LoginView;
+      // Step 3: syncing with the bank, on the real server only.
+      readonly sync?: SyncView;
       readonly today: IsoDate;
       // 0.5: Settings says so too when the totals do not match the bank.
       readonly check: { readonly state: 'matches' } | { readonly state: 'does-not-match'; readonly difference: Cents } | { readonly state: 'bank-not-read' };
@@ -136,7 +152,7 @@ export function ruleViewOf(rule: SortingRule): RuleView {
 
 export function settingsView(input: SettingsInput): SettingsView {
   const { today, book, bank, madeUpData } = input;
-  const login = input.login === undefined ? {} : { login: input.login };
+  const login = { ...(input.login === undefined ? {} : { login: input.login }), ...(input.sync === undefined ? {} : { sync: input.sync }) };
   if (book === null) return { state: 'not-set-up', madeUpData, ...login };
 
   let check: Extract<SettingsView, { state: 'tracking' }>['check'];
@@ -259,7 +275,8 @@ function serverRow(line: ServerLogLine, key: string): LogRow {
       return { key, date: line.date, kind: 'history-retotaled', from: { date: line.from.date, what: line.from.what }, events: line.events.length, changes };
     }
     case 'stay-logged-in-changed':
-      return { key, date: line.date, kind: 'stay-logged-in-changed', before: line.before, after: line.after };
+    case 'sync-every-changed':
+      return { key, date: line.date, kind: line.action, before: line.before, after: line.after };
     default:
       return { key, date: line.date, kind: line.action, device: line.device };
   }

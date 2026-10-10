@@ -3,7 +3,8 @@ import { chromium, type Browser, type BrowserContext, type Page } from 'playwrig
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { serverLinesIn } from '../../../server/src/server-log.js';
 import { lifeInAFile, setUpThroughTheDesk, type Life } from '../../../server/test/keeper-harness.js';
-import { WEB_ROOT, centsAt, close, launch, listen, phone, untilQuiet, waitOrReport } from './harness.js';
+import { loginCookieForTests } from '../../../server/test/login-for-tests.js';
+import { ENGINES, WEB_ROOT, centsAt, close, launch, listen, phone, untilQuiet, waitOrReport } from './harness.js';
 
 // Passkey login (Step 2) in a real browser, from the first one-time code to
 // Home: Chromium with a virtual passkey (its WebAuthn testing feature), on the
@@ -37,7 +38,9 @@ async function withPasskey(context: BrowserContext, page: Page): Promise<void> {
   });
 }
 
-describe('login in chromium, with a virtual passkey', () => {
+// Only where Chromium is one of the engines tested: CI's WebKit job installs
+// WebKit alone (BROWSER_ENGINE=webkit), and the Chromium job runs this.
+describe.runIf(ENGINES.some(([name]) => name === 'chromium'))('login in chromium, with a virtual passkey', () => {
   let browser: Browser | undefined;
   beforeAll(async () => {
     browser = await launch(chromium);
@@ -98,6 +101,56 @@ describe('login in chromium, with a virtual passkey', () => {
       expect(log.indexOf('Logged in')).toBeLessThan(log.indexOf('Logged out'));
       expect(log).toContain('Passkey added');
       await untilQuiet(page);
+    } finally {
+      await context.close();
+      await close(r.server);
+      r.life.done();
+    }
+  });
+
+  it('login B160 a screen whose login has ended goes to the login page at its next request; a device still logged in that opens the login page goes Home', async () => {
+    const r = await realServer();
+    const context = await browser!.newContext(phone());
+    try {
+      await context.addCookies([loginCookieForTests(r.life.h.db, r.life.now, r.base)]);
+      const page = await context.newPage();
+      await page.goto(`${r.base}/login`);
+      await page.waitForURL(/\/home$/);
+      await waitOrReport(page, 'main[data-testid="home"][aria-busy="false"]');
+      await untilQuiet(page);
+      // The login ends (logged out on another device, or its days are up).
+      r.life.h.db.prepare('DELETE FROM sessions').run();
+      await page.getByTestId('tab-buckets').click();
+      await page.waitForURL(/\/login$/);
+      await waitOrReport(page, '[data-testid="login-passkey"], [data-testid="login-code"]');
+      await untilQuiet(page);
+    } finally {
+      await context.close();
+      await close(r.server);
+      r.life.done();
+    }
+  });
+
+  it('login B164 another passkey, from Settings: it asks first, then this device makes one; it is listed, and in the change log', async () => {
+    const r = await realServer();
+    const context = await browser!.newContext(phone());
+    try {
+      await context.addCookies([loginCookieForTests(r.life.h.db, r.life.now, r.base)]);
+      const page = await context.newPage();
+      await withPasskey(context, page);
+      await page.goto(`${r.base}/settings`);
+      await waitOrReport(page, '[data-testid="row-add-passkey"]');
+      await untilQuiet(page);
+      expect(await page.locator('[data-testid^="passkey-"]').count()).toBe(0);
+      await page.getByTestId('row-add-passkey').click();
+      expect(await page.getByTestId('confirm-ask').innerText()).toContain('Add a passkey on this device?');
+      await page.getByTestId('confirm-yes').click();
+      await waitOrReport(page, '[data-testid="notice"]');
+      await untilQuiet(page);
+      expect(await page.getByTestId('notice').innerText()).toContain('Passkey added');
+      await waitOrReport(page, '[data-testid="passkey-0"]');
+      expect(await page.getByTestId('passkey-0').innerText()).toContain('Passkey: Safari on iPhone');
+      expect(serverLinesIn(r.life.h.db).map((l) => l.action)).toEqual(['passkey-added']);
     } finally {
       await context.close();
       await close(r.server);
