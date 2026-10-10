@@ -227,3 +227,64 @@ Where the app stands (12.2):
         The difference is 0.00. Moving the rule made or lost no cent.
 
 Check: unsorted spending 100.00 | second payment 100.00 | needs 2,250.00 | bank side 7,350.00 | difference 0.00
+
+
+========================================================================
+EXAMPLE 6. A restart in the middle of a pay period finds the books as they were (the real server keeps everything; 4.2, 4.3, 13.3, 13.5)
+========================================================================
+
+Setup day, Oct 1, the same start as example 3: checking 3,000.00, savings
+5,000.00, the everyday card owes 450.00. Starting money 7,550.00: savings
+4,000.00, mom reserve 1,000.00, wants 200.00, needs 2,350.00.
+
+The history keeps every event in order, each with the day it was made on
+and the totals after it:
+
+Event   Day     What                                         Wants   Needs  Unsorted
+setup   Oct 1   setup day                                   200.00  2,350.00    0.00
+bank    Oct 3   23.45 at CORNER STORE 12, on the everyday
+                card; no rule matches, so it waits (4.3)    200.00  2,350.00   23.45
+answer  Oct 3   he puts it in wants (4.2)                   176.55  2,350.00    0.00
+answer  Oct 3   he moves 50.00 from wants to needs (13.3)   126.55  2,400.00    0.00
+
+        200.00 - 23.45 = 176.55;  176.55 - 50.00 = 126.55;  2,350.00 + 50.00 = 2,400.00
+
+The server stops and starts again. Before it serves anything, it replays
+the history one event at a time and compares each event's totals with the
+ones saved: they are the same, so it starts, with wants 126.55 and needs
+2,400.00, and the change log still says "Moved from Wants to Needs, 50.00,
+Oct 3".
+
+His phone, which never got the answer to the move, sends it again with the
+same decision number. The answer saved with it comes back, and nothing
+moves a second time: wants stays 126.55.
+
+Had the code been changed so that the purchase went to needs instead, the
+replay would give wants 200.00 after his first answer, not the 176.55
+saved: the server would not start, and would say it was that answer, on
+Oct 3.
+
+Check: wants 126.55 | needs 2,400.00 | unsorted spending 0.00 | savings 4,000.00 | mom reserve 1,000.00 | moved 50.00
+
+
+========================================================================
+EXAMPLE 7. Today is the date in his home time zone (section 2)
+========================================================================
+
+His home time zone is America/New_York, as it starts. The server's own
+clock may be set to any zone; it does not matter.
+
+At 3:30 AM on Oct 3 in UTC it is 11:30 PM on Oct 2 in New York (New York
+is 4 hours behind UTC until Nov 1).
+  - Today is Oct 2.
+  - A purchase of 15.00 the bank dates Oct 3 keeps the bank's date, Oct 3.
+  - A hand move of 1.00 made then is dated Oct 2, in the history and in the
+    change log.
+
+At 5:30 AM on Oct 10 in UTC it is 1:30 AM on Oct 10 in New York, so today
+is Oct 10. He changes his home time zone to America/Los_Angeles, 7 hours
+behind UTC: there it is 10:30 PM on Oct 9, so today is Oct 9 from then on.
+The change itself is dated Oct 10, the day it was made.
+
+Dates: now 2026-10-02 | bank purchase 2026-10-03 | hand move 2026-10-02 | after the change 2026-10-09 | change made 2026-10-10
+Check: purchase 15.00 | moved 1.00

@@ -12,7 +12,8 @@
     "test:sandbox": "vitest run --config packages/server/vitest.live.config.ts --silent=false",
     "typecheck": "tsc -p tsconfig.json && npm run typecheck --workspaces --if-present",
     "demo": "node scripts/demo.mjs",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs",
+    "serve": "node scripts/serve.mjs"
   },
   "engines": {
     "node": ">=22.12.0"

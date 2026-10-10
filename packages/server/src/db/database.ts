@@ -1,9 +1,11 @@
 import Database from 'better-sqlite3';
 
 // The server's database: one SQLite file. It holds the bank connection (with
-// its key encrypted), what the bank sent, the book's history, and the card
-// statements. Every sync writes all of its changes in one transaction, with
-// the bookmark for the next sync, so a sync is all or nothing.
+// its key encrypted), what the bank sent, the book's history (what the bank
+// sent the book and every answer of his, in order), and the card statements.
+// Every sync writes all of its changes in one transaction, with the bookmark
+// for the next sync, and every answer is saved in one transaction with its
+// decision number, so each is all or nothing.
 export type Db = Database.Database;
 
 // Each step brings the database from the version before it to the next. A
@@ -107,12 +109,55 @@ const STEPS: readonly string[] = [
     detail TEXT NOT NULL
   );
   `,
+  `
+  -- Step 2 (the real server keeps everything): his answers join the book's
+  -- history, next to what the bank sent, in the order they happened. Each
+  -- event keeps the day it was made on, and the totals the book had after it,
+  -- so a replay can be checked. Events saved before this step get their
+  -- totals the first time they replay.
+  CREATE TABLE book_events_2 (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- The sync that brought it, for what the bank sent.
+    sync INTEGER,
+    kind TEXT NOT NULL CHECK (kind IN ('setup', 'receive', 'answer')),
+    date TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    totals TEXT
+  );
+  INSERT INTO book_events_2 (seq, sync, kind, date, payload, totals)
+    SELECT seq, sync, kind,
+      CASE kind WHEN 'setup' THEN json_extract(payload, '$.date') ELSE (SELECT today FROM syncs WHERE syncs.id = book_events.sync) END,
+      payload, NULL
+    FROM book_events;
+  DROP TABLE book_events;
+  ALTER TABLE book_events_2 RENAME TO book_events;
+
+  -- Each decision number made on the phone, with the request it came with
+  -- and the first answer it got, saved in the same step as the event it
+  -- made. A repeat gets that answer again and changes nothing.
+  CREATE TABLE decisions (
+    id TEXT PRIMARY KEY,
+    desk TEXT NOT NULL CHECK (desk IN ('choice', 'move', 'settings', 'rule', 'setup', 'bank-rule')),
+    fingerprint TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    seq INTEGER NOT NULL REFERENCES book_events (seq)
+  );
+
+  -- 0.5: the last safe to spend the bank backed up, and when (B82).
+  CREATE TABLE last_checked (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    amount INTEGER NOT NULL,
+    at TEXT NOT NULL
+  );
+  `,
 ];
 
 export const SCHEMA_VERSION = STEPS.length;
 
 // path is a file, or ':memory:' for a database that lives only in this process.
-export function openDatabase(path: string): Db {
+// upTo, for tests only: the version to stop at, to make a database as an
+// older version of the app left it.
+export function openDatabase(path: string, options: { readonly upTo?: number } = {}): Db {
   const db = new Database(path);
   try {
     if (path !== ':memory:') db.pragma('journal_mode = WAL');
@@ -120,7 +165,7 @@ export function openDatabase(path: string): Db {
     db.pragma('synchronous = FULL');
     db.pragma('foreign_keys = ON');
     db.pragma('busy_timeout = 5000');
-    migrate(db);
+    migrate(db, options.upTo ?? SCHEMA_VERSION);
   } catch (error) {
     db.close();
     throw error;
@@ -128,12 +173,12 @@ export function openDatabase(path: string): Db {
   return db;
 }
 
-function migrate(db: Db): void {
+function migrate(db: Db, upTo: number): void {
   const version = db.pragma('user_version', { simple: true }) as number;
   if (version > SCHEMA_VERSION) {
     throw new Error(`the database is from a newer version of the app (schema ${version}, this app knows ${SCHEMA_VERSION})`);
   }
-  for (let step = version; step < SCHEMA_VERSION; step += 1) {
+  for (let step = version; step < upTo; step += 1) {
     db.transaction(() => {
       db.exec(STEPS[step] ?? '');
       db.pragma(`user_version = ${step + 1}`);

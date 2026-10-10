@@ -273,6 +273,8 @@ const SETTING_READERS: { readonly [K in keyof Settings]: (value: unknown) => Set
   payScheduleDays: whole,
   momRule: textRule,
   earlyPaycheckDays: whole,
+  // Section 2: a time zone by its name; whether there is such a zone is the money math's to say.
+  homeTimeZone: (v) => (typeof v === 'string' && v.length <= 64 ? v : undefined),
 };
 
 // A change to one or more settings, exactly as the money math keeps them; otherwise null.

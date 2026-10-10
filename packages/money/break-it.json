@@ -3533,5 +3533,12 @@
     "find": "        entry.takenBack = true;\n        this.#refreshSpending(purchase);",
     "replace": "        entry.takenBack = true;",
     "why": "[a26] 4.10 a refund taken back leaves its purchase out of review"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "check(isTimeZone(s.homeTimeZone), ",
+    "replace": "check(true, ",
+    "why": "[zone] section 2 take any text as a home time zone"
   }
 ]

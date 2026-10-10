@@ -1,6 +1,7 @@
-import { startTracking, type AccountId, type BankTransaction, type Book, type IsoDate, type SetupInput } from '@budget-app/money';
+import type { AccountId, Book, IsoDate } from '@budget-app/money';
 import { checkBankRules, type BankRule } from '../bank/reading.js';
 import type { StoredAccount } from '../bank/stored-account.js';
+import { readHistory, replayHistory } from '../history/history-db.js';
 import type { PlaidAccount, PlaidCreditCard } from '../plaid/types.js';
 import type { Attention, ItemStatus, StoredItem } from '../sync/plan.js';
 import type { Db } from './database.js';
@@ -137,25 +138,11 @@ export function saveItem(db: Db, item: StoredItem): void {
 
 // ----- The book -----
 
-export function appendBookEvent(db: Db, sync: number, event: { kind: 'setup'; input: SetupInput } | { kind: 'receive'; txn: BankTransaction }): void {
-  db.prepare('INSERT INTO book_events (sync, kind, payload) VALUES (?, ?, ?)').run(sync, event.kind, JSON.stringify(event.kind === 'setup' ? event.input : event.txn));
-}
-
-// The book, rebuilt from everything it was given, in order. Null before
-// setup day. The money math has no clock and no chance in it, so the same
-// history always gives the same book.
+// The book, rebuilt from its history, in order: what the bank sent and his
+// answers (history/history-db.ts). Null before setup day. The money math has
+// no clock and no chance in it, so the same history always gives the same book.
 export function loadBook(db: Db): Book | null {
-  const rows = db.prepare('SELECT seq, kind, payload FROM book_events ORDER BY seq').all() as { seq: number; kind: 'setup' | 'receive'; payload: string }[];
-  const [first, ...rest] = rows;
-  if (first === undefined) return null;
-  if (first.kind !== 'setup') throw new Error('the book history does not start with setup day');
-  const setup = startTracking(JSON.parse(first.payload) as SetupInput);
-  if (!setup.ok) throw new Error('setup day in the book history does not add up');
-  for (const row of rest) {
-    if (row.kind !== 'receive') throw new Error(`book event ${row.seq} is a second setup day`);
-    setup.book.receive(JSON.parse(row.payload) as BankTransaction);
-  }
-  return setup.book;
+  return replayHistory(readHistory(db), false).book;
 }
 
 export function bookEvents(db: Db): { readonly kind: string; readonly payload: unknown }[] {

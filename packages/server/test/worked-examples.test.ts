@@ -2,8 +2,10 @@
 // expected numbers come from its "Check:" lines, so the file checked by hand
 // and the test can never drift apart.
 import { readFileSync } from 'node:fs';
-import { DEFAULT_SETTINGS, bankSide, parseDollars, type Cents } from '@budget-app/money';
-import { describe, expect, it } from 'vitest';
+import { Book, DEFAULT_SETTINGS, bankSide, parseDollars, type Cents } from '@budget-app/money';
+import { describe, expect, it, vi } from 'vitest';
+import { readHistory } from '../src/history/history-db.js';
+import { decision, lifeInAFile, noonInNewYork, setUpThroughTheDesk } from './keeper-harness.js';
 import { checkBankRules } from '../src/bank/reading.js';
 import { connectTestBank } from '../src/connect.js';
 import { TokenBox } from '../src/crypto/token-box.js';
@@ -211,5 +213,88 @@ describe('worked examples: reading the bank', () => {
     const status = bankStatus(h.db);
     expect(status.selfCheck?.bankSide).toBe(checks.get('bank side'));
     expect(status.selfCheck?.difference).toBe(checks.get('difference'));
+  });
+});
+
+// "Dates:" lines name days the same way "Check:" lines name amounts.
+function datesOf(number: number): Map<string, string> {
+  const block = text.split(/^EXAMPLE /m).find((b) => b.startsWith(`${number}.`));
+  if (block === undefined) throw new Error(`no example ${number}`);
+  const dates = new Map<string, string>();
+  for (const line of block.matchAll(/^Dates: (.*)$/gm)) {
+    for (const part of (line[1] ?? '').split('|')) {
+      const m = /^\s*([a-z][a-z ]*?)\s+(\d{4}-\d{2}-\d{2})\s*$/.exec(part);
+      if (m === null) throw new Error(`cannot read "${part}" in example ${number}`);
+      dates.set(m[1] ?? '', m[2] ?? '');
+    }
+  }
+  return dates;
+}
+
+describe('worked examples: the real server keeps everything', () => {
+  it('example 6, a restart in the middle of a pay period finds the books as they were', async () => {
+    const checks = checksOf(6);
+    const life = await lifeInAFile();
+    try {
+      setUpThroughTheDesk(life);
+      life.now = noonInNewYork('2026-10-03');
+      life.h.fake.addPosted({ id: 'store-1', account: ACCOUNT_IDS.everyday, amount: 2_345, date: '2026-10-03', description: 'CORNER STORE 12' });
+      await life.sync();
+      expect(life.keeper.choice({ id: decision(), item: 'store-1', choice: { to: 'wants' } }).ok).toBe(true);
+      const move = { id: decision(), move: { from: 'wants' as const, to: 'needs' as const, amount: checks.get('moved') ?? 0 } };
+      const first = life.keeper.move(move);
+      expect(first.ok).toBe(true);
+      // The totals after each event since setup day: wants, needs, unsorted spending.
+      const after = readHistory(life.h.db).filter((e) => e.totals !== null).map((e) => [e.event.kind, e.date, e.totals?.wants, e.totals?.needs, e.totals?.unsortedOut]);
+      expect(after).toEqual([
+        ['setup', '2026-10-01', 20_000, 235_000, 0],
+        ['receive', '2026-10-03', 20_000, 235_000, 2_345],
+        ['answer', '2026-10-03', 17_655, 235_000, 0],
+        ['answer', '2026-10-03', 12_655, 240_000, 0],
+      ]);
+      life.restart();
+      const pots = life.keeper.book()?.pots();
+      expect(pots?.wants).toBe(checks.get('wants'));
+      expect(pots?.needs).toBe(checks.get('needs'));
+      expect(pots?.unsortedOut).toBe(checks.get('unsorted spending'));
+      expect(pots?.savings).toBe(checks.get('savings'));
+      expect(pots?.momReserve).toBe(checks.get('mom reserve'));
+      expect(life.keeper.book()?.changeLog().at(-1)).toEqual({ date: '2026-10-03', kind: 'money-moved', from: 'wants', to: 'needs', amount: checks.get('moved') });
+      // The same move sent again: the first answer back, nothing moved twice.
+      expect(life.keeper.move(move)).toEqual({ ...first, replayed: true });
+      expect(life.keeper.book()?.pots().wants).toBe(checks.get('wants'));
+      // Code changed so the purchase goes to needs: the server would not start, and says which answer.
+      const sort = Book.prototype.sort;
+      vi.spyOn(Book.prototype, 'sort').mockImplementation(function (this: Book, id, choice, date) {
+        return sort.call(this, id, 'to' in choice && choice.to === 'wants' ? { to: 'needs' } : choice, date);
+      });
+      expect(() => life.reopen()).toThrow(/his answer: sort, 2026-10-03\): the totals differ$/);
+    } finally {
+      vi.restoreAllMocks();
+      life.done();
+    }
+  });
+
+  it('example 7, today is the date in his home time zone', async () => {
+    const checks = checksOf(7);
+    const dates = datesOf(7);
+    const life = await lifeInAFile();
+    try {
+      setUpThroughTheDesk(life);
+      life.now = new Date('2026-10-03T03:30:00Z');
+      expect(life.keeper.today()).toBe(dates.get('now'));
+      life.h.fake.addPosted({ id: 'shop-1', account: ACCOUNT_IDS.everyday, amount: checks.get('purchase') ?? 0, date: '2026-10-03', description: 'MADE UP LATE SHOP' });
+      await life.sync();
+      expect(life.keeper.book()?.purchases().find((p) => p.id === 'shop-1')).toMatchObject({ date: dates.get('bank purchase'), amount: checks.get('purchase') });
+      expect(life.keeper.move({ id: decision(), move: { from: 'wants', to: 'needs', amount: checks.get('moved') ?? 0 } }).ok).toBe(true);
+      expect(readHistory(life.h.db).at(-1)?.date).toBe(dates.get('hand move'));
+      expect(life.keeper.book()?.changeLog().at(-1)?.date).toBe(dates.get('hand move'));
+      life.now = new Date('2026-10-10T05:30:00Z');
+      expect(life.keeper.settingsChange({ id: decision(), settings: { homeTimeZone: 'America/Los_Angeles' } }).ok).toBe(true);
+      expect(life.keeper.today()).toBe(dates.get('after the change'));
+      expect(life.keeper.book()?.changeLog().at(-1)?.date).toBe(dates.get('change made'));
+    } finally {
+      life.done();
+    }
   });
 });

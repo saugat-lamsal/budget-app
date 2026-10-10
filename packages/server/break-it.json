@@ -1430,8 +1430,8 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank-rules-db.ts",
-    "find": "    else logChange(db, date, WHAT[done.action], {",
-    "replace": "    else if (done.action !== 'added') logChange(db, date, WHAT[done.action], {",
+    "find": "  logChange(db, date, WHAT[action], detail);",
+    "replace": "  if (action !== 'added') logChange(db, date, WHAT[action], detail);",
     "why": "[bank-rules] 13.5 the database does not log a new bank rule"
   },
   {
@@ -1521,8 +1521,8 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank-rules-db.ts",
-    "find": "WHAT[done.direction === 'up' ? 'moved-up' : 'moved-down']",
-    "replace": "WHAT['moved-up']",
+    "find": "action: done.direction === 'up' ? 'moved-up' : 'moved-down', rule: done.rule, before: null, past: done.past",
+    "replace": "action: 'moved-up', rule: done.rule, before: null, past: done.past",
     "why": "[a27] save every move as up in the database log"
   },
   {
@@ -1531,5 +1531,222 @@
     "find": "direction: line.action === 'moved-up' ? 'up' : 'down',",
     "replace": "direction: 'up',",
     "why": "[a27] show every move as up on Settings"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history.ts",
+    "find": "if (changed && calls !== null) calls.push(",
+    "replace": "if (calls !== null) calls.push(",
+    "why": "[keeper] write down a hand move that only asked first"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history.ts",
+    "find": "args: JSON.parse(JSON.stringify(args)) as unknown[] });",
+    "replace": "args: args as unknown[] });",
+    "why": "[keeper] write down what was handed to the book, not a copy"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history.ts",
+    "find": "    waiting: book.reviewItems().length,",
+    "replace": "    waiting: 0,",
+    "why": "[keeper] leave out how many wait from the totals"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history.ts",
+    "find": "return (Object.keys(a) as (keyof Totals)[]).every((key) => a[key] === b[key])",
+    "replace": "return (Object.keys(a) as (keyof Totals)[]).filter((key) => key !== 'needs').every((key) => a[key] === b[key])",
+    "why": "[keeper] the replay check leaves needs out"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history.ts",
+    "find": "  if (call.method === 'moveMoney' && !(result as { moved: boolean }).moved) throw",
+    "replace": "  if (false) throw",
+    "why": "[keeper] a hand move that now only asks replays as if it were done"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history-db.ts",
+    "find": "else if (!sameTotals(stored.totals, now)) throw",
+    "replace": "else if (false) throw",
+    "why": "[keeper] never compare the totals saved with each event"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history-db.ts",
+    "find": "if (!stored.sealed) unsealed.push(",
+    "replace": "if (false) unsealed.push(",
+    "why": "[keeper] never fill in the totals of older events"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history-db.ts",
+    "find": "sealed: row.totals !== null };",
+    "replace": "sealed: true };",
+    "why": "[keeper] take an older event without totals as saved with none"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history-db.ts",
+    "find": ".run(e.sync, e.event.kind, e.date, JSON.stringify(payload), JSON.stringify(e.totals));",
+    "replace": ".run(e.sync, e.event.kind, '2026-01-01', JSON.stringify(payload), JSON.stringify(e.totals));",
+    "why": "[keeper] lose the day each event was made on"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history-db.ts",
+    "find": "      if (a.setup !== undefined) setSetup(a.setup);",
+    "replace": "",
+    "why": "[keeper] forget the Setup day answers on a restart"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history-db.ts",
+    "find": "      if (a.seen !== undefined) seen.add(a.seen);",
+    "replace": "",
+    "why": "[keeper] forget the take-backs marked seen on a restart"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "return { ...(saved.answer as object), replayed: true };",
+    "replace": "return { ...(saved.answer as object), replayed: false };",
+    "why": "[keeper] a repeat says it was done now"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "const saved = readDecision(this.#db, request.id);",
+    "replace": "const saved = readDecision(this.#db, '');",
+    "why": "[keeper] never look up a decision number"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      if (what.decision !== undefined) saveDecision(",
+    "replace": "      if (false) saveDecision(",
+    "why": "[keeper] save the answer without its decision number"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "event: { kind: 'answer', answer: what.answer }, date: today, sync: null, totals: totalsOf(book) });",
+    "replace": "event: { kind: 'answer', answer: what.answer }, date: today, sync: null, totals: null });",
+    "why": "[keeper] save an answer without the totals after it"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "this.#save({ answer: { book: calls }, decision:",
+    "replace": "this.#save({ answer: { book: calls.slice(1) }, decision:",
+    "why": "[keeper] save the answer without what it did to the book"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "        writes();\n        this.#beforeCommit?.();\n      })();\n    } catch (error) {\n      this.reload();",
+    "replace": "        writes();\n        this.#beforeCommit?.();\n      })();\n    } catch (error) {",
+    "why": "[keeper] keep in memory an answer whose save did not go through"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "if (view.state === 'tracking' && view.safeToSpend.shown) saveLastChecked(",
+    "replace": "if (false) saveLastChecked(",
+    "why": "[keeper] B82 never keep the last checked safe to spend"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "if (connection === null || connection.needsLogin) return null;",
+    "replace": "if (connection === null) return null;",
+    "why": "[keeper] 0.5 read the bank while it wants a new login"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "return todayIn(this.timeZone(), this.#now());",
+    "replace": "return todayIn('UTC', this.#now());",
+    "why": "[zone] today in the server's clock zone, not his"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "return (this.book()?.settings() ?? DEFAULT_SETTINGS).homeTimeZone;",
+    "replace": "return DEFAULT_SETTINGS.homeTimeZone;",
+    "why": "[zone] a changed home time zone changes nothing"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      for (const item of started.items) saveItem(this.#db, item);",
+    "replace": "",
+    "why": "[keeper] tracking starts without saving what setting up did to the bank items"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "        for (const line of what.answer.bankRules ?? []) saveBankRuleLine(this.#db, line);",
+    "replace": "",
+    "why": "[keeper] a bank rule change is not in the change log after a restart"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "        saveBankRules(this.#db, rules.rules());",
+    "replace": "",
+    "why": "[keeper] a bank rule change is lost on a restart"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/today.ts",
+    "find": "  return `${p['year']}-${p['month']}-${p['day']}`;",
+    "replace": "  return at.toISOString().slice(0, 10);",
+    "why": "[zone] today is the date in UTC"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/today.ts",
+    "find": "replace(/^GMT/, '') || '+00:00';",
+    "replace": "replace(/^GMT/, '') || 'Z';",
+    "why": "[zone] write a zone at UTC as Z"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "    this.#totals.push(totalsOf(book));",
+    "replace": "    this.#totals.push(null);",
+    "why": "[keeper] save what the bank sent without the totals after it"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/db/database.ts",
+    "find": "ELSE (SELECT today FROM syncs WHERE syncs.id = book_events.sync) END,",
+    "replace": "ELSE json_extract(payload, '$.date') END,",
+    "why": "[keeper] step 2 dates what the bank sent by the bank's date, not the sync's"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/choices.ts",
+    "find": "homeTimeZone: (v) => (typeof v === 'string' && v.length <= 64 ? v : undefined),",
+    "replace": "homeTimeZone: (v) => (typeof v === 'string' ? v : undefined),",
+    "why": "[zone] read a time zone name of any length"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/serve/options.ts",
+    "find": "  if (db === ':memory:') throw",
+    "replace": "  if (false) throw",
+    "why": "[keeper] the real server keeps its books in memory"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/serve/test-bank.ts",
+    "find": "'3333': 'everyday-card', '4444': 'old-card'",
+    "replace": "'3333': 'old-card', '4444': 'everyday-card'",
+    "why": "[keeper] --connect takes the old card for the everyday card"
   }
 ]

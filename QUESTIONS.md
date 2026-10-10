@@ -409,6 +409,49 @@ A27. ANSWERED Oct 9, built. Your answer: option 1. The first bank rule in
      Move down yet.
 
 
+## Part A, added with the real server keeping everything (Oct 9). Waiting on your answer.
+
+A28. When the replay check finds a difference. Every time the real server
+     starts, it replays the book's history and compares the totals after each
+     event with the ones saved then. If they differ, it does not start, and
+     says at which event (as you asked). That is right when the code changed
+     by mistake. But one day a real fix to the money math may change what an
+     old event does (a bug like B124, found after months of use). Then the
+     server will not start until something is decided. The rulebook does not
+     say what.
+     Option 1: the server stays stopped. A separate command shows each event
+     whose totals would change, before and after, and with your yes takes
+     the new totals from that event on. It goes in the change log (13.5),
+     dated, with what changed.
+     Option 2: the same, but the server starts anyway, read-only, with the
+     difference shown on every screen, until you say yes.
+     Option 3: never: an old event must always replay as it was saved, so a
+     fix only applies to events after it (the code keeps the old way for the
+     old ones).
+     Recommendation: option 1. Nothing about money changes without you seeing
+     it first, and the past stays explained. Built: the server does not start
+     and says at which event; there is no way past it yet.
+
+A29. A store's refund to the debit card. The bank connection reads money
+     coming into checking as a deposit (6.1): it cannot tell a store's refund
+     from any other money in. So a refund to the debit card waits in review
+     with the deposit choices, and cannot be matched to the purchase it is for
+     (4.5, A18); a refund to the everyday card can. Found while playing the
+     simulated life through the database: its bank says which purchase each
+     refund is for, and those to checking came out as deposits.
+     Option 1: keep it. You pick payback, into the bucket the purchase came
+     from. A partial refund of a split purchase then does not send it back to
+     review to be split again (4.5).
+     Option 2: money in to checking also offers "this refund is for this one",
+     with the likely purchases on checking (same account, on or before it, at
+     least that much not yet refunded), as a card refund does.
+     Option 3: a bank rule that says "a refund" for text the bank shows
+     ("REFUND", a store's name), so it is read as one.
+     Recommendation: option 2. It works whatever the bank writes, and is the
+     same choice you already have for a card refund. Built: option 1, as it
+     always was.
+
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 B1. Paycheck smaller than the mom reserve (3.2).
@@ -1443,3 +1486,49 @@ B147. A move asks first, like every other change to a bank rule (B140): it
 B148. The change log (13.5): "Bank rule moved up" or "moved down", with the
       rule, its number in the list now, and the rule it passed, dated, among
       the other changes in the order they were made.
+
+
+## Part B, added with the real server keeping everything (Oct 9). Tell me if any is wrong.
+
+B149. What is kept. Every answer that changes the book (sorting, splits,
+      moves, payday answers, "this is my paycheck", settings, sorting rules
+      and their order), each Setup day answer before tracking starts, each
+      change to the bank rules, and each take-back marked seen. Each is one
+      event in the book's history, after what the bank sent before it, with
+      the day it was made on and the totals after it. A refused answer, a
+      question that only asks first, and a preview are not kept.
+
+B150. Decision numbers. Each is kept with its first answer, in the same step
+      as its event: both or neither. A refused answer keeps nothing, so the
+      same number can be sent again with your yes. Sent again after a
+      restart, it gets its first answer back and changes nothing; a number
+      already used for something else is refused.
+
+B151. The replay check. The totals checked after each event are every
+      bucket, the money waiting in review each way, the old card debt, money
+      in transit, and how many items wait; before setup day there are none.
+      A change that alters none of these (a rule's name, a setting's value)
+      is not caught by it; the tests cover those. Events an older version
+      saved without totals get them the first time they replay, and are
+      checked from then on.
+
+B152. When the bank cannot be read (0.5, B82): the bank wants you to log in
+      again (10.5), or its balances cannot be worked out. Home then shows the
+      last checked safe to spend. The last checked is saved each time Home
+      shows a safe to spend the bank backed up, with the time in your home
+      time zone.
+
+B153. The home time zone on Settings offers the US zones by name (Eastern,
+      Central, Mountain, Arizona, Pacific, Alaska, Hawaii); a zone set some
+      other way is shown by its name. A change applies right away (13.1) and
+      is logged. Nothing already dated is dated again. Before setup day, today
+      is in New York, the zone tracking starts with.
+
+B154. The real server: npm run serve. This computer only, Plaid's test bank
+      only (the sandbox lock), no login yet. The books are in
+      data/budget.sqlite (git leaves data/ out). --connect connects the test
+      bank with made-up accounts like yours and sets the four accounts by
+      their last four digits; --sync syncs once. Nothing syncs by itself
+      yet. Setup day starts tracking with the settings in section 2, so the
+      paycheck rule and the mom rule are set afterwards on Settings, as in
+      the demo. The demo is separate and never opens the database.

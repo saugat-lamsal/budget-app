@@ -133,6 +133,7 @@ describe('0.2 every number and rule is a setting', () => {
       payScheduleDays: 14,
       momRule: null,
       earlyPaycheckDays: 10,
+      homeTimeZone: 'America/New_York',
     } satisfies Settings);
   });
 
@@ -157,8 +158,10 @@ describe('0.2 every number and rule is a setting', () => {
       dailyReviewTime: '21:30',
       lowBucketAlertPercent: 25,
       momMonthlyTarget: { low: 100_000, high: 200_000 },
+      homeTimeZone: 'America/Chicago',
     });
     expect(changed.split).toEqual({ savings: 60, needs: 25, wants: 15 });
+    expect(changed.homeTimeZone).toBe('America/Chicago');
     expect(changed.payScheduleDays).toBe(7);
     expect(changed.oldCardPromoEndDate).toBe('2027-06-30');
     expect(DEFAULT_SETTINGS.split).toEqual({ savings: 50, needs: 30, wants: 20 });
@@ -193,6 +196,9 @@ describe('0.2 every number and rule is a setting', () => {
       { payScheduleDays: 0 },
       { payScheduleDays: 14.5 },
       { earlyPaycheckDays: -1 },
+      { homeTimeZone: '' },
+      { homeTimeZone: 'Mars/Olympus_Mons' },
+      { homeTimeZone: 'EST5EDT; DROP' },
     ];
     for (const patch of bad) {
       expect(codeOf(() => changeSettings(DEFAULT_SETTINGS, patch)), JSON.stringify(patch)).toBe('bad-setting');
@@ -208,6 +214,14 @@ describe('0.2 every number and rule is a setting', () => {
     expect(() => changeSettings(DEFAULT_SETTINGS, { dailyReviewTime: '00:00' })).not.toThrow();
     expect(() => changeSettings(DEFAULT_SETTINGS, { dailyReviewTime: '23:59' })).not.toThrow();
     expect(() => changeSettings(DEFAULT_SETTINGS, { earlyPaycheckDays: 0 })).not.toThrow();
+  });
+
+  it('section 2 the home time zone is a setting: any time zone by its name, America/New_York to start; the money math only keeps it', () => {
+    for (const zone of ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Phoenix', 'America/Los_Angeles', 'America/Anchorage', 'Pacific/Honolulu', 'UTC', 'Asia/Kathmandu']) {
+      expect(changeSettings(DEFAULT_SETTINGS, { homeTimeZone: zone }).homeTimeZone).toBe(zone);
+    }
+    expect(codeOf(() => changeSettings(DEFAULT_SETTINGS, { homeTimeZone: 'New York' }))).toBe('bad-setting');
+    expect(codeOf(() => changeSettings(DEFAULT_SETTINGS, { homeTimeZone: 'x'.repeat(65) }))).toBe('bad-setting');
   });
 
   it('0.2 validateSettings accepts the starting settings unchanged', () => {

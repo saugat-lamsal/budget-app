@@ -1,6 +1,6 @@
 import type { RecheckedItem } from '@budget-app/money';
 import { describe, expect, it } from 'vitest';
-import { daysText, leftoverText, recheckedText, reminderText, ruleDoneText, ruleText, settingValueText, settingsDoneText, splitText, textRuleText, timeText } from '../src/screens/settings-text.js';
+import { ZONE_CHOICES, daysText, leftoverText, recheckedText, reminderText, ruleDoneText, ruleText, settingValueText, settingsDoneText, splitText, textRuleText, timeText, zoneText } from '../src/screens/settings-text.js';
 
 // The words on the Settings screen. Every value comes from the money math;
 // these only write it, and must write it right.
@@ -36,6 +36,21 @@ describe('section 2 how each setting is written', () => {
     expect(leftoverText({ needs: 'ask', wants: 'move-to-savings' })).toBe('Needs: ask each time, Wants: always move to savings');
     expect(textRuleText(null)).toBe('Not set');
     expect(textRuleText({ contains: 'MADE UP' })).toBe('“MADE UP”');
+  });
+
+  it('section 2 the home time zone: the US zones by their names, any other as it is written; the choices start with his', () => {
+    expect(ZONE_CHOICES.map(zoneText)).toEqual([
+      'Eastern time (New York)',
+      'Central time (Chicago)',
+      'Mountain time (Denver)',
+      'Arizona (Phoenix)',
+      'Pacific time (Los Angeles)',
+      'Alaska (Anchorage)',
+      'Hawaii (Honolulu)',
+    ]);
+    expect(ZONE_CHOICES[0]).toBe('America/New_York');
+    expect(zoneText('Asia/Kathmandu')).toBe('Asia/Kathmandu');
+    expect(settingValueText('homeTimeZone', 'America/Chicago')).toBe('Central time (Chicago)');
   });
 
   it('13.5 every setting, written for the change log', () => {

@@ -24,6 +24,9 @@ import type { BankRuleDone, BankRuleLogLine, BankRulePreview, BankRuleRequest, B
 
 export interface BankRulesDeskInput {
   readonly rules: readonly BankRule[];
+  // The change log so far, for a desk made again from what was kept (the
+  // real server); none for a new one. Its rules count for the ids handed out.
+  readonly log?: readonly BankRuleLogLine[];
   // The bank items kept, to show what a rule would match.
   readonly lines: () => readonly BankLine[];
   readonly today: () => IsoDate;
@@ -34,15 +37,17 @@ export interface BankRulesDeskInput {
 export class BankRulesDesk {
   readonly #input: BankRulesDeskInput;
   #rules: readonly BankRule[];
-  readonly #log: BankRuleLogLine[] = [];
-  // Ids handed out so far: never one twice.
+  readonly #log: BankRuleLogLine[];
+  // Ids handed out so far: never one twice, not even one only in the log.
   #issued: number;
   readonly #done = new Map<string, { readonly fingerprint: string; readonly done: BankRuleDone }>();
 
   constructor(input: BankRulesDeskInput) {
     this.#input = input;
     this.#rules = input.rules;
-    this.#issued = Math.max(0, ...input.rules.map((r) => Number(/^bank-rule-(\d+)$/.exec(r.id)?.[1] ?? 0)));
+    this.#log = [...(input.log ?? [])];
+    const ever = [...input.rules, ...this.#log.map((l) => l.rule)];
+    this.#issued = Math.max(0, ...ever.map((r) => Number(/^bank-rule-(\d+)$/.exec(r.id)?.[1] ?? 0)));
   }
 
   rules(): readonly BankRule[] {

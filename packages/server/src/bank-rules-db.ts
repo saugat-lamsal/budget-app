@@ -48,8 +48,19 @@ export function changeBankRuleIn(db: Db, change: BankRuleChange, date: IsoDate):
     if (!done.ok) return done;
     saveBankRules(db, done.rules);
     const afterBookLines = loadBook(db)?.changeLog().length ?? 0;
-    if (done.action === 'moved') logChange(db, date, WHAT[done.direction === 'up' ? 'moved-up' : 'moved-down'], { rule: done.rule, before: null, past: done.past, position: done.position, afterBookLines });
-    else logChange(db, date, WHAT[done.action], { rule: done.rule, before: done.before, afterBookLines });
+    saveBankRuleLine(
+      db,
+      done.action === 'moved'
+        ? { date, action: done.direction === 'up' ? 'moved-up' : 'moved-down', rule: done.rule, before: null, past: done.past, position: done.position, afterBookLines }
+        : { date, action: done.action, rule: done.rule, before: done.before, afterBookLines },
+    );
     return done;
   })();
+}
+
+// One change to the bank rules, in the change log (13.5) the way
+// bankRuleLogIn reads it back.
+export function saveBankRuleLine(db: Db, line: BankRuleLogLine): void {
+  const { date, action, ...detail } = line;
+  logChange(db, date, WHAT[action], detail);
 }

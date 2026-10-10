@@ -1,6 +1,8 @@
 import type { IsoDate } from '@budget-app/money';
 import type { Db } from './db/database.js';
-import { appendBookEvent, loadBook, logChange, nextSyncNumber, readAccounts, readBankRules, readConnection, readItems, saveItem } from './db/store.js';
+import { loadBook, logChange, nextSyncNumber, readAccounts, readBankRules, readConnection, readItems, saveItem } from './db/store.js';
+import { totalsOf } from './history/history.js';
+import { appendEvent } from './history/history-db.js';
 import { halvesInTransitIn, planSetup, setupPreviewOf, type BankHistory, type HalfInTransit, type SetupChoices, type SetupOutcome, type SetupPreview } from './setup-history.js';
 
 export type { BankHistory, HalfInTransit, SetupChoices, SetupOutcome, SetupPreview } from './setup-history.js';
@@ -36,7 +38,7 @@ export function setUpTracking(db: Db, choices: SetupChoices): SetupOutcome {
   const plan = planSetup(bankHistoryOf(db), choices);
   if (!plan.ok) return { ok: false, startingMoney: plan.startingMoney, assigned: plan.assigned, difference: plan.difference };
   db.transaction(() => {
-    appendBookEvent(db, Math.max(1, nextSyncNumber(db) - 1), { kind: 'setup', input: plan.input });
+    appendEvent(db, { event: { kind: 'setup', input: plan.input }, date: choices.today, sync: Math.max(1, nextSyncNumber(db) - 1), totals: totalsOf(plan.book) });
     for (const item of plan.items) saveItem(db, item);
     logChange(db, choices.today, 'setup day', { startingMoney: plan.startingMoney, assignment: choices.assignment, inTransit: choices.inTransit });
   })();

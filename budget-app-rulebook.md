@@ -33,6 +33,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
 - Low-bucket alert: 20% of what the bucket started the pay period with
 - Card reminders: 7 days and 2 days before the due date
 - Daily review time: 8:00 PM
+- Home time zone: America/New_York. The app's today is the date there,
+  whatever time zone the server's own clock is set to. Dates the bank sends
+  stay exactly as sent.
 - Leftover at payday: ask each time (other options: always roll over,
   always move to savings)
 - Old card promo end date: (you fill in)
@@ -515,3 +518,7 @@ a.  When two bank rules fit one item, the first in the list wins, as with
     sorting rules. A bank rule can be moved up or down among the rules on
     its account, and each move is logged (section 2, 13.5, QUESTIONS.md
     A27).
+
+b.  Today is the date in his home time zone, a setting that starts at
+    America/New_York, never the date in the server's own clock zone. Dates
+    the bank sends stay exactly as sent (section 2).

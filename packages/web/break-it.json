@@ -1608,5 +1608,26 @@
     "find": "title={line.direction === 'up' ? 'Bank rule moved up' : 'Bank rule moved down'}",
     "replace": "title={line.direction !== 'up' ? 'Bank rule moved up' : 'Bank rule moved down'}",
     "why": "[a27] the change log says a bank rule moved the other way"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "  return ZONE_NAMES[zone] ?? zone;",
+    "replace": "  return zone;",
+    "why": "[zone] write the home time zone as its code name"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "      return { value: { homeTimeZone: get('zone') } };",
+    "replace": "      return { value: { homeTimeZone: 'America/New_York' } };",
+    "why": "[zone] the time zone sheet sends New York whatever is picked"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "        {textRow('time-zone', 'Home time zone',",
+    "replace": "        {row('time-zone', 'Home time zone',",
+    "why": "[zone] the time zone row's arrow on a line of its own"
   }
 ]

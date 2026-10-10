@@ -41,6 +41,10 @@ const SHEETS: readonly (readonly [string, string, (page: Page) => Promise<void>]
     await page.getByTestId('row-review-time').click();
     await page.getByTestId('field-review-time').waitFor();
   }],
+  ['the home time zone', 'normal', async (page) => {
+    await page.getByTestId('row-time-zone').click();
+    await page.getByTestId('field-time-zone').waitFor();
+  }],
   ['the promo end date, set', 'settings-busy', async (page) => {
     await page.getByTestId('row-promo').click();
     await page.getByTestId('sheet-clear').waitFor();
