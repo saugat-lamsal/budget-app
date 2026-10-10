@@ -10,7 +10,7 @@ import { ENGINES, IPHONE, IPHONE_INSETS, openScenario, phone, useEngine } from '
 // settings, and money written one way.
 
 // Every state of each screen worth checking: [made-up life, address].
-const BUCKETS = ['normal', 'mismatch', 'low', 'overspent', 'all-clear', 'not-set-up', 'bank-not-read', 'big', 'buckets-busy'] as const;
+const BUCKETS = ['normal', 'mismatch', 'low', 'overspent', 'all-clear', 'not-set-up', 'bank-not-read', 'big', 'buckets-busy', 'on-its-way'] as const;
 const REVIEW = ['normal', 'review-busy', 'all-clear', 'not-set-up', 'big'] as const;
 const SCREENS: readonly (readonly [string, string])[] = [...BUCKETS.map((l) => [l, '/buckets'] as const), ...REVIEW.map((l) => [l, '/review'] as const)];
 

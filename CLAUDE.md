@@ -138,7 +138,7 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 15. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 16. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
@@ -152,7 +152,9 @@ This applies to every phase and every session, cloud or local.
   answers after Setup day (A25, A26: section 2, 4.5, 14.2), section 26
   his answers after bank rules (A27, and the home time zone: section 2),
   section 27 his answers after the real server (A28: rule 0.6; A29: 4.5,
-  6.1; 27c staying logged in, 27d syncing every 60 minutes, section 2).
+  6.1; 27c staying logged in, 27d syncing every 60 minutes, section 2),
+  section 28 his answers after syncing on a timer (A30: rule 0.6; A31: rule
+  13.7).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -1005,6 +1007,85 @@ This applies to every phase and every session, cloud or local.
       caught. Two older breaks pointed at the code again ("[review]" an item
       already dealt with, "[keeper]" a save that did not go through).
     - QUESTIONS.md A31, B167 to B173; B154, B160, B161 brought up to date.
+- PR #18 merged (Oct 10, 2026).
+- Phase 4's finish line, branch phase-4-finish-line (Oct 10, 2026), one pull
+  request.
+  - Step 0, its own commit: his answers to A30 (option 1: rule 0.6) and A31
+    (option 1, as built: new rule 13.7), rulebook draft 16, section 28. The
+    A31 tests are named after 13.7.
+  - Step 1, the full pay period through the screens, scripted.
+    - The simulator can live a short life as planned (LifeOptions.plan in
+      packages/money/test/sim/life.ts): planned bank events and answers
+      instead of random ones, with every daily check. Without a plan nothing
+      changes (40 lives gave byte-identical records before and after). The
+      plan is packages/money/test/sim/pay-period.ts: setup day Oct 1 to the
+      next payday Oct 16 (its header says what each day has). A refund the
+      bank does not match is matched by hand in a planned life, as the bank
+      connection reads every refund; money in to checking that is a refund
+      is matched too (A29). Money test: pay-period.test.ts. Worked example
+      41 is the same period by hand.
+    - serveBooks (packages/server/src/serve/serving.ts): what npm run serve
+      runs once the books are open (the screens behind the login, and the
+      sync timer). main.ts uses it, and so do the tests. serving.test.ts.
+    - The browser test, packages/web/test/browser/pay-period.test.ts (both
+      engines, 34 tests each, run in order on one life; a failed part makes
+      the later ones fail with its name): an empty database with the bank
+      connected; the first code and a virtual passkey in Chromium
+      (login-for-tests in WebKit); setup day through its screens; each day
+      the bank's activity only by the sync timer (FakeClock); every answer of
+      the simulated person tapped on the screens (Review, a bucket's list,
+      Move, Settings, Payday); a tap refused because a sync changed the item
+      (13.7); the take-back marked seen on Home; restarts after Oct 5 and
+      Oct 12. Every day: every view the real server sends against the same
+      views worked out from the simulator's book (pay-period/expected.ts;
+      a difference names the day, the screen, the field and both numbers);
+      every screen read off the page against the page given the simulator's
+      numbers (pay-period/screens.ts, ShouldShow: a second page whose /api
+      answers are the simulator's); and each screen's numbers read by what
+      they are against the money math and the rulebook directly
+      (pay-period/by-hand.ts). The self-check passes every day. Each day is
+      two tests (its answers, then every screen), at most 13 s in WebKit on
+      this PC. The simulator's book on any day is made again from what it
+      recorded (pay-period/period.ts simulatorBookAt) and checked against the
+      plain data saved from its own book that evening.
+    - Found on Windows CI (Oct 10, Chromium): a page could not open,
+      net::ERR_NO_BUFFER_SPACE, with about 3,000 connections on 127.0.0.1
+      waiting to close (the most before was 1,165). The test opened the app
+      afresh for every screen of every day on two pages; it now opens it once
+      a day on each page (at Home) and moves between screens the way the
+      app's own links do (readScreen with reload false: pushState and
+      popstate, then the screen's title). Taps scroll their target to the
+      middle of the screen first (screens.ts tap): a card's last button
+      could sit under the tab bar, and Playwright's retry then stalled in
+      WebKit on a busy PC.
+    - Found by it: sim-bank.ts named a transfer's leaving half differently
+      from the simulator's book; it now keeps the simulator's own words.
+  - Step 2, the agent (agent-pay-period/): instructions.txt, script.txt (the
+    pay period's bank activity and his decisions, in words), and the agent's
+    notes.txt and report.txt, and settled.txt (how each point was settled).
+    npm run pay-period-agent (scripts/pay-period-agent.mjs,
+    test/browser/pay-period/agent-server.ts): the same real server and
+    made-up bank on http://localhost:5390, a control page on 5391 ("Log this
+    browser in", "Bring in the next day"). Every money number matched. Fixed
+    from what it found (tests first): money on its way is listed on Buckets
+    (12.5, B44: views/buckets.ts onItsWay, screens/buckets-text.ts, B174),
+    and Payday and Home's sheet show what is on its way to savings (3.8, B46,
+    views/payday.ts onItsWayToSavings, B175). Demo life: on-its-way. Breaks
+    "[on-its-way]". QUESTIONS.md A32 and A33 from it, and B176.
+  - Step 3, the end of Phase 4: test/every-rule-has-a-test.test.ts (every
+    numbered rule has a test named after it), scripts/rule-table.mjs (the
+    end-of-phase table from a full run's results), docs/phase-4-report.txt,
+    and the list of part B items waiting for him at the top of part B.
+  - Phase 4: finish line crossed Oct 10, 2026 (docs/phase-4-report.txt).
+    npm test 3,221 tests, all passing. 1,000 simulated lives of 5 years and
+    20 simulated years through the database with restarts, every check
+    passing. The full break-it run: 1,101 breaks, 1,100 caught (7 h 36 min,
+    8 workers, the browser tests in Chromium); the one that survived ("A18 a
+    store refund is not known to be one") now has its test
+    (resort.test.ts) and is caught, and so are the new breaks. Every break in
+    the files changed after the full run started, run again on the final
+    code: 62 breaks, 62 caught. PR #19; CI green on Linux.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
-  rule 9.5, depends on it), QUESTIONS.md A30 (an old event the money math now
-  refuses), and A31 (what counts as something a sync just changed).
+  rule 9.5, depends on it), QUESTIONS.md A32 (a screen that changes an instant
+  before a tap) and A33 (which purchases are likely for a refund), and his
+  check of part B (the list at its top).

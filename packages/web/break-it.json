@@ -1762,5 +1762,40 @@
     "find": "      const asked = await authSend('/api/auth/passkey/options', { confirmed: true });",
     "replace": "      const asked = await authSend('/api/auth/passkey/options', { confirmed: false });",
     "why": "[login] B164 the yes to adding a passkey is not sent"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Buckets.tsx",
+    "find": "{view.onItsWay.items.length > 0 && (",
+    "replace": "{view.onItsWay.items.length > 1_000 && (",
+    "why": "[on-its-way] 12.5 B44 Buckets does not list what is on its way"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Payday.tsx",
+    "find": "{t.onItsWay > 0 && (",
+    "replace": "{t.onItsWay < 0 && (",
+    "why": "[on-its-way] 3.8 B46 Payday does not show what is on its way to savings"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Payday.tsx",
+    "find": ": t.transfer.extraInSavings === undefined && t.onItsWay > 0",
+    "replace": ": t.transfer.extraInSavings === undefined && t.onItsWay < 0",
+    "why": "[on-its-way] 3.8 B46 Payday says the account already holds it while it is on its way"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "{savings.onItsWay > 0 && (",
+    "replace": "{savings.onItsWay < 0 && (",
+    "why": "[on-its-way] 3.8 B46 Home's sheet does not show what is on its way to savings"
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/buckets-text.ts",
+    "find": "return item.counted ? where : ",
+    "replace": "return !item.counted ? where : ",
+    "why": "[on-its-way] 12.4 the words say the wrong one is not part of the check"
   }
 ]

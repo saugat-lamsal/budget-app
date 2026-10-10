@@ -236,3 +236,34 @@ describe('random books: every number on Buckets is what the money math says', ()
     );
   });
 });
+
+describe('12.5 money on its way', () => {
+  it('12.5 B44 every transfer with one side showing is listed: what left and has not landed, and what landed before it showed leaving; the old card\'s is listed but not counted (12.4)', () => {
+    const book = openTestBook({ pots: { savings: 100_000, needs: 80_000, wants: 30_000 } });
+    book.receive(sent('to-savings', '2026-10-02', 235_000, 'checking', 'savings'));
+    book.receive(sent('to-old', '2026-10-03', 15_000, 'checking', 'old-card'));
+    book.receive(arrived('landed-first', '2026-10-04', 20_000, 'checking', 'everyday-card'));
+    const v = view(book);
+    expect(v.onItsWay).toEqual({
+      counted: 235_000 - 20_000,
+      items: [
+        { id: 'to-savings', date: '2026-10-02', from: 'checking', to: 'savings', amount: 235_000, seen: 'left', counted: true },
+        { id: 'to-old', date: '2026-10-03', from: 'checking', to: 'old-card', amount: 15_000, seen: 'left', counted: false },
+        { id: 'landed-first', date: '2026-10-04', from: 'checking', to: 'everyday-card', amount: 20_000, seen: 'arrived', counted: true },
+      ],
+    });
+    // The counted part is the money math's own (12.5).
+    expect(v.onItsWay.counted).toBe(book.inTransit().total);
+  });
+
+  it('12.5 with nothing on its way, the list is empty', () => {
+    expect(view(openTestBook()).onItsWay).toEqual({ counted: 0, items: [] });
+  });
+
+  it('12.5 once the other side shows, it is no longer listed', () => {
+    const book = openTestBook();
+    book.receive(sent('to-old', '2026-10-03', 15_000, 'checking', 'old-card'));
+    book.receive(arrived('to-old-landed', '2026-10-05', 15_000, 'checking', 'old-card', 'to-old'));
+    expect(view(book).onItsWay).toEqual({ counted: 0, items: [] });
+  });
+});

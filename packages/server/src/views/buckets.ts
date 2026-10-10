@@ -1,4 +1,4 @@
-import { bucketLevel, monthOf, type BankBalances, type Book, type Cents, type IsoDate, type OthersMoney } from '@budget-app/money';
+import { bucketLevel, monthOf, type BankBalances, type Book, type Cents, type InTransitItem, type IsoDate, type OthersMoney } from '@budget-app/money';
 import type { BucketBar } from './home.js';
 
 // What the Buckets screen shows, worked out on the server from the book. The
@@ -38,7 +38,15 @@ export type BucketsView =
       readonly waiting: { readonly count: number; readonly moneyIn: Cents; readonly spending: Cents };
       // 12.4: tracked on its own, not part of the total. Negative is a credit (B14).
       readonly oldCard: Cents;
+      // 12.5, B44: every transfer with one side showing. What the self-check
+      // counts, and each one; one to the old card is listed but not counted (12.4).
+      readonly onItsWay: { readonly counted: Cents; readonly items: readonly OnItsWay[] };
     };
+
+export interface OnItsWay extends InTransitItem {
+  // Counted in the self-check: false only for money on its way to the old card.
+  readonly counted: boolean;
+}
 
 export interface MomReserveView {
   // What the reserve holds.
@@ -83,5 +91,11 @@ export function bucketsView(input: BucketsInput): BucketsView {
     heldForOthers: book.othersMoney(),
     waiting: { count: book.reviewItems().length, moneyIn: pots.unsortedIn, spending: pots.unsortedOut },
     oldCard: book.oldCardDebt(),
+    onItsWay: onItsWayOf(book),
   };
+}
+
+export function onItsWayOf(book: Book): { readonly counted: Cents; readonly items: readonly OnItsWay[] } {
+  const transit = book.inTransit();
+  return { counted: transit.total, items: transit.items.map((item) => ({ ...item, counted: item.to !== 'old-card' })) };
 }

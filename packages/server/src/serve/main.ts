@@ -9,7 +9,7 @@ import { consoleLog } from '../log.js';
 import { PlaidClient } from '../plaid/client.js';
 import { plaidKeysFromEnv, type PlaidKeys } from '../plaid/sandbox-lock.js';
 import { serveOptions, type ServeOptions } from './options.js';
-import { SyncTimer } from './sync-timer.js';
+import { serveBooks } from './serving.js';
 import { connectLikeHis } from './test-bank.js';
 
 // npm run serve [-- --connect] [-- --sync] [-- --port N] [-- --db <file>]
@@ -67,15 +67,17 @@ if (options.sync) {
   const result = await keeper.sync({ plaid, box, log });
   console.log(`Synced with the test bank: ${result.added} new, ${result.modified} changed, ${result.removed} removed.`);
 }
-// Step 3: it syncs by itself, every interval (section 2), and at once if one is due.
-const timer = new SyncTimer({
-  syncer: { syncDueIn: () => keeper.syncDueIn(), sync: () => keeper.sync({ plaid, box, log }) },
-  clock: { setTimeout: (run, ms) => setTimeout(run, ms), clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>) },
-  log,
-});
-
+// The screens, and (Step 3) the timer that syncs by itself, every interval
+// (section 2), and at once if one is due.
 const webRoot = process.env['WEB_ROOT'] ?? fileURLToPath(new URL('../../../web/dist/', import.meta.url));
-const server = keeper.server(webRoot, () => origin, (error) => log.error('a request failed', { error: error instanceof Error ? error.message : String(error) }));
+const { server, timer } = serveBooks({
+  keeper,
+  bank: { plaid, box, log },
+  clock: { setTimeout: (run, ms) => setTimeout(run, ms), clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>) },
+  webRoot,
+  origin: () => origin,
+  onError: (error) => log.error('a request failed', { error: error instanceof Error ? error.message : String(error) }),
+});
 server.listen(options.port, '127.0.0.1', () => {
   const address = server.address();
   const at = typeof address === 'object' && address !== null ? address.port : options.port;

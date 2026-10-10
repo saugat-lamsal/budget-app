@@ -460,9 +460,12 @@ A29. ANSWERED Oct 10, built. Your answer: option 2. Money in to checking
      always was.
 
 
-## Part A, added with your answers to A28 and A29 (Oct 10). Waiting on your answer.
+## Part A, added with your answers to A28 and A29 (Oct 10). All answered.
 
-A30. An old event the money math now refuses (0.6). A28 covers an event
+A30. ANSWERED Oct 10, built. Your answer: option 1. The server stays
+     stopped and npm run replay-check says which event and why; nothing is
+     dropped or replaced. Rulebook 0.6 and 28a.
+     The question was: an old event the money math now refuses (0.6). A28 covers an event
      whose totals change. But a fix can also make an old answer impossible:
      say a fix finds that a purchase you sorted in March could never have
      been sorted that way. Then the history cannot be replayed at all, and
@@ -482,9 +485,11 @@ A30. An old event the money math now refuses (0.6). A28 covers an event
      1 (the command says which event and why, and the server stays stopped).
 
 
-## Part A, added with syncing on a timer (Step 3, Oct 10). Waiting on your answer.
+## Part A, added with syncing on a timer (Step 3, Oct 10). All answered.
 
-A31. What counts as "something a sync just changed". You asked that an
+A31. ANSWERED Oct 10, built. Your answer: option 1, as built. Rulebook 13.7
+     and 28b; the details are B172 and B173.
+     The question was: what counts as "something a sync just changed". You asked that an
      answer about something a sync just changed be refused with why, and
      nothing change. The rulebook does not say what counts as changed.
      Option 1: an item (waiting in Review, on a bucket's list, or a payday
@@ -512,7 +517,158 @@ A31. What counts as "something a sync just changed". You asked that an
      option 1 (the details are B172 and B173).
 
 
+## Part A, added with Phase 4's finish line (the agent's pay period, Oct 10). Waiting on your answer.
+
+A32. A screen that changes an instant before your tap (13.7). Found by the
+     agent on Oct 7 of the pay period. Review had sat in a background tab
+     since the evening before, showing the cinema charge at $18.00, pending.
+     The agent tapped Wants on it. Bringing the tab forward made the screen
+     read its numbers again (it does that after being in the background),
+     and about 75 ms later the card showed $21.50, posted; the tap
+     counted against that. The app did what 13.7 says as built: the answer
+     was about the item as the screen showed it at the moment of the tap.
+     But nobody can read a change in a tenth of a second, so in effect it
+     answered about something the person did not see. The rulebook does not
+     say how long the screen must have shown something. (On the phone the
+     same can happen when you come back to the app and tap at once.)
+     Option 1: as now: what the screen shows at the moment of the tap
+     counts, however briefly.
+     Option 2: a card whose item changed when the screen read its numbers
+     again says so ("Changed: now $21.50, posted") and does not take a tap
+     for about a second, so a tap meant for what was there before is not
+     sent.
+     Option 3: the server refuses an answer about an item that changed in
+     the last few seconds, as if the screen had not shown it yet.
+     Recommendation: option 2. It shows what changed right where you are
+     looking, refuses nothing you saw, and costs one more tap only when
+     something really changed. Built: option 1. (The scripted pay period,
+     Step 1, taps from a screen that did not read its numbers again, and the
+     refusal comes, with how the item is now.)
+
+A33. Which purchases are "likely" for a refund (4.5, B88). Rule 4.5 says a
+     likely purchase is on the same account, made on or before the refund,
+     with at least the refund's amount not yet refunded. B88, as built, adds
+     two things: it must also share a name word with the refund or have
+     exactly the refund's amount left, and at most five are listed, each
+     saying why ("Same name", "Same amount"). In the pay period every
+     made-up store's name starts with "MADE UP", so "made" is a word every
+     purchase shares: every likely purchase was labelled "Same name", which
+     the agent found misleading. A real statement does the same with words
+     on every card purchase (a city such as "NEW YORK", or "POS").
+     Option 1: keep B88 as built, and write its extra condition and the five
+     into 4.5.
+     Option 2: 4.5 as written: every purchase on the same account, on or
+     before the refund, with enough left to refund, best first (same name,
+     same amount, newest), all of them listed.
+     Option 3: option 1, but a word counts as a name word only when it is
+     not in most of his purchases on that account (over the last 90 days),
+     so "made up" or a city never makes things "the same name".
+     Recommendation: option 3, with 4.5 saying so. It keeps the short list
+     and makes "Same name" true. Built: option 1 (B88).
+
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
+
+WAITING FOR YOU TO CHECK (Oct 10, 2026, the end of Phase 4). Each was
+built as it says; nothing to do unless one is wrong. All in one place, by
+number. B1 to B79 (Phases 1 to 3) were never on a "still to check" list; say
+so if you want them here too. B4, B20, B82 and B84 are answered.
+
+  B80. Home shows "Move $X to savings" (3.8) whenever there is money still to move, not only on payday.
+  B81. When the totals do not match (0.5), Home holds back safe to spend and shows the difference instead (B37).
+  B83. The bucket bars say "Low" or "Empty" whenever the bucket is below its level right now (10.1, 10.2).
+  B85. A late paycheck (B35) shows "Paycheck is 2 days late" with the date it was expected.
+  B86. With B82: "last checked" means the last time the bank was read and the totals matched, and the number Home...
+  B87. With B84: "seen" means you tapped the take-back and pressed "Got it" on the sheet that shows what, how...
+  B88. Which purchases a refund likely belongs to (20d, A15).
+  B89. Which choices an item gets is decided by the money math for that kind of item, from the rulebook, and the...
+  B90. "Always do this" (13.6, B49).
+  B91. What asks first.
+  B92. Sending the same choice twice.
+  B93. The order on Review.
+  B94. What the Buckets screen shows.
+  B95. Splitting on the screen.
+  B96. Money back waiting in review.
+  B97. What "this pay period" covers on a bucket's list.
+  B98. Each item is one row, with everything it did to that bucket this pay period added up.
+  B99. Newest first, by the day it happened (the day of the purchase, the payday for a leftover).
+  B100. Which rows can be sorted again from the list, and with what.
+  B101. Sorting something where it already is changes nothing and says "It is already in Wants".
+  B102. "Always do this" from a list works exactly as in review (13.6, B49, B90): it asks first, the rule goes...
+  B103. Hand moves (13.3, 13.4, 13.5), from Buckets and from the list of each bucket.
+  B104. Payday shows what the last paycheck did, step by step, from the money math: the mom reserve first (how...
+  B105. "The pay period that just ended" is the one before the current one: from its paycheck (setup day for the...
+  B106. What became of each leftover is one of four things: nothing to ask (the bucket held nothing, or was...
+  B107. Payday opens from Home and from Buckets, and Back goes to the one you came from.
+  B108. On Buckets, each bucket is a link to its list, there is a "Move money" entry, and a Payday row.
+  B109. The payday question says why it is smaller.
+  B110. Undoing a payment marked as going to the old card (A20), from checking.
+  B111. A kept leftover is what the question asked.
+  B112. What asks first on Settings.
+  B113. His yes to the paycheck rule or the mom rule names the preview he saw.
+  B114. Only what changes is changed.
+  B115. The sorting rules on Settings.
+  B116. The change log on Settings shows every line the book keeps: settings, rules (with a rule made from a...
+  B117. "This pay period" on Settings is what the paycheck that began it was worked out with (setup day's settings...
+  B118. Changes that apply right away, as B38 says: a new pay schedule moves the next payday at once, on Home too...
+  B119. Card reminder days can be any whole days, in any order, or none (then no reminder comes, and Home shows a...
+  B120. Amounts on Settings are typed in dollars and cents ("1,500.00", "1500", "$1,500.00"), read as whole cents,...
+  B121. Before setup day there are no settings to change: Settings says so.
+  B122. Moving a sorting rule (A22).
+  B123. "It was not a payment to the old card" (A21) is only for a payment you marked as going to the old card...
+  B124. Found by you (Oct 9), fixed with a test first: setting the mom rule while a payment to her waited, partly...
+  B125. Where Setup day is.
+  B126. Every transfer with one side showing must be answered, "On its way" or "Not on its way", before tracking...
+  B127. The last paycheck (B42) can be any real day up to and including setup day.
+  B128. Handing out the starting money (14.2).
+  B129. Starting (14.3) asks first, and your yes names the last look you saw (like B113): if anything changed...
+  B130. After setup day, Home says what is still to set, the paycheck rule and the mom rule, with a way to...
+  B131. Tracking starts with the rulebook's starting settings (section 2): no paycheck rule, no mom rule, and no...
+  B132. Bank rules on Setup day: the ones that came with the bank connection, used as they are.
+  B133. A charge pending on the old card is shown with the old card, as part of its debt (12.4, A10), not in the...
+  B134. How far back Setup day looks (A25).
+  B135. A purchase or payment refunded in full while it waits (A26).
+  B136. The labels. Plaid gives each item a label (personal_finance_category). What its test bank...
+  B137. What a suggestion says.
+  B138. Each suggestion shows the label, the account, the text, what it means, how many items in the whole history...
+  B139. Adding a suggestion as it is does not ask again: its matches were on its card.
+  B140. Every change to a bank rule asks first, on Setup day and on Settings, with what it would have matched in...
+  B141. A bank rule is refused, in words, when it cannot be: no text, more than 200 characters, a transfer with...
+  B142. A new rule goes to the end of the list; a changed rule keeps its place.
+  B143. From then on (24c).
+  B144. The change log (13.5).
+  B145. In the demo, a life that is tracking already has five made-up bank rules, and what a rule would match is...
+  B146. Which rules a bank rule moves past (A27).
+  B147. A move asks first, like every other change to a bank rule (B140): it says how many items from the last 90...
+  B148. The change log (13.5): "Bank rule moved up" or "moved down", with the rule, its number in the list now,...
+  B149. What is kept. Every answer that changes the book (sorting, splits, moves, payday answers,...
+  B150. Decision numbers.
+  B151. The replay check.
+  B152. When the bank cannot be read (0.5, B82): the bank wants you to log in again (10.5), or its balances cannot...
+  B153. The home time zone on Settings offers the US zones by name (Eastern, Central, Mountain, Arizona, Pacific,...
+  B154. The real server: npm run serve.
+  B155. What npm run replay-check shows (A28, 0.6).
+  B156. Your yes is for exactly what you saw (like B113): if the history replays to anything else by the time you...
+  B157. The change log line (13.5): "History took new totals", dated today in your home time zone, with the first...
+  B158. Money in to checking only (A29): a deposit to savings is never a debit card refund, so it has nothing to...
+  B159. A matched deposit becomes that refund (4.5): it is sorted nowhere else, it cannot be sorted again (asked...
+  B160. What needs a login on the real server: every screen (Home, Buckets, Review, Settings, Payday, each...
+  B161. The one-time code: 12 digits in three groups (1234-5678-9012), typed with or without the dashes (the...
+  B162. Logging in: one passkey for this app, checked with Face ID, Touch ID, or the computer's own check (the...
+  B163. Staying logged in (section 2): 30 days on a device from when you logged in, then the login page again.
+  B164. Another passkey (Settings, "Add a passkey"): only logged in, it asks first, and the passkey is made on the...
+  B165. The change log (13.5): "Logged in", "Logged out", "Passkey added" (each with the device in words, such as...
+  B166. Kept in the database: his passkeys' public keys only (the private key never leaves his device), each...
+  B167. How often (section 2, 27d): a whole number of minutes, 15 to 1,440 (once a day), 60 to start.
+  B168. When a sync is due: one interval of real time after the last sync started, whether it worked or not, so a...
+  B169. What a sync asks the bank: /transactions/sync, /accounts/get and /liabilities/get, as --sync always did;...
+  B170. A sync that fails (the bank cannot be reached, or answers something the app cannot read) saves nothing:...
+  B171. Checked at: the moment the last sync read the bank, whether or not it brought anything new, saved with...
+  B172. A sync and your answers never write at the same time.
+  B173. How the screen says what it showed (A31): each item on Review, on Payday and on a bucket's list comes with...
+  B174. Money on its way between your accounts is listed on Buckets (12.5, B44).
+  B175. Payday and Home show what is on its way to the savings account (3.8, B46).
+  B176. A purchase made on payday itself is not "made before payday" (3.4, B4).
 
 B1. Paycheck smaller than the mom reserve (3.2).
     A $1,200 paycheck can only give the reserve $1,200, not $1,500. The
@@ -1743,3 +1899,28 @@ B173. How the screen says what it showed (A31): each item on Review, on
       The same decision number can be sent again after it (B150: a refusal
       keeps nothing). The demo works the same way; it has no syncs, so
       there nothing changes under a screen.
+
+
+## Part B, added with Phase 4's finish line (Oct 10). Tell me if any is wrong.
+
+B174. Money on its way between your accounts is listed on Buckets (12.5,
+      B44). Found by the agent: it was shown nowhere. Each transfer with one
+      side showing is a row, "On its way": where it is going, its amount,
+      the day it left (or the day it reached the other account first, before
+      it showed leaving), and for one to the old card, that it is not part
+      of the check with your bank (12.4). Home's check sheet still shows the
+      total the check counts. A row goes when its other side shows.
+
+B175. Payday and Home's "Money for savings" sheet show what is on its way to
+      the savings account, next to what the account holds and what is still
+      to move, so the numbers add up on the screen (3.8, B46). Found by the
+      agent: Payday said "The account already holds what it should" while
+      $2,350.00 was still on its way. When what is on its way covers the
+      rest, Payday now says "Nothing more to move: the rest is on its way to
+      the account." Money that reached savings before it showed leaving is
+      in the account already, so it is not shown as on its way.
+
+B176. A purchase made on payday itself is not "made before payday" (3.4,
+      B4): it does not lower a payday question, and it is on the new pay
+      period's lists (B97). The agent asked: the cafe charge on Oct 2, the
+      day of the paycheck, did not lower the wants question.

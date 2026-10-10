@@ -5,6 +5,7 @@ import { activityPath, pathOf } from '../app/routes.js';
 import { Banner, BucketBar, Button, Card, Hero, ListRow, MadeUpPill, Money, Skeleton, StateMessage, TargetBar } from '../ui/blocks.js';
 import { longDate, monthName } from '../ui/dates.js';
 import { Icon } from '../ui/Icon.js';
+import { onItsWayDetail, onItsWayTitle } from './buckets-text.js';
 import { SaidNotice, type Said } from './choose.js';
 import { MoveMoney } from './Move.js';
 
@@ -179,6 +180,22 @@ function BucketsReady({ view, reload, onChanged }: { readonly view: Tracking; re
             href={pathOf('review')}
             testId="row-waiting"
           />
+        </Card>
+      )}
+
+      {/* 12.5, B44: money on its way between his accounts, each with where it stands. */}
+      {view.onItsWay.items.length > 0 && (
+        <Card title="On its way" testId="on-its-way">
+          {view.onItsWay.items.map((item) => (
+            <ListRow
+              key={item.id}
+              icon="move"
+              title={onItsWayTitle(item)}
+              detail={onItsWayDetail(item)}
+              trailing={<Money cents={item.amount} testId={`transit-${item.id}-amount`} />}
+              testId={`transit-${item.id}`}
+            />
+          ))}
         </Card>
       )}
 

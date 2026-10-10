@@ -427,3 +427,19 @@ describe('B100 some things cannot be sorted again from here, and the answer says
     }
   });
 });
+
+describe('4.5 a store refund sorted into a bucket, sorted again from its list', () => {
+  it('4.5 A18 B100 it is still known as a store refund, so its sheet lists its likely purchases as a refund\'s; money in to checking is not one', () => {
+    const b = openBook();
+    b.receive(purchase('shoes', '2026-10-02', 5_000, 'MADE UP STORE'));
+    b.sort('shoes', { to: 'wants' }, '2026-10-02');
+    // The bank did not say which purchase it is for: it waited, and he called it a payback (6.1, B16).
+    b.receive(refund('back', '2026-10-04', 2_000));
+    b.sort('back', { to: 'wants' }, '2026-10-04');
+    b.receive(deposit('gift', '2026-10-04', 3_000, 'MADE UP GIFT'));
+    b.sort('gift', { to: 'wants' }, '2026-10-04');
+    expect(b.resortDetail('back')).toMatchObject({ resortable: true, type: 'money-in', refund: true });
+    expect(b.resortDetail('back')).toMatchObject({ likelyPurchases: [{ id: 'shoes' }] });
+    expect(b.resortDetail('gift')).toMatchObject({ resortable: true, type: 'money-in', refund: false });
+  });
+});

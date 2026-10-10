@@ -367,3 +367,28 @@ describe.each(ENGINES)('Buckets, the target bar, in %s', (_name, engine) => {
     expect(await sent(450_000)).toBe('100%');
   });
 });
+
+describe.each(ENGINES)('money on its way, on Buckets, in %s', (_name, engine) => {
+  const { browser, base } = useEngine(engine);
+
+  it('12.5 B44 each transfer with one side showing is listed with its amount and where it stands; the one to the old card says it is not part of the check (12.4)', async () => {
+    const { book, bank } = life('on-its-way');
+    expect(book.selfCheck(bank).ok).toBe(true);
+    const items = book.inTransit().items;
+    expect(items.map((i) => i.id).sort()).toEqual(['way-everyday', 'way-old-card', 'way-savings']);
+    const page = await openScenario(await browser().newContext(phone()), base(), 'on-its-way', '/buckets');
+    expect(await page.getByTestId('on-its-way').locator('[data-testid^="transit-"][data-testid$="-amount"]').count()).toBe(items.length);
+    for (const item of items) expect(await centsAt(page, `transit-${item.id}-amount`), item.id).toBe(item.amount);
+    expect(await textAt(page, 'transit-way-savings')).toContain('To savings Left Checking Tue, Oct 6. Not in Savings yet.');
+    expect(await textAt(page, 'transit-way-old-card')).toContain('Payment to the old card Left Checking Tue, Oct 6. Not on the old card yet. Not part of the check with your bank: the old card is kept apart.');
+    expect(await textAt(page, 'transit-way-everyday')).toContain('Payment to the everyday card Reached the everyday card Mon, Oct 5. Not shown leaving Checking yet.');
+    await page.context().close();
+  });
+
+  it('12.5 with nothing on its way, there is no list of it', async () => {
+    expect(life('normal').book.inTransit().items).toEqual([]);
+    const page = await openScenario(await browser().newContext(phone()), base(), 'normal', '/buckets');
+    expect(await page.getByTestId('on-its-way').count()).toBe(0);
+    await page.context().close();
+  });
+});

@@ -311,13 +311,20 @@ describe('3.8 money to move into savings on Home', () => {
   it('3.8 shows what should be in the savings account and what is still to move', () => {
     const book = openTestBook({ pots: { savings: 100_000, momReserve: 50_000, wants: 1_000 } });
     const view = tracking(homeView(input(book, { bank: matchingBank(book, 120_000) })));
-    expect(view.attention).toContainEqual({ kind: 'move-to-savings', stillToMove: 30_000, shouldBeInSavings: 150_000, savingsAccountBalance: 120_000 });
+    expect(view.attention).toContainEqual({ kind: 'move-to-savings', stillToMove: 30_000, shouldBeInSavings: 150_000, savingsAccountBalance: 120_000, onItsWay: 0 });
+  });
+
+  it('3.8 B46 money already on its way to the savings account is shown with it, and counts as moved', () => {
+    const book = openTestBook({ pots: { savings: 100_000, momReserve: 50_000, wants: 1_000 } });
+    book.receive(sent('to-savings', START_DATE, 20_000, 'checking', 'savings'));
+    const view = tracking(homeView(input(book, { bank: matchingBank(book, 120_000) })));
+    expect(view.attention).toContainEqual({ kind: 'move-to-savings', stillToMove: 10_000, shouldBeInSavings: 150_000, savingsAccountBalance: 120_000, onItsWay: 20_000 });
   });
 
   it('3.8 one cent still to move is shown', () => {
     const book = openTestBook({ pots: { savings: 100_000 } });
     const view = tracking(homeView(input(book, { bank: matchingBank(book, 99_999) })));
-    expect(view.attention).toContainEqual({ kind: 'move-to-savings', stillToMove: 1, shouldBeInSavings: 100_000, savingsAccountBalance: 99_999 });
+    expect(view.attention).toContainEqual({ kind: 'move-to-savings', stillToMove: 1, shouldBeInSavings: 100_000, savingsAccountBalance: 99_999, onItsWay: 0 });
   });
 
   it('3.8 nothing to move when the account holds exactly enough', () => {

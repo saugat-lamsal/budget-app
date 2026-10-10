@@ -1,4 +1,5 @@
 import { assertCents, bucketLevel, cardDue, type BankBalances, type Book, type BucketLevel, type CardStatement, type Cents, type IsoDate, type SelfCheck } from '@budget-app/money';
+import { onItsWayToSavings } from './payday.js';
 
 // What the Home screen shows, worked out on the server from the book. The
 // screen only formats it: every number here comes from the money math, in
@@ -97,6 +98,8 @@ export type Attention =
       readonly stillToMove: Cents;
       readonly shouldBeInSavings: Cents;
       readonly savingsAccountBalance: Cents;
+      // B46: already on its way to the account, which counts as moved.
+      readonly onItsWay: Cents;
     }
   // 9.1, 9.6: the everyday card is due, from the first reminder day until paid.
   | {
@@ -152,6 +155,7 @@ export function homeView(input: HomeInput): HomeView {
         stillToMove: move.stillToMove,
         shouldBeInSavings: move.shouldBeInSavings,
         savingsAccountBalance: move.savingsAccountBalance,
+        onItsWay: onItsWayToSavings(book),
       });
     }
   }

@@ -1,0 +1,52 @@
+INSTRUCTIONS FOR THE AGENT (Phase 4's finish line, Step 2)
+
+You are checking a personal budget app by using it the way its one user
+would, for one full pay period. You have not seen its code, and you must not
+look at it.
+
+What you may read
+- budget-app-rulebook.md: how the app must treat every kind of money
+  movement. It is the only authority on what each number should be.
+- agent-pay-period/script.txt: what happens at the bank each day, and what
+  you decide.
+- These instructions, and your own notes.
+Do not open, read, search or list any other file in this folder or anywhere
+else: no code, no tests, no other documents. Do not use the Read, Grep or
+Glob tools on anything but the three files above and your own notes. If you
+need to know how something works, use the app and the rulebook.
+
+What you use
+- The app, in the built-in browser (the tools named mcp__Claude_Browser__*):
+  http://localhost:5390/home
+- The control page: http://localhost:5391/ ("Log this browser in" once at
+  the start; "Bring in the next day" each day). Or from the command line:
+  curl -s -X POST http://localhost:5391/next-day
+- Do not stop, restart, or change the server. Do not use any other address.
+- Everything is made up: no real bank, no real money.
+
+Each day
+1. Bring in the day (the script says what the bank shows).
+2. Do what "You decide" says, in the app, like a person: tap, choose, type.
+   If the app asks you to confirm, say yes unless the script says otherwise.
+3. Then look at every screen: Home, Buckets, the list of each bucket (Needs,
+   Wants, Savings, Mom reserve, Held for others), Review, Payday, Settings.
+4. For every number on every screen, write down what the rulebook says it
+   should be, worked out by you from the rulebook, the script, and your own
+   running record of the buckets (keep it in your notes), and what the screen
+   shows. Work out the rulebook number first, then look. Show your working
+   for anything that is not obvious (a split, a rounding, a cap).
+5. Mark each difference clearly: DIFFERENT, with both numbers.
+
+Your notes and report (plain text, in plain language)
+- agent-pay-period/notes.txt: one section per day, written as you go (add to
+  it after each day; do not wait until the end). For each screen: each
+  number, "rulebook X, screen Y", and same or DIFFERENT. Also anything the
+  app said in words that matters (a refusal, a warning, a question).
+- agent-pay-period/report.txt, at the end: the bottom line first (did every
+  number match the rulebook?), then every difference: the day, the screen,
+  what the rulebook says and why (the rule number), and what the screen
+  showed. Then anything in the rulebook you found unclear or that did not
+  settle what a number should be, with the rule number. Then anything that
+  was hard to do on the screens.
+- If you are unsure whether a difference is the app's mistake or yours,
+  say so, and give both workings.

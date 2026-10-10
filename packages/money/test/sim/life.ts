@@ -53,6 +53,77 @@ export interface LifeOptions {
   // each day, so the same days can be played through the bank connection in
   // Plaid's format. Recording changes nothing about the life.
   readonly record?: LifeRecorder;
+  // For the full pay period through the screens (packages/web): a short life
+  // lived as planned instead of at random. The years are ignored. Everything
+  // else is the simulator's as always: its bank, its book, and every check on
+  // every day. Without a plan, nothing about a life changes.
+  readonly plan?: LifePlan;
+}
+
+// ---- A life lived as planned --------------------------------------------
+
+// Something the bank does on a planned day, in the order planned. A label
+// names a purchase so later events can point at it.
+export type PlannedBankEvent =
+  // 4.1 to 4.3; a pending one posts on postsOn, at postsAt if it changed
+  // (a tip, 4.6). The person sorts it in review that evening, or not before
+  // sortOn.
+  | {
+      readonly kind: 'shop';
+      readonly label: string;
+      readonly store: string;
+      readonly account: ChargeAccount;
+      readonly amount: Cents;
+      readonly pending?: { readonly postsOn: IsoDate; readonly postsAt?: Cents };
+      readonly sortOn?: IsoDate;
+    }
+  // 4.5: a refund the bank does not match to its purchase, as the bank
+  // connection reads every refund. On a card it is a refund; to checking it
+  // is money in (A29). The person matches it to the labelled purchase.
+  | { readonly kind: 'refund'; readonly of: string; readonly amount: Cents }
+  // 3.1: a paycheck through payroll.
+  | { readonly kind: 'paycheck'; readonly amount: Cents }
+  // 8.1: a payment the mom rule matches.
+  | { readonly kind: 'mom'; readonly amount: Cents; readonly from: OwnAccount }
+  // 6.1 and 7.5: money in that waits for his choice (a friend paying back).
+  | { readonly kind: 'deposit'; readonly account: OwnAccount; readonly amount: Cents; readonly description: string; readonly choice: 'other-income' | 'not-mine' | 'needs' | 'wants' }
+  // 12.5: a card payment that leaves today and lands on landsOn.
+  | { readonly kind: 'card-payment'; readonly card: Card; readonly from: OwnAccount; readonly amount: Cents; readonly landsOn: IsoDate }
+  // 4.10: the bank charges a labelled purchase again, and takes the copy back on takenBackOn.
+  | { readonly kind: 'charge-twice'; readonly of: string; readonly takenBackOn: IsoDate }
+  // B13
+  | { readonly kind: 'old-card-refund'; readonly amount: Cents };
+
+// Something the person does on a planned evening, before going through
+// review (or after it, with afterReview).
+export type PlannedAnswer = (
+  | { readonly kind: 'settings'; readonly patch: Partial<Settings> }
+  | { readonly kind: 'add-rule'; readonly rule: SortingRule }
+  | { readonly kind: 'move-rule'; readonly id: string; readonly direction: 'up' | 'down' }
+  // 4.7: sorts a labelled purchase again, into the other bucket.
+  | { readonly kind: 'resort'; readonly of: string }
+  | { readonly kind: 'move'; readonly from: Pot; readonly to: Pot; readonly amount: Cents }
+  // 3.4: the payday question for a bucket.
+  | { readonly kind: 'leftover'; readonly bucket: 'needs' | 'wants'; readonly answer: LeftoverAnswer }
+) & { readonly afterReview?: true };
+
+export interface LifePlan {
+  readonly start: IsoDate;
+  readonly lastPaycheck: IsoDate;
+  // How many days to live, setup day the first.
+  readonly days: number;
+  readonly pay: Cents;
+  readonly posted: Posted;
+  // On setup day: charges still pending (each posts later, at postsAt if it
+  // changed), and card payments on their way.
+  readonly pendingAtSetup: readonly { readonly label: string; readonly date: IsoDate; readonly account: ChargeAccount; readonly amount: Cents; readonly store: string; readonly postsOn: IsoDate; readonly postsAt?: Cents }[];
+  readonly onTheirWayAtSetup: readonly { readonly date: IsoDate; readonly from: OwnAccount; readonly card: Card; readonly amount: Cents; readonly landsOn: IsoDate }[];
+  readonly momReserve: Cents;
+  // What tracking starts with (B131: the starting settings, and no rules).
+  readonly settings: Settings;
+  readonly rules: readonly SortingRule[];
+  readonly bank: Readonly<Record<IsoDate, readonly PlannedBankEvent[]>>;
+  readonly answers: Readonly<Record<IsoDate, readonly PlannedAnswer[]>>;
 }
 
 // The book's totals that bank activity alone decides. The person's answers
@@ -92,6 +163,9 @@ export interface LifeRecorder {
   day(day: RecordedBankDay): void;
   // Each answer, in the order given, before the day it was given on is recorded.
   answer?(answer: RecordedAnswer): void;
+  // At the end of each day, once every check has passed: the simulator's own
+  // book, to read then (it goes on changing), and the bank's balances.
+  endOfDay?(day: { readonly date: IsoDate; readonly book: Book; readonly balances: BankBalances }): void;
 }
 
 // The book's methods that change it in answer to the person.
@@ -384,106 +458,166 @@ class Life {
   #forMomSortedByHand = 0;
   #nextScheduledPayday: IsoDate;
   #nextSettingsChange: IsoDate;
+  // A life lived as planned: its plan, its purchases by label (the id each
+  // first had), the refunds waiting to be matched to their purchase, and
+  // purchases the person leaves in review until a day.
+  readonly #plan: LifePlan | undefined;
+  readonly #labels = new Map<string, string>();
+  readonly #refundOf = new Map<string, string>();
+  readonly #sortOn = new Map<string, IsoDate>();
 
   constructor(options: LifeOptions) {
     this.#seed = options.seed;
-    this.#days = Math.round(options.years * 365);
+    this.#plan = options.plan;
+    this.#days = options.plan === undefined ? Math.round(options.years * 365) : options.plan.days;
     this.#sabotageOnDay = options.sabotageOnDay;
     this.#record = options.record;
     this.#random = new Random(options.seed);
     this.#stats = Object.fromEntries(STAT_NAMES.map((name) => [name, 0])) as Stats;
     const r = this.#random;
-    this.#person = {
-      pay: r.int(260_000, 480_000),
-      rent: r.int(90_000, 180_000),
-      closingDay: { 'everyday-card': r.int(1, 28), 'old-card': r.int(1, 28) },
-      roommate: r.chance(1, 2),
-      momTimesPerMonth: r.int(1, 3),
-      alwaysForMom: r.chance(1, 2),
-    };
-    this.#start = addDays(FIRST_START, r.int(0, 364));
-    this.#date = this.#start;
-    const lastPaycheck = addDays(this.#start, -r.int(0, 13));
-    this.#lastPaycheckDate = lastPaycheck;
-    this.#nextScheduledPayday = addDays(lastPaycheck, 14);
-    this.#nextSettingsChange = addDays(this.#start, r.int(60, 330));
+    if (options.plan !== undefined) {
+      const plan = options.plan;
+      this.#person = { pay: plan.pay, rent: 0, closingDay: { 'everyday-card': 0, 'old-card': 0 }, roommate: false, momTimesPerMonth: 0, alwaysForMom: false };
+      this.#start = plan.start;
+      this.#date = plan.start;
+      this.#lastPaycheckDate = plan.lastPaycheck;
+      this.#nextScheduledPayday = addDays(plan.lastPaycheck, 14);
+      this.#nextSettingsChange = addDays(plan.start, 100_000);
+      this.#startPosted = { ...plan.posted };
+      this.#bank = new SimBank(this.#startPosted);
+      for (const p of plan.pendingAtSetup) {
+        const charge = this.#bank.authorize(p.date, p.account, p.amount, p.store);
+        this.#labels.set(p.label, charge.id);
+        this.#standing.set(charge.id, p.account === 'old-card' ? 'old-card' : 'setup');
+        const store = STORES.find((s) => s.name === p.store);
+        if (store !== undefined) this.#intents.set(charge.id, { type: 'store', sorting: store.sorting, store: store.name });
+        this.#stats.pendingAtSetup++;
+        this.#laterOn(p.postsOn, () => this.#post(charge.id, p.postsAt ?? p.amount));
+      }
+      for (const w of plan.onTheirWayAtSetup) {
+        const left = this.#bank.send(w.date, w.from, w.card, w.amount);
+        this.#stats.inTransitAtSetup++;
+        const seen: CardPaymentSeen = { left: left.date, landed: null, amount: left.amount };
+        this.#cardPayments[w.card].push(seen);
+        this.#laterOn(w.landsOn, () => {
+          this.#ownTransfer(() => this.#bank.land(this.#date, left, false));
+          seen.landed = this.#date;
+        });
+      }
+      // 14.2: savings and the mom reserve as planned, and the rest 60 to 40
+      // between needs and wants, as a person lives it.
+      const balances = this.#bank.balances();
+      const startingMoney = balances.checking + balances.savings - balances.everydayCard + this.#bank.inTransit();
+      const savings = balances.savings - plan.momReserve;
+      const rest = startingMoney - savings - plan.momReserve;
+      const needs = rest > 0 ? share(rest, 60) : rest;
+      this.#settings = plan.settings;
+      this.#periodSplit = plan.settings.split;
+      this.#rules.splice(0, this.#rules.length, ...plan.rules);
+      this.#setupInput = {
+        date: plan.start,
+        bankBalances: this.#bank.postedBalances(),
+        pendingCharges: this.#bank.pendingCharges(),
+        transfersInTransit: this.#bank.halvesShowing(),
+        oldCardBalance: this.#bank.posted.oldCard,
+        assignment: { savings, needs, wants: rest - needs, momReserve: plan.momReserve, heldForOthers: 0 },
+        lastPaycheckDate: plan.lastPaycheck,
+        settings: plan.settings,
+        rules: plan.rules,
+      };
+    } else {
+      this.#person = {
+        pay: r.int(260_000, 480_000),
+        rent: r.int(90_000, 180_000),
+        closingDay: { 'everyday-card': r.int(1, 28), 'old-card': r.int(1, 28) },
+        roommate: r.chance(1, 2),
+        momTimesPerMonth: r.int(1, 3),
+        alwaysForMom: r.chance(1, 2),
+      };
+      this.#start = addDays(FIRST_START, r.int(0, 364));
+      this.#date = this.#start;
+      const lastPaycheck = addDays(this.#start, -r.int(0, 13));
+      this.#lastPaycheckDate = lastPaycheck;
+      this.#nextScheduledPayday = addDays(lastPaycheck, 14);
+      this.#nextSettingsChange = addDays(this.#start, r.int(60, 330));
 
-    // Setup day (section 14): the bank as it stands, with a few charges still
-    // pending and sometimes a card payment on its way.
-    this.#startPosted = {
-      checking: r.int(150_000, 600_000),
-      savings: r.int(200_000, 2_000_000),
-      everydayCard: r.int(0, 250_000),
-      oldCard: r.int(250_000, 350_000),
-    };
-    this.#bank = new SimBank(this.#startPosted);
-    for (let i = r.int(0, 3); i > 0; i--) {
-      const store = r.pick(STORES.filter((s) => s.how !== 'posted'));
-      const account = r.chance(store.debitOutOf10, 10) ? 'checking' : 'everyday-card';
-      const charge = this.#bank.authorize(addDays(this.#start, -r.int(0, 2)), account, r.int(store.min, store.max), store.name);
-      this.#standing.set(charge.id, 'setup');
-      this.#intents.set(charge.id, { type: 'store', sorting: store.sorting, store: store.name });
-      this.#stats.pendingAtSetup++;
-      this.#laterOn(addDays(this.#start, r.int(1, 3)), () => this.#post(charge.id, charge.amount + (r.chance(1, 4) ? r.int(1, 1_500) : 0)));
+      // Setup day (section 14): the bank as it stands, with a few charges still
+      // pending and sometimes a card payment on its way.
+      this.#startPosted = {
+        checking: r.int(150_000, 600_000),
+        savings: r.int(200_000, 2_000_000),
+        everydayCard: r.int(0, 250_000),
+        oldCard: r.int(250_000, 350_000),
+      };
+      this.#bank = new SimBank(this.#startPosted);
+      for (let i = r.int(0, 3); i > 0; i--) {
+        const store = r.pick(STORES.filter((s) => s.how !== 'posted'));
+        const account = r.chance(store.debitOutOf10, 10) ? 'checking' : 'everyday-card';
+        const charge = this.#bank.authorize(addDays(this.#start, -r.int(0, 2)), account, r.int(store.min, store.max), store.name);
+        this.#standing.set(charge.id, 'setup');
+        this.#intents.set(charge.id, { type: 'store', sorting: store.sorting, store: store.name });
+        this.#stats.pendingAtSetup++;
+        this.#laterOn(addDays(this.#start, r.int(1, 3)), () => this.#post(charge.id, charge.amount + (r.chance(1, 4) ? r.int(1, 1_500) : 0)));
+      }
+      if (r.chance(1, 5)) {
+        const charge = this.#bank.authorize(addDays(this.#start, -1), 'old-card', r.int(1_000, 6_000), 'MADE UP CAFE');
+        this.#standing.set(charge.id, 'old-card');
+        this.#stats.pendingAtSetup++;
+        this.#laterOn(addDays(this.#start, r.int(1, 3)), () => this.#post(charge.id, charge.amount));
+      }
+      if (r.chance(1, 4)) {
+        const left = this.#bank.send(addDays(this.#start, -1), 'checking', 'everyday-card', r.int(5_000, 60_000));
+        this.#stats.inTransitAtSetup++;
+        const seen: CardPaymentSeen = { left: left.date, landed: null, amount: left.amount };
+        this.#cardPayments['everyday-card'].push(seen);
+        this.#laterOn(addDays(this.#start, r.int(1, 2)), () => {
+          this.#ownTransfer(() => this.#bank.land(this.#date, left, r.chance(7, 10)));
+          seen.landed = this.#date;
+        });
+      }
+      // Sometimes a payment shows landing on the card before it shows leaving
+      // checking, or a payment to the old card is on its way (12.5, B48).
+      if (r.chance(1, 8)) {
+        const landed = this.#bank.landFirst(addDays(this.#start, -1), 'checking', 'everyday-card', r.int(5_000, 60_000));
+        this.#stats.inTransitAtSetup++;
+        const seen: CardPaymentSeen = { left: null, landed: landed.date, amount: landed.amount };
+        this.#cardPayments['everyday-card'].push(seen);
+        this.#laterOn(addDays(this.#start, r.int(1, 2)), () => {
+          this.#ownTransfer(() => this.#bank.sendAfter(this.#date, landed));
+          seen.left = this.#date;
+        });
+      }
+      if (r.chance(1, 8)) {
+        const left = this.#bank.send(addDays(this.#start, -1), 'checking', 'old-card', r.int(5_000, 30_000));
+        this.#stats.inTransitAtSetup++;
+        const seen: CardPaymentSeen = { left: left.date, landed: null, amount: left.amount };
+        this.#cardPayments['old-card'].push(seen);
+        this.#laterOn(addDays(this.#start, r.int(1, 2)), () => {
+          this.#ownTransfer(() => this.#bank.land(this.#date, left, r.chance(1, 2)));
+          seen.landed = this.#date;
+        });
+      }
+      // 14.2: the person assigns the starting money, worked out here on its own.
+      const balances = this.#bank.balances();
+      const startingMoney = balances.checking + balances.savings - balances.everydayCard + this.#bank.inTransit();
+      const momReserve = Math.min(r.int(0, 300_000), balances.savings);
+      const savings = balances.savings - momReserve;
+      const rest = startingMoney - savings - momReserve;
+      const needs = rest > 0 ? share(rest, 60) : rest;
+      this.#settings = changeSettings(DEFAULT_SETTINGS, { paycheckRule: { contains: PAYROLL }, momRule: { contains: MOM } });
+      this.#periodSplit = this.#settings.split;
+      this.#setupInput = {
+        date: this.#start,
+        bankBalances: this.#bank.postedBalances(),
+        pendingCharges: this.#bank.pendingCharges(),
+        transfersInTransit: this.#bank.halvesShowing(),
+        oldCardBalance: this.#bank.posted.oldCard,
+        assignment: { savings, needs, wants: rest - needs, momReserve, heldForOthers: 0 },
+        lastPaycheckDate: lastPaycheck,
+        settings: this.#settings,
+        rules: START_RULES,
+      };
     }
-    if (r.chance(1, 5)) {
-      const charge = this.#bank.authorize(addDays(this.#start, -1), 'old-card', r.int(1_000, 6_000), 'MADE UP CAFE');
-      this.#standing.set(charge.id, 'old-card');
-      this.#stats.pendingAtSetup++;
-      this.#laterOn(addDays(this.#start, r.int(1, 3)), () => this.#post(charge.id, charge.amount));
-    }
-    if (r.chance(1, 4)) {
-      const left = this.#bank.send(addDays(this.#start, -1), 'checking', 'everyday-card', r.int(5_000, 60_000));
-      this.#stats.inTransitAtSetup++;
-      const seen: CardPaymentSeen = { left: left.date, landed: null, amount: left.amount };
-      this.#cardPayments['everyday-card'].push(seen);
-      this.#laterOn(addDays(this.#start, r.int(1, 2)), () => {
-        this.#ownTransfer(() => this.#bank.land(this.#date, left, r.chance(7, 10)));
-        seen.landed = this.#date;
-      });
-    }
-    // Sometimes a payment shows landing on the card before it shows leaving
-    // checking, or a payment to the old card is on its way (12.5, B48).
-    if (r.chance(1, 8)) {
-      const landed = this.#bank.landFirst(addDays(this.#start, -1), 'checking', 'everyday-card', r.int(5_000, 60_000));
-      this.#stats.inTransitAtSetup++;
-      const seen: CardPaymentSeen = { left: null, landed: landed.date, amount: landed.amount };
-      this.#cardPayments['everyday-card'].push(seen);
-      this.#laterOn(addDays(this.#start, r.int(1, 2)), () => {
-        this.#ownTransfer(() => this.#bank.sendAfter(this.#date, landed));
-        seen.left = this.#date;
-      });
-    }
-    if (r.chance(1, 8)) {
-      const left = this.#bank.send(addDays(this.#start, -1), 'checking', 'old-card', r.int(5_000, 30_000));
-      this.#stats.inTransitAtSetup++;
-      const seen: CardPaymentSeen = { left: left.date, landed: null, amount: left.amount };
-      this.#cardPayments['old-card'].push(seen);
-      this.#laterOn(addDays(this.#start, r.int(1, 2)), () => {
-        this.#ownTransfer(() => this.#bank.land(this.#date, left, r.chance(1, 2)));
-        seen.landed = this.#date;
-      });
-    }
-    // 14.2: the person assigns the starting money, worked out here on its own.
-    const balances = this.#bank.balances();
-    const startingMoney = balances.checking + balances.savings - balances.everydayCard + this.#bank.inTransit();
-    const momReserve = Math.min(r.int(0, 300_000), balances.savings);
-    const savings = balances.savings - momReserve;
-    const rest = startingMoney - savings - momReserve;
-    const needs = rest > 0 ? share(rest, 60) : rest;
-    this.#settings = changeSettings(DEFAULT_SETTINGS, { paycheckRule: { contains: PAYROLL }, momRule: { contains: MOM } });
-    this.#periodSplit = this.#settings.split;
-    this.#setupInput = {
-      date: this.#start,
-      bankBalances: this.#bank.postedBalances(),
-      pendingCharges: this.#bank.pendingCharges(),
-      transfersInTransit: this.#bank.halvesShowing(),
-      oldCardBalance: this.#bank.posted.oldCard,
-      assignment: { savings, needs, wants: rest - needs, momReserve, heldForOthers: 0 },
-      lastPaycheckDate: lastPaycheck,
-      settings: this.#settings,
-      rules: START_RULES,
-    };
     const setup = startTracking(this.#setupInput);
     if (!setup.ok) throw new Error(`seed ${options.seed}: the simulator's setup day did not add up (${setup.difference})`);
     const answer = options.record?.answer?.bind(options.record);
@@ -504,6 +638,7 @@ class Life {
         this.#evening();
         this.#check();
         this.#recordDay();
+        this.#record?.endOfDay?.({ date: this.#date, book: this.#book, balances: this.#bank.balances() });
         this.#stats.days++;
       }
       return { ok: true, seed: this.#seed, days: this.#days, stats: this.#stats };
@@ -565,6 +700,14 @@ class Life {
   #bankDay(): void {
     const r = this.#random;
     const today = this.#date;
+    if (this.#plan !== undefined) {
+      // What was set for today (postings, landings), then the plan, in order.
+      const later = this.#later.get(today) ?? [];
+      this.#later.delete(today);
+      for (const event of later) event();
+      for (const event of this.#plan.bank[today] ?? []) this.#planned(event);
+      return;
+    }
     const dayOfMonth = Number(today.slice(8, 10));
     // Plans first, since some of what they plan can happen today.
     if (today === this.#nextScheduledPayday) this.#planPaycheck();
@@ -641,7 +784,7 @@ class Life {
     const early = daysBetween(this.#lastPaycheckDate, this.#date) < this.#settings.earlyPaycheckDays;
     // 13.2, A9: now and then the paycheck rule is cleared that morning, and set
     // again that evening, after the paycheck has come in and waited.
-    if (meant === 'paycheck' && !early && this.#settings.paycheckRule !== null && this.#paycheckWaitingForRule === null && this.#random.chance(1, 25)) {
+    if (meant === 'paycheck' && !early && this.#settings.paycheckRule !== null && this.#paycheckWaitingForRule === null && this.#plan === undefined && this.#random.chance(1, 25)) {
       this.#clearRule('paycheckRule');
       const before = this.#book.pots();
       const txn = this.#bank.deposit(this.#date, 'checking', amount, description);
@@ -1027,29 +1170,34 @@ class Life {
     for (let i = 0; i < this.#person.momTimesPerMonth; i++) {
       const amount = r.int(20_000, 150_000);
       const from: OwnAccount = r.chance(1, 6) ? 'savings' : 'checking';
-      this.#laterOn(addDays(this.#date, r.int(0, 27)), () => {
-        this.#stats.momPayments++;
-        if (from === 'savings') this.#stats.momFromSavings++;
-        if (this.#settings.momRule !== null && r.chance(1, 30)) {
-          this.#clearRule('momRule');
-          this.#laterOn(addDays(this.#date, r.int(1, 6)), () => this.#setMomRuleAgain());
-        }
-        const before = this.#book.pots();
-        const txn = this.#bank.payPerson(this.#date, amount, MOM, from);
-        this.#receive(txn);
-        if (this.#settings.momRule === null) {
-          this.#waitForMomRule(txn, before);
-          return;
-        }
-        const fromReserve = Math.min(amount, Math.max(0, before.momReserve));
-        if (fromReserve < amount) this.#stats.momDifferences++;
-        this.#expectChange(before, { momReserve: -fromReserve, unsortedOut: amount - fromReserve }, '8.1 and 8.3 a payment to mom', txn.id);
-        this.#addMomSent(txn.date, amount);
-        this.#checkMomMonth(txn.date);
-        this.#momRulePayments.push(txn.id);
-        if (this.#momRulePayments.length > 20) this.#momRulePayments.shift();
-      });
+      this.#laterOn(addDays(this.#date, r.int(0, 27)), () => this.#payMom(amount, from, true));
     }
+  }
+
+  // 8.1 and 8.3: a payment to mom, out of the reserve as far as it goes.
+  // Now and then (not in a planned life) the mom rule was cleared first.
+  #payMom(amount: Cents, from: OwnAccount, mayClearRule: boolean): void {
+    const r = this.#random;
+    this.#stats.momPayments++;
+    if (from === 'savings') this.#stats.momFromSavings++;
+    if (mayClearRule && this.#settings.momRule !== null && r.chance(1, 30)) {
+      this.#clearRule('momRule');
+      this.#laterOn(addDays(this.#date, r.int(1, 6)), () => this.#setMomRuleAgain());
+    }
+    const before = this.#book.pots();
+    const txn = this.#bank.payPerson(this.#date, amount, MOM, from);
+    this.#receive(txn);
+    if (this.#settings.momRule === null) {
+      this.#waitForMomRule(txn, before);
+      return;
+    }
+    const fromReserve = Math.min(amount, Math.max(0, before.momReserve));
+    if (fromReserve < amount) this.#stats.momDifferences++;
+    this.#expectChange(before, { momReserve: -fromReserve, unsortedOut: amount - fromReserve }, '8.1 and 8.3 a payment to mom', txn.id);
+    this.#addMomSent(txn.date, amount);
+    this.#checkMomMonth(txn.date);
+    this.#momRulePayments.push(txn.id);
+    if (this.#momRulePayments.length > 20) this.#momRulePayments.shift();
   }
 
   // 4.9 (A16): a bill paid straight from savings waits in review, even one
@@ -1541,6 +1689,15 @@ class Life {
   #evening(): void {
     const r = this.#random;
     for (const action of this.#tonight.splice(0)) action();
+    if (this.#plan !== undefined) {
+      // As planned: the planned answers, then everything waiting in review,
+      // then the answers planned for after it.
+      const answers = this.#plan.answers[this.#date] ?? [];
+      for (const answer of answers) if (answer.afterReview !== true) this.#answerAsPlanned(answer);
+      for (const item of this.#book.reviewItems()) this.#handle(item);
+      for (const answer of answers) if (answer.afterReview === true) this.#answerAsPlanned(answer);
+      return;
+    }
     this.#maybeChangeSettings();
     // Most evenings the person goes through what is waiting.
     if (r.chance(17, 20)) {
@@ -1564,9 +1721,14 @@ class Life {
     if (item.id === this.#paycheckWaitingForRule || this.#waitingForMomRule.some((w) => w.txn.id === item.id)) return;
     // What is going back to the store waits for its refund (A26).
     if (this.#awaitingReturn.has(item.id)) return;
+    // In a planned life, what the person leaves in review until a day.
+    const sortOn = this.#sortOn.get(this.#firstId.get(item.id) ?? item.id);
+    if (sortOn !== undefined && daysBetween(sortOn, today) < 0) return;
     const before = this.#book.pots();
     switch (item.type) {
       case 'leftover': {
+        // In a planned life, the payday questions are answered as planned.
+        if (this.#plan !== undefined) return;
         let plan = this.#leftoverPlans.get(item.id);
         if (plan === undefined) {
           const when = r.int(1, 100);
@@ -1574,22 +1736,7 @@ class Life {
           this.#leftoverPlans.set(item.id, plan);
         }
         if (plan.on === null || daysBetween(plan.on, today) < 0) return;
-        // 3.4 and B4: what was asked at payday, lowered by spending made
-        // before payday that showed up or changed since, never below zero
-        // and never above what was asked. Worked out here from the purchases
-        // as listed, not from the question.
-        const askedAt = this.#askedAtPayday.get(item.id);
-        if (askedAt === undefined) throw new CheckFailed('3.4 a leftover answer', `the simulator has no record of ${item.id}`);
-        const late = this.#spentBeforeFromList(item.bucket, item.date) - askedAt.spentBefore;
-        const moves = Math.min(askedAt.asked, Math.max(0, askedAt.asked - late));
-        this.#book.answerLeftover(item.id, plan.answer, today);
-        this.#note(`answer leftover ${item.id} ${plan.answer} (${moves} of ${askedAt.asked})`);
-        // Rolling over moves nothing; moving to savings moves what it asks about now.
-        this.#expectChange(before, plan.answer === 'roll-over' ? {} : { [item.bucket]: -moves, savings: moves }, '3.4 a leftover answer', item.id);
-        if (moves !== askedAt.asked) this.#stats.leftoverLoweredLate++;
-        if (daysBetween(item.date, today) > 0) this.#stats.leftoverAnsweredLate++;
-        if (plan.answer === 'roll-over') this.#stats.leftoverRolledOver++;
-        else this.#stats.leftoverMovedToSavings++;
+        this.#answerLeftover(item, plan.answer, before);
         return;
       }
       case 'old-card-purchase':
@@ -1599,6 +1746,12 @@ class Life {
         if (this.#book.reviewItems().some((i) => i.id === item.id)) throw new CheckFailed('5.4 seeing the flag clears it', `${item.id} is still waiting`);
         return;
       case 'money-in': {
+        // In a planned life, a refund the bank did not match, matched by hand.
+        if (this.#refundOf.has(item.id)) {
+          this.#tryMistake(item, before);
+          this.#matchRefund(item, before);
+          return;
+        }
         let choice = this.#moneyInChoice(item);
         // Now and then the person leaves an early paycheck for a while. By
         // then a newer paycheck may have come, and this one can no longer
@@ -1949,6 +2102,225 @@ class Life {
     this.#stats.rulesAdded++;
     this.#expectChange(before, { wants: -total, unsortedOut: -total }, '13.2 a new rule sorts what is waiting', `cinema, ${waiting.length} waiting`);
     for (const i of waiting) this.#standing.set(i.id, 'wants');
+  }
+
+  // 3.4 and B4: what was asked at payday, lowered by spending made before
+  // payday that showed up or changed since, never below zero and never above
+  // what was asked. Worked out here from the purchases as listed, not from
+  // the question.
+  #answerLeftover(item: Extract<ReviewItem, { type: 'leftover' }>, answer: LeftoverAnswer, before: Pots): void {
+    const today = this.#date;
+    const askedAt = this.#askedAtPayday.get(item.id);
+    if (askedAt === undefined) throw new CheckFailed('3.4 a leftover answer', `the simulator has no record of ${item.id}`);
+    const late = this.#spentBeforeFromList(item.bucket, item.date) - askedAt.spentBefore;
+    const moves = Math.min(askedAt.asked, Math.max(0, askedAt.asked - late));
+    this.#book.answerLeftover(item.id, answer, today);
+    this.#note(`answer leftover ${item.id} ${answer} (${moves} of ${askedAt.asked})`);
+    // Rolling over moves nothing; moving to savings moves what it asks about now.
+    this.#expectChange(before, answer === 'roll-over' ? {} : { [item.bucket]: -moves, savings: moves }, '3.4 a leftover answer', item.id);
+    if (moves !== askedAt.asked) this.#stats.leftoverLoweredLate++;
+    if (daysBetween(item.date, today) > 0) this.#stats.leftoverAnsweredLate++;
+    if (answer === 'roll-over') this.#stats.leftoverRolledOver++;
+    else this.#stats.leftoverMovedToSavings++;
+  }
+
+  // ---- A life lived as planned -------------------------------------------
+
+  #firstOf(label: string): string {
+    const first = this.#labels.get(label);
+    if (first === undefined) throw new Error(`the plan has no purchase called ${label}`);
+    return first;
+  }
+
+  // The purchase a label names, as the book has it now (a posted charge has
+  // an id of its own).
+  #purchaseNow(label: string): ReturnType<Book['purchases']>[number] {
+    const first = this.#firstOf(label);
+    const found = this.#book.purchases().find((p) => (this.#firstId.get(p.id) ?? p.id) === first);
+    if (found === undefined) throw new Error(`the book has no purchase for ${label} (${first})`);
+    return found;
+  }
+
+  #planned(event: PlannedBankEvent): void {
+    switch (event.kind) {
+      case 'shop': {
+        const store = STORES.find((s) => s.name === event.store) ?? null;
+        this.#stats.purchases++;
+        const pending = event.pending;
+        const id =
+          pending === undefined
+            ? this.#purchase(() => this.#bank.purchase(this.#date, event.account, event.amount, event.store), store)
+            : this.#purchase(() => this.#bank.authorize(this.#date, event.account, event.amount, event.store), store);
+        this.#labels.set(event.label, id);
+        if (event.sortOn !== undefined) this.#sortOn.set(id, event.sortOn);
+        if (pending !== undefined) this.#laterOn(pending.postsOn, () => this.#post(id, pending.postsAt ?? event.amount));
+        return;
+      }
+      case 'refund': {
+        // 4.5: the bank does not say which purchase it is for. To checking
+        // it is money in (6.1, A29).
+        const first = this.#firstOf(event.of);
+        const purchase = this.#sent.find((t): t is Purchase => t.kind === 'purchase' && t.id === first);
+        if (purchase === undefined) throw new Error(`the plan refunds ${event.of}, which the bank never charged`);
+        const before = this.#book.pots();
+        const description = `${purchase.description} REFUND`;
+        const txn = purchase.account === 'checking' ? this.#bank.deposit(this.#date, 'checking', event.amount, description) : this.#bank.refund(this.#date, purchase.account, event.amount, description);
+        const outcome = this.#receive(txn);
+        if (outcome !== 'review') throw new CheckFailed('4.5 a refund it cannot match waits in review', `${txn.id} came back as ${outcome}`);
+        this.#expectChange(before, { unsortedIn: event.amount }, '4.5 a refund it cannot match waits in review', txn.id);
+        this.#refundOf.set(txn.id, first);
+        this.#stats.refundsInReview++;
+        return;
+      }
+      case 'paycheck':
+        this.#payroll(event.amount, `${PAYROLL} DIRECT DEP`, 'paycheck');
+        return;
+      case 'mom':
+        this.#payMom(event.amount, event.from, false);
+        return;
+      case 'deposit':
+        this.#deposit(event.account, event.amount, event.description, event.choice);
+        return;
+      case 'card-payment': {
+        if (event.card === 'everyday-card') this.#stats.everydayCardPayments++;
+        else this.#stats.oldCardPayments++;
+        this.#stats.paymentsInTransit++;
+        const seen: CardPaymentSeen = { left: this.#date, landed: null, amount: event.amount };
+        this.#cardPayments[event.card].push(seen);
+        const left = this.#ownTransfer(() => this.#bank.send(this.#date, event.from, event.card, event.amount));
+        this.#laterOn(event.landsOn, () => {
+          this.#ownTransfer(() => this.#bank.land(this.#date, left, false));
+          seen.landed = this.#date;
+        });
+        return;
+      }
+      case 'charge-twice': {
+        const first = this.#firstOf(event.of);
+        const posted = [...this.#sent].reverse().find((t): t is Purchase => t.kind === 'purchase' && !t.pending && (this.#firstId.get(t.id) ?? t.id) === first);
+        if (posted === undefined) throw new Error(`the plan charges ${event.of} twice before it posted`);
+        const copy = this.#bank.chargeTwice(this.#date, posted);
+        this.#purchase(() => copy, STORES.find((s) => s.name === posted.description) ?? null);
+        this.#laterOn(event.takenBackOn, () => this.#takeBackCopy(copy));
+        return;
+      }
+      case 'old-card-refund': {
+        this.#stats.oldCardRefunds++;
+        const before = this.#book.pots();
+        const txn = this.#bank.refund(this.#date, 'old-card', event.amount, 'MADE UP STORE REFUND');
+        this.#receive(txn);
+        this.#expectChange(before, {}, 'B13 an old card refund touches no bucket', txn.id);
+        return;
+      }
+    }
+  }
+
+  // 4.5, A18 and A29: a refund the bank did not match, or money in to
+  // checking that is a store's refund, matched by hand to its purchase. It
+  // then counts exactly as if the bank had matched it: back into the bucket
+  // the purchase came from, or each bucket its part of a split refunded in full.
+  #matchRefund(item: Extract<ReviewItem, { type: 'money-in' }>, before: Pots): void {
+    const first = this.#refundOf.get(item.id) as string;
+    const options = this.#book.reviewDetails().find((d) => d.item.id === item.id)?.options;
+    const match = options?.type === 'sort' ? options.match.find((id) => (this.#firstId.get(id) ?? id) === first) : undefined;
+    if (match === undefined) throw new CheckFailed('4.5 A18 A29 a refund lists the purchase it belongs to', `${item.id} lists ${JSON.stringify(options?.type === 'sort' ? options.match : options)}, not ${first}`);
+    const purchase = this.#book.purchases().find((p) => p.id === match);
+    if (purchase === undefined) throw new CheckFailed('4.5 A18 A29 a refund lists the purchase it belongs to', `${match} is not a purchase`);
+    const left = purchase.amount - purchase.refunded;
+    const standing = this.#standing.get(first);
+    const parts = this.#splitParts.get(first);
+    const change: Change = { unsortedIn: -item.amount };
+    if (standing === 'needs' || standing === 'wants') change[standing] = item.amount;
+    else if (standing === 'split' && parts !== undefined && item.amount === left) Object.assign(change, { needs: parts.needs, wants: parts.wants });
+    else if (standing === 'unsorted' && item.amount < left) change.unsortedOut = -item.amount;
+    else throw new Error(`the plan matches ${item.id} to ${first}, ${String(standing)}, a case it does not cover`);
+    this.#book.sort(item.id, { refundOf: match }, this.#date);
+    this.#note(`match refund ${item.id} to ${match}`);
+    this.#expectChange(before, change, '4.5 a refund matched by hand counts as if the bank had matched it (A18, A29)', item.id);
+    if (this.#book.reviewItems().some((i) => i.id === item.id)) throw new CheckFailed('4.5 a matched refund leaves review', item.id);
+    this.#stats.refundsLinked++;
+  }
+
+  #answerAsPlanned(answer: PlannedAnswer): void {
+    const today = this.#date;
+    const before = this.#book.pots();
+    const logBefore = this.#book.changeLog().length;
+    const logged = (check: string, kind: string): void => {
+      const log = this.#book.changeLog();
+      if (log.length !== logBefore + 1 || log.at(-1)?.kind !== kind) throw new CheckFailed(check, `expected one ${kind} line, the log ends with ${JSON.stringify(log.slice(logBefore))}`);
+    };
+    switch (answer.kind) {
+      case 'settings': {
+        // 13.1: a new split or mom reserve waits for the next paycheck; the
+        // simulator's own record of the split this pay period stays as it is.
+        this.#book.changeSettings(answer.patch, today);
+        this.#settings = { ...this.#settings, ...answer.patch };
+        this.#stats.settingsChanges++;
+        this.#note(`settings changed: ${JSON.stringify(answer.patch)}`);
+        this.#expectChange(before, {}, '13.1 a settings change with nothing waiting moves no money', JSON.stringify(answer.patch));
+        logged('13.5 every change is logged', 'settings-changed');
+        return;
+      }
+      case 'add-rule': {
+        // 13.2: it sorts the purchases waiting with no rule that it matches.
+        const rule = answer.rule;
+        if (rule.for !== 'purchase') throw new Error('the plan adds purchase rules only');
+        const waiting = this.#book
+          .reviewItems()
+          .filter((i): i is Extract<ReviewItem, { type: 'spending' }> => i.type === 'spending' && i.reason === 'no-rule' && this.#intents.get(i.id)?.type === 'store' && i.description.toLowerCase().includes(rule.contains.toLowerCase()));
+        const total = waiting.reduce((sum, i) => sum + i.amount, 0);
+        this.#book.addRule(rule, today);
+        this.#rules.push(rule);
+        this.#stats.rulesAdded++;
+        this.#note(`rule added: ${rule.contains} to ${rule.bucket}, sorting ${waiting.length} waiting`);
+        this.#expectChange(before, { [rule.bucket]: -total, unsortedOut: -total }, '13.2 a new rule sorts what is waiting', rule.id);
+        for (const i of waiting) this.#standing.set(this.#firstId.get(i.id) ?? i.id, rule.bucket);
+        logged('13.5 every change is logged', 'rule-added');
+        return;
+      }
+      case 'move-rule': {
+        // 13.2: one place up or down among the rules of its kind. Nothing
+        // waits that a rule matches, so nothing is sorted.
+        const index = this.#rules.findIndex((r) => r.id === answer.id);
+        const rule = this.#rules[index];
+        if (rule === undefined) throw new Error(`the plan moves ${answer.id}, which is not a rule`);
+        const sameKind = this.#rules.flatMap((r, i) => (r.for === rule.for ? [i] : []));
+        const other = sameKind[sameKind.indexOf(index) + (answer.direction === 'up' ? -1 : 1)];
+        if (other === undefined) throw new Error(`the plan moves ${answer.id} ${answer.direction}, past the end of its list`);
+        [this.#rules[index], this.#rules[other]] = [this.#rules[other] as SortingRule, rule];
+        this.#book.moveRule(answer.id, answer.direction, today);
+        this.#note(`rule ${answer.id} moved ${answer.direction}`);
+        this.#expectChange(before, {}, '13.2 moving a rule sorts only what it is now the first match for', answer.id);
+        const now = this.#book.rules().filter((r) => r.for === rule.for).map((r) => r.id);
+        const expected = this.#rules.filter((r) => r.for === rule.for).map((r) => r.id);
+        if (!same(now, expected)) throw new CheckFailed('13.2 a rule moves one place among its kind', `the book has ${JSON.stringify(now)}, expected ${JSON.stringify(expected)}`);
+        logged('13.5 every move is logged', 'rule-moved');
+        return;
+      }
+      case 'resort': {
+        // 4.7 and B7: what is left of it moves to the other bucket.
+        const first = this.#firstOf(answer.of);
+        const from = this.#standing.get(first);
+        if (from !== 'needs' && from !== 'wants') throw new Error(`the plan sorts ${answer.of} again, but it is ${String(from)}`);
+        const to = from === 'needs' ? 'wants' : 'needs';
+        const purchase = this.#purchaseNow(answer.of);
+        const left = purchase.amount - purchase.refunded - purchase.countedAtSetup;
+        this.#book.sort(purchase.id, { to }, today);
+        this.#expectChange(before, { [from]: left, [to]: -left }, '4.7 re-sorting a purchase', purchase.id);
+        this.#standing.set(first, to);
+        this.#stats.resorts++;
+        this.#note(`re-sort ${purchase.id} -> ${to}`);
+        return;
+      }
+      case 'move':
+        this.#move(answer.from, answer.to, answer.amount, true);
+        return;
+      case 'leftover': {
+        const item = this.#book.reviewItems().find((i): i is Extract<ReviewItem, { type: 'leftover' }> => i.type === 'leftover' && i.bucket === answer.bucket);
+        if (item === undefined) throw new CheckFailed('3.4 a payday question to answer', `no question for ${answer.bucket}`);
+        this.#answerLeftover(item, answer.answer, before);
+        return;
+      }
+    }
   }
 
   // ---- The checks at the end of every day --------------------------------

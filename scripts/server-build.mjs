@@ -35,7 +35,12 @@ export async function buildServer() {
 // Runs a built command with the arguments given, passing Ctrl+C on, and
 // exits with its code.
 export function runCommand(name, args) {
-  const child = spawn(process.execPath, [path(`packages/server/dist/serve/${name}.mjs`), ...args], { stdio: 'inherit' });
+  runBuilt(`packages/server/dist/serve/${name}.mjs`, args);
+}
+
+// The same for any built file, with more in its environment.
+export function runBuilt(file, args, env = {}) {
+  const child = spawn(process.execPath, [path(file), ...args], { stdio: 'inherit', env: { ...process.env, ...env } });
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));
   child.on('exit', (code) => process.exit(code ?? 0));
 }

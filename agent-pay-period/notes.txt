@@ -1,0 +1,1162 @@
+NOTES: ONE PAY PERIOD THROUGH THE SCREENS (Oct 1 to Oct 16, 2026)
+
+How I work: for each day I first write what the rulebook says each number
+should be (my running record), then look at the screens and write what
+they show. "same" or "DIFFERENT (rulebook X, screen Y)".
+
+
+=====================================================================
+THU OCT 1 (SETUP DAY)
+=====================================================================
+
+EXPECTED, worked out before looking
+
+Starting money (14.2): checking + savings - everyday card, with charges
+pending that day, plus money on its way between my accounts (12.5).
+  checking posted              2,212.36
+  less CAFE pending               -6.25   -> 2,206.11
+  savings                      6,150.00
+  everyday card posted           418.27
+  plus GROCER pending             58.40   -> 476.67 owed
+  bank side = 2,206.11 + 6,150.00 - 476.67 = 7,879.44
+  in transit: $200.00 left checking for the everyday card Sep 30, not
+  arrived (I say it is on its way)        +200.00
+  starting money = 7,879.44 + 200.00 = 8,079.44
+
+Assignment (script): mom reserve 1,000.00, savings 5,150.00,
+wants 771.78, held for others 0.00, needs = the rest
+  needs = 8,079.44 - 1,000.00 - 5,150.00 - 771.78 = 1,157.66
+
+Running record after setup day:
+  savings        5,150.00
+  needs          1,157.66
+  wants            771.78
+  mom reserve    1,000.00
+  held for others    0.00
+  unsorted in        0.00
+  unsorted spending  0.00
+  everything in the buckets (12.2) = 8,079.44
+  in transit (counted)  200.00   (checking -> everyday card)
+  old card debt (12.4)  2,874.55 (tracked apart, not in the check)
+  self-check: bank side 7,879.44 + in transit 200.00 = 8,079.44 = app side.
+    No mismatch.
+  safe to spend (11.1) = wants 771.78 - unsorted spending 0 = 771.78
+  next payday (sec 2, 11.2): last paycheck Sep 18 + 14 days = Fri Oct 2,
+    so 1 day to payday on Oct 1.
+  mom sent this month (8.2): 0.00 of 2,000 to 3,000.
+  Setup day rules: GROCER pending 58.40 and CAFE pending 6.25 are in the
+  starting money, so they are in no bucket. If one posts at another amount,
+  only the difference waits in review (14.2).
+
+Settings after today: split 50/30/20, mom reserve 1,500 per paycheck,
+cap 3,000; paycheck rule ACME PAYROLL; mom rule Made Up Mom; purchase
+rules in order: 1 GROCER -> needs, 2 CAFE -> wants, 3 MADE UP GAS -> needs;
+bank rule added: checking, "ZELLE TO" = payment to a person.
+
+WHAT I DID (Oct 1)
+- Logged in from the control page. Setup day, step by step:
+  1 What the bank shows: checking $2,206.11 ($2,212.36 less $6.25
+    pending), savings $6,150.00, everyday card owes $476.67 ($418.27 plus
+    $58.40 pending), starting money $7,879.44 before transfers. Old card
+    debt $2,874.55. All same as my working.
+  2 Bank rules: 21 came with the connection (no suggestions). Added rule 22,
+    "ZELLE TO" on checking = a payment to a person. It asked first ("It
+    would have matched nothing in the last 90 days"); I said yes.
+  3 Transfers: the $200.00 PAYMENT FROM checking TO everyday-card (Sep 30)
+    answered "on its way". Starting money went to $8,079.44. Same.
+  4 Last paycheck Sep 18, 2026. Screen: next payday Fri Oct 2, 1 day. Same.
+  5 Hand out: mom reserve 1,000.00, savings 5,150.00, wants 771.78, needs
+    "put what is left here" = $1,157.66. Same as my working.
+  6 Last look: self-check bank $7,879.44 + on its way $200.00 = buckets
+    $8,079.44, difference $0.00. Start tracking asked first; yes.
+- Settings: paycheck rule ACME PAYROLL (asked first, "Nothing waiting in
+  Review matches it now", buckets unchanged), mom rule Made Up Mom (asked
+  first, same), purchase rules 1 GROCER->Needs, 2 CAFE->Wants,
+  3 MADE UP GAS->Needs.
+
+SCREENS (Oct 1)
+Home: safe to spend rulebook 771.78, screen $771.78 same. "1 day to
+  payday, Fri Oct 2" same. Needs $1,157.66 left of $1,157.66 same. Wants
+  $771.78 left of $771.78 same. Needs attention: nothing (before I set
+  the rules it said "Still to set: the paycheck rule and the mom rule").
+Buckets: in your buckets rulebook 8,079.44, screen $8,079.44 same, "Matches
+  your bank, to the cent". Needs 1,157.66 same. Wants 771.78 same. Savings
+  5,150.00 same. Mom reserve 1,000.00 same. Held for others 0.00 same.
+  Sent to mom October 0.00 same (target 2,000 to 3,000, "Under target").
+  Old card debt 2,874.55 same.
+Needs list: carried in 1,157.66, came in 0, went out 0, now 1,157.66. Same.
+Wants list: carried in 771.78, 0, 0, now 771.78. Same.
+Savings list: 5,150.00 carried in, now 5,150.00. Same.
+Mom reserve list: 1,000.00, now 1,000.00. Same.
+Held for others list: 0.00. Same.
+Review: 0 waiting. Same.
+Payday: "No paycheck yet", next Fri Oct 2, 1 day. Move to savings: savings
+  plus mom reserve rulebook 5,150 + 1,000 = 6,150.00, screen $6,150.00
+  same; in the savings account 6,150.00 same; still to move 0.00 same.
+Settings: split 50/30/20 this period (since Thu Oct 1) and next paycheck
+  (Fri Oct 2). Mom reserve 1,500.00 / cap 3,000.00 both columns. Paycheck
+  rule, mom rule, 3 purchase rules, 22 bank rules as set. Pay schedule
+  every 14 days, next Fri Oct 2. Early paycheck check 10 days. Leftover:
+  ask each time. Monthly target 2,000 to 3,000. Low alert 20%. Card
+  reminders 7 and 2 days. Daily review 8:00 PM. Home time zone New York.
+  Promo end date not entered, payoff countdown off. Sync every 60 min.
+  Stay logged in 30 days. Change log: bank rule added, paycheck rule, mom
+  rule, 3 rules added, all dated Thu Oct 1. All same as rulebook sec 2.
+DIFFERENCES Oct 1: none.
+
+
+=====================================================================
+FRI OCT 2
+=====================================================================
+
+EXPECTED, worked out before bringing in the day
+- Everyday card GROCER 58.40 posts, same amount as pending on setup day:
+  it was in the starting money, so no difference, nothing waits (14.2).
+- Everyday card receives the $200.00 from Sep 30: pairs with the half in
+  transit. In transit 200 -> 0. No bucket changes (5.1, 12.5).
+- ACME PAYROLL $3,200.00: matches the paycheck rule. Last paycheck Sep 18,
+  14 days ago (not under 10, 3.7), so it is a paycheck and starts a new pay
+  period on Oct 2 (3.1).
+  Leftover questions (3.4): needs 1,157.66, wants 771.78 (nothing was
+  spent before payday).
+  Mom reserve first (3.2): 1,000 + 1,500 = 2,500, under the 3,000 cap, so
+  all 1,500 goes in. Reserve 2,500.00.
+  Rest 3,200 - 1,500 = 1,700.00 split 50/30/20 (3.3):
+    needs = 30% of 1,700 = 510.00 (exact)
+    wants = 20% of 1,700 = 340.00 (exact)
+    savings = 1,700 - 510 - 340 = 850.00
+  Savings 5,150 + 850 = 6,000.00. Needs 1,157.66 + 510 = 1,667.66.
+  Wants 771.78 + 340 = 1,111.78.
+- CAFE 4.85 pending on checking, dated Oct 2 (payday itself): CAFE rule ->
+  wants (4.1, 4.2, 4.6). Counts once, now. Wants 1,111.78 - 4.85 =
+  1,106.93. (It is spent on payday, not before, so I do not expect it to
+  lower the wants question; see unclear point below.)
+- $2,350.00 left checking for savings: transfer, no bucket change (5.3).
+  In transit 2,350.00.
+Running record after Oct 2:
+  savings 6,000.00, needs 1,667.66, wants 1,106.93, mom 2,500.00, held 0
+  in the buckets: 11,274.59
+  bank side: checking 2,212.36 + 3,200 - 2,350 = 3,062.36 posted, less
+  pending 6.25 and 4.85 = 3,051.26; savings 6,150.00; everyday card
+  418.27 + 58.40 - 200.00 = 276.67. 3,051.26 + 6,150.00 - 276.67 =
+  8,924.59; plus in transit 2,350.00 = 11,274.59 = app side. No mismatch.
+  safe to spend = 1,106.93; next payday Oct 16, 14 days.
+  payday questions open: needs 1,157.66, wants 771.78.
+  3.8 savings account should hold savings + mom = 6,000 + 2,500 = 8,500.00;
+  the account shows 6,150.00, with 2,350.00 on its way to it.
+  Still to move: 8,500 - 6,150 = 2,350.00 counting only what arrived, or
+  0.00 if money on its way counts as moved (5.3 says the app updates how
+  much still needs to be moved for a checking-to-savings transfer; it does
+  not say whether at leaving or arriving).
+  Mom sent October 0.00. Old card 2,874.55.
+
+WHAT I DID (Oct 2): brought in the day (control: "5 items at the bank").
+Nothing to answer (script).
+
+SCREENS (Oct 2)
+Home: safe to spend rulebook 1,106.93, screen $1,106.93 same. 14 days to
+  payday, Fri Oct 16: same. Needs $1,667.66 left of $1,667.66 same. Wants
+  $1,106.93 left of $1,111.78 (771.78 + 340.00 at the start of the
+  period) same. Needs attention: "2 waiting in review" (the two payday
+  questions). Checked at 8:00 AM.
+Buckets: in your buckets rulebook 11,274.59, screen $11,274.59 same,
+  "Matches your bank, to the cent" (bank side 8,924.59 + in transit
+  2,350.00 = 11,274.59, my working). Savings 6,000.00 same. Mom reserve
+  2,500.00 same. Held 0.00 same. Sent to mom Oct 0.00 same. "2 waiting in
+  review, Questions to answer. No money is waiting." Old card 2,874.55 same.
+Needs list: carried in 1,157.66, came in +510.00 (ACME PAYROLL paycheck,
+  Oct 2), went out 0, now 1,667.66. Same.
+Wants list: carried in 771.78, came in +340.00, went out -4.85 (MADE UP
+  CAFE, pending, Oct 2, checking), now 1,106.93. Same.
+Savings list: carried in 5,150.00, came in +850.00, now 6,000.00. Same.
+Mom reserve list: carried in 1,000.00, came in +1,500.00, now 2,500.00.
+  Same.
+Held for others list: 0.00. Same.
+Review: 2 waiting. "Nothing is held back from safe to spend." Needs
+  leftover rulebook 1,157.66, screen $1,157.66 same. Wants leftover
+  rulebook 771.78, screen $771.78 same (the Oct 2 cafe charge did not
+  lower it, as I expected).
+Payday: paycheck $3,200.00 Fri Oct 2. Mom reserve taken off the top
+  1,500.00, went into the reserve 1,500.00, reserve held before 1,000.00:
+  same. Left to split 1,700.00; savings 50% 850.00, needs 30% 510.00,
+  wants 20% 340.00: same. What each bucket got adds to 3,200.00: same.
+  Move to savings: savings plus mom reserve rulebook 8,500.00, screen
+  $8,500.00 same. In the savings account $6,150.00 (posted) same. Still to
+  move $0.00, with the words "The account already holds what it should."
+    -> The account holds 6,150.00, not 8,500.00; the other 2,350.00 is on
+    its way (it left checking last night). $0.00 still to move is right
+    if money on its way counts as moved (5.3: the app updates the amount
+    to move for a checking-to-savings transfer). But the screen does not
+    show the 2,350.00 on its way anywhere, so 6,150 + 0 does not add up to
+    8,500 on the screen, and the sentence "The account already holds what
+    it should" is not true today. UNSURE: I do not count this as a number
+    difference (rulebook 3.8 does not say whether money on its way counts),
+    but the words are wrong. Rulebook 3.8 unclear here.
+  Leftover questions: needs 1,157.66, wants 771.78: same.
+  Pay period that just ended: Thu Oct 1 to Fri Oct 2. Spent from needs
+  0.00, spent from wants 0.00, sent to mom 0.00, left in needs at payday
+  1,157.66, left in wants at payday 771.78. Same.
+Settings: this pay period since Fri Oct 2, next paycheck Fri Oct 16; both
+  50/30/20, 1,500 / 3,000. Next payday Fri Oct 16. Rest unchanged. Same.
+DIFFERENCES Oct 2: no number differences. Words on Payday ("The account
+  already holds what it should") untrue while 2,350.00 is on its way;
+  noted as unsure (3.8).
+
+
+=====================================================================
+SAT OCT 3
+=====================================================================
+
+EXPECTED, worked out before bringing in the day
+- CAFE of Oct 1 posts at 7.75. It was pending at 6.25 on setup day, so
+  only the difference, 1.50, waits in review (14.2), as unsorted spending
+  (held back from safe to spend, 4.3). I sort it to needs: needs -1.50.
+  It is spending made before payday that shows up after it, so the needs
+  question goes down by 1.50: 1,157.66 - 1.50 = 1,156.16 (3.4).
+- CAFE 4.85 posts, same amount: nothing changes (4.6).
+- Savings receives 2,350.00: pairs with the half in transit. In transit
+  0. No bucket changes (5.3).
+- RESTAURANT 46.20 pending on the everyday card: no rule, so unsorted,
+  waits in review (4.2). I sort it to wants: wants -46.20. Made after
+  payday, so the wants question stays 771.78.
+- Before my answers: unsorted spending 1.50 + 46.20 = 47.70; safe to spend
+  would be 1,106.93 - 47.70 = 1,059.23.
+- Payday answers: needs roll over (nothing moves); wants leftover 771.78
+  moves to savings: wants -771.78, savings +771.78.
+Running record after Oct 3:
+  savings 6,000.00 + 771.78 = 6,771.78
+  needs 1,667.66 - 1.50 = 1,666.16
+  wants 1,106.93 - 46.20 - 771.78 = 288.95
+  mom 2,500.00, held 0.00, unsorted 0
+  in the buckets: 6,771.78 + 1,666.16 + 288.95 + 2,500.00 = 11,226.89
+  bank side: checking 2,212.36 + 3,200 - 2,350 - 7.75 - 4.85 = 3,049.76
+  (nothing pending); savings 6,150 + 2,350 = 8,500.00; everyday card
+  276.67 + 46.20 pending = 322.87. 3,049.76 + 8,500.00 - 322.87 =
+  11,226.89. In transit 0. Matches.
+  safe to spend = 288.95; 13 days to payday.
+  3.8: savings + mom = 6,771.78 + 2,500.00 = 9,271.78; account 8,500.00;
+  still to move 771.78.
+  Ended period summary (Oct 1 to 2): spent from needs should now show the
+  1.50 (spent Oct 1, before payday), so 1.50; left in needs at payday
+  1,157.66 less 1.50 = 1,156.16 asked (3.4, 23b).
+
+WHAT I DID (Oct 3): brought in the day ("4 items at the bank").
+Before answering, Review showed 4 waiting: needs leftover 1,157.66, wants
+leftover 771.78, MADE UP CAFE $1.50 ("Different from what was counted on
+setup day, Thu Oct 1, Checking"), MADE UP RESTAURANT $46.20 pending, "No
+rule matched". "$47.70 held back from safe to spend until sorted": rulebook
+47.70 same. Home before answering: safe to spend rulebook 1,059.23, screen
+$1,059.23 same.
+- Cafe $1.50 -> Needs. Then the needs question read $1,156.16 with "$1,157.66
+  at payday, less $1.50 spent before payday and sorted since." Rulebook
+  1,156.16 (3.4, 23b) same.
+- Restaurant -> Wants.
+- Needs leftover: Roll over. It asked first ("Keep $1,156.16 in Needs for
+  this pay period?"), yes.
+- Wants leftover: Move to savings. It asked first ("Move $771.78 from Wants
+  to Savings?"), yes.
+
+SCREENS (Oct 3)
+Home: safe to spend rulebook 288.95, screen $288.95 same. 13 days to payday,
+  Fri Oct 16: same. Needs $1,666.16 left of $1,667.66 same. Wants $288.95
+  left of $340.00 same (the start figure is now 340.00, the leftover having
+  gone to savings). Needs attention: "Move $771.78 to savings. Your savings
+  account holds less than it should." Rulebook 3.8: 9,271.78 - 8,500.00 =
+  771.78 same.
+Buckets: in your buckets rulebook 11,226.89, screen $11,226.89 same, matches
+  the bank. Needs 1,666.16, wants 288.95, savings 6,771.78, mom 2,500.00,
+  held 0.00, sent to mom 0.00, old card 2,874.55: all same.
+Needs list: carried in 1,157.66, came in +510.00, went out -1.50 (MADE UP
+  CAFE, Purchase, Thu Oct 1), now 1,666.16. Same, adds up.
+Wants list: carried in 771.78, came in +340.00, went out -822.83 (restaurant
+  46.20 pending, leftover to savings 771.78, cafe 4.85 now posted), now
+  288.95. 771.78 + 340.00 - 822.83 = 288.95. Same.
+Savings list: carried in 5,150.00, came in +1,621.78 (850.00 paycheck +
+  771.78 leftover from wants), now 6,771.78. Same.
+Mom reserve list: 1,000.00 + 1,500.00 = 2,500.00. Same.
+Held for others list: 0.00. Same.
+Review: 0 waiting. Same.
+Payday: paycheck steps as Oct 2, same. Move to savings: savings plus mom
+  reserve rulebook 9,271.78, screen $9,271.78 same; in the account
+  8,500.00 same; still to move rulebook 771.78, screen $771.78 same.
+  Left over: "Needs: kept $1,156.16 ... $1,157.66 at payday, less $1.50
+  spent before payday and sorted since." "Wants: $771.78 moved to Savings."
+  Same.
+  Pay period that just ended (Oct 1 to Oct 2): spent from needs, screen
+  $0.00; left in needs at payday $1,157.66.
+    -> UNSURE / possibly DIFFERENT: the $1.50 was spent on Oct 1 (in that
+    pay period, 4.1: it comes out on the day of the purchase; 3.4 calls it
+    spending made before payday), so by my reading "Spent from Needs" for
+    Oct 1 to Oct 2 should now be 1.50, not 0.00. The screen counts the 1.50
+    in this pay period instead (the Needs list, "since Fri Oct 2", shows it
+    with date Thu Oct 1). The screen's own words say "What was left is what
+    the questions above are about", but the question above says 1,156.16
+    and "left in needs at payday" says 1,157.66. The rulebook has no rule
+    for this summary, so I am not sure which is meant.
+  Spent from wants 0.00, sent to mom 0.00, left in wants 771.78: same.
+Settings: unchanged from Oct 2. Same. (Change log does not list the payday
+  answers or sorting answers; 13.5 says "every change and every manual
+  move" is logged. I read sorting and payday answers as not "changes",
+  so not a difference, but 13.5 does not say.)
+DIFFERENCES Oct 3: none for certain. Unsure: Payday summary "Spent from
+  Needs" for Oct 1 to 2, rulebook (my reading of 4.1/3.4) 1.50, screen 0.00.
+
+
+=====================================================================
+SUN OCT 4
+=====================================================================
+
+EXPECTED, worked out before bringing in the day
+- BIG BOX 142.80 posted on checking: no rule -> review, unsorted (4.2).
+  Before I split it: safe to spend 288.95 - 142.80 = 146.15 (4.3, 11.1).
+- MADE UP GAS 41.10 posted on the everyday card: rule 3 -> needs.
+  Needs 1,666.16 - 41.10 = 1,625.06.
+- Split big box (4.4): 57.15 needs + 85.65 wants = 142.80 (adds up).
+  Needs 1,625.06 - 57.15 = 1,567.91. Wants 288.95 - 85.65 = 203.30.
+Running record after Oct 4:
+  savings 6,771.78, needs 1,567.91, wants 203.30, mom 2,500.00, held 0
+  in the buckets: 11,042.99
+  bank side: checking 3,049.76 - 142.80 = 2,906.96; savings 8,500.00;
+  everyday card posted 276.67 + 41.10 = 317.77, plus restaurant pending
+  46.20 = 363.97. 2,906.96 + 8,500.00 - 363.97 = 11,042.99. In transit 0.
+  Matches.
+  safe to spend 203.30; 12 days to payday.
+  Low alerts (10.1): wants level 20% of 340.00 = 68.00, wants 203.30, no.
+  needs level 20% of 1,667.66 = 333.53, no.
+  3.8: should 9,271.78, account 8,500.00, still to move 771.78.
+
+WHAT I DID (Oct 4): brought in the day ("2 items at the bank").
+Before splitting: Home safe to spend rulebook 146.15, screen $146.15 same;
+"$142.80 held back from safe to spend until sorted" same; needs $1,625.06
+(gas already in needs) same. Review: MADE UP BIG BOX $142.80, "No rule
+matched", Sun Oct 4, checking.
+- More choices -> Split it: Needs 57.15 ("Wants gets the rest"). App said
+  "MADE UP BIG BOX split: Needs $57.15, Wants $85.65." Same.
+  (The sheet also offered "Transfer between my accounts" to savings, to the
+  everyday card, to the old card ("comes out of Needs"), as 5.6 says.)
+
+SCREENS (Oct 4)
+Home: safe to spend rulebook 203.30, screen $203.30 same. 12 days to
+  payday same. Needs $1,567.91 left of $1,667.66 same. Wants $203.30 left
+  of $340.00 same. Needs attention: "Move $771.78 to savings" same (3.8).
+  No low-bucket alert shown; none due (wants 203.30 vs level 68.00).
+Buckets: in your buckets rulebook 11,042.99, screen $11,042.99 same,
+  matches the bank. Savings 6,771.78, mom 2,500.00, held 0.00, sent to mom
+  0.00, old card 2,874.55: same.
+Needs list: carried in 1,157.66, came in +510.00, went out -99.75 (big box
+  part 57.15 "Part of a split", gas 41.10, cafe 1.50), now 1,567.91. Same,
+  adds up.
+Wants list: carried in 771.78, came in +340.00, went out -908.48 (big box
+  part 85.65, restaurant 46.20 pending, leftover 771.78, cafe 4.85), now
+  203.30. Same, adds up.
+Savings list: 5,150.00 + 1,621.78 = 6,771.78. Same.
+Mom reserve list: 1,000.00 + 1,500.00 = 2,500.00. Same.
+Held for others list: 0.00. Same.
+Review: 0 waiting. Same.
+Payday: as Oct 3; move to savings 9,271.78 / 8,500.00 / still to move
+  771.78: same. Ended period summary unchanged (spent from needs 0.00; see
+  my Oct 3 note).
+Settings: unchanged. Same.
+DIFFERENCES Oct 4: none.
+
+
+=====================================================================
+MON OCT 5
+=====================================================================
+
+EXPECTED, worked out before bringing in the day
+- RESTAURANT posts at 55.44 (was 46.20 pending, sorted to wants). The final
+  charge replaces the pending one, same bucket, even though the amount
+  changed (4.6). Wants -9.24: 203.30 - 9.24 = 194.06. Nothing waits.
+- ONLINE SHOP 89.99 posted, everyday card: no rule, review (4.2). Before
+  sorting, safe to spend 194.06 - 89.99 = 104.07. I sort it to needs:
+  needs 1,567.91 - 89.99 = 1,477.92.
+- ZELLE TO Made Up Mom 600.00 out of checking: bank rule 22 says a payment
+  to a person; the mom rule matches, so it comes out of the mom reserve
+  (8.1), not review. Mom 2,500.00 - 600.00 = 1,900.00. Sent to mom in
+  October 600.00 of 2,000 to 3,000 (8.2), under target.
+Running record after Oct 5:
+  savings 6,771.78, needs 1,477.92, wants 194.06, mom 1,900.00, held 0
+  in the buckets: 10,343.76
+  bank side: checking 2,906.96 - 600.00 = 2,306.96; savings 8,500.00;
+  everyday card posted 317.77 + 55.44 + 89.99 = 463.20, none pending.
+  2,306.96 + 8,500.00 - 463.20 = 10,343.76. In transit 0. Matches.
+  safe to spend 194.06; 11 days to payday.
+  3.8: should 6,771.78 + 1,900.00 = 8,671.78; account 8,500.00; still to
+  move 171.78.
+
+WHAT I DID (Oct 5): brought in the day ("3 items at the bank").
+Before sorting: Home safe to spend rulebook 104.07, screen $104.07 same;
+"$89.99 held back" same; wants already $194.06 (restaurant at 55.44) same;
+"Move $171.78 to savings" same (mom payment already out of the reserve).
+Review: only MADE UP ONLINE SHOP $89.99 (the mom payment did not wait, as
+8.1 says). Sorted it to Needs ("MADE UP ONLINE SHOP sorted to Needs.").
+
+SCREENS (Oct 5)
+Home: safe to spend rulebook 194.06, screen $194.06 same. 11 days to
+  payday same. Needs $1,477.92 left of $1,667.66 same. Wants $194.06 left
+  of $340.00 same. Needs attention: "Move $171.78 to savings" (rulebook
+  8,671.78 - 8,500.00 = 171.78) same.
+Buckets: in your buckets rulebook 10,343.76, screen $10,343.76 same,
+  matches the bank. Savings 6,771.78, mom reserve 1,900.00, held 0.00 same.
+  Sent to mom October so far rulebook 600.00, screen $600.00 same, "Under
+  target" (2,000 to 3,000) same. Old card 2,874.55 same.
+Needs list: 1,157.66 + 510.00 - 189.74 (online shop 89.99, big box 57.15,
+  gas 41.10, cafe 1.50) = 1,477.92. Same.
+Wants list: 771.78 + 340.00 - 917.72 (big box 85.65, restaurant now
+  "Purchase" 55.44, leftover 771.78, cafe 4.85) = 194.06. Same.
+Savings list: 6,771.78 same.
+Mom reserve list: 1,000.00 + 1,500.00 - 600.00 ("ZELLE TO Made Up Mom, Sent
+  to mom, Mon Oct 5, Checking") = 1,900.00. Same.
+Held for others list: 0.00 same.
+Review: 0 waiting. Same.
+Payday: savings plus mom reserve 8,671.78, account 8,500.00, still to move
+  171.78: same. Rest as before.
+Settings: unchanged. Same.
+DIFFERENCES Oct 5: none.
+
+
+=====================================================================
+TUE OCT 6
+=====================================================================
+
+EXPECTED, worked out before bringing in the day
+- PHARMACY 23.47 posted, checking: no rule -> review. I sort it to needs:
+  needs 1,477.92 - 23.47 = 1,454.45.
+- CINEMA 18.00 pending, everyday card: no rule -> review, left waiting.
+  Unsorted spending 18.00, held back from safe to spend (4.3).
+- Before sorting the pharmacy: safe to spend 194.06 - 23.47 - 18.00 =
+  152.59. After: 194.06 - 18.00 = 176.06.
+Running record after Oct 6:
+  savings 6,771.78, needs 1,454.45, wants 194.06, mom 1,900.00, held 0,
+  unsorted spending 18.00
+  buckets added up: 10,320.29; app side (12.2) = 10,320.29 - 18.00 =
+  10,302.29
+  bank side: checking 2,306.96 - 23.47 = 2,283.49; savings 8,500.00;
+  everyday card 463.20 + 18.00 pending = 481.20. 2,283.49 + 8,500.00 -
+  481.20 = 10,302.29. Matches.
+  safe to spend 176.06; 10 days to payday.
+  3.8 still to move 171.78.
+
+WHAT I DID (Oct 6): brought in the day ("2 items at the bank").
+Before sorting: Home safe to spend rulebook 152.59, screen $152.59 same;
+"$41.47 held back" (23.47 + 18.00) same. Sorted MADE UP PHARMACY to Needs
+("MADE UP PHARMACY sorted to Needs."). Left MADE UP CINEMA $18.00 pending
+waiting.
+
+SCREENS (Oct 6)
+Home: safe to spend rulebook 176.06, screen $176.06 same. 10 days to
+  payday same. "1 waiting in review, $18.00 held back" same. Needs
+  $1,454.45 left of $1,667.66 same. Wants $194.06 left of $340.00 same.
+  "Move $171.78 to savings" same.
+Buckets: in your buckets rulebook 10,302.29 (app side 12.2: 10,320.29 in
+  the buckets less 18.00 unsorted spending), screen $10,302.29 same,
+  matches the bank. "Not in a bucket yet: 1 waiting in review, $18.00 going
+  out." Savings 6,771.78, mom 1,900.00, held 0.00, sent to mom 600.00, old
+  card 2,874.55: same.
+Needs list: 1,157.66 + 510.00 - 213.21 = 1,454.45 (pharmacy 23.47 added).
+  Same.
+Wants list: 771.78 + 340.00 - 917.72 = 194.06. Same.
+Savings list: 6,771.78 same. Mom reserve list: 1,900.00 same. Held for
+  others list: 0.00 same.
+Review: 1 waiting: MADE UP CINEMA $18.00 pending, "No rule matched", Tue
+  Oct 6, everyday card. Same.
+Payday: 8,671.78 / 8,500.00 / still to move 171.78. Same.
+Settings: unchanged. Same.
+DIFFERENCES Oct 6: none.
+
+
+=====================================================================
+WED OCT 7
+=====================================================================
+
+EXPECTED, worked out before bringing in the day
+- I open Review in its own tab (cinema $18.00 pending) and leave it. Then
+  the day comes in by curl.
+- CINEMA posts at 21.50 while still waiting in review: it stays waiting,
+  now 21.50 posted (4.6: the final charge replaces the pending one).
+  Unsorted spending 21.50.
+- GROCER 72.15 pending on checking: rule 1 -> needs. Needs 1,454.45 -
+  72.15 = 1,382.30.
+- Tapping Wants in the old tab (it still shows $18.00 pending): the item
+  changed since the screen showed it (amount 18.00 -> 21.50, pending ->
+  posted), so the answer must be refused, say how the item is now, and
+  change nothing (13.7, 28b).
+- Then I sort it to wants: wants 194.06 - 21.50 = 172.56.
+- Move 40.00 from wants to needs by hand (13.3). It does not come out of
+  savings or the mom reserve and leaves wants above zero, so it should NOT
+  ask first (13.4). It is logged with the date (13.5).
+  Wants 172.56 - 40.00 = 132.56. Needs 1,382.30 + 40.00 = 1,422.30.
+Before my answers (after the day comes in): safe to spend 194.06 - 21.50
+  = 172.56; needs 1,382.30.
+Running record after Oct 7:
+  savings 6,771.78, needs 1,422.30, wants 132.56, mom 1,900.00, held 0
+  in the buckets: 10,226.64
+  bank side: checking 2,283.49 - 72.15 pending = 2,211.34; savings
+  8,500.00; everyday card posted 463.20 + 21.50 = 484.70, none pending.
+  2,211.34 + 8,500.00 - 484.70 = 10,226.64. Matches.
+  safe to spend 132.56; 9 days to payday.
+  Low alert wants: level 68.00 (20% of 340.00); 132.56 is above. None.
+  3.8 still to move 171.78.
+
+WHAT I DID (Oct 7), the old-tab test, exactly
+- Before the day: opened Review in a second tab (tab-1). It showed "Tuesday,
+  October 6", 1 waiting, "$18.00 held back", MADE UP CINEMA $18.00 Pending,
+  "No rule matched, Tue Oct 6, Everyday card", buttons Needs / Wants / More
+  choices.
+- Brought in the day by curl ("Wed, Oct 7 ... 2 items at the bank").
+- Read the old tab again without reloading: still "Tuesday, October 6",
+  $18.00 Pending.
+- Tapped Wants on the cinema charge in that tab.
+- WHAT THE APP SAID: "MADE UP CINEMA sorted to Wants." and then "Waiting in
+  review 0. You're all caught up." No refusal, no word that the item had
+  changed. The Wants list then showed MADE UP CINEMA, Purchase, Tue Oct 6,
+  everyday card, -$21.50 (the posted amount). Wants $172.56.
+- What I found when I looked at why (the browser's own record of the page's
+  requests, timings in ms since the tab opened):
+    527 ms   GET /api/review, /api/home (first load, Oct 6 data)
+    42,463 ms GET /api/review, /api/home again (answered by 42,469 ms);
+             this answer already had today = Oct 7 and the cinema at 21.50,
+             not pending
+    42,544 ms POST /api/choice (my Wants), answer: done, sorted to wants
+    42,550 ms GET /api/review, /api/home
+  So the page fetched fresh Review numbers 81 ms before it sent my answer.
+  The fresh fetch started only when my tap reached the page (the screen I
+  read just before tapping still said Oct 6 / $18.00), so the screen seems
+  to have refreshed itself under my finger and sent the answer against the
+  fresh item ($21.50 posted). I cannot see what the answer carried, so I
+  cannot tell for sure whether the app checked it against the $18.00 item
+  I saw.
+  -> Rulebook 13.7 / 28b: an answer about an item that changed since the
+  screen showed it must be refused, say how the item is now, and change
+  nothing. What I SAW was $18.00 pending, and the answer went through
+  without a refusal or any word that the amount had changed to $21.50.
+  As a person, I tapped Wants on an $18.00 pending charge and got $21.50
+  posted taken from wants without being told. Marked DIFFERENT (unsure):
+  rulebook "refused, says how the item is now (21.50, posted), nothing
+  changes"; screen "MADE UP CINEMA sorted to Wants", 21.50 taken from wants.
+  If the app's view is that the screen had already refreshed to 21.50 when
+  the tap counted (81 ms earlier), then it may not be a 13.7 failure, but
+  then the 13.7 refusal was never seen and this test did not exercise it.
+- The cinema was no longer waiting, so the script's "if still waiting,
+  sort it to wants" step was not needed.
+After the day came in and the cinema was sorted: Home safe to spend
+  rulebook 172.56, screen $172.56 same; needs rulebook 1,382.30 (grocer
+  pending 72.15 in needs), screen $1,382.30 same; wants 172.56 same.
+- Hand move: Buckets -> Move money between buckets. From was already Wants
+  ($172.56), To Needs ($1,382.30). Amount 40.00, "Move it". It did NOT ask
+  first (right: 13.4 asks only for savings, the mom reserve, or a move that
+  leaves the bucket below zero). App said "Moved $40.00 from Wants to
+  Needs."
+
+SCREENS (Oct 7)
+Home: safe to spend rulebook 132.56, screen $132.56 same. 9 days to payday
+  same. Needs $1,422.30 left of $1,667.66 same. Wants $132.56 left of
+  $340.00 same. "Move $171.78 to savings" same. No low alert (132.56 above
+  68.00) same.
+Buckets: in your buckets rulebook 10,226.64, screen $10,226.64 same,
+  matches the bank. Needs 1,422.30, wants 132.56, savings 6,771.78, mom
+  1,900.00, held 0.00, sent to mom 600.00, old card 2,874.55: same.
+Needs list: 1,157.66 + 550.00 (510.00 paycheck + 40.00 "Moved in from Wants,
+  Moved by hand, Wed Oct 7") - 285.36 (grocer pending 72.15, pharmacy
+  23.47, online shop 89.99, big box 57.15, gas 41.10, cafe 1.50) =
+  1,422.30. Same.
+Wants list: 771.78 + 340.00 - 979.22 (moved out 40.00, cinema 21.50, big
+  box 85.65, restaurant 55.44, leftover 771.78, cafe 4.85) = 132.56. Same.
+Savings list 6,771.78, mom reserve list 1,900.00, held list 0.00: same.
+Review: 0 waiting. Same.
+Payday: 8,671.78 / 8,500.00 / still to move 171.78. Same.
+Settings: change log has "Moved from Wants to Needs, Wed Oct 7, $40.00" at
+  the top (13.5) same. Rest unchanged.
+DIFFERENCES Oct 7: the old-tab answer was taken without the refusal 13.7
+  asks for (see above; marked DIFFERENT, unsure, because the page refreshed
+  itself 81 ms before sending my tap). All numbers same.
+
+
+=====================================================================
+THU OCT 8
+=====================================================================
+
+EXPECTED, worked out before bringing in the day
+- GROCER 72.15 posts, same amount: nothing changes (4.6).
+- ONLINE SHOP REFUND 30.00 back on the everyday card, not matched by the
+  bank: waits in review (4.5) as unsorted money in (12.2). It is not in
+  safe to spend (11.3). Review should list likely purchases (4.5): same
+  account (everyday card), on or before Oct 8, with at least 30.00 not yet
+  refunded: online shop 89.99 (Oct 5), restaurant 55.44 (Oct 3), gas 41.10
+  (Oct 4), gas 41.10 (Oct 8, if it counts as on or before). Not cinema
+  21.50 (under 30). (Grocer 58.40 of Sep 30 was in the starting money, not
+  a counted purchase; unsure if it should be listed.)
+- GAS 41.10 posted again (a duplicate the bank will take back on Oct 10):
+  rule 3 -> needs. Needs 1,422.30 - 41.10 = 1,381.20.
+- I match the refund to the online shop 89.99 of Oct 5 (asks first, 22a).
+  It goes back to the bucket the purchase came from, needs (4.5): needs
+  1,381.20 + 30.00 = 1,411.20.
+Running record after Oct 8:
+  savings 6,771.78, needs 1,411.20, wants 132.56, mom 1,900.00, held 0
+  in the buckets: 10,215.54
+  bank side: checking 2,211.34 (grocer now posted); savings 8,500.00;
+  everyday card 484.70 - 30.00 + 41.10 = 495.80. 2,211.34 + 8,500.00 -
+  495.80 = 10,215.54. Matches.
+  Before matching: app side = buckets 10,185.54 + unsorted money in 30.00 =
+  10,215.54 (same, as 12.2 says).
+  safe to spend 132.56 both before and after matching; 8 days to payday.
+  3.8 still to move 171.78.
+
+WHAT I DID (Oct 8): brought in the day ("3 items at the bank").
+Before matching: Home safe to spend rulebook 132.56, screen $132.56 same;
+needs 1,381.20 (second gas in needs) same; "1 waiting in review". Buckets:
+in your buckets rulebook 10,215.54 (10,185.54 in buckets + 30.00 unsorted
+money in), screen $10,215.54 same, "Not in a bucket yet: 1 waiting in
+review, $30.00 coming in." Review: "Nothing is held back from safe to
+spend" (11.3) same. MADE UP ONLINE SHOP REFUND $30.00, "Refund the bank did
+not match to a purchase, Thu Oct 8, Everyday card". Likely purchases:
+  MADE UP GAS 41.10 Thu Oct 8 In Needs; MADE UP ONLINE SHOP 89.99 Mon Oct 5
+  In Needs; MADE UP GAS 41.10 Sun Oct 4 In Needs; MADE UP RESTAURANT 55.44
+  Sat Oct 3 In Wants; MADE UP GROCER 58.40 Wed Sep 30 Counted on setup day.
+  This fits 4.5 (same account, on or before, at least 30.00 not refunded;
+  the cinema 21.50 left out). Same as I expected.
+  Words: every one of the five says "Same name", but only MADE UP ONLINE
+  SHOP has the refund's name; gas, restaurant and grocer do not. The label
+  is wrong for four of five (not a rulebook number, but misleading).
+  Other choices: Into Needs, Into Wants, More choices.
+- Tapped "This refund is for this one" on MADE UP ONLINE SHOP $89.99. It
+  asked first: "MADE UP ONLINE SHOP REFUND, $30.00, is for MADE UP ONLINE
+  SHOP, $89.99, on Mon, Oct 5. It then counts as if the bank had matched
+  it, and goes back where that purchase came from. This can't be undone
+  here." Yes. App: "MADE UP ONLINE SHOP REFUND matched to MADE UP ONLINE
+  SHOP, as if the bank had matched it."
+
+SCREENS (Oct 8)
+Home: safe to spend rulebook 132.56, screen $132.56 same. 8 days to payday
+  same. Needs $1,411.20 left of $1,667.66 same. Wants $132.56 same. "Move
+  $171.78 to savings" same.
+Buckets: in your buckets rulebook 10,215.54, screen $10,215.54 same, matches
+  the bank. Savings 6,771.78, mom 1,900.00, held 0.00, sent to mom 600.00,
+  old card 2,874.55: same.
+Needs list: 1,157.66 + 550.00 - 296.46 = 1,411.20. Online shop now shows
+  "Refunded $30.00, -$59.99"; gas Oct 8 -41.10 added. Same, adds up.
+Wants list: 771.78 + 340.00 - 979.22 = 132.56. Same.
+Savings 6,771.78, mom reserve 1,900.00, held 0.00 lists: same.
+Review: 0 waiting. Same.
+Payday: 8,671.78 / 8,500.00 / 171.78. Same.
+Settings: unchanged. Same.
+DIFFERENCES Oct 8: no number differences. Words: "Same name" on four
+  likely purchases that do not share the refund's name.
+
+
+=====================================================================
+FRI OCT 9
+=====================================================================
+
+EXPECTED, worked out before bringing in the day
+- ZELLE FROM MADE UP FRIEND 25.00 into checking: not the paycheck, no
+  rule for money in, so it waits in review (6.1) as unsorted money in
+  (12.2), not in safe to spend (11.3). Choices should be the four (my
+  paycheck, other income, payback, not mine) plus "this refund is for this
+  one" with likely purchases on checking (6.1, 4.5, 27b): on checking, on
+  or before Oct 9, at least 25.00 not refunded: big box 142.80 (Oct 4),
+  grocer 72.15 (Oct 7). (Pharmacy 23.47 and the cafes are under 25.)
+  I pick payback, into wants (6.1, 7.5): wants 132.56 + 25.00 = 157.56.
+- PAYMENT FROM checking TO old-card 150.00: bank rule 5, a transfer to the
+  old card. Spending, out of needs, on a "debt payoff" line (5.2): needs
+  1,411.20 - 150.00 = 1,261.20. Old card debt stays 2,874.55 until it lands
+  (12.5); 150.00 shown on its way, not counted in the check.
+- Settings: next paycheck's split 45/35/20. This pay period keeps 50/30/20
+  (13.1, 0.3). Logged (13.5).
+Running record after Oct 9:
+  savings 6,771.78, needs 1,261.20, wants 157.56, mom 1,900.00, held 0
+  in the buckets: 10,090.54
+  bank side: checking 2,211.34 + 25.00 - 150.00 = 2,086.34; savings
+  8,500.00; everyday card 495.80. 2,086.34 + 8,500.00 - 495.80 =
+  10,090.54. Money to the old card not counted (12.5). Matches.
+  Before the payback answer: safe to spend 132.56; after 157.56.
+  7 days to payday. Low alert wants: level 68.00, 157.56 above.
+  3.8 still to move 171.78.
+
+WHAT I DID (Oct 9): brought in the day ("2 items at the bank").
+Before answering: Home safe to spend rulebook 132.56, screen $132.56 same;
+needs rulebook 1,261.20 (old card payment out of needs), screen $1,261.20
+same. Buckets in your buckets rulebook 10,090.54, screen $10,090.54 same
+("$25.00 coming in"). Review: ZELLE FROM MADE UP FRIEND $25.00, "Deposit,
+Fri Oct 9, Checking", "A refund to your debit card?" with likely purchases
+MADE UP GROCER 72.15 (Oct 7, In Needs) and MADE UP BIG BOX 142.80 (Oct 4,
+split 57.15/85.65): same as I worked out (4.5, 27b). Again both labelled
+"Same name", which they are not (words). Main buttons: This is my
+paycheck, Other income, More choices. More choices: This is my paycheck
+(asks to confirm), Other income, Payback into Savings / Needs / Wants /
+Mom reserve, Not mine, Transfer between my accounts (from Savings). The
+four choices of 6.1 are all there.
+- Payback into Wants. App: "ZELLE FROM MADE UP FRIEND put back into Wants."
+- Settings -> Change the split: 45 / 35 / 20, Save. It did not ask first
+  (13.1/13.7 only make the paycheck and mom rules ask). App: "Saved. It
+  starts at your next paycheck, Fri, Oct 16."
+
+SCREENS (Oct 9)
+Home: safe to spend rulebook 157.56, screen $157.56 same. 7 days to payday
+  same. Needs $1,261.20 left of $1,667.66 same. Wants $157.56 left of
+  $340.00 same. "Move $171.78 to savings" same.
+Buckets: in your buckets rulebook 10,090.54, screen $10,090.54 same,
+  matches the bank. Savings 6,771.78, mom 1,900.00, held 0.00, sent to mom
+  600.00 same. Old card debt rulebook 2,874.55 (the 150.00 has not landed,
+  12.5), screen $2,874.55 same.
+  -> DIFFERENT (display, 12.5): "Money on its way to the old card is shown
+  but not counted." The 150.00 on its way to the old card is not shown
+  anywhere (not on Buckets' old card card, not on Home). Rulebook: shown,
+  150.00 on its way; screen: nothing. (Looking back: on Oct 2 the 2,350.00
+  on its way to savings was not shown as "in transit" either; 12.5 says
+  money in transit is shown as "in transit". Buckets only says "Matches
+  your bank, to the cent".)
+Needs list: 1,157.66 + 550.00 - 446.46 = 1,261.20; new line "PAYMENT FROM
+  checking TO old-card, Payment to the old card, Fri Oct 9, Checking,
+  -$150.00" (5.2's "debt payoff" line; the screen calls it "Payment to the
+  old card"). Same.
+Wants list: 771.78 + 365.00 (340.00 + payback 25.00) - 979.22 = 157.56.
+  Same.
+Savings 6,771.78, mom reserve 1,900.00, held 0.00 lists: same.
+Review: 0 waiting. Same.
+Payday: 8,671.78 / 8,500.00 / 171.78 same. Paycheck card still shows the
+  50/30/20 this paycheck was worked out with (right, 0.3, 13.1).
+Settings: split table this pay period (since Fri Oct 2) 50/30/20, from next
+  paycheck (Fri Oct 16) 45/35/20 with "Changes" on savings and needs; mom
+  reserve 1,500 / 3,000 both. Rulebook 13.1 same. Change log: "Split 50 /
+  30 / 20 -> 45 / 35 / 20, Fri Oct 9, from the next paycheck" (13.5) same.
+DIFFERENCES Oct 9: money on its way to the old card (150.00) not shown
+  (12.5). Numbers all same.
+
+
+=====================================================================
+SAT OCT 10
+=====================================================================
+
+EXPECTED, worked out before bringing in the day
+- The bank takes back the second MADE UP GAS 41.10 (Oct 8 copy): the app
+  undoes it (4.10): needs + 41.10 = 1,261.20 + 41.10 = 1,302.30. Logged
+  (13.5), and I am told (10.6): on Home it stays in Needs attention until
+  I mark it seen.
+- MADE UP ONLINE SHOP 64.00 posted on checking (debit): no rule, review.
+  Before sorting: safe to spend 157.56 - 64.00 = 93.56. I sort to needs:
+  needs 1,302.30 - 64.00 = 1,238.30.
+- New purchase rule "PHARMACY" -> needs, goes to the end (4th). Nothing
+  waiting matches. Then move it up one: 1 GROCER, 2 CAFE, 3 PHARMACY,
+  4 MADE UP GAS. Both logged (13.2, 13.5). No money changes.
+Running record after Oct 10:
+  savings 6,771.78, needs 1,238.30, wants 157.56, mom 1,900.00, held 0
+  in the buckets: 10,067.64
+  bank side: checking 2,086.34 - 64.00 = 2,022.34; savings 8,500.00;
+  everyday card 495.80 - 41.10 = 454.70. 2,022.34 + 8,500.00 - 454.70 =
+  10,067.64. Matches.
+  safe to spend 157.56; 6 days to payday. Old card 2,874.55, 150.00 on its
+  way. 3.8 still to move 171.78.
+
+WHAT I DID (Oct 10): brought in the day ("2 items at the bank").
+Before sorting: Home safe to spend rulebook 93.56, screen $93.56 same;
+needs rulebook 1,302.30 (gas copy undone), screen $1,302.30 same. Needs
+attention: "The bank took back a transaction. MADE UP GAS, $41.10, on Sat,
+Oct 10." (10.6) and "1 waiting in review, $64.00 held back" same.
+- Review: MADE UP ONLINE SHOP $64.00, No rule matched, Sat Oct 10,
+  Checking -> Needs. "MADE UP ONLINE SHOP sorted to Needs."
+- Settings: Add a rule, Purchases, "PHARMACY", Needs. "Rule added:
+  "PHARMACY" -> Needs." It went to the end (4th), as the sheet says. Then
+  opened it, "Move up". "Rule moved up: "PHARMACY" -> Needs." Neither asked
+  first (rulebook does not ask for this).
+
+SCREENS (Oct 10), before marking the take-back seen
+Home: safe to spend rulebook 157.56, screen $157.56 same. 6 days to payday
+  same. Needs attention: the take-back (still there, 10.6) and "Move
+  $171.78 to savings" same. Needs $1,238.30 left of $1,667.66 same. Wants
+  $157.56 left of $340.00 same.
+Buckets: in your buckets rulebook 10,067.64, screen $10,067.64 same,
+  matches the bank. Savings 6,771.78, mom 1,900.00, held 0.00, sent to mom
+  600.00, old card 2,874.55 same. The 150.00 on its way to the old card is
+  still not shown (12.5, as noted Oct 9).
+Needs list: 1,157.66 + 550.00 - 469.36 = 1,238.30. The Oct 8 gas line is
+  gone (taken back); online shop Oct 10 -64.00 added. Same, adds up.
+Wants list: 771.78 + 365.00 - 979.22 = 157.56 same.
+Savings 6,771.78, mom reserve 1,900.00, held 0.00 lists: same.
+Review: 0. Same.
+Payday: 8,671.78 / 8,500.00 / 171.78 same.
+Settings: purchase rules 1 GROCER Needs, 2 CAFE Wants, 3 PHARMACY Needs,
+  4 MADE UP GAS Needs (rulebook 13.2 same). Change log (newest first):
+  "Rule moved up: PHARMACY -> Needs, now number 3, ahead of MADE UP GAS ->
+  Needs, Sat Oct 10"; "Rule added PHARMACY -> Needs, Sat Oct 10"; "The bank
+  took back MADE UP GAS, Sat Oct 10, $41.10" (4.10 says the change is
+  logged: same); then the earlier lines. Same.
+DIFFERENCES Oct 10: none new (12.5 display, as Oct 9).
+- After my notes: Home -> tapped "The bank took back a transaction". A sheet
+  "Taken back by the bank: MADE UP GAS, $41.10, Sat Oct 10. The bank removed
+  this after the app had counted it, so the app took it back too: its
+  money went back where it came from. The change log keeps a record." ->
+  "Got it". The notice left Needs attention; Home otherwise unchanged
+  (safe to spend $157.56). Same as 10.6.
+
+
+=====================================================================
+SUN OCT 11
+=====================================================================
+
+EXPECTED, worked out before bringing in the day
+- CAFE 5.40 posted on checking: rule 2 -> wants. Wants 157.56 - 5.40 =
+  152.16.
+- Sort the Oct 5 online shop (89.99, 30.00 refunded, in needs) again, to
+  wants, from Needs' list (4.7). Its refund follows it (4.5: a refund goes
+  back to the bucket the purchase came from), so 59.99 net moves:
+  needs 1,238.30 + 59.99 = 1,298.29; wants 152.16 - 59.99 = 92.17.
+Running record after Oct 11:
+  savings 6,771.78, needs 1,298.29, wants 92.17, mom 1,900.00, held 0
+  in the buckets: 10,062.24
+  bank side: checking 2,022.34 - 5.40 = 2,016.94; savings 8,500.00;
+  everyday card 454.70. 2,016.94 + 8,500.00 - 454.70 = 10,062.24. Matches.
+  safe to spend 92.17; 5 days to payday. Low alert wants: level 68.00,
+  92.17 above, none. 3.8 still to move 171.78.
+
+WHAT I DID (Oct 11): brought in the day ("1 item at the bank").
+Before re-sorting: Home safe to spend rulebook 152.16, screen $152.16 same;
+needs 1,238.30 same; wants 152.16 same.
+- Needs list -> tapped the MADE UP ONLINE SHOP row ("Purchase, Mon Oct 5,
+  Everyday card, Refunded $30.00, -$59.99"). Sheet: "Now in Needs $59.99",
+  "Put it in instead: Needs (It is here now.) / Wants / Split it", "Always
+  do this" (left off). Tapped Wants. App: "MADE UP ONLINE SHOP sorted to
+  Wants." It did not ask first (rulebook does not ask for a re-sort).
+(Checked for the coordinator's note: the re-sort was given once, above;
+the Oct 10 take-back was marked seen on Oct 10 and is no longer on Home.)
+
+SCREENS (Oct 11)
+Home: safe to spend rulebook 92.17, screen $92.17 same. 5 days to payday
+  same. Needs $1,298.29 left of $1,667.66 same. Wants $92.17 left of
+  $340.00 same. Needs attention: only "Move $171.78 to savings" (the
+  take-back is gone, seen) same. No low alert (92.17 above 68.00) same.
+Buckets: in your buckets rulebook 10,062.24, screen $10,062.24 same,
+  matches the bank. Savings 6,771.78, mom 1,900.00, held 0.00, sent to mom
+  600.00, old card 2,874.55 same (150.00 still on its way, not shown: 12.5
+  as before).
+Needs list: 1,157.66 + 550.00 - 409.37 = 1,298.29 (the online shop row has
+  left Needs). Same.
+Wants list: 771.78 + 365.00 - 1,044.61 = 92.17; new rows MADE UP CAFE Oct
+  11 -5.40 and MADE UP ONLINE SHOP Oct 5 "Refunded $30.00" -59.99. Same.
+  (4.5/4.7: the refund followed the purchase; 59.99 moved, as I expected.)
+Savings 6,771.78, mom reserve 1,900.00, held 0.00 lists: same.
+Review: 0. Same.
+Payday: 8,671.78 / 8,500.00 / 171.78 same.
+Settings: unchanged since Oct 10 (rules 1 GROCER, 2 CAFE, 3 PHARMACY, 4 MADE
+  UP GAS; split table 50/30/20 vs 45/35/20). The re-sort is not in the
+  change log; I read 13.5 "every change" as settings and moves, so not a
+  difference (unclear, see report).
+DIFFERENCES Oct 11: none new.
+
+
+=====================================================================
+MON OCT 12
+=====================================================================
+
+EXPECTED, worked out before bringing in the day
+- Old card: the 150.00 from Oct 9 arrives (bank rule 6). The debt goes down
+  when it lands (12.5): 2,874.55 - 150.00 = 2,724.55. No bucket change (it
+  came out of needs on Oct 9, 5.2).
+- Old card: MADE UP STORE REFUND 12.60 back. The old card is tracked apart
+  as debt (12.4); its charges raise the debt and touch a bucket only when
+  paid (5.4, 5.5). By the same reading a refund on it lowers the debt:
+  2,724.55 - 12.60 = 2,711.95, no bucket change, nothing to sort (the
+  script says nothing to answer). The rulebook has no rule for a refund on
+  the old card, so this is my reading (unclear).
+- PAYMENT FROM checking TO everyday-card 350.00 left checking: transfer
+  (5.1), no bucket change. In transit 350.00, counted in the check (12.5).
+Running record after Oct 12:
+  savings 6,771.78, needs 1,298.29, wants 92.17, mom 1,900.00, held 0
+  in the buckets: 10,062.24
+  bank side: checking 2,016.94 - 350.00 = 1,666.94; savings 8,500.00;
+  everyday card 454.70. 1,666.94 + 8,500.00 - 454.70 = 9,712.24; plus in
+  transit 350.00 = 10,062.24. Matches.
+  safe to spend 92.17; 4 days to payday. Old card debt 2,711.95.
+  3.8 still to move 171.78.
+
+WHAT I DID (Oct 12): brought in the day ("3 items at the bank"). Nothing
+to answer. Review stayed empty (the old card refund did not wait, as the
+script expects).
+
+SCREENS (Oct 12)
+Home: safe to spend rulebook 92.17, screen $92.17 same. 4 days to payday
+  same. Needs $1,298.29, wants $92.17 same. "Move $171.78 to savings" same.
+Buckets: in your buckets rulebook 10,062.24, screen $10,062.24 same,
+  "Matches your bank, to the cent" (bank side 9,712.24 + 350.00 in transit,
+  my working). Savings 6,771.78, mom 1,900.00, held 0.00, sent to mom
+  600.00 same. Old card debt rulebook 2,711.95 (2,874.55 - 150.00 landed -
+  12.60 refund), screen $2,711.95 same.
+  The 350.00 on its way to the everyday card is not shown as "in transit"
+  anywhere (12.5, as noted Oct 9).
+Needs list: 1,157.66 + 550.00 - 409.37 = 1,298.29 same (no new rows: the
+  old card payment landing does not touch needs again, right).
+Wants list: 771.78 + 365.00 - 1,044.61 = 92.17 same.
+Savings 6,771.78, mom reserve 1,900.00, held 0.00 lists: same.
+Review: 0. Same.
+Payday: 8,671.78 / 8,500.00 / 171.78 same.
+Settings: unchanged. Same.
+DIFFERENCES Oct 12: none new (12.5 display as before).
+
+
+=====================================================================
+TUE OCT 13
+=====================================================================
+
+EXPECTED, worked out before bringing in the day
+- MADE UP ONLINE SHOP REFUND 64.00 into checking. Money in to checking that
+  is not the paycheck waits in review (6.1) as unsorted money in (12.2),
+  with the four choices plus "this refund is for this one" and its likely
+  purchases on checking (4.5, 6.1, 27b): on checking, on or before Oct 13,
+  at least 64.00 not refunded: online shop 64.00 (Oct 10), grocer 72.15
+  (Oct 7), big box 142.80 (Oct 4). Not in safe to spend (11.3).
+- I pick the Oct 10 online shop 64.00 (asks first). It counts as that
+  purchase's refund and goes back to needs (4.5): needs 1,298.29 + 64.00 =
+  1,362.29.
+Running record after Oct 13:
+  savings 6,771.78, needs 1,362.29, wants 92.17, mom 1,900.00, held 0
+  in the buckets: 10,126.24
+  bank side: checking 1,666.94 + 64.00 = 1,730.94; savings 8,500.00;
+  everyday card 454.70. 1,730.94 + 8,500.00 - 454.70 = 9,776.24; plus in
+  transit 350.00 = 10,126.24. Matches.
+  Before matching: buckets 10,062.24 + unsorted money in 64.00 = 10,126.24.
+  safe to spend 92.17 before and after; 3 days to payday.
+  3.8 still to move 171.78. Old card 2,711.95.
+
+WHAT I DID (Oct 13): brought in the day ("1 item at the bank").
+Before matching: Home safe to spend 92.17 same, "1 waiting in review";
+Buckets in your buckets rulebook 10,126.24 (10,062.24 + 64.00 unsorted
+money in), screen $10,126.24 same. Review: MADE UP ONLINE SHOP REFUND
+$64.00, "Deposit, Tue Oct 13, Checking", "A refund to your debit card?",
+likely purchases: MADE UP ONLINE SHOP 64.00 Sat Oct 10 ("Same name, Same
+amount"), MADE UP GROCER 72.15 Wed Oct 7 ("Same name", wrong again), MADE
+UP BIG BOX 142.80 Sun Oct 4 (split, "Same name", wrong again). The list is
+what 4.5 says. "Nothing is held back from safe to spend" (11.3) same.
+- Tapped "This refund is for this one" on the Oct 10 order. It asked first
+  ("MADE UP ONLINE SHOP REFUND, $64.00, is for MADE UP ONLINE SHOP, $64.00,
+  on Sat, Oct 10 ... This can't be undone here."). Yes. App: "MADE UP
+  ONLINE SHOP REFUND matched to MADE UP ONLINE SHOP, as if the bank had
+  matched it."
+
+SCREENS (Oct 13)
+Home: safe to spend rulebook 92.17, screen $92.17 same. 3 days to payday
+  same. Needs $1,362.29 left of $1,667.66 same. Wants $92.17 same. "Move
+  $171.78 to savings" same.
+Buckets: in your buckets rulebook 10,126.24, screen $10,126.24 same,
+  matches the bank. Savings 6,771.78, mom 1,900.00, held 0.00, sent to mom
+  600.00, old card 2,711.95 same. 350.00 in transit not shown (12.5).
+Needs list: 1,157.66 + 550.00 - 345.37 = 1,362.29; the Oct 10 order now
+  "Refunded $64.00, $0.00". Same.
+Wants list: 92.17 same. Savings 6,771.78, mom reserve 1,900.00, held 0.00
+  lists same.
+Review: 0. Same.
+Payday: 8,671.78 / 8,500.00 / 171.78 same.
+Settings: unchanged. Same.
+DIFFERENCES Oct 13: none new.
+
+
+=====================================================================
+WED OCT 14
+=====================================================================
+
+EXPECTED, worked out before bringing in the day
+- The 350.00 reaches the everyday card: pairs with the half in transit
+  (12.5). In transit 0. No bucket change (5.1).
+- GROCER 96.30 posted, everyday card: rule 1 -> needs. Needs 1,362.29 -
+  96.30 = 1,265.99.
+Running record after Oct 14:
+  savings 6,771.78, needs 1,265.99, wants 92.17, mom 1,900.00, held 0
+  in the buckets: 10,029.94
+  bank side: checking 1,730.94; savings 8,500.00; everyday card 454.70 -
+  350.00 + 96.30 = 201.00. 1,730.94 + 8,500.00 - 201.00 = 10,029.94. In
+  transit 0. Matches.
+  safe to spend 92.17; 2 days to payday. Low alert needs: level 20% of
+  1,667.66 = 333.53; needs 1,265.99 above. 3.8 still to move 171.78.
+
+WHAT I DID (Oct 14): brought in the day ("2 items at the bank"). Nothing
+to answer.
+
+SCREENS (Oct 14)
+Home: safe to spend rulebook 92.17, screen $92.17 same. 2 days to payday
+  same. Needs $1,265.99 left of $1,667.66 same. Wants $92.17 same. "Move
+  $171.78 to savings" same.
+Buckets: in your buckets rulebook 10,029.94, screen $10,029.94 same,
+  matches the bank. Savings 6,771.78, mom 1,900.00, held 0.00, sent to mom
+  600.00, old card 2,711.95 same.
+Needs list: 1,157.66 + 550.00 - 441.67 = 1,265.99 (grocer Oct 14 -96.30
+  added). Same.
+Wants 92.17, savings 6,771.78, mom reserve 1,900.00, held 0.00 lists: same.
+Review: 0. Same.
+Payday: 8,671.78 / 8,500.00 / 171.78 same.
+Settings: unchanged. Same.
+DIFFERENCES Oct 14: none.
+
+
+=====================================================================
+THU OCT 15
+=====================================================================
+
+EXPECTED, worked out before bringing in the day
+- RESTAURANT 38.00 pending on checking: no rule -> review. Before sorting,
+  safe to spend 92.17 - 38.00 = 54.17. I sort it to wants: wants 92.17 -
+  38.00 = 54.17.
+- Low-bucket alert (10.1): wants level = 20% of what wants started the pay
+  period with. The app shows the start as 340.00 ("left of $340.00"), so
+  the level is 68.00; 54.17 is strictly below it, so the low alert for
+  wants is due now, once this pay period. (If the start is read as
+  1,111.78, the level is 222.36 and wants fell below it on Oct 4. See the
+  unclear point in the report.) 10.1 is an alert; the rulebook does not
+  say which screen shows it.
+Running record after Oct 15:
+  savings 6,771.78, needs 1,265.99, wants 54.17, mom 1,900.00, held 0
+  in the buckets: 9,991.94
+  bank side: checking 1,730.94 - 38.00 pending = 1,692.94; savings
+  8,500.00; everyday card 201.00. 1,692.94 + 8,500.00 - 201.00 = 9,991.94.
+  Matches.
+  safe to spend 54.17; 1 day to payday. 3.8 still to move 171.78.
+
+WHAT I DID (Oct 15): brought in the day ("1 item at the bank").
+Before sorting: Home safe to spend rulebook 54.17, screen $54.17 same;
+"$38.00 held back" same. Review: MADE UP RESTAURANT $38.00 Pending, No
+rule matched, Thu Oct 15, Checking -> Wants. "MADE UP RESTAURANT sorted
+to Wants."
+
+SCREENS (Oct 15)
+Home: safe to spend rulebook 54.17, screen $54.17 same. 1 day to payday,
+  Fri Oct 16 same. Needs $1,265.99 left of $1,667.66 same. Wants now marked
+  "Low", $54.17 left of $340.00: rulebook 10.1 level 68.00 (20% of 340.00),
+  54.17 strictly below, so low: same (shown in words, "Low"). "Move $171.78
+  to savings" same.
+Buckets: in your buckets rulebook 9,991.94, screen $9,991.94 same, matches
+  the bank. Wants "Low" $54.17 same. Savings 6,771.78, mom 1,900.00, held
+  0.00, sent to mom 600.00, old card 2,711.95 same.
+Needs list: 1,157.66 + 550.00 - 441.67 = 1,265.99 same.
+Wants list: 771.78 + 365.00 - 1,082.61 = 54.17 (restaurant pending Oct 15
+  -38.00 added) same.
+Savings 6,771.78, mom reserve 1,900.00, held 0.00 lists: same.
+Review: 0. Same.
+Payday: 8,671.78 / 8,500.00 / 171.78 same.
+Settings: unchanged. Same.
+DIFFERENCES Oct 15: none.
+
+
+=====================================================================
+FRI OCT 16 (PAYDAY)
+=====================================================================
+
+EXPECTED, worked out before bringing in the day
+- ACME PAYROLL 3,200.00: paycheck rule; 14 days after Oct 2 (not under 10,
+  3.7), so a paycheck and a new pay period from Oct 16 (3.1).
+- Leftover questions (3.4): needs 1,265.99, wants 54.17. (The Oct 15
+  restaurant was already counted before payday, so nothing changes them.)
+- Mom reserve first (3.2): reserve 1,900.00; 1,500 off the top, but only
+  3,000 - 1,900 = 1,100.00 fits under the cap; the other 400.00 goes to
+  savings. Reserve 3,000.00.
+- The rest 3,200 - 1,500 = 1,700.00, split by the NEW split 45/35/20 (13.1:
+  the change applies from this paycheck):
+    needs = 35% of 1,700 = 595.00 (exact)
+    wants = 20% of 1,700 = 340.00 (exact)
+    savings = 1,700 - 595 - 340 = 765.00
+  savings gets 765.00 + 400.00 overflow = 1,165.00.
+  After the paycheck: savings 6,771.78 + 1,165.00 = 7,936.78; needs
+  1,265.99 + 595.00 = 1,860.99; wants 54.17 + 340.00 = 394.17; mom
+  3,000.00. Parts add up: 1,100 + 1,165 + 595 + 340 = 3,200.00.
+- 2,436.78 left checking for savings: transfer, in transit (5.3, 12.5).
+- My answers: needs leftover 1,265.99 to savings (needs 595.00, savings
+  9,202.77); wants leftover rolls over (wants stays 394.17).
+- 3.8 at payday, before my answers: should be 7,936.78 + 3,000.00 =
+  10,936.78; account 8,500.00 posted, 2,436.78 on its way (exactly the
+  difference). Still to move 0.00 if money on its way counts (as the app
+  did on Oct 2), else 2,436.78.
+  After my answers: should be 9,202.77 + 3,000.00 = 12,202.77; still to
+  move 12,202.77 - 8,500.00 - 2,436.78 = 1,265.99 (counting money on its
+  way), else 3,702.77.
+- The pay period that just ended, Oct 2 to Oct 16: spent from needs (after
+  refunds, not counting hand moves or leftovers) = grocer 96.30 + online
+  shop 64.00 - 64.00 refund + old card 150.00 + grocer 72.15 + pharmacy
+  23.47 + big box 57.15 + gas 41.10 (+ the Oct 1 cafe 1.50 if the app
+  counts it here, as its Needs list does) = 440.17 (or 441.67 with the
+  1.50). Spent from wants = restaurant 38.00 + cafe 5.40 + cinema 21.50 +
+  online shop 89.99 - 30.00 + big box 85.65 + restaurant 55.44 + cafe 4.85
+  = 270.83. Sent to mom 600.00. Left in needs at payday 1,265.99, wants
+  54.17.
+Running record after Oct 16 (end):
+  savings 9,202.77, needs 595.00, wants 394.17, mom 3,000.00, held 0
+  in the buckets: 13,191.94
+  bank side: checking 1,730.94 - 38.00 pending + 3,200.00 - 2,436.78 =
+  2,456.16; savings 8,500.00; everyday card 201.00. 2,456.16 + 8,500.00 -
+  201.00 = 10,755.16; plus in transit 2,436.78 = 13,191.94. Matches.
+  safe to spend 394.17; next payday Oct 30, 14 days.
+  Settings: this pay period (since Oct 16) 45/35/20; next paycheck (Oct 30)
+  45/35/20. Mom sent October 600.00. Old card 2,711.95.
+  Wants low level for the new period: 20% of what wants starts with. Wants
+  rolled over, so it starts with 394.17 -> level 78.83 (rounding unclear).
+
+WHAT I DID (Oct 16): brought in the day ("2 items at the bank").
+Before answering (screens right after the day came in):
+Home: safe to spend rulebook 394.17, screen $394.17 same. 14 days to
+  payday, Fri Oct 30 same. Needs $1,860.99 left of $1,860.99 same. Wants
+  $394.17 left of $394.17 same. "2 waiting in review" (the payday
+  questions). No "Move to savings" item (the app counts the 2,436.78 on its
+  way as moved).
+Buckets: in your buckets rulebook 13,191.94, screen $13,191.94 same,
+  matches the bank. Savings 7,936.78 same. Mom reserve 3,000.00 same. Held
+  0.00 same. Sent to mom 600.00 same. Old card 2,711.95 same.
+Payday: paycheck $3,200.00 Fri Oct 16. Taken off the top 1,500.00, went
+  into the reserve 1,100.00, "Did not fit under the $3,000.00 cap, so it
+  went to Savings $400.00", reserve held before 1,900.00: all same (3.2).
+  Left to split 1,700.00; savings 45% 765.00, needs 35% 595.00, wants 20%
+  340.00: same (13.1, the new split from this paycheck; 3.3 exact, no
+  rounding needed). What each bucket got: mom +1,100.00, savings +1,165.00,
+  needs +595.00, wants +340.00 = 3,200.00: same.
+  Move to savings: savings plus mom reserve rulebook 10,936.78, screen
+  $10,936.78 same; in the account $8,500.00 same; still to move $0.00 with
+  "The account already holds what it should." Same wording problem as Oct
+  2: the account holds 8,500.00; 2,436.78 is on its way and not shown
+  (3.8 unclear; words untrue).
+  Leftover questions: needs 1,265.99, wants 54.17: same (3.4).
+  Pay period that just ended, Fri Oct 2 to Fri Oct 16: spent from needs
+  -$441.67 (my 440.17 without the Oct 1 cafe 1.50, 441.67 with it: the app
+  counts the 1.50 here, consistent with its Oct 1-2 summary showing 0.00;
+  same note as Oct 3, unsure), spent from wants -$270.83 same, sent to mom
+  -$600.00 same, left in needs at payday 1,265.99 same, left in wants 54.17
+  same.
+- Payday: needs leftover "Move to savings": it asked "Move $1,265.99 from
+  Needs to Savings?" Yes: "Needs leftover moved to Savings." Wants leftover
+  "Roll over": it asked "Keep $54.17 in Wants for this pay period?" Yes:
+  "Wants leftover kept for this pay period."
+
+SCREENS (Oct 16), at the end
+Home: safe to spend rulebook 394.17, screen $394.17 same. 14 days to
+  payday, Fri Oct 30 same. Needs $595.00 left of $595.00 same. Wants
+  $394.17 left of $394.17 same. Needs attention: "Move $1,265.99 to
+  savings" (12,202.77 - 8,500.00 - 2,436.78 on its way = 1,265.99) same
+  under the reading that money on its way counts.
+Buckets: in your buckets rulebook 13,191.94, screen $13,191.94 same,
+  "Matches your bank, to the cent". Needs 595.00, wants 394.17, savings
+  9,202.77, mom reserve 3,000.00, held 0.00, sent to mom 600.00 ("Under
+  target"), old card 2,711.95: all same. The 2,436.78 in transit is not
+  shown (12.5, as before).
+Needs list: this pay period since Fri Oct 16. Carried in 1,265.99, came in
+  +595.00 (paycheck), went out -1,265.99 (leftover moved to savings), now
+  595.00. Same.
+Wants list: carried in 54.17, came in +340.00, went out 0.00, now 394.17.
+  Same.
+Savings list: carried in 6,771.78, came in +2,430.99 (paycheck 1,165.00 +
+  needs leftover 1,265.99), now 9,202.77. Same.
+Mom reserve list: carried in 1,900.00, came in +1,100.00, now 3,000.00.
+  Same (capped, 3.2, 8.4).
+Held for others list: 0.00. Same (7.3: back to zero, never moved).
+Review: 0 waiting. Same.
+Payday: move to savings: savings plus mom reserve rulebook 12,202.77,
+  screen $12,202.77 same; in the account 8,500.00 same; still to move
+  rulebook 1,265.99 (with money on its way counted) or 3,702.77 (without),
+  screen $1,265.99. "Move it from checking to savings in your bank's app."
+  Left over: "Needs: $1,265.99 moved to Savings", "Wants: kept $54.17".
+  Same. (On screen 8,500.00 + 1,265.99 does not make 12,202.77, because
+  the 2,436.78 on its way is not shown.)
+Settings: this pay period since Fri Oct 16: 45/35/20, mom 1,500 / 3,000;
+  from next paycheck Fri Oct 30: the same, no "Changes". Next payday Fri Oct
+  30. Rules and change log unchanged. Same (13.1).
+DIFFERENCES Oct 16: no number differences. 12.5 (in transit not shown) and
+  3.8 wording, as before.
+
+END OF THE PAY PERIOD. Final running record: savings 9,202.77, needs
+595.00, wants 394.17, mom reserve 3,000.00, held for others 0.00, unsorted
+0, in transit 2,436.78 (to savings), old card debt 2,711.95. Every one of
+these equals the screens.

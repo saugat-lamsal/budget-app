@@ -1,0 +1,175 @@
+REPORT: ONE PAY PERIOD THROUGH THE SCREENS (Thu Oct 1 to Fri Oct 16, 2026)
+
+BOTTOM LINE
+
+Every money number matched the rulebook on every screen, every day. That
+covers all five buckets, safe to spend, days to payday, the totals and the
+self-check, the old card debt, mom's monthly total, both paydays (including
+the reserve cap and the new split), every bucket's list, Review, Payday's
+move-to-savings figures, and Settings. I worked each number out from the
+rulebook and the script before I looked at the screen. The final record
+(savings 9,202.77, needs 595.00, wants 394.17, mom reserve 3,000.00, held
+for others 0.00, old card 2,711.95) equals the screens to the cent.
+
+There are four things that are not money mistakes but do not match the
+rulebook, or that I am not sure about:
+1. Oct 7 (13.7): the answer from the stale Review tab was taken. There was
+   no refusal. I could not tell for sure whether it was an app mistake.
+2. Every day with a transfer on its way (12.5): money in transit is never
+   shown on any screen.
+3. Oct 2 and Oct 16 (3.8): Payday says "The account already holds what it
+   should" when it does not. The rest is still on its way.
+4. Oct 3 onward (no rule): the payday summary counts the late $1.50 cafe
+   difference in the wrong pay period, if 4.1 applies to it.
+One wording mistake: "Same name" appears on likely purchases that do not
+share the refund's name.
+
+
+DIFFERENCES (day, screen, what the rulebook says and why, what the screen showed)
+
+1. Wed Oct 7, Review (the tab opened before the day came in). Rule 13.7 and
+   28b.
+   Rulebook: an answer about an item that changed since the screen showed
+   it is refused. The app says how the item is now and changes nothing. The
+   cinema charge had changed from $18.00 pending to $21.50 posted.
+   Screen: I tapped Wants on the card that still showed $18.00 pending. The
+   app said "MADE UP CINEMA sorted to Wants." Then "You're all caught up."
+   Wants lost $21.50. Nothing told me the amount had changed.
+   Unsure. The browser's own record of the page's requests shows that
+   my tap made the page fetch fresh Review data (with the $21.50 posted
+   item). That was 81 ms before the answer was sent. The screen I read just
+   before tapping still said Oct 6 / $18.00. So the answer may have been
+   sent against the fresh item, and the server may have been right to take
+   it. Either way, the refusal that 13.7 describes never appeared, so this
+   test did not exercise it. As a person I saw $18.00 pending and got
+   $21.50 posted taken without a word. The screen refreshing under my
+   finger did not show me the new amount before the answer counted.
+
+2. Oct 2 to Oct 16, Buckets and Home (no screen shows it). Rule 12.5.
+   Rulebook: money in transit "is shown as 'in transit'", and "Money on its
+   way to the old card is shown but not counted."
+   Screen: no screen shows money in transit at any time. These were:
+   2,350.00 to savings (Oct 2), 150.00 to the old card (Oct 9 to 11),
+   350.00 to the everyday card (Oct 12 to 13), and 2,436.78 to savings
+   (Oct 16). Buckets only says "Matches your bank, to the cent". The old
+   card card shows only the debt. The numbers themselves are right: the
+   self-check matched every day once money on its way is counted.
+
+3. Fri Oct 2 and Fri Oct 16, Payday, "Move to savings". Rule 3.8 (with 5.3).
+   Rulebook: show how much should be in the savings account (savings plus
+   mom reserve) and how much you still need to move. If the account
+   already holds more than it should, the amount to move is $0 and the
+   extra is shown separately.
+   Screen, Oct 2: should be $8,500.00, in the account $6,150.00, still to
+   move $0.00, "The account already holds what it should."
+   Screen, Oct 16: should be $10,936.78, in the account $8,500.00, still to
+   move $0.00, the same sentence.
+   After my Oct 16 answer, the screen showed should be $12,202.77, in the
+   account $8,500.00, still to move $1,265.99.
+   The $0.00 and $1,265.99 are right if money already on its way to
+   savings counts as moved (2,350.00 on Oct 2 and 2,436.78 on Oct 16 had
+   left checking). But the screen never shows that money, so its own
+   figures do not add up. The sentence is untrue: the account held less
+   than it should. I count the numbers as unsure (3.8 does not say whether
+   money on its way counts) and the words as wrong.
+
+4. Sat Oct 3 onward, Payday, "The pay period that just ended" (Oct 1 to Oct
+   2). Rules 4.1 and 3.4 (there is no rule for this summary).
+   My reading: the extra $1.50 on the Oct 1 cafe charge was spent on Oct 1.
+   4.1 says a purchase comes out on the day of the purchase, and 3.4 calls
+   it "spending made before payday". So "Spent from Needs" for Oct 1 to
+   Oct 2 would be 1.50, and for Oct 2 to Oct 16 it would be 440.17.
+   Screen: Oct 1 to 2 shows "Spent from Needs $0.00" and "Left in Needs at
+   payday $1,157.66". But the question above it says $1,156.16, and the
+   screen's own words say "What was left is what the questions above are
+   about." The Oct 2 to Oct 16 summary shows $441.67. The Needs list for
+   the pay period "since Fri, Oct 2" includes the Oct 1 row.
+   The 1.50 is counted once in total, and every bucket is right. Unsure
+   whether this is a mistake: no rule covers the summary.
+
+5. Oct 8, Oct 9 and Oct 13, Review, "Likely purchases". Rule 4.5 (wording,
+   not a number).
+   The list of likely purchases was exactly what 4.5 describes. But every
+   entry is labelled "Same name", including MADE UP GAS, MADE UP
+   RESTAURANT, MADE UP GROCER and MADE UP BIG BOX. The refund was named
+   "MADE UP ONLINE SHOP REFUND" (Oct 8, Oct 13) or "ZELLE FROM MADE UP
+   FRIEND" (Oct 9). Only the online shop rows share the name.
+
+
+THINGS THAT WORKED AS THE RULEBOOK SAYS (checked, same)
+
+- Setup day: starting money 8,079.44 (14.2, with pending charges and the
+  $200.00 on its way). The self-check passed before tracking (14.3).
+  Needs got "the rest" (1,157.66).
+- A setup-day pending charge that posted higher sent only the $1.50
+  difference to review (14.2).
+- Paycheck Oct 2: reserve 1,500, split 850 / 510 / 340 (3.2, 3.3).
+  Leftover questions 1,157.66 and 771.78. The needs question went down by
+  the late $1.50, with the explanation line (3.4, 23b).
+- Paycheck Oct 16: reserve capped, 1,100 in and 400 to savings (3.2). The
+  new 45/35/20 split applied from this paycheck only (13.1, 0.3).
+- Pending charges posting at a new amount moved the bucket by the
+  difference (4.6). The pending cinema that posted while waiting stayed in
+  review at its new amount.
+- Splits (4.4), the mom payment out of the reserve without review (8.1),
+  and October's mom total of 600.00 (8.2).
+- The old card payment came out of needs when it left checking. The debt
+  fell when it landed (5.2, 12.5).
+- Refund matching: asked first, went back to the purchase's bucket (4.5,
+  22a). Money in to checking offered "this refund is for this one" with
+  checking purchases (27b).
+- Payback into wants (6.1, 7.5). Re-sorting a refunded purchase moved the
+  net 59.99 (4.7).
+- The bank's take-back was undone, logged, shown on Home until marked seen
+  (4.10, 10.6).
+- The hand move did not ask first, as 13.4 says, and was logged (13.5).
+- The new rule went to the end, the move up was logged (13.2).
+- Safe to spend left out unsorted spending (11.1, 4.3) and unsorted money
+  in (11.3).
+- The low label on wants on Oct 15 (54.17 below 68.00, 10.1). It was shown
+  with the word "Low", not only colour.
+
+
+RULEBOOK POINTS THAT WERE UNCLEAR OR DID NOT SETTLE A NUMBER
+
+- 3.8 with 5.3: does money already on its way to the savings account count
+  as moved? The app counts it. The rulebook does not say.
+- 10.1: "what the bucket started the pay period with" when a leftover is
+  moved to savings after payday. Wants held 1,111.78 at payday, and the
+  771.78 leftover went to savings the next day. The app used 340.00 (level
+  68.00). The other reading gives 1,111.78 (level 222.36, low from Oct 4).
+  Also, the rounding of a 20% level is not stated.
+- 3.4 / 4.1: is a purchase made on payday itself (the Oct 2 cafe) "before
+  payday"? The app did not let it lower the wants question. Also, which pay
+  period's list and summary does a late before-payday purchase belong to
+  (point 4 above)?
+- An old card refund (Oct 12, MADE UP STORE REFUND 12.60): no rule covers
+  it. The app lowered the debt to 2,711.95 and asked nothing. That matches
+  my reading of 5.4 and 5.5, but it is a reading.
+- 4.5: is a charge that was pending on setup day (in the starting money,
+  in no bucket) a "purchase" a refund can be matched to? The app lists it
+  ("Counted on setup day").
+- 13.5: "every change" is logged. The app logs settings, rules, hand moves
+  and take-backs, but not sorting answers, payday answers or re-sorts. I
+  read those as not "changes", but the rule does not say.
+- 13.7: does a screen that refreshes itself at the moment of the tap count
+  as "the screen showed it"? (Point 1 above.)
+- 5.2 says a "debt payoff" line. The Needs list calls it "Payment to the
+  old card". That is the same thing in other words.
+
+
+WHAT WAS HARD TO DO ON THE SCREENS
+
+- Typing right after a sheet opened sometimes went nowhere. The sheet was
+  still sliding in, so I had to tap the field again. One amount field
+  ended up with "1000.000.00" and had to be cleared.
+- The date field on Setup day (last paycheck) would not take typed digits.
+  I had to set it another way.
+- At a small window size, the Add rule sheet on Settings sat partly below
+  the screen, and its text field could not be tapped until scrolled.
+- Each screen showed "Loading your numbers" for a few seconds every time.
+- Nowhere could I see money on its way between accounts. The Payday
+  move-to-savings figures do not add up on screen because of it.
+- Settings is a very long page. The change log is at the very bottom.
+- The likely-purchase labels ("Same name" on everything) make it harder to
+  pick the right purchase.

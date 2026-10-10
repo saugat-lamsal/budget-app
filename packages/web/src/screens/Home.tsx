@@ -166,6 +166,15 @@ function HomeReady({ view, onChanged }: { readonly view: Tracking; readonly onCh
               <dd>
                 <Money cents={savings.savingsAccountBalance} testId="savings-holds" />
               </dd>
+              {/* B46: money on its way to the account counts as moved. */}
+              {savings.onItsWay > 0 && (
+                <>
+                  <dt>On its way to the account</dt>
+                  <dd>
+                    <Money cents={savings.onItsWay} testId="savings-on-its-way" />
+                  </dd>
+                </>
+              )}
               <dt className="figures__total">Still to move</dt>
               <dd className="figures__total">
                 <Money cents={savings.stillToMove} testId="savings-to-move" />

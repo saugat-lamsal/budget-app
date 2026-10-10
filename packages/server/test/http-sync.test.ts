@@ -93,7 +93,7 @@ describe('Step 3: syncing with the bank on Settings', () => {
     expect(r.life.keeper.syncEveryMinutes()).toBe(30);
   });
 
-  it('A31 through /api/choice too: an answer sent with what the screen showed is refused when a sync changed the item since', async () => {
+  it('13.7 A31 through /api/choice too: an answer sent with what the screen showed is refused when a sync changed the item since', async () => {
     const r = await realServer();
     const cookie = loginForTests(r.life.h.db, r.life.now);
     r.life.h.fake.addPending({ id: 'cafe-1', account: ACCOUNT_IDS.everyday, amount: 1_150, date: '2026-10-01', description: 'MADE UP CAFE' });

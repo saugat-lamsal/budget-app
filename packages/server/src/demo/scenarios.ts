@@ -129,6 +129,10 @@ interface Story {
   // Shoes bought with the debit card and sent back: the store's refund shows
   // up as money in to checking, and can be matched to them (4.5, A29).
   readonly debitRefund?: boolean;
+  // Money on its way between his accounts (12.5, B44): to savings, which
+  // counts as moved (B46); to the old card, listed but not counted (12.4);
+  // and a card payment that reached the card before it showed leaving.
+  readonly onItsWay?: boolean;
 }
 
 // When the bank was last read and matched, in the "bank-not-read" life:
@@ -286,6 +290,13 @@ function story(s: Story): HomeInput {
     feed({ kind: 'deposit', id: 'debit-refund', account: 'checking', date: DEMO_TODAY, amount: x(8_999), description: 'MADE UP SHOE STORE REFUND' });
   }
 
+  if (s.onItsWay === true) {
+    feed({ kind: 'transfer-sent', id: 'way-savings', from: 'checking', to: 'savings', date: '2026-10-06', amount: x(100_000), description: 'ONLINE TRANSFER TO SAV 2222' });
+    feed({ kind: 'transfer-sent', id: 'way-old-card', from: 'checking', to: 'old-card', date: '2026-10-06', amount: x(15_000), description: 'PAYMENT TO OLD CARD' });
+    feed({ kind: 'transfer-arrived', id: 'way-everyday', from: 'checking', to: 'everyday-card', date: '2026-10-05', amount: x(20_000), description: 'PAYMENT - THANK YOU' });
+    cardExtra -= 20_000;
+  }
+
   // The last time the bank was read and matched was before the coffee.
   const checkedThisMorning = book.safeToSpend(s.today ?? DEMO_TODAY).amount;
   buy('2026-10-07', 625, 'BLUE DOOR COFFEE', 'everyday-card', true);
@@ -370,6 +381,7 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   { name: 'activity-marked', title: 'Activity: the same, and a purchase marked as a payment to the old card, to undo', input: () => story({ activityBusy: true, markedOldCard: true }) },
   { name: 'payday-paid', title: 'Payday: the second paycheck just came in, two leftover questions open', input: () => story({ today: '2026-10-16', secondPaycheck: true, allDone: true, statements: [] }) },
   { name: 'review-debit-refund', title: 'Review: a store refund to the debit card, shown as money in (A29)', input: () => story({ debitRefund: true }) },
+  { name: 'on-its-way', title: 'Buckets and Payday: money on its way to savings and to the old card, and a card payment that landed first', input: () => story({ onItsWay: true }) },
   { name: 'review-marked-savings', title: 'Review: a bill from savings marked by mistake as a payment to the old card', input: () => story({ markedFromSavings: true }) },
   { name: 'settings-busy', title: 'Settings: changes along the way, a new split waiting for the next paycheck, a promo end date', input: () => story({ settingsBusy: true, chargedTwice: true }) },
   { name: 'settings-first-sync', title: 'Settings: no paycheck rule or mom rule yet, the paycheck and mom waiting in review', input: () => story({ firstSync: true }) },
