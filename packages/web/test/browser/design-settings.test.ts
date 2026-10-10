@@ -102,14 +102,25 @@ const SHEETS: readonly (readonly [string, string, (page: Page) => Promise<void>]
   }],
 ];
 
-// part: only the states, or only the sheets; both when left out.
-async function each(context: BrowserContext, base: string, check: (page: Page, where: string) => Promise<void>, part?: 'states' | 'sheets'): Promise<void> {
-  for (const life of part === 'sheets' ? [] : STATES) {
+// The parts each pass can be cut into: the states, the first half of the
+// sheets, and the second half. Every part when left out.
+type Part = 'states' | 'first sheets' | 'last sheets';
+const PARTS: readonly Part[] = ['states', 'first sheets', 'last sheets'];
+const HALF = Math.ceil(SHEETS.length / 2);
+function sheetsIn(part: Part | undefined): typeof SHEETS {
+  if (part === 'states') return [];
+  if (part === 'first sheets') return SHEETS.slice(0, HALF);
+  if (part === 'last sheets') return SHEETS.slice(HALF);
+  return SHEETS;
+}
+
+async function each(context: BrowserContext, base: string, check: (page: Page, where: string) => Promise<void>, part?: Part): Promise<void> {
+  for (const life of part === undefined || part === 'states' ? STATES : []) {
     const page = await openSettings(context, base, life);
     await check(page, life);
     await page.close();
   }
-  for (const [name, life, open] of part === 'states' ? [] : SHEETS) {
+  for (const [name, life, open] of sheetsIn(part)) {
     const page = await openSettings(context, base, life);
     await open(page);
     await check(page, `sheet: ${name}`);
@@ -120,13 +131,14 @@ async function each(context: BrowserContext, base: string, check: (page: Page, w
 describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
   const { browser, base } = useEngine(engine);
 
-  // One test for each colour scheme and each part (every state, every
-  // sheet): in WebKit one scheme took about 30 s alone (Oct 9), as long as
-  // the ones that went past the time limit with the whole suite running.
-  // Together they check exactly what one test per scheme did.
+  // One test for each colour scheme and each part (every state, the first
+  // half of the sheets, the second half): in WebKit one scheme took about
+  // 30 s alone (Oct 9), as long as the ones that went past the time limit
+  // with the whole suite running. Together they check exactly what one test
+  // per scheme did.
   for (const scheme of ['light', 'dark'] as const) {
-    for (const part of ['states', 'sheets'] as const) {
-      it(`readable contrast and no accessibility problems, in ${scheme} mode, in every ${part === 'states' ? 'state' : 'sheet'}`, async () => {
+    for (const part of PARTS) {
+      it(`readable contrast and no accessibility problems, in ${scheme} mode, in ${part === 'states' ? 'every state' : `the ${part}`}`, async () => {
         const problems: string[] = [];
         const context = await browser().newContext(phone({ colorScheme: scheme, bypassCSP: true }));
         await each(context, base(), async (page, where) => {
@@ -138,15 +150,20 @@ describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
     }
   }
 
-  it('every tap target is at least 44 by 44 points, in every state and every sheet', async () => {
-    const small: string[] = [];
-    const context = await browser().newContext(phone());
-    await each(context, base(), async (page, where) => {
-      for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`${where}: ${t.what} is ${t.width}x${t.height}`);
+  // One test for every state and one for each half of the sheets: with the
+  // bank rule and time zone sheets added, the one test went past the time
+  // limit in WebKit on CI (Oct 9). Together they check exactly what it did.
+  for (const part of PARTS) {
+    it(`every tap target is at least 44 by 44 points, in ${part === 'states' ? 'every state' : `the ${part}`}`, async () => {
+      const small: string[] = [];
+      const context = await browser().newContext(phone());
+      await each(context, base(), async (page, where) => {
+        for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`${where}: ${t.what} is ${t.width}x${t.height}`);
+      }, part);
+      await context.close();
+      expect(small).toEqual([]);
     });
-    await context.close();
-    expect(small).toEqual([]);
-  });
+  }
 
   it('nothing sits under the notch or the home bar, and the end of the screen scrolls clear of the tabs', async () => {
     const context = await browser().newContext(phone({ bypassCSP: true }));
