@@ -32,6 +32,10 @@ export interface Settings {
   // Rule 3.7: a paycheck-looking deposit less than this many days after the
   // last paycheck goes to review.
   readonly earlyPaycheckDays: number;
+  // Section 2: his home time zone, by its name ("America/New_York"). The
+  // app's today is the date there. The money math has no clock: it only
+  // keeps this, for whoever reads the clock (the server).
+  readonly homeTimeZone: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = deepFreeze({
@@ -48,6 +52,7 @@ export const DEFAULT_SETTINGS: Settings = deepFreeze({
   payScheduleDays: 14,
   momRule: null,
   earlyPaycheckDays: 10,
+  homeTimeZone: 'America/New_York',
 });
 
 const LEFTOVER_CHOICES: readonly LeftoverChoice[] = ['ask', 'roll-over', 'move-to-savings'];
@@ -91,6 +96,7 @@ export function validateSettings(settings: Settings): Settings {
   checkTextRule(s.momRule, 'mom rule');
   check(isWholeInRange(s.payScheduleDays, 1, Infinity), 'pay schedule must be a whole number of days, at least 1');
   check(isWholeInRange(s.earlyPaycheckDays, 0, Infinity), 'early paycheck days must be a whole number, zero or more');
+  check(isTimeZone(s.homeTimeZone), 'home time zone must be the name of a time zone, such as America/New_York');
   return deepFreeze(copySettings(s));
 }
 
@@ -120,6 +126,17 @@ function checkCents(value: Cents, what: string): void {
 
 function checkTextRule(rule: TextRule | null, what: string): void {
   if (rule !== null) check(rule.contains.trim() !== '', `${what} needs some text to match`);
+}
+
+// A time zone by its name, as the time zone database writes it. Looks at no clock.
+function isTimeZone(zone: string): boolean {
+  if (typeof zone !== 'string' || !/^[A-Za-z][A-Za-z0-9_+-]*(\/[A-Za-z0-9_+-]+){0,2}$/.test(zone) || zone.length > 64) return false;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function isWholeInRange(value: number, low: number, high: number): boolean {

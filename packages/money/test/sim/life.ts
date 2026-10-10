@@ -73,12 +73,45 @@ export interface RecordedBankDay {
   // Transfers with only one half showing, as "from to amount left|arrived".
   readonly halvesShowing: readonly string[];
   readonly totals: BookTotals;
+  // Every bucket at the end of the day, and how many items wait in review.
+  readonly pots: Pots;
+  readonly waiting: number;
+}
+
+// One answer the person gave the book, exactly as the book took it, and how
+// many of the day's bank transactions the book had been given before it.
+export interface RecordedAnswer {
+  readonly method: string;
+  readonly args: readonly unknown[];
+  readonly afterFeed: number;
 }
 
 export interface LifeRecorder {
   // The bank as it started, what it sent before setup day, and setup day itself.
   setupDay(setup: { readonly start: Posted; readonly feed: readonly BankTransaction[]; readonly input: SetupInput; readonly totals: BookTotals }): void;
   day(day: RecordedBankDay): void;
+  // Each answer, in the order given, before the day it was given on is recorded.
+  answer?(answer: RecordedAnswer): void;
+}
+
+// The book's methods that change it in answer to the person.
+const ANSWERS = new Set(['sort', 'sortAlways', 'answerLeftover', 'acknowledge', 'moveMoney', 'changeSettings', 'addRule', 'changeRule', 'removeRule', 'moveRule']);
+
+// The book, telling each answer it takes. A refused one (it throws, and
+// changes nothing) is not told, nor a hand move that only asks first.
+function answering(book: Book, told: (method: string, args: readonly unknown[]) => void): Book {
+  return new Proxy(book, {
+    get(target, prop) {
+      const value: unknown = Reflect.get(target, prop, target);
+      if (typeof value !== 'function') return value;
+      if (typeof prop !== 'string' || !ANSWERS.has(prop)) return (value as (...a: unknown[]) => unknown).bind(target);
+      return (...args: unknown[]): unknown => {
+        const result = (value as (...a: unknown[]) => unknown).apply(target, args);
+        if (prop !== 'moveMoney' || (result as { moved: boolean }).moved) told(prop, structuredClone(args));
+        return result;
+      };
+    },
+  });
 }
 
 export type LifeResult =
@@ -453,7 +486,8 @@ class Life {
     };
     const setup = startTracking(this.#setupInput);
     if (!setup.ok) throw new Error(`seed ${options.seed}: the simulator's setup day did not add up (${setup.difference})`);
-    this.#book = setup.book;
+    const answer = options.record?.answer?.bind(options.record);
+    this.#book = answer === undefined ? setup.book : answering(setup.book, (method, args) => answer({ method, args, afterFeed: this.#bank.feed.length - this.#recordedUpTo }));
   }
 
   live(): LifeResult {
@@ -512,7 +546,7 @@ class Life {
       .halvesShowing()
       .map((h) => `${h.from} ${h.to} ${h.amount} ${h.kind === 'transfer-sent' ? 'left' : 'arrived'}`)
       .sort();
-    this.#record.day({ date: this.#date, feed, posted: { ...this.#bank.posted }, balances: this.#bank.balances(), halvesShowing, totals: this.#totals() });
+    this.#record.day({ date: this.#date, feed, posted: { ...this.#bank.posted }, balances: this.#bank.balances(), halvesShowing, totals: this.#totals(), pots: this.#book.pots(), waiting: this.#book.reviewItems().length });
   }
 
   // 14.3: an assignment a cent off either way is refused, saying what is left.

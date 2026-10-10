@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 13)
+# Budget App Rulebook (draft 14)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -33,6 +33,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
 - Low-bucket alert: 20% of what the bucket started the pay period with
 - Card reminders: 7 days and 2 days before the due date
 - Daily review time: 8:00 PM
+- Home time zone: America/New_York. The app's today is the date there,
+  whatever time zone the server's own clock is set to. Dates the bank sends
+  stay exactly as sent.
 - Leftover at payday: ask each time (other options: always roll over,
   always move to savings)
 - Old card promo end date: (you fill in)
@@ -48,7 +51,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
   confirm). They can be changed later in Settings, and each change is
   logged (13.5). A changed bank rule reads what the bank sends from then
   on; what was already read stays as it was, and one item read wrong is
-  fixed in review (5.6).
+  fixed in review (5.6). If two bank rules fit one item, the first in the
+  list wins. A rule can be moved up or down among the rules on its account
+  (only those can fit the same item), and each move is logged (13.5).
 
 
 ## 3. Payday
@@ -505,3 +510,15 @@ a.  Setup day asks about transfers with only one side showing from the last
 b.  A purchase or payment waiting in review that is refunded in full leaves
     review by itself and is kept as a record. If the bank takes the refund
     back, it comes back to review (4.5, QUESTIONS.md A26).
+
+
+## 26. Answers after bank rules (Oct 9, 2026)
+
+a.  When two bank rules fit one item, the first in the list wins, as with
+    sorting rules. A bank rule can be moved up or down among the rules on
+    its account, and each move is logged (section 2, 13.5, QUESTIONS.md
+    A27).
+
+b.  Today is the date in his home time zone, a setting that starts at
+    America/New_York, never the date in the server's own clock zone. Dates
+    the bank sends stay exactly as sent (section 2).

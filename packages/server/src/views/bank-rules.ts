@@ -45,17 +45,29 @@ export interface RuleMatches {
   readonly takenFromLater: number;
 }
 
-// A change to the list: a rule added at the end, one changed in its place, or one removed.
-export type BankRuleChange = { readonly add: BankRuleSpec } | { readonly change: BankRuleSpec & { readonly id: string } } | { readonly remove: string };
+// A change to the list: a rule added at the end, one changed in its place, one
+// removed, or one moved a place up or down among the rules on its account
+// (A27: only they can match the same item, and the first that fits wins).
+export type BankRuleChange =
+  | { readonly add: BankRuleSpec }
+  | { readonly change: BankRuleSpec & { readonly id: string } }
+  | { readonly remove: string }
+  | { readonly move: { readonly id: string; readonly direction: 'up' | 'down' } };
 
 // What a change would do, shown before he says yes: the rule as it would be,
 // and what it would have matched in the last recentDays days (or, for a
 // removal, what it matched).
 export interface BankRulePreview {
-  readonly action: 'add' | 'change' | 'remove';
+  readonly action: 'add' | 'change' | 'remove' | 'move';
   readonly rule: BankRuleSpec;
   // For a change, the rule as it is now.
   readonly before: BankRule | null;
+  // For a move (A27): the rule it would pass, and how many of the recent
+  // items a different one of the two would read first (only items both fit
+  // can change). Moving up, it would read them; moving down, the rule it
+  // passes would.
+  readonly move?: { readonly direction: 'up' | 'down'; readonly past: BankRule; readonly switching: number };
+  // For a move, what it would match in its new place.
   readonly matches: RuleMatches;
   readonly recentDays: number;
   // Names exactly this preview. His yes carries it.
@@ -65,14 +77,14 @@ export interface BankRulePreview {
 export interface BankRuleRequest {
   // As for a choice: made once on the phone, sent again, the same, on a retry.
   readonly id: string;
-  readonly bankRule: { readonly add: BankRuleSpec } | { readonly change: BankRuleSpec & { readonly id: string } } | { readonly remove: string };
+  readonly bankRule: BankRuleChange;
   // His yes, with the key of the preview he saw.
   readonly confirmed?: boolean;
   readonly seen?: string;
 }
 
 export interface BankRuleDone {
-  readonly action: 'added' | 'changed' | 'removed';
+  readonly action: 'added' | 'changed' | 'removed' | 'moved-up' | 'moved-down';
   // The rule as it is now; for a removal, as it was.
   readonly rule: BankRule;
 }
@@ -83,17 +95,29 @@ export type BankRuleResponse =
   | { readonly ok: false; readonly code: RefusalCode; readonly why: string; readonly preview?: BankRulePreview };
 
 // One change to the bank rules in the change log (13.5).
-export interface BankRuleLogLine {
-  readonly date: IsoDate;
-  readonly action: 'added' | 'changed' | 'removed';
-  // The rule as it became; for a removal, as it was.
-  readonly rule: BankRule;
-  // For a change, the rule as it was.
-  readonly before: BankRule | null;
-  // How many lines the book's change log had when it was made (0 before
-  // setup day), so the two read as one list, in the order things happened.
-  readonly afterBookLines: number;
-}
+export type BankRuleLogLine =
+  | {
+      readonly date: IsoDate;
+      readonly action: 'added' | 'changed' | 'removed';
+      // The rule as it became; for a removal, as it was.
+      readonly rule: BankRule;
+      // For a change, the rule as it was.
+      readonly before: BankRule | null;
+      // How many lines the book's change log had when it was made (0 before
+      // setup day), so the two read as one list, in the order things happened.
+      readonly afterBookLines: number;
+    }
+  // A27: moved one place among the rules on its account, past another;
+  // position is its place in the whole list now, from 1.
+  | {
+      readonly date: IsoDate;
+      readonly action: 'moved-up' | 'moved-down';
+      readonly rule: BankRule;
+      readonly before: null;
+      readonly past: BankRule;
+      readonly position: number;
+      readonly afterBookLines: number;
+    };
 
 // One suggestion on Setup day (20a), with his answer.
 export interface SuggestionLine {

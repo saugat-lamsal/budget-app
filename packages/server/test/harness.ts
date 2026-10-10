@@ -62,12 +62,13 @@ export const POSTED_AT_START = { checking: 300_000, savings: 500_000, everyday: 
 
 // Connected, with the first sync done and his accounts and bank rules set.
 export async function connected(
-  options: { posted?: typeof POSTED_AT_START; history?: (fake: FakePlaid) => void; rules?: readonly BankRule[]; today?: IsoDate } = {},
+  // path: a database file, for tests that open it again (a restart); in memory otherwise.
+  options: { posted?: typeof POSTED_AT_START; history?: (fake: FakePlaid) => void; rules?: readonly BankRule[]; today?: IsoDate; path?: string } = {},
 ): Promise<Harness> {
   const today = options.today ?? SETUP_DAY;
   const fake = new FakePlaid(fourAccounts(options.posted ?? POSTED_AT_START));
   options.history?.(fake);
-  const db = openDatabase(':memory:');
+  const db = openDatabase(options.path ?? ':memory:');
   const lines: LogLine[] = [];
   const log = memoryLog(lines, [fake.clientId, fake.secret]);
   const plaid = new PlaidClient(plaidKeysFromEnv({ PLAID_ENV: 'sandbox', PLAID_CLIENT_ID: fake.clientId, PLAID_SECRET: fake.secret }), { fetch: fake.fetch, log });

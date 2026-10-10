@@ -49,7 +49,26 @@ export const SETTING_NAMES: Readonly<Record<keyof Settings, string>> = {
   payScheduleDays: 'Pay schedule',
   momRule: 'Mom rule',
   earlyPaycheckDays: 'Early paycheck check',
+  homeTimeZone: 'Home time zone',
 };
+
+// Section 2: the home time zones offered on Settings, his first, and how each
+// is called. Any other zone (set some other way) is written as its name.
+const ZONE_NAMES: Readonly<Record<string, string>> = {
+  'America/New_York': 'Eastern time (New York)',
+  'America/Chicago': 'Central time (Chicago)',
+  'America/Denver': 'Mountain time (Denver)',
+  'America/Phoenix': 'Arizona (Phoenix)',
+  'America/Los_Angeles': 'Pacific time (Los Angeles)',
+  'America/Anchorage': 'Alaska (Anchorage)',
+  'Pacific/Honolulu': 'Hawaii (Honolulu)',
+};
+
+export const ZONE_CHOICES: readonly string[] = Object.keys(ZONE_NAMES);
+
+export function zoneText(zone: string): string {
+  return ZONE_NAMES[zone] ?? zone;
+}
 
 export function splitText(split: Settings['split']): string {
   return `${split.savings} / ${split.needs} / ${split.wants}`;
@@ -117,6 +136,8 @@ export function settingValueText<K extends keyof Settings>(key: K, value: Settin
       return `Every ${daysText(v as number)}`;
     case 'earlyPaycheckDays':
       return daysText(v as number);
+    case 'homeTimeZone':
+      return zoneText(v as string);
     default:
       return String(v);
   }

@@ -13,6 +13,7 @@ import {
   type TakenBack,
 } from '@budget-app/money';
 import { readPlaidItem, type PlaidItem } from '../bank/plaid-item.js';
+import { totalsOf, type Totals } from '../history/history.js';
 import { readBankItem, type BankRule, type Reading } from '../bank/reading.js';
 
 // What one sync does with what Plaid sent: which bank items go to the book,
@@ -76,8 +77,9 @@ export interface PlanInput {
 export interface Plan {
   // New and changed items, to save.
   readonly items: readonly StoredItem[];
-  // What the book was given, in order.
+  // What the book was given, in order, and the book's totals after each.
   readonly events: readonly BankTransaction[];
+  readonly totals: readonly (Totals | null)[];
   readonly attention: readonly Attention[];
 }
 
@@ -98,6 +100,7 @@ class Planner {
   readonly #working = new Map<string, StoredItem>();
   readonly #dirty = new Set<string>();
   readonly #events: BankTransaction[] = [];
+  readonly #totals: (Totals | null)[] = [];
   readonly #attention: Attention[] = [];
   // Leaving halves later in this sync, for arriving halves seen first.
   #upcoming: Leaving[] = [];
@@ -136,7 +139,7 @@ class Planner {
       this.#changed(raw, item, removed.has(item.id));
     }
     for (const id of removed) this.#removed(id);
-    return { items: [...this.#dirty].map((id) => this.#item(id)!), events: this.#events, attention: this.#attention };
+    return { items: [...this.#dirty].map((id) => this.#item(id)!), events: this.#events, totals: this.#totals, attention: this.#attention };
   }
 
   // ----- Items -----
@@ -423,6 +426,7 @@ class Planner {
       return false;
     }
     this.#events.push(txn);
+    this.#totals.push(totalsOf(book));
     if (stored.status !== 'sent') {
       stored.status = 'sent';
       stored.bookId = txn.id;

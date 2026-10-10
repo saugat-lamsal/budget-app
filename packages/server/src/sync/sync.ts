@@ -3,7 +3,6 @@ import type { TokenBox } from '../crypto/token-box.js';
 import type { Db } from '../db/database.js';
 import {
   addAttention,
-  appendBookEvent,
   loadBook,
   nextSyncNumber,
   readAccounts,
@@ -21,6 +20,7 @@ import {
 import type { Log } from '../log.js';
 import { BankKey, PlaidError, type PlaidClient } from '../plaid/client.js';
 import type { AccountsGetResponse, LiabilitiesGetResponse, PlaidCreditCard, TransactionsSyncResponse } from '../plaid/types.js';
+import { appendEvent } from '../history/history-db.js';
 import { planSync, type Attention } from './plan.js';
 
 // One sync: everything Plaid has that is new since the last one, then the
@@ -222,7 +222,8 @@ function save(input: SyncInput, startCursor: string | null, fetched: Fetched): S
   for (const account of changedAccounts) saveAccount(db, account, JSON.stringify(account), sync);
   for (const { accountId, card } of changedCards) saveStatement(db, accountId, JSON.stringify(card), sync);
   for (const item of plan.items) saveItem(db, item);
-  for (const txn of plan.events) appendBookEvent(db, sync, { kind: 'receive', txn });
+  // Each with the day of the sync, and the book's totals after it.
+  plan.events.forEach((txn, i) => appendEvent(db, { event: { kind: 'receive', txn }, date: input.today, sync, totals: plan.totals[i] ?? null }));
   for (const attention of plan.attention) addAttention(db, sync, attention);
   // With nothing new from Plaid, the cursor stays as it was.
   const cursor = plaidSentNothing && connection.cursor !== null ? connection.cursor : fetched.cursor;

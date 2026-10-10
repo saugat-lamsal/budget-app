@@ -1,5 +1,5 @@
 import type { AccountId } from '@budget-app/money';
-import type { BankMeaning, BankRuleChange, MatchExample, RuleMatches, SuggestionLine } from '@budget-app/server/views';
+import type { BankMeaning, BankRule, BankRuleChange, BankRulePreview, MatchExample, RuleMatches, SuggestionLine } from '@budget-app/server/views';
 import { shortDate } from '../ui/dates.js';
 import { ACCOUNT_NAMES, accountPhrase, bankRuleText } from './setup-text.js';
 
@@ -74,5 +74,24 @@ export function exampleDetail(e: MatchExample): string {
 export function bankRuleDoneText(change: BankRuleChange): string {
   if ('add' in change) return 'Bank rule added. It reads what the bank sends from now on.';
   if ('change' in change) return 'Bank rule changed. It reads what the bank sends from now on; what was already read stays as it was.';
+  if ('move' in change) return change.move.direction === 'up' ? 'Bank rule moved up. It reads what the bank sends from now on, ahead of the rule it passed.' : 'Bank rule moved down. The rule it passed reads first from now on.';
   return 'Bank rule removed.';
+}
+
+// A27: which way a rule can move. Only past another rule on its account: only
+// those can match the same item. The server decides; this only hides a
+// button that could only be refused.
+export function movesOf(rule: BankRule, rules: readonly BankRule[]): { readonly up: boolean; readonly down: boolean } {
+  const mine = rules.filter((r) => r.account === rule.account);
+  const at = mine.findIndex((r) => r.id === rule.id);
+  return { up: at > 0, down: at !== -1 && at < mine.length - 1 };
+}
+
+// A27: what a move would change, from the server's count of the recent items
+// a different one of the two rules would read first.
+export function moveText(move: NonNullable<BankRulePreview['move']>, recentDays: number): string {
+  const past = bankRuleText(move.past);
+  const lately = `from the last ${recentDays} days`;
+  if (move.switching === 0) return `Nothing ${lately} fits both this rule and ${past}, so nothing read lately would change.`;
+  return move.direction === 'up' ? `It would read ${items(move.switching)} ${lately} that ${past} reads now.` : `${past} would read ${items(move.switching)} ${lately} that this rule reads now.`;
 }

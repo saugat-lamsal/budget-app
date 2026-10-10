@@ -26,6 +26,8 @@ import {
   settingsDoneText,
   textRuleText,
   timeText,
+  ZONE_CHOICES,
+  zoneText,
 } from './settings-text.js';
 
 // Settings: every number and rule in rulebook section 2, the sorting rules,
@@ -80,7 +82,7 @@ function SettingsLoading() {
 
 // What is being changed in the sheet.
 type Editing =
-  | { readonly what: 'split' | 'reserve' | 'target' | 'low-alert' | 'reminders' | 'review-time' | 'leftover' | 'promo' | 'paycheck-rule' | 'pay-schedule' | 'mom-rule' | 'early-days' }
+  | { readonly what: 'split' | 'reserve' | 'target' | 'low-alert' | 'reminders' | 'review-time' | 'time-zone' | 'leftover' | 'promo' | 'paycheck-rule' | 'pay-schedule' | 'mom-rule' | 'early-days' }
   // A sorting rule: null to add one.
   | { readonly what: 'rule'; readonly rule: RuleRow | null };
 
@@ -211,6 +213,7 @@ function SettingsReady({ view, reload, onChanged }: { readonly view: Tracking; r
         {row('low-alert', 'Low-bucket alert', `${s.lowBucketAlertPercent}%`, 'Of what needs or wants started the pay period with')}
         {textRow('reminders', 'Card reminders', reminderText(s.cardReminderDaysBefore), 'Before each card is due')}
         {row('review-time', 'Daily review', timeText(s.dailyReviewTime), 'Only when something waits in Review')}
+        {textRow('time-zone', 'Home time zone', zoneText(s.homeTimeZone), 'Today is the date here, and the daily review time is in it')}
       </Card>
 
       <Card title="Old card" testId="old-card-card">
@@ -288,6 +291,7 @@ function SettingsReady({ view, reload, onChanged }: { readonly view: Tracking; r
           // Its own key: the settings sheet beside it is keyed by the same count.
           key={`bank-${opened}`}
           editing={bankEditing}
+          rules={view.bankRules}
           send={sendBankRule}
           onClose={() => setBankEditing(null)}
           onDone={(change) => {
@@ -358,6 +362,15 @@ function LogLine({ line }: { readonly line: LogRow }) {
       return <ListRow icon="bank" title="Bank rule changed" detail={`${bankRuleText(line.before)} to ${bankRuleText(line.after)} · ${when}`} testId={testId} />;
     case 'bank-rule-removed':
       return <ListRow icon="bank" title="Bank rule removed" detail={`${bankRuleText(line.rule)} · ${when}`} testId={testId} />;
+    case 'bank-rule-moved':
+      return (
+        <ListRow
+          icon="bank"
+          title={line.direction === 'up' ? 'Bank rule moved up' : 'Bank rule moved down'}
+          detail={`${bankRuleText(line.rule)}, now number ${line.position}, ${line.direction === 'up' ? 'ahead of' : 'after'} ${bankRuleText(line.past)} · ${when}`}
+          testId={testId}
+        />
+      );
   }
 }
 
@@ -393,6 +406,8 @@ function startFields(editing: Editing, s: Settings): Fields {
       return { days: s.cardReminderDaysBefore.join(', ') };
     case 'review-time':
       return { time: s.dailyReviewTime };
+    case 'time-zone':
+      return { zone: s.homeTimeZone };
     case 'leftover':
       return { needs: s.leftoverAtPayday.needs, wants: s.leftoverAtPayday.wants };
     case 'promo':
@@ -453,6 +468,8 @@ function readSettings(editing: Editing, f: Fields): Reading<Partial<Settings>> {
     }
     case 'review-time':
       return /^\d{2}:\d{2}$/.test(get('time')) ? { value: { dailyReviewTime: get('time') } } : { problem: 'Pick a time' };
+    case 'time-zone':
+      return { value: { homeTimeZone: get('zone') } };
     case 'leftover':
       return { value: { leftoverAtPayday: { needs: get('needs') as LeftoverChoice, wants: get('wants') as LeftoverChoice } } };
     case 'promo':
@@ -487,6 +504,7 @@ const TITLES: Readonly<Record<Editing['what'], string>> = {
   'low-alert': 'Low-bucket alert',
   reminders: 'Card reminders',
   'review-time': 'Daily review',
+  'time-zone': 'Home time zone',
   leftover: 'Leftover at payday',
   promo: 'Old card promo end date',
   'paycheck-rule': 'Paycheck rule',
@@ -703,6 +721,11 @@ function SheetFields({ editing, get, set, view, kind }: { readonly editing: Edit
       return <TextField label="Days before the due date" value={get('days')} onChange={set('days')} testId="field-reminders" hint="Like 7, 2. Leave it empty for no reminders." />;
     case 'review-time':
       return <TextField label="Time" kind="time" value={get('time')} onChange={set('time')} testId="field-review-time" />;
+    case 'time-zone': {
+      // His zone is always one of the choices, even one not in the list.
+      const zones = ZONE_CHOICES.includes(get('zone')) ? ZONE_CHOICES : [get('zone'), ...ZONE_CHOICES];
+      return <SelectField label="Time zone" value={get('zone')} onChange={set('zone')} options={zones.map((z) => ({ value: z, label: zoneText(z) }))} testId="field-time-zone" />;
+    }
     case 'leftover':
       return (
         <>

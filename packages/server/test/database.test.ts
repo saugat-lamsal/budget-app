@@ -20,7 +20,7 @@ describe('the database', () => {
     const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[]).map(
       (t) => t.name,
     );
-    expect(tables).toEqual(['accounts', 'attention', 'bank_items', 'book_events', 'change_log', 'connection', 'settings', 'statements', 'syncs']);
+    expect(tables).toEqual(['accounts', 'attention', 'bank_items', 'book_events', 'change_log', 'connection', 'decisions', 'last_checked', 'settings', 'statements', 'syncs']);
     expect(db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION);
     expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
     db.close();
@@ -64,6 +64,46 @@ describe('the database', () => {
     expect(() => add.run('c', 'brokerage')).toThrow();
     add.run('d', null);
     add.run('e', null);
+    db.close();
+  });
+
+  it('step 2 keeps the book history as it was, in its order, each event with the day it was made on; totals are filled in later', () => {
+    const path = tempFile();
+    const old = openDatabase(path, { upTo: 1 });
+    expect(old.pragma('user_version', { simple: true })).toBe(1);
+    old.prepare("INSERT INTO syncs (id, today, added, modified, removed, sent, held) VALUES (1, '2026-10-01', 0, 0, 0, 0, 0), (2, '2026-10-03', 0, 0, 0, 0, 0)").run();
+    const add = old.prepare('INSERT INTO book_events (sync, kind, payload) VALUES (?, ?, ?)');
+    add.run(1, 'setup', JSON.stringify({ date: '2026-09-30', made: 'up' }));
+    add.run(2, 'receive', JSON.stringify({ kind: 'purchase', id: 'p1', date: '2026-10-02' }));
+    add.run(2, 'receive', JSON.stringify({ kind: 'purchase', id: 'p2', date: '2026-10-03' }));
+    old.close();
+    const db = openDatabase(path);
+    expect(db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION);
+    expect(db.prepare('SELECT seq, sync, kind, date, payload, totals FROM book_events ORDER BY seq').all()).toEqual([
+      { seq: 1, sync: 1, kind: 'setup', date: '2026-09-30', payload: JSON.stringify({ date: '2026-09-30', made: 'up' }), totals: null },
+      { seq: 2, sync: 2, kind: 'receive', date: '2026-10-03', payload: JSON.stringify({ kind: 'purchase', id: 'p1', date: '2026-10-02' }), totals: null },
+      { seq: 3, sync: 2, kind: 'receive', date: '2026-10-03', payload: JSON.stringify({ kind: 'purchase', id: 'p2', date: '2026-10-03' }), totals: null },
+    ]);
+    // Numbers go on after the last one, never reused.
+    db.prepare("INSERT INTO book_events (sync, kind, date, payload, totals) VALUES (NULL, 'answer', '2026-10-04', '{}', 'null')").run();
+    expect(db.prepare('SELECT MAX(seq) AS seq FROM book_events').get()).toEqual({ seq: 4 });
+    db.close();
+  });
+
+  it('the history takes only what the bank sent, setup day, and his answers, each with its day; a decision number is used once and names its event', () => {
+    const db = openDatabase(':memory:');
+    const add = db.prepare('INSERT INTO book_events (sync, kind, date, payload, totals) VALUES (NULL, ?, ?, ?, ?)');
+    expect(() => add.run('guess', '2026-10-04', '{}', 'null')).toThrow();
+    expect(() => add.run('answer', null, '{}', 'null')).toThrow();
+    const seq = Number(add.run('answer', '2026-10-04', '{}', 'null').lastInsertRowid);
+    const decide = db.prepare("INSERT INTO decisions (id, desk, fingerprint, answer, seq) VALUES (?, 'choice', '{}', '{}', ?)");
+    decide.run('decision-1', seq);
+    expect(() => decide.run('decision-1', seq)).toThrow();
+    expect(() => decide.run('decision-2', seq + 1)).toThrow();
+    expect(() => db.prepare("INSERT INTO decisions (id, desk, fingerprint, answer, seq) VALUES ('decision-3', 'guess', '{}', '{}', ?)").run(seq)).toThrow();
+    const checked = db.prepare('INSERT INTO last_checked (id, amount, at) VALUES (?, 100, ?)');
+    checked.run(1, '2026-10-04T20:00:00-04:00');
+    expect(() => checked.run(2, '2026-10-04T20:00:00-04:00')).toThrow();
     db.close();
   });
 });

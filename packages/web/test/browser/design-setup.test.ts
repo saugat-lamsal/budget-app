@@ -110,14 +110,15 @@ const SHEETS: readonly (readonly [string, string, SetupStepName, (page: Page) =>
   }],
 ];
 
-async function each(context: BrowserContext, base: string, check: (page: Page, where: string) => Promise<void>): Promise<void> {
-  for (const [where, life, step, first] of STATES) {
+// part: only the states, or only the sheets; both when left out.
+async function each(context: BrowserContext, base: string, check: (page: Page, where: string) => Promise<void>, part?: 'states' | 'sheets'): Promise<void> {
+  for (const [where, life, step, first] of part === 'sheets' ? [] : STATES) {
     const page = await openSetup(context, base, life, step);
     if (first !== null) await first(page);
     await check(page, where);
     await page.close();
   }
-  for (const [name, life, step, open] of SHEETS) {
+  for (const [name, life, step, open] of part === 'states' ? [] : SHEETS) {
     const page = await openSetup(context, base, life, step);
     await open(page);
     await check(page, `sheet: ${name}`);
@@ -128,16 +129,22 @@ async function each(context: BrowserContext, base: string, check: (page: Page, w
 describe.each(ENGINES)('design rules on Setup day in %s', (_engine, engine) => {
   const { browser, base } = useEngine(engine);
 
+  // One test for each colour scheme and each part (every state, every
+  // sheet): in WebKit one scheme took about 30 s alone (Oct 9), as long as
+  // the ones that went past the time limit with the whole suite running.
+  // Together they check exactly what one test per scheme did.
   for (const scheme of ['light', 'dark'] as const) {
-    it(`readable contrast and no accessibility problems, in ${scheme} mode, in every state, and in every sheet`, async () => {
-      const problems: string[] = [];
-      const context = await browser().newContext(phone({ colorScheme: scheme, bypassCSP: true }));
-      await each(context, base(), async (page, where) => {
-        problems.push(...(await axeViolations(page)).map((p) => `${scheme} ${where}: ${p}`));
+    for (const part of ['states', 'sheets'] as const) {
+      it(`readable contrast and no accessibility problems, in ${scheme} mode, in every ${part === 'states' ? 'state' : 'sheet'}`, async () => {
+        const problems: string[] = [];
+        const context = await browser().newContext(phone({ colorScheme: scheme, bypassCSP: true }));
+        await each(context, base(), async (page, where) => {
+          problems.push(...(await axeViolations(page)).map((p) => `${scheme} ${where}: ${p}`));
+        }, part);
+        await context.close();
+        expect(problems).toEqual([]);
       });
-      await context.close();
-      expect(problems).toEqual([]);
-    });
+    }
   }
 
   it('every tap target is at least 44 by 44 points, in every state and every sheet', async () => {

@@ -41,13 +41,24 @@ const SHEETS: readonly (readonly [string, string, (page: Page) => Promise<void>]
     await page.getByTestId('row-review-time').click();
     await page.getByTestId('field-review-time').waitFor();
   }],
+  ['the home time zone', 'normal', async (page) => {
+    await page.getByTestId('row-time-zone').click();
+    await page.getByTestId('field-time-zone').waitFor();
+  }],
   ['the promo end date, set', 'settings-busy', async (page) => {
     await page.getByTestId('row-promo').click();
     await page.getByTestId('sheet-clear').waitFor();
   }],
-  ['a bank rule, with Remove', 'normal', async (page) => {
+  ['a bank rule, with Move down and Remove', 'normal', async (page) => {
     await page.getByTestId('bank-rule-bank-rule-1').click();
+    await page.getByTestId('sheet-move-down').waitFor();
     await page.getByTestId('sheet-remove').waitFor();
+  }],
+  ['a bank rule moving up, asking first with what would change hands', 'normal', async (page) => {
+    await page.getByTestId('bank-rule-bank-rule-3').click();
+    await page.getByTestId('sheet-move-up').click();
+    await page.getByTestId('preview-move').waitFor();
+    await untilQuiet(page);
   }],
   ['a new bank rule, asking first with what it would have matched', 'normal', async (page) => {
     await page.getByTestId('row-add-bank-rule').click();
@@ -91,13 +102,25 @@ const SHEETS: readonly (readonly [string, string, (page: Page) => Promise<void>]
   }],
 ];
 
-async function each(context: BrowserContext, base: string, check: (page: Page, where: string) => Promise<void>): Promise<void> {
-  for (const life of STATES) {
+// The parts each pass can be cut into: the states, the first half of the
+// sheets, and the second half. Every part when left out.
+type Part = 'states' | 'first sheets' | 'last sheets';
+const PARTS: readonly Part[] = ['states', 'first sheets', 'last sheets'];
+const HALF = Math.ceil(SHEETS.length / 2);
+function sheetsIn(part: Part | undefined): typeof SHEETS {
+  if (part === 'states') return [];
+  if (part === 'first sheets') return SHEETS.slice(0, HALF);
+  if (part === 'last sheets') return SHEETS.slice(HALF);
+  return SHEETS;
+}
+
+async function each(context: BrowserContext, base: string, check: (page: Page, where: string) => Promise<void>, part?: Part): Promise<void> {
+  for (const life of part === undefined || part === 'states' ? STATES : []) {
     const page = await openSettings(context, base, life);
     await check(page, life);
     await page.close();
   }
-  for (const [name, life, open] of SHEETS) {
+  for (const [name, life, open] of sheetsIn(part)) {
     const page = await openSettings(context, base, life);
     await open(page);
     await check(page, `sheet: ${name}`);
@@ -108,28 +131,39 @@ async function each(context: BrowserContext, base: string, check: (page: Page, w
 describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
   const { browser, base } = useEngine(engine);
 
-  // One test for each colour scheme: the pass over every state and every sheet is long.
+  // One test for each colour scheme and each part (every state, the first
+  // half of the sheets, the second half): in WebKit one scheme took about
+  // 30 s alone (Oct 9), as long as the ones that went past the time limit
+  // with the whole suite running. Together they check exactly what one test
+  // per scheme did.
   for (const scheme of ['light', 'dark'] as const) {
-    it(`readable contrast and no accessibility problems, in ${scheme} mode, in every state, and in every sheet`, async () => {
-      const problems: string[] = [];
-      const context = await browser().newContext(phone({ colorScheme: scheme, bypassCSP: true }));
-      await each(context, base(), async (page, where) => {
-        problems.push(...(await axeViolations(page)).map((p) => `${scheme} ${where}: ${p}`));
+    for (const part of PARTS) {
+      it(`readable contrast and no accessibility problems, in ${scheme} mode, in ${part === 'states' ? 'every state' : `the ${part}`}`, async () => {
+        const problems: string[] = [];
+        const context = await browser().newContext(phone({ colorScheme: scheme, bypassCSP: true }));
+        await each(context, base(), async (page, where) => {
+          problems.push(...(await axeViolations(page)).map((p) => `${scheme} ${where}: ${p}`));
+        }, part);
+        await context.close();
+        expect(problems).toEqual([]);
       });
-      await context.close();
-      expect(problems).toEqual([]);
-    });
+    }
   }
 
-  it('every tap target is at least 44 by 44 points, in every state and every sheet', async () => {
-    const small: string[] = [];
-    const context = await browser().newContext(phone());
-    await each(context, base(), async (page, where) => {
-      for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`${where}: ${t.what} is ${t.width}x${t.height}`);
+  // One test for every state and one for each half of the sheets: with the
+  // bank rule and time zone sheets added, the one test went past the time
+  // limit in WebKit on CI (Oct 9). Together they check exactly what it did.
+  for (const part of PARTS) {
+    it(`every tap target is at least 44 by 44 points, in ${part === 'states' ? 'every state' : `the ${part}`}`, async () => {
+      const small: string[] = [];
+      const context = await browser().newContext(phone());
+      await each(context, base(), async (page, where) => {
+        for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`${where}: ${t.what} is ${t.width}x${t.height}`);
+      }, part);
+      await context.close();
+      expect(small).toEqual([]);
     });
-    await context.close();
-    expect(small).toEqual([]);
-  });
+  }
 
   it('nothing sits under the notch or the home bar, and the end of the screen scrolls clear of the tabs', async () => {
     const context = await browser().newContext(phone({ bypassCSP: true }));

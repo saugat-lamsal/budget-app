@@ -7,7 +7,9 @@ import {
   formatDollars,
   type BankBalances,
   type Book,
+  type Cents,
   type IsoDate,
+  type SetupInput,
   type Settings,
   type SortingRule,
   type StartingPots,
@@ -16,6 +18,7 @@ import { BankRulesDesk } from './bank-rules-desk.js';
 import { bankLinesOf, type BankRuleSpec } from './bank-rules.js';
 import { canonical, refuse } from './choices.js';
 import { planSetup, type BankHistory } from './setup-history.js';
+import type { StoredItem } from './sync/plan.js';
 import type { BankRuleRequest, BankRuleResponse, SuggestionLine } from './views/bank-rules.js';
 import type { SetupDone, SetupRequest, SetupResponse } from './views/choice.js';
 import { NO_ANSWERS, setupView, type SetupAnswers } from './setup-view.js';
@@ -50,26 +53,35 @@ export interface SetupDeskInput {
   readonly madeUpData: boolean;
   // Who keeps the bank rules; without it, the desk keeps its own.
   readonly bankRules?: BankRulesDesk;
+  // His answers so far, for a desk made again from what was kept (the real
+  // server); none for a new one.
+  readonly answers?: SetupAnswers;
 }
 
 export interface Started {
   readonly book: Book;
   // The bank side the book was checked against (12.1), pending charges included.
   readonly bank: BankBalances;
+  // What the book was started with, the bank items as setting up left them,
+  // and the starting money, for whoever keeps the book's history.
+  readonly input: SetupInput;
+  readonly items: readonly StoredItem[];
+  readonly startingMoney: Cents;
 }
 
 export class SetupDesk {
   readonly #input: SetupDeskInput;
-  #answers: SetupAnswers = NO_ANSWERS;
+  #answers: SetupAnswers;
   #started: Started | null = null;
-  // What each decision number did, for the repeats. Kept in memory here (the
-  // demo); the real server keeps it with the book's history (Phase 6).
+  // What each decision number did, for the repeats, while it runs. The real
+  // server keeps them with the book's history too (history/keeper.ts).
   readonly #done = new Map<string, { readonly fingerprint: string; readonly done: SetupDone }>();
 
   readonly #bankRules: BankRulesDesk;
 
   constructor(input: SetupDeskInput) {
     this.#input = input;
+    this.#answers = input.answers ?? NO_ANSWERS;
     const bank = input.bank;
     this.#bankRules =
       input.bankRules ??
@@ -116,6 +128,11 @@ export class SetupDesk {
   }
 
   // The book, once tracking has started.
+  // His answers so far, for whoever keeps them.
+  answers(): SetupAnswers {
+    return this.#answers;
+  }
+
   started(): Started | null {
     return this.#started;
   }
@@ -242,7 +259,7 @@ export class SetupDesk {
       throw error;
     }
     if (!plan.ok) return refuse('refused', 'It does not add up to the starting money');
-    this.#started = { book: plan.book, bank: plan.bank };
+    this.#started = { book: plan.book, bank: plan.bank, input: plan.input, items: plan.items, startingMoney: plan.startingMoney };
     const settings = plan.book.settings();
     const stillToSet = (['paycheckRule', 'momRule'] as const).filter((key) => settings[key] === null);
     return { step: 'started', startingMoney: plan.startingMoney, stillToSet };

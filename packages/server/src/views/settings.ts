@@ -59,7 +59,10 @@ export type LogRow =
   | { readonly key: string; readonly date: IsoDate; readonly kind: 'bank-took-back'; readonly description: string; readonly amount: Cents }
   // Section 2, 24c: a bank rule added, changed (before and after), or removed.
   | { readonly key: string; readonly date: IsoDate; readonly kind: 'bank-rule-added' | 'bank-rule-removed'; readonly rule: BankRule }
-  | { readonly key: string; readonly date: IsoDate; readonly kind: 'bank-rule-changed'; readonly before: BankRule; readonly after: BankRule };
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'bank-rule-changed'; readonly before: BankRule; readonly after: BankRule }
+  // A27: moved one place up or down among the rules on its account, past
+  // another; position is its place in the whole list now.
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'bank-rule-moved'; readonly direction: 'up' | 'down'; readonly rule: BankRule; readonly past: BankRule; readonly position: number };
 
 export type SettingsView =
   | { readonly state: 'not-set-up'; readonly madeUpData: boolean }
@@ -156,6 +159,9 @@ function logRows(book: Book, bankLog: readonly BankRuleLogLine[]): LogRow[] {
     bankLog.flatMap((line, m): LogRow[] => {
       if (line.afterBookLines !== i && !(i === log.length && line.afterBookLines > log.length)) return [];
       const key = `b${m}-0`;
+      if (line.action === 'moved-up' || line.action === 'moved-down') {
+        return [{ key, date: line.date, kind: 'bank-rule-moved', direction: line.action === 'moved-up' ? 'up' : 'down', rule: line.rule, past: line.past, position: line.position }];
+      }
       if (line.action === 'changed' && line.before !== null) return [{ key, date: line.date, kind: 'bank-rule-changed', before: line.before, after: line.rule }];
       return [{ key, date: line.date, kind: line.action === 'removed' ? 'bank-rule-removed' : 'bank-rule-added', rule: line.rule }];
     });

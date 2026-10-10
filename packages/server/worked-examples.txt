@@ -179,3 +179,112 @@ Where the app stands (12.2):
         The difference is 0.00. No cent was made or lost by the change.
 
 Check: first gym payment 40.00 | second gym payment 40.00 | unsorted spending 80.00 | bank side 7,470.00 | difference 0.00
+
+
+========================================================================
+EXAMPLE 5. Moving a bank rule up: the first rule that fits wins (section 2, A27, 5.2, 7.4, 12.1 to 12.5)
+========================================================================
+
+The same start as example 3: checking 3,000.00, savings 5,000.00, the
+everyday card owes 450.00. Starting money 3,000.00 + 5,000.00 - 450.00 =
+7,550.00: savings 4,000.00, mom reserve 1,000.00, wants 200.00, needs
+2,350.00.
+
+Step 1. Oct 2: he adds two bank rules on Settings, in this order. Each new
+        rule goes to the end of the list:
+        (a) "Online Banking transfer" on checking: a payment to a person
+            (he pays his landlord that way);
+        (b) "Online Banking transfer to CRD 4444" on checking: a transfer
+            between checking and the old card.
+        A payment to the old card fits both. The first rule that fits wins
+        (A27), and (a) comes first.
+
+Step 2. Oct 3: 100.00 "Online Banking transfer to CRD 4444" leaves
+        checking. Rule (a) reads it as a payment to a person, so it waits
+        in review (7.4):
+        Unsorted spending 100.00
+
+Step 3. Oct 3: he moves rule (b) up. Only rules on checking compete for
+        what leaves checking, so it moves past (a), the rule before it there.
+        Before he says yes, Settings shows what would change hands: 1 item
+        from the last 90 days, the Oct 3 payment, that (a) reads now. The move
+        reads what the bank sends from then on. The Oct 3 payment was read
+        already, so it stays waiting in review (he can mark it as a transfer
+        there, 5.6).
+
+Step 4. Oct 4: another 100.00 "Online Banking transfer to CRD 4444" leaves
+        checking. Now rule (b) reads it first: a payment to the old card from
+        checking, which comes out of needs on a "debt payoff" line (5.2):
+        Needs 2,350.00 - 100.00 = 2,250.00
+        It is on its way to the old card: shown, but not counted, because the
+        old card is not part of the check (12.4, 12.5).
+
+Where the bank stands (12.1):
+        Checking       3,000.00 - 100.00 - 100.00 = 2,800.00
+        Bank side      2,800.00 + 5,000.00 - 450.00 = 7,350.00
+Where the app stands (12.2):
+        4,000.00 + 2,250.00 + 200.00 + 1,000.00 - 100.00 = 7,350.00
+        The difference is 0.00. Moving the rule made or lost no cent.
+
+Check: unsorted spending 100.00 | second payment 100.00 | needs 2,250.00 | bank side 7,350.00 | difference 0.00
+
+
+========================================================================
+EXAMPLE 6. A restart in the middle of a pay period finds the books as they were (the real server keeps everything; 4.2, 4.3, 13.3, 13.5)
+========================================================================
+
+Setup day, Oct 1, the same start as example 3: checking 3,000.00, savings
+5,000.00, the everyday card owes 450.00. Starting money 7,550.00: savings
+4,000.00, mom reserve 1,000.00, wants 200.00, needs 2,350.00.
+
+The history keeps every event in order, each with the day it was made on
+and the totals after it:
+
+Event   Day     What                                         Wants   Needs  Unsorted
+setup   Oct 1   setup day                                   200.00  2,350.00    0.00
+bank    Oct 3   23.45 at CORNER STORE 12, on the everyday
+                card; no rule matches, so it waits (4.3)    200.00  2,350.00   23.45
+answer  Oct 3   he puts it in wants (4.2)                   176.55  2,350.00    0.00
+answer  Oct 3   he moves 50.00 from wants to needs (13.3)   126.55  2,400.00    0.00
+
+        200.00 - 23.45 = 176.55;  176.55 - 50.00 = 126.55;  2,350.00 + 50.00 = 2,400.00
+
+The server stops and starts again. Before it serves anything, it replays
+the history one event at a time and compares each event's totals with the
+ones saved: they are the same, so it starts, with wants 126.55 and needs
+2,400.00, and the change log still says "Moved from Wants to Needs, 50.00,
+Oct 3".
+
+His phone, which never got the answer to the move, sends it again with the
+same decision number. The answer saved with it comes back, and nothing
+moves a second time: wants stays 126.55.
+
+Had the code been changed so that the purchase went to needs instead, the
+replay would give wants 200.00 after his first answer, not the 176.55
+saved: the server would not start, and would say it was that answer, on
+Oct 3.
+
+Check: wants 126.55 | needs 2,400.00 | unsorted spending 0.00 | savings 4,000.00 | mom reserve 1,000.00 | moved 50.00
+
+
+========================================================================
+EXAMPLE 7. Today is the date in his home time zone (section 2)
+========================================================================
+
+His home time zone is America/New_York, as it starts. The server's own
+clock may be set to any zone; it does not matter.
+
+At 3:30 AM on Oct 3 in UTC it is 11:30 PM on Oct 2 in New York (New York
+is 4 hours behind UTC until Nov 1).
+  - Today is Oct 2.
+  - A purchase of 15.00 the bank dates Oct 3 keeps the bank's date, Oct 3.
+  - A hand move of 1.00 made then is dated Oct 2, in the history and in the
+    change log.
+
+At 5:30 AM on Oct 10 in UTC it is 1:30 AM on Oct 10 in New York, so today
+is Oct 10. He changes his home time zone to America/Los_Angeles, 7 hours
+behind UTC: there it is 10:30 PM on Oct 9, so today is Oct 9 from then on.
+The change itself is dated Oct 10, the day it was made.
+
+Dates: now 2026-10-02 | bank purchase 2026-10-03 | hand move 2026-10-02 | after the change 2026-10-09 | change made 2026-10-10
+Check: purchase 15.00 | moved 1.00

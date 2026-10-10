@@ -138,7 +138,7 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 13. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 14. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
@@ -149,7 +149,8 @@ This applies to every phase and every session, cloud or local.
   and Payday review (A20: rule 5.6; the Payday card's reason: rule 3.4),
   section 24 his answers after the Settings screen (A21 to A24: rules
   5.6, 13.1, 13.2, and the bank rules in section 2), section 25 his
-  answers after Setup day (A25, A26: section 2, 4.5, 14.2).
+  answers after Setup day (A25, A26: section 2, 4.5, 14.2), section 26
+  his answers after bank rules (A27, and the home time zone: section 2).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -167,13 +168,17 @@ This applies to every phase and every session, cloud or local.
     for each section. It never changes the project folder, so other work can
     continue while it runs (edits made after it started are not tested).
     See "Break-it runs in parallel" below.
-- CI: GitHub Actions runs `npm test` (.github/workflows/test.yml). Since
-  Oct 9, 2026, to save Actions minutes: Linux on every pull request;
-  Windows only when he starts it by hand (Actions, Tests, Run workflow, pick
-  the branch; it asks Windows, Linux, or both, Windows by default), for a
-  phase's finish line. The Playwright browsers are kept between runs (one
-  copy per system and Playwright version); Linux still installs their
-  system libraries each run.
+- CI: GitHub Actions runs `npm test` (.github/workflows/test.yml), in three
+  jobs at once since Oct 9, 2026 (one job took 38 min 46 s against 45):
+  "checks" (the type check, then every test without a browser,
+  SKIP_BROWSER_TESTS=1), "chromium" and "webkit" (the browser tests in one
+  engine each, BROWSER_ENGINE). test/ci-workflow.test.ts checks that together
+  they are exactly npm test. To save Actions minutes: Linux on every pull
+  request; Windows only when he starts it by hand (Actions, Tests, Run
+  workflow, pick the branch; it asks Windows, Linux, or both, Windows by
+  default), for a phase's finish line. Each browser job keeps its own browser
+  between runs (one copy per system, browser and Playwright version); Linux
+  still installs its system libraries each run.
 - Phase 2 (stress testing), part one, the simulated you: built Oct 6, 2026
   on branch phase-2-simulator (PR #3).
   - packages/money/test/sim: a made-up person lived one day at a time
@@ -790,5 +795,81 @@ This applies to every phase and every session, cloud or local.
     breaks whose code moved were pointed at it again.
   - QUESTIONS.md A27 (two bank rules that match one item) waits on his
     answer; built as the first in the list wins, as it always was.
-- Waiting on: the promo end date for the old card, and A27. Only the payoff countdown
-  (rule 9.5) depends on it.
+- PR #16 merged (Oct 9, 2026).
+- Step 0 of the next chunk (Oct 9, 2026, branch real-server-keeps-everything,
+  its own commit):
+  - A27 option 1 (rulebook draft 14, section 2 and 26a): the first bank rule
+    that fits wins; a bank rule moves one place up or down among the rules on
+    its account (only they can fit the same item), on Settings and on Setup
+    day. A move asks first with how many items from the last 90 days would
+    change hands (itemsReadDifferently, BankRulePreview.move), and is logged
+    (bank-rule-moved). B146 to B148. Worked example bank 5. Breaks "[a27]".
+  - CI split in three jobs (above).
+  - The WebKit contrast checks that went past 60 s with the whole suite
+    running are split into smaller tests checking exactly the same pages:
+    Buckets and Review (by screen and sheets), the bucket lists and Payday,
+    Settings and Setup day (states and sheets), each per colour scheme. No
+    limit raised. The bank rules browser test counted the rules on Settings
+    before WebKit had drawn them; it now waits for the list.
+- Step 1, the real server keeps everything (Oct 9, 2026, same branch): no
+  login yet, this computer only, the test bank only.
+  - The book's history (table book_events, database step 2): what the bank
+    sent, setup day, and every answer of his ("answer" events), in the order
+    it happened, each with the day it was made on and the totals after it.
+    An answer is the book's own calls, written down by a recording wrapper
+    around the live book (history/history.ts, recorderOf), with the dates
+    inside them; Setup day answers before tracking, bank rule changes (also
+    kept in the settings table and change log) and take-backs marked seen are
+    parts of an answer event too. loadBook replays it all (history-db.ts,
+    replayHistory); replaying never asks the clock.
+  - Decision numbers (table decisions): the number, the request written the
+    same way whatever its key order, the first answer, and its event, saved
+    in the same transaction as the event. A refusal keeps nothing.
+  - The replay check: totals = every bucket, unsorted in and out, the old
+    card debt, money in transit, how many wait. The books do not open if any
+    event replays differently (HistoryDoesNotReplay names the event); events
+    saved before step 2 get their totals the first time they replay.
+  - history/keeper.ts (Keeper): the real server's state rebuilt from the
+    database (the book, the take-backs seen, Setup day answers, bank rules),
+    the same desks as the demo (ChoiceDesk, SetupDesk, BankRulesDesk, which
+    now start from saved answers and a saved log), each answer saved in one
+    transaction; a save that fails reads everything again. Keeper.server()
+    serves the screens. last_checked keeps Home's last backed-up safe to
+    spend (0.5, B82).
+  - Today comes from the home time zone (a setting, America/New_York to
+    start; rulebook section 2 and 26b; history/today.ts todayIn and timeIn),
+    on Settings (US zones). The money package only keeps it (Settings
+    .homeTimeZone, checked to be a zone name): the one change there.
+  - npm run serve (scripts/serve.mjs, src/serve): the real server, apart from
+    the demo. data/budget.sqlite by default (--db), 127.0.0.1 only, the
+    sandbox lock, --connect (the test bank with made-up accounts like his,
+    src/serve/test-bank.ts), --sync. It needs BANK_TOKEN_KEY in .env (not
+    filled in yet on his PC). The demo still never opens the database (its
+    import guard lists history/history.ts, which is the money math only).
+  - Tests: today (midnight, both clock changes, the server's own zone),
+    database (step 2), history (recording, replay), history-check (totals,
+    a rule changed on purpose with a spy, the clock never asked, dates,
+    time zone, last checked), keeper (a busy life: after every step a fresh
+    copy from the database equals the running one, screen by screen; real
+    restarts; decision numbers; a save stopped halfway), keeper-random
+    (random activity and answers, one copy restarted at random moments;
+    KEEPER_SCENARIOS, SEED; 300 passed), simulated-life-restarts (the
+    simulated life with every answer, the history in a file, restarted every
+    simulated day, every bucket the simulator's own; SIM_DB_SEEDS,
+    SIM_DB_FIRST_SEED, SIM_DB_YEARS), serve, and the browser test
+    real-server (restarted mid pay period, every screen the same). The
+    simulator's recorder now also reports each answer and every bucket at
+    the end of each day (test code only). Worked examples bank 6 and 7.
+  - Break-it: new breaks tagged "[keeper]" and "[zone]" (server section
+    "history").
+- One browser test is skipped in WebKit, on his say-so (Oct 9, 2026, PR #17,
+  to keep CI moving): setup.test.ts "B92 a quick double tap on an answer
+  sends it once". On CI's WebKit runner the second tap arrives after the first
+  answer and the screen's refresh, and the Setup day screen sends it (the
+  server refuses it, so nothing counts twice). It still runs in Chromium. To
+  do: fix the screen so an answer already given cannot be sent again, test
+  first, then run the test in WebKit again.
+- Waiting on: the promo end date for the old card (only the payoff countdown,
+  rule 9.5, depends on it), and QUESTIONS.md A28 (what happens when the
+  replay check finds a difference) and A29 (a store's refund to the debit
+  card).

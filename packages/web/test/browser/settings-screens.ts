@@ -1,7 +1,7 @@
 import { payoffCountdown, type Book, type Cents, type IsoDate, type SortingRule } from '@budget-app/money';
 import type { BrowserContext, Page } from 'playwright';
 import { dayWithYear } from '../../src/ui/dates.js';
-import { daysText, leftoverText, reminderText, textRuleText, timeText } from '../../src/screens/settings-text.js';
+import { daysText, leftoverText, reminderText, textRuleText, timeText, zoneText } from '../../src/screens/settings-text.js';
 import { openScenario, readCents, untilAnswered, waitOrReport } from './harness.js';
 
 // Opens Settings on a made-up life, once its numbers are in. (openScenario
@@ -37,7 +37,7 @@ export interface SettingsNumbers {
   readonly log: readonly string[];
 }
 
-const VALUE_ROWS = ['paycheck-rule', 'pay-schedule', 'early-days', 'leftover', 'mom-rule', 'low-alert', 'reminders', 'review-time', 'promo'] as const;
+const VALUE_ROWS = ['paycheck-rule', 'pay-schedule', 'early-days', 'leftover', 'mom-rule', 'low-alert', 'reminders', 'review-time', 'time-zone', 'promo'] as const;
 
 export async function readSettings(page: Page): Promise<SettingsNumbers> {
   const text = async (testId: string): Promise<string> => (await page.getByTestId(testId).innerText()).replace(/\s+/g, ' ').trim();
@@ -119,6 +119,7 @@ export function settingsOf(book: Book, today: IsoDate): SettingsNumbers {
       'low-alert': `${s.lowBucketAlertPercent}%`,
       reminders: reminderText(s.cardReminderDaysBefore),
       'review-time': timeText(s.dailyReviewTime),
+      'time-zone': zoneText(s.homeTimeZone),
       promo: s.oldCardPromoEndDate === null ? 'Not entered' : dayWithYear(s.oldCardPromoEndDate),
     },
     target: { low: s.momMonthlyTarget.low, high: s.momMonthlyTarget.high },

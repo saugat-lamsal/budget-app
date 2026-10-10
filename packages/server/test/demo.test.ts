@@ -361,6 +361,8 @@ describe('the demo is made-up data only', () => {
       'demo/scenarios.ts',
       'demo/setup-lives.ts',
       'errors.ts',
+      // What the history checks after each event: the money math only.
+      'history/history.ts',
       'http/server.ts',
       'plaid/types.ts',
       'setup-desk.ts',
@@ -377,7 +379,7 @@ describe('the demo is made-up data only', () => {
       'views/settings.ts',
       'views/setup.ts',
     ]);
-    for (const file of files) expect(file, file).not.toMatch(/^(db|crypto)\/|^(connect|status|log)\.ts$|^plaid\/(client|sandbox-lock)\.ts$|^sync\/sync\.ts$/);
+    for (const file of files) expect(file, file).not.toMatch(/^(db|crypto|serve)\/|^(connect|status|log)\.ts$|^plaid\/(client|sandbox-lock)\.ts$|^sync\/sync\.ts$|^history\/(history-db|keeper)\.ts$/);
     // node:crypto only names a preview of a settings change (choices.ts, previewKey).
     expect([...packages].sort()).toEqual(['@budget-app/money', 'node:crypto', 'node:fs/promises', 'node:http', 'node:os', 'node:path', 'node:url']);
   });

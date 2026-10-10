@@ -107,6 +107,7 @@ describe.each(ENGINES)('Settings in %s', (_name, engine) => {
     ['the card reminder days', 'row-reminders', { 'field-reminders': '10, 5 1' }, { cardReminderDaysBefore: [10, 5, 1] }],
     ['no card reminders at all', 'row-reminders', { 'field-reminders': '' }, { cardReminderDaysBefore: [] }],
     ['the daily review time', 'row-review-time', { 'field-review-time': '07:45' }, { dailyReviewTime: '07:45' }],
+    ['the home time zone', 'row-time-zone', { 'field-time-zone': 'America/Chicago' }, { homeTimeZone: 'America/Chicago' }],
     ['the leftover at payday, each bucket on its own', 'row-leftover', { 'field-leftover-needs': 'roll-over', 'field-leftover-wants': 'move-to-savings' }, { leftoverAtPayday: { needs: 'roll-over', wants: 'move-to-savings' } }],
     ['the pay schedule', 'row-pay-schedule', { 'field-pay-schedule': '7' }, { payScheduleDays: 7 }],
     ['the 10 days of rule 3.7', 'row-early-days', { 'field-early-days': '12' }, { earlyPaycheckDays: 12 }],

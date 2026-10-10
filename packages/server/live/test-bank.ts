@@ -1,5 +1,5 @@
 import { existsSync, writeFileSync } from 'node:fs';
-import { addDays, type IsoDate } from '@budget-app/money';
+import type { IsoDate } from '@budget-app/money';
 import { connectTestBank } from '../src/connect.js';
 import { TokenBox, newTokenKey } from '../src/crypto/token-box.js';
 import { openDatabase, type Db } from '../src/db/database.js';
@@ -110,55 +110,6 @@ export function openKey(bank: LiveBank): string {
   return bank.box.open(connection.sealedKey, connection.itemId);
 }
 
-// A custom test user shaped like his accounts: one checking, one savings, two
-// cards. Dates are counted from today. A date_posted after today makes a
-// transaction pending.
-export function accountsLikeHis(today: IsoDate): string {
-  const d = (days: number): IsoDate => addDays(today, days);
-  const tx = (on: number, posts: number, amount: number, description: string): Record<string, unknown> => ({
-    date_transacted: d(on),
-    date_posted: d(posts),
-    amount,
-    description,
-    currency: 'USD',
-  });
-  return JSON.stringify({
-    override_accounts: [
-      {
-        type: 'depository',
-        subtype: 'checking',
-        starting_balance: 3000,
-        meta: { name: 'Made-up Checking', mask: '1111' },
-        transactions: [
-          tx(-12, -12, -2500, 'MADEUP CORP PAYROLL'),
-          tx(-6, -5, 45.67, 'GROCERY OUTLET 12'),
-          tx(-4, -4, 300, 'Zelle payment to MOM MADEUP'),
-          tx(-1, 3, 25.5, 'GAS STATION 77'),
-        ],
-      },
-      {
-        type: 'depository',
-        subtype: 'savings',
-        starting_balance: 5000,
-        meta: { name: 'Made-up Savings', mask: '2222' },
-        transactions: [tx(-10, -10, -1.23, 'INTEREST EARNED')],
-      },
-      {
-        type: 'credit',
-        subtype: 'credit card',
-        starting_balance: 450,
-        meta: { name: 'Made-up Everyday Card', mask: '3333', limit: 5000 },
-        transactions: [tx(-8, -7, 12.34, 'COFFEE SHOP 5'), tx(-1, 2, 60, 'GROCERY OUTLET 12')],
-        liability: { type: 'credit', purchase_apr: 22.99, minimum_payment_amount: 35, last_payment_amount: 100, is_overdue: false },
-      },
-      {
-        type: 'credit',
-        subtype: 'credit card',
-        starting_balance: 3000,
-        meta: { name: 'Made-up Old Card', mask: '4444', limit: 4000 },
-        transactions: [],
-        liability: { type: 'credit', purchase_apr: 0, minimum_payment_amount: 60, last_payment_amount: 150, is_overdue: false },
-      },
-    ],
-  });
-}
+// A custom test user shaped like his accounts (src/serve/test-bank.ts, which
+// the real server's --connect uses too).
+export { accountsLikeHis } from '../src/serve/test-bank.js';

@@ -287,6 +287,7 @@ function RulesStep({ view, sender, reload }: { readonly view: SetupReadyView; re
         <BankRuleSheet
           key={opened}
           editing={editing.editing}
+          rules={view.bankRules}
           send={send}
           onClose={() => setEditing(null)}
           onDone={() => {

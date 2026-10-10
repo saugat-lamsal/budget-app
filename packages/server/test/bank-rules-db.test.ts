@@ -28,9 +28,16 @@ describe('section 2 24c the bank rules in the database', () => {
       { change: { id: 'zelle', account: 'checking', contains: 'Zelle', means: 'payment-to-person' } },
       { remove: 'everyday-fee' },
       { add: { account: 'everyday-card', contains: 'LATE FEE', means: 'card-fee' } },
+      // A27: moves among the rules on its account, both ways.
+      { add: { account: 'checking', contains: 'Zelle payment to MOM', means: 'transfer', other: 'savings' } },
+      { move: { id: 'bank-rule-3', direction: 'up' } },
+      { move: { id: 'bank-rule-3', direction: 'up' } },
+      { move: { id: 'chk-to-sav', direction: 'down' } },
       // Refused alike: nothing saved, nothing logged.
       { add: { account: 'savings', contains: 'LATE FEE', means: 'card-fee' } },
       { remove: 'not-there' },
+      { move: { id: 'not-there', direction: 'up' } },
+      { move: { id: 'chk-to-sav', direction: 'up' } },
     ];
     for (const change of changes) {
       const inMemory = desk.apply(change);

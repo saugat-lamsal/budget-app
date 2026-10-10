@@ -3,7 +3,7 @@ import type { BankMeaning, BankRule, BankRuleChange, BankRulePreview, BankRuleSp
 import { useRef, useState } from 'react';
 import { newDecisionId } from '../app/api.js';
 import { BottomSheet, Button, ButtonRow, Card, ListRow, Money, Notice, SelectField, TextField } from '../ui/blocks.js';
-import { MEANING_NAMES, exampleDetail, matchesText, meaningsOn, othersOf, overlapText } from './bank-rules-text.js';
+import { MEANING_NAMES, exampleDetail, matchesText, meaningsOn, movesOf, moveText, othersOf, overlapText } from './bank-rules-text.js';
 import { ACCOUNT_NAMES, bankRuleText } from './setup-text.js';
 
 // Bank rules (rulebook section 2, 20a, 24c), the same on Setup day and on
@@ -66,7 +66,23 @@ export type Send = (id: string, change: BankRuleChange, yes?: { readonly seen: s
 
 const NO_SIGNAL = "Couldn't save that. Check your connection and try again. Nothing is counted twice.";
 
-export function BankRuleSheet({ editing, send, onClose, onDone, canRemove = true }: { readonly editing: Editing; readonly send: Send; readonly onClose: () => void; readonly onDone: (change: BankRuleChange) => void; readonly canRemove?: boolean }) {
+// rules: the whole list, in the order they are tried, so a rule he has can
+// move a place up or down among the rules on its account (A27).
+export function BankRuleSheet({
+  editing,
+  rules,
+  send,
+  onClose,
+  onDone,
+  canRemove = true,
+}: {
+  readonly editing: Editing;
+  readonly rules: readonly BankRule[];
+  readonly send: Send;
+  readonly onClose: () => void;
+  readonly onDone: (change: BankRuleChange) => void;
+  readonly canRemove?: boolean;
+}) {
   const first: BankRuleSpec | null = 'rule' in editing ? editing.rule : editing.start;
   const [account, setAccount] = useState<AccountId>(first?.account ?? 'checking');
   const [contains, setContains] = useState(first?.contains ?? '');
@@ -111,6 +127,7 @@ export function BankRuleSheet({ editing, send, onClose, onDone, canRemove = true
   const missing = contains.trim() === '' ? 'Enter the text the bank’s description contains.' : means === 'transfer' && other === '' ? 'Pick the other account.' : null;
   const change: BankRuleChange = 'rule' in editing ? { change: { id: editing.rule.id, ...spec } } : { add: spec };
   const title = 'rule' in editing ? 'Bank rule' : editing.title;
+  const moves = 'rule' in editing ? movesOf(editing.rule, rules) : { up: false, down: false };
 
   return (
     <BottomSheet open title={asked !== null ? 'Are you sure?' : title} onClose={onClose} testId="bank-rule-sheet">
@@ -143,6 +160,21 @@ export function BankRuleSheet({ editing, send, onClose, onDone, canRemove = true
           <Button wide disabled={sending || missing !== null} testId="sheet-save" onClick={() => go(change)}>
             {sending ? 'Checking…' : 'Save'}
           </Button>
+          {'rule' in editing && (moves.up || moves.down) && (
+            // A27: one place up or down among the rules on its account; the first that fits wins.
+            <ButtonRow>
+              {moves.up && (
+                <Button variant="secondary" wide disabled={sending} testId="sheet-move-up" onClick={() => go({ move: { id: editing.rule.id, direction: 'up' } })}>
+                  Move up
+                </Button>
+              )}
+              {moves.down && (
+                <Button variant="secondary" wide disabled={sending} testId="sheet-move-down" onClick={() => go({ move: { id: editing.rule.id, direction: 'down' } })}>
+                  Move down
+                </Button>
+              )}
+            </ButtonRow>
+          )}
           {'rule' in editing && canRemove && (
             <Button variant="secondary" wide disabled={sending} testId="sheet-remove" onClick={() => go({ remove: editing.rule.id })}>
               Remove this rule
@@ -162,11 +194,16 @@ export function BankRuleSheet({ editing, send, onClose, onDone, canRemove = true
             <p className="card__note" data-testid="preview-rule">
               {bankRuleText(asked.preview.rule)}
             </p>
+            {asked.preview.move !== undefined && (
+              <p className="card__note" data-testid="preview-move">
+                {moveText(asked.preview.move, asked.preview.recentDays)}
+              </p>
+            )}
             <Matches matches={asked.preview.matches} recentDays={asked.preview.recentDays} testId="preview-matches" />
           </Card>
           <ButtonRow>
             <Button wide disabled={sending} testId="confirm-yes" onClick={() => go(asked.change, { seen: asked.preview.key })}>
-              {sending ? 'Saving…' : 'remove' in asked.change ? 'Yes, remove it' : 'Yes, save it'}
+              {sending ? 'Saving…' : 'remove' in asked.change ? 'Yes, remove it' : 'move' in asked.change ? 'Yes, move it' : 'Yes, save it'}
             </Button>
             <Button variant="secondary" wide disabled={sending} testId="confirm-cancel" onClick={() => setAsked(null)}>
               Back

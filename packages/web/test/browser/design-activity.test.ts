@@ -77,11 +77,14 @@ async function activitySheets(page: Page): Promise<string[]> {
 describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s', (_engine, engine) => {
   const { browser, base } = useEngine(engine);
 
-  // One test for each colour scheme: the pass over every screen and every
-  // sheet is long (the checks wait for the screen to be at rest), and both
-  // together came close to the time limit on the slower machines.
+  // One test for each colour scheme and each part (every state; every sheet,
+  // with Payday asking first and its done message): the pass over every
+  // screen and every sheet is long (the checks wait for the screen to be at
+  // rest). Both schemes together came close to the time limit on the slower
+  // machines, and one scheme went past it in WebKit when the whole suite ran
+  // (Oct 9). Together they check exactly what the one test did.
   for (const scheme of ['light', 'dark'] as const) {
-    it(`readable contrast and no accessibility problems, in ${scheme} mode, in every state, and in every sheet`, async () => {
+    it(`readable contrast and no accessibility problems, in ${scheme} mode, in every state`, async () => {
       const problems: string[] = [];
       const context = await browser().newContext(phone({ colorScheme: scheme, bypassCSP: true }));
       for (const [life, path] of SCREENS) {
@@ -89,6 +92,13 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
         problems.push(...(await axeViolations(page)).map((p) => `${scheme} ${path} ${life}: ${p}`));
         await page.close();
       }
+      await context.close();
+      expect(problems).toEqual([]);
+    });
+
+    it(`readable contrast and no accessibility problems, in ${scheme} mode, in every sheet`, async () => {
+      const problems: string[] = [];
+      const context = await browser().newContext(phone({ colorScheme: scheme, bypassCSP: true }));
       const page = await openScenario(context, base(), 'activity-marked', '/buckets/needs');
       const names = await activitySheets(page);
       // The checks run on each sheet as it is open: redo them one by one.
