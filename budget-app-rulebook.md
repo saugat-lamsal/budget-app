@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 15)
+# Budget App Rulebook (draft 16)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -21,7 +21,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
      does not start. A separate command shows each event whose totals would
      change, before and after, and with your yes takes the new totals from
      that event on. It goes in the change log (13.5), dated, with what
-     changed.
+     changed. If an event cannot be replayed at all (a fix makes the money
+     math refuse an old answer), the app does not start either: the command
+     says which event and why, and nothing is dropped or replaced.
 
 
 ## 1. Accounts (all Bank of America, one connection)
@@ -342,6 +344,15 @@ number so a test can point at it. Nothing gets coded until you approve this.
       item, as it first showed up (often the pending description) or as it
       posted. If no rule matches it, the new rule goes at the end of your
       list.
+13.7  An answer about an item that changed since the screen showed it (a
+      sync came in between) is refused, says how the item is now, and
+      changes nothing. Changed means its amount, day, description, pending
+      or posted, what a payday question asks, where it is sorted now, or
+      what "this is my paycheck" would do. What the item is offered is not
+      part of it: a choice no longer offered is refused anyway. A hand move
+      and the settings are not about one item: a move still asks first when
+      it would leave a bucket below zero (13.4), and the paycheck rule and
+      the mom rule ask again when what they would do has changed.
 
 
 ## 14. Setup day
@@ -556,3 +567,13 @@ c.  You stay logged in for 30 days on a device, and that is a setting
     (section 2).
 d.  The app syncs with the bank by itself every 60 minutes, and that is a
     setting (section 2).
+
+
+## 28. Answers after syncing on a timer (Oct 10, 2026)
+
+a.  An old event the money math now refuses: the server stays stopped, and
+    npm run replay-check says which event and why. Nothing is dropped or
+    replaced (0.6, QUESTIONS.md A30).
+b.  An answer about something a sync just changed is refused with how it
+    is now, and nothing changes: an item that is not what the screen showed
+    (13.7, QUESTIONS.md A31).

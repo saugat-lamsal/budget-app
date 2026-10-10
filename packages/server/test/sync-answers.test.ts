@@ -41,7 +41,7 @@ function counts(life: Life): { readonly events: number; readonly decisions: unkn
 }
 
 describe('Step 3: an answer about something a sync just changed is refused, with why', () => {
-  it('A31 a pending charge that posted with a tip after Review showed it: the answer is refused with how it is now, nothing changes; with the new look it goes through', async () => {
+  it('13.7 A31 a pending charge that posted with a tip after Review showed it: the answer is refused with how it is now, nothing changes; with the new look it goes through', async () => {
     const life = await setUp();
     life.h.fake.addPending({ id: 'cafe-1', account: E, amount: 1_150, date: '2026-10-03', description: 'MADE UP CAFE' });
     await life.sync();
@@ -65,7 +65,7 @@ describe('Step 3: an answer about something a sync just changed is refused, with
     expect(life.keeper.book()?.pots().wants).toBe(20_000 - 1_350);
   });
 
-  it('A31 a pending charge that posts at the same amount has changed too: it showed as pending', async () => {
+  it('13.7 A31 a pending charge that posts at the same amount has changed too: it showed as pending', async () => {
     const life = await setUp();
     life.h.fake.addPending({ id: 'cafe-1', account: E, amount: 1_150, date: '2026-10-03', description: 'MADE UP CAFE' });
     await life.sync();
@@ -80,7 +80,7 @@ describe('Step 3: an answer about something a sync just changed is refused, with
     });
   });
 
-  it('A31 a pending amount the bank changed (4.6) says it is still pending', async () => {
+  it('13.7 A31 a pending amount the bank changed (4.6) says it is still pending', async () => {
     const life = await setUp();
     life.h.fake.addPending({ id: 'gas-1', account: E, amount: 100, date: '2026-10-03', description: 'MADE UP FUEL' });
     await life.sync();
@@ -94,7 +94,7 @@ describe('Step 3: an answer about something a sync just changed is refused, with
     });
   });
 
-  it('A31 an answer about an item the sync did not touch goes through: only what changed is refused', async () => {
+  it('13.7 A31 an answer about an item the sync did not touch goes through: only what changed is refused', async () => {
     const life = await setUp();
     life.h.fake.addPosted({ id: 'books-1', account: E, amount: 4_210, date: '2026-10-02', description: 'MADE UP BOOKSHOP' });
     life.h.fake.addPending({ id: 'cafe-1', account: E, amount: 1_150, date: '2026-10-03', description: 'MADE UP CAFE' });
@@ -108,7 +108,7 @@ describe('Step 3: an answer about something a sync just changed is refused, with
     expect(life.keeper.choice({ id: decision(), item: 'cafe-1', choice: { to: 'wants' }, seen: cafe.key })).toMatchObject({ ok: false, code: 'changed' });
   });
 
-  it('A31 4.5 a new purchase joining the likely purchases of a refund waiting in review does not change the refund: matching it to the one he picked goes through', async () => {
+  it('13.7 A31 4.5 a new purchase joining the likely purchases of a refund waiting in review does not change the refund: matching it to the one he picked goes through', async () => {
     const life = await setUp();
     life.h.fake.addPosted({ id: 'shoes-1', account: E, amount: 8_000, date: '2026-10-02', description: 'MADE UP SHOES' });
     life.h.fake.addPosted({ id: 'shoes-back', account: E, amount: -2_000, date: '2026-10-03', description: 'MADE UP SHOES' });
@@ -125,7 +125,7 @@ describe('Step 3: an answer about something a sync just changed is refused, with
     expect(life.keeper.choice({ id, item: 'shoes-back', choice: { refundOf: 'shoes-1' }, seen: refund.key, confirmed: true })).toMatchObject({ ok: true });
   });
 
-  it('A31 3.4 a payday question that spending from before payday made smaller since Payday showed it is refused, with what it asks now', async () => {
+  it('13.7 A31 3.4 a payday question that spending from before payday made smaller since Payday showed it is refused, with what it asks now', async () => {
     const life = await setUp();
     const k = life.keeper;
     const id = decision();
@@ -147,7 +147,7 @@ describe('Step 3: an answer about something a sync just changed is refused, with
     expect(answer).toMatchObject({ ok: false, code: 'changed', why: `Wants leftover changed since you looked: it is now $${((wants.item.amount - 2_500) / 100).toFixed(2)}. Look at it again, then choose. Nothing was changed.` });
   });
 
-  it('A31 4.7 sorting again from a bucket\'s list: a row the bank changed since the list showed it is refused', async () => {
+  it('13.7 A31 4.7 sorting again from a bucket\'s list: a row the bank changed since the list showed it is refused', async () => {
     const life = await setUp();
     life.h.fake.addPending({ id: 'cafe-1', account: E, amount: 1_150, date: '2026-10-03', description: 'MADE UP CAFE' });
     await life.sync();
@@ -170,7 +170,7 @@ describe('Step 3: an answer about something a sync just changed is refused, with
     expect(life.keeper.choice({ id: decision(), item: 'cafe-1', choice: { to: 'needs' }, resort: true, seen: now.keys['cafe-1']! })).toMatchObject({ ok: true });
   });
 
-  it('A31 the same item, unchanged, keeps its key: across another answer, a sync with nothing for it, and a restart', async () => {
+  it('13.7 A31 the same item, unchanged, keeps its key: across another answer, a sync with nothing for it, and a restart', async () => {
     const life = await setUp();
     life.h.fake.addPosted({ id: 'books-1', account: E, amount: 4_210, date: '2026-10-02', description: 'MADE UP BOOKSHOP' });
     life.h.fake.addPosted({ id: 'store-1', account: E, amount: 999, date: '2026-10-02', description: 'CORNER STORE 12' });
@@ -183,7 +183,7 @@ describe('Step 3: an answer about something a sync just changed is refused, with
     expect(life.keeper.choice({ id: decision(), item: 'books-1', choice: { to: 'wants' }, seen: key })).toMatchObject({ ok: true });
   });
 
-  it('A31 a key that is not one is not a choice at all', async () => {
+  it('13.7 A31 a key that is not one is not a choice at all', async () => {
     const life = await setUp();
     life.h.fake.addPosted({ id: 'books-1', account: E, amount: 4_210, date: '2026-10-02', description: 'MADE UP BOOKSHOP' });
     await life.sync();

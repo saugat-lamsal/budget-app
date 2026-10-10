@@ -103,7 +103,7 @@ describe.each(ENGINES)('syncing on the real server in %s', (_name, engine) => {
     }
   });
 
-  it('Step 3 A31 a tap on Review about an item a sync changed since the screen showed it: refused with how it is now, nothing changed, and the screen shows it as it is', async () => {
+  it('Step 3 13.7 A31 a tap on Review about an item a sync changed since the screen showed it: refused with how it is now, nothing changed, and the screen shows it as it is', async () => {
     const r = await realServer();
     try {
       r.life.h.fake.addPending({ id: 'cafe-1', account: E, amount: 1_150, date: '2026-10-03', description: 'MADE UP CAFE' });

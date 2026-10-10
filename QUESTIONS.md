@@ -460,9 +460,12 @@ A29. ANSWERED Oct 10, built. Your answer: option 2. Money in to checking
      always was.
 
 
-## Part A, added with your answers to A28 and A29 (Oct 10). Waiting on your answer.
+## Part A, added with your answers to A28 and A29 (Oct 10). All answered.
 
-A30. An old event the money math now refuses (0.6). A28 covers an event
+A30. ANSWERED Oct 10, built. Your answer: option 1. The server stays
+     stopped and npm run replay-check says which event and why; nothing is
+     dropped or replaced. Rulebook 0.6 and 28a.
+     The question was: an old event the money math now refuses (0.6). A28 covers an event
      whose totals change. But a fix can also make an old answer impossible:
      say a fix finds that a purchase you sorted in March could never have
      been sorted that way. Then the history cannot be replayed at all, and
@@ -482,9 +485,11 @@ A30. An old event the money math now refuses (0.6). A28 covers an event
      1 (the command says which event and why, and the server stays stopped).
 
 
-## Part A, added with syncing on a timer (Step 3, Oct 10). Waiting on your answer.
+## Part A, added with syncing on a timer (Step 3, Oct 10). All answered.
 
-A31. What counts as "something a sync just changed". You asked that an
+A31. ANSWERED Oct 10, built. Your answer: option 1, as built. Rulebook 13.7
+     and 28b; the details are B172 and B173.
+     The question was: what counts as "something a sync just changed". You asked that an
      answer about something a sync just changed be refused with why, and
      nothing change. The rulebook does not say what counts as changed.
      Option 1: an item (waiting in Review, on a bucket's list, or a payday

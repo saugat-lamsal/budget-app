@@ -138,7 +138,7 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 15. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 16. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
@@ -152,7 +152,9 @@ This applies to every phase and every session, cloud or local.
   answers after Setup day (A25, A26: section 2, 4.5, 14.2), section 26
   his answers after bank rules (A27, and the home time zone: section 2),
   section 27 his answers after the real server (A28: rule 0.6; A29: 4.5,
-  6.1; 27c staying logged in, 27d syncing every 60 minutes, section 2).
+  6.1; 27c staying logged in, 27d syncing every 60 minutes, section 2),
+  section 28 his answers after syncing on a timer (A30: rule 0.6; A31: rule
+  13.7).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
