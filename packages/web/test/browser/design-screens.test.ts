@@ -21,25 +21,72 @@ function idOf(life: string, description: string, amount?: number): string {
   return found.id;
 }
 
-// Opens each sheet on the busy Review life: the choices (with a rule and a
-// split), the question that asks first, a refusal, and a done message.
-async function sheets(page: Page): Promise<{ readonly name: string }[]> {
-  const found: { name: string }[] = [];
-  const store = idOf('review-busy', 'CORNER STORE');
-  await page.getByTestId(`item-${store}`).getByTestId('more').click();
+// Every sheet on Review, and every step inside one: [name, made-up life, how
+// to get there from Review]. Each is checked on a fresh page, where it
+// stands. (The checks used to run after the last sheet was open, so only that
+// one was checked.)
+type Reach = (page: Page) => Promise<void>;
+const more = (id: string): Reach => async (page) => {
+  await page.getByTestId(`item-${id}`).getByTestId('more').click();
   await page.getByTestId('review-sheet').waitFor();
-  found.push({ name: 'choices' });
-  await page.getByTestId('always-toggle').click();
-  found.push({ name: 'choices with a rule' });
-  await page.getByTestId('always-toggle').click();
-  await page.getByTestId('split-needs').fill('abc');
-  found.push({ name: 'choices with a split that cannot be read' });
-  await page.getByTestId('split-needs').fill('11.50');
-  await page.getByTestId('split-submit').click();
-  await page.getByTestId('notice').waitFor();
-  found.push({ name: 'a refusal' });
-  return found;
-}
+};
+// The choices sheet of every item waiting on the busy life that has one: each
+// kind of item has its own choices (4.2 to 4.9, 5.2, 5.6, 6.1, 7.6, 8.3).
+const ITEM_SHEETS: readonly (readonly [string, string, Reach])[] = demoScenario('review-busy')!
+  .input!()
+  .book!.reviewDetails()
+  .filter((d) => (d.item.type === 'spending' || d.item.type === 'money-in') && d.options.type === 'sort')
+  .map((d) => [`the choices for ${'description' in d.item ? d.item.description : ''} (${d.item.id})`, 'review-busy', more(d.item.id)] as const);
+const store: Reach = more(idOf('review-busy', 'CORNER STORE'));
+const REVIEW_SHEETS: readonly (readonly [string, string, Reach])[] = [
+  ...ITEM_SHEETS,
+  ['the choices with a rule', 'review-busy', async (page) => {
+    await store(page);
+    await page.getByTestId('always-toggle').click();
+    await page.getByTestId('always-text').waitFor();
+  }],
+  ['the choices with a split that cannot be read', 'review-busy', async (page) => {
+    await store(page);
+    await page.getByTestId('split-needs').fill('abc');
+  }],
+  ['a payment to a person split three ways', 'review-busy', async (page) => {
+    await more('busy-friend')(page);
+    await page.getByTestId('split-needs').fill('10.00');
+    await page.getByTestId('split-wants').fill('5.00');
+  }],
+  ['a refusal', 'review-busy', async (page) => {
+    await store(page);
+    await page.getByTestId('split-needs').fill('11.50');
+    await page.getByTestId('split-submit').click();
+    await page.getByTestId('notice').waitFor();
+  }],
+  ['asks first: always do this', 'review-busy', async (page) => {
+    await store(page);
+    await page.getByTestId('always-toggle').click();
+    await page.getByTestId('choice-wants').click();
+    await page.getByTestId('confirm-yes').waitFor();
+  }],
+  ['asks first: this is my paycheck', 'review-busy', async (page) => {
+    await page.getByTestId('item-busy-early').getByTestId('pick-paycheck').click();
+    await page.getByTestId('confirm-yes').waitFor();
+  }],
+  ['asks first: a payday answer', 'review-busy', async (page) => {
+    await page.getByTestId('answer-move-to-savings').first().click();
+    await page.getByTestId('confirm-yes').waitFor();
+  }],
+  ['asks first: this refund is for this one', 'review-busy', async (page) => {
+    await page.getByTestId('item-busy-refund').locator('[data-testid^="match-"]').first().click();
+    await page.getByTestId('confirm-yes').waitFor();
+  }],
+  ['the done message', 'review-busy', async (page) => {
+    await page.getByTestId(`item-${idOf('review-busy', 'CORNER DELI')}`).getByTestId('pick-needs').click();
+    await page.getByTestId('notice').waitFor();
+  }],
+  ['a payment marked from savings, with "It was not a payment to the old card" (A21)', 'review-marked-savings', async (page) => {
+    await more('act-water')(page);
+    await page.getByTestId('choice-unmark').waitFor();
+  }],
+];
 
 describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, engine) => {
   const { browser, base } = useEngine(engine);
@@ -66,30 +113,28 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
       });
     }
 
-    it(`readable contrast and no accessibility problems, in ${scheme} mode, in every sheet on Review`, async () => {
+  }
+
+  // One test per sheet, each on a fresh page, checked in light and in dark
+  // where it stands (the phone's setting, switched in place), with its tap
+  // targets: small enough to stay well under the time limit.
+  for (const [name, life, reach] of REVIEW_SHEETS) {
+    it(`readable contrast and no accessibility problems in light and dark mode, and every tap target at least 44 by 44 points, on Review: ${name}`, async () => {
       const problems: string[] = [];
-      const context = await browser().newContext(phone({ colorScheme: scheme, bypassCSP: true }));
-      const page = await openScenario(context, base(), 'review-busy', '/review');
-      for (const sheet of await sheets(page)) {
-        problems.push(...(await axeViolations(page)).map((p) => `${scheme} sheet ${sheet.name}: ${p}`));
-        if (sheet.name === 'choices with a split that cannot be read') await page.getByTestId('split-needs').fill('11.50');
+      const context = await browser().newContext(phone({ colorScheme: 'light', bypassCSP: true }));
+      const page = await openScenario(context, base(), life, '/review');
+      await reach(page);
+      for (const scheme of ['light', 'dark'] as const) {
+        await page.emulateMedia({ colorScheme: scheme });
+        problems.push(...(await axeViolations(page)).map((p) => `${scheme}: ${p}`));
       }
-      await page.keyboard.press('Escape');
-      // The question that asks first, and the done message.
-      await page.getByTestId(`item-busy-early`).getByTestId('pick-paycheck').click();
-      await page.getByTestId('confirm-yes').waitFor();
-      problems.push(...(await axeViolations(page)).map((p) => `${scheme} sheet confirm paycheck: ${p}`));
-      await page.getByTestId('confirm-cancel').click();
-      await page.keyboard.press('Escape');
-      await page.getByTestId(`item-${idOf('review-busy', 'CORNER DELI')}`).getByTestId('pick-needs').click();
-      await page.getByTestId('notice').waitFor();
-      problems.push(...(await axeViolations(page)).map((p) => `${scheme} done message: ${p}`));
+      for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) problems.push(`${t.what} is ${t.width}x${t.height}`);
       await context.close();
       expect(problems).toEqual([]);
     });
   }
 
-  it('every tap target is at least 44 by 44 points, in every state and every sheet', async () => {
+  it('every tap target is at least 44 by 44 points, in every state', async () => {
     const small: string[] = [];
     const context = await browser().newContext(phone());
     for (const [life, path] of SCREENS) {
@@ -97,14 +142,6 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
       for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`${path} ${life}: ${t.what} is ${t.width}x${t.height}`);
       await page.close();
     }
-    const page = await openScenario(context, base(), 'review-busy', '/review');
-    for (const sheet of await sheets(page)) {
-      for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`sheet ${sheet.name}: ${t.what} is ${t.width}x${t.height}`);
-    }
-    await page.keyboard.press('Escape');
-    await page.getByTestId('item-busy-early').getByTestId('pick-paycheck').click();
-    await page.getByTestId('confirm-yes').waitFor();
-    for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`sheet confirm: ${t.what} is ${t.width}x${t.height}`);
     await context.close();
     expect(small).toEqual([]);
   });

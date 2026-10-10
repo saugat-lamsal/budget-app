@@ -862,13 +862,6 @@ This applies to every phase and every session, cloud or local.
     the end of each day (test code only). Worked examples bank 6 and 7.
   - Break-it: new breaks tagged "[keeper]" and "[zone]" (server section
     "history").
-- One browser test is skipped in WebKit, on his say-so (Oct 9, 2026, PR #17,
-  to keep CI moving): setup.test.ts "B92 a quick double tap on an answer
-  sends it once". On CI's WebKit runner the second tap arrives after the first
-  answer and the screen's refresh, and the Setup day screen sends it (the
-  server refuses it, so nothing counts twice). It still runs in Chromium. To
-  do: fix the screen so an answer already given cannot be sent again, test
-  first, then run the test in WebKit again.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
   rule 9.5, depends on it), and QUESTIONS.md A28 (what happens when the
   replay check finds a difference) and A29 (a store's refund to the debit

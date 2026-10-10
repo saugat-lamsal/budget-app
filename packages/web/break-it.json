@@ -1629,5 +1629,54 @@
     "find": "        {textRow('time-zone', 'Home time zone',",
     "replace": "        {row('time-zone', 'Home time zone',",
     "why": "[zone] the time zone row's arrow on a line of its own"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Setup.tsx",
+    "find": "  return { sending: sending || answeredOn === view, problem, send };",
+    "replace": "  return { sending, problem, send };",
+    "why": "[b92] Setup day buttons are enabled again before the screen shows the answer"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "      {always && <p className=\"sheet__note\">",
+    "replace": "      {always && <p className=\"sheet__note\" style={{ opacity: 0.35 }}>",
+    "why": "[review-sheets] the rule note is faint, only with \"always do this\" on"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "        <Card title=\"Not a payment to the old card?\" testId=\"sheet-unmark\">",
+    "replace": "        <Card title=\"Not a payment to the old card?\" testId=\"sheet-unmark\">\n          <p style={{ color: \"#c7c7cc\" }}>Marked by mistake?</p>",
+    "why": "[review-sheets] faint text on the A21 sheet only"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/test/browser/design-helpers.ts",
+    "find": "    for (const e of under) e.style.visibility = 'hidden';",
+    "replace": "",
+    "why": "[contrast] the page under an open sheet is not hidden, so axe cannot check the sheet's lower text"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/test/browser/design-helpers.ts",
+    "find": "      const unchecked = result.incomplete.filter((v) => v.id === 'color-contrast');",
+    "replace": "      const unchecked: AxeViolation[] = [];",
+    "why": "[contrast] text axe could not check passes unseen"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/test/browser/design-helpers.ts",
+    "find": "    for (const e of pinned) e.style.position = 'static';",
+    "replace": "",
+    "why": "[contrast] a pinned notice is checked while the page scrolls under it"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/test/browser/design-helpers.ts",
+    "find": "Number(alpha) < 1)",
+    "replace": "Number(alpha) < 0)",
+    "why": "[contrast] a see-through pinned notice is not a problem"
   }
 ]
