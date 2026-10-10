@@ -81,9 +81,20 @@ caught): 1,101 breaks, 1,100 caught, in 7 hours 36 minutes.
 - One older break was pointed at the code again ("[activity] 3.8 the savings
   account is read from checking", which the Payday view change had moved).
   The test that fails on a stale break (break-it-lists.test.ts) caught it.
-- The 54 older breaks in the files changed after the full run started (the
-  screens and views for Buckets, Payday and Home, and the demo lives): run
-  again; see below once it has finished.
+- Run again on the final code, every break in the files changed after the
+  full run started (the screens and views for Buckets, Payday and Home, and
+  the demo lives; the older ones and the new "[on-its-way]" ones): 62
+  breaks, 62 caught (60 min 17 s, 8 workers).
+
+CI on the pull request (Linux): checks, Chromium and WebKit all green.
+Windows (started by hand, with his OK): checks and WebKit green; Chromium
+failed once, in the pay period test only: a page could not open
+(net::ERR_NO_BUFFER_SPACE) with about 3,000 connections on 127.0.0.1
+waiting to close, nearly three times the most any run had before. The test
+opened the app afresh for every screen of every day, on two pages; it now
+opens it once a day on each page and moves between screens the way the
+app's own links do, about a quarter of the connections. Windows was run
+again after that.
 
 
 EVERY RULE AND ITS TESTS

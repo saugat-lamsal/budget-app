@@ -138,7 +138,9 @@ describe.each(ENGINES)('Phase 4 finish line: the full pay period through the scr
     expect(problems, `the real server's screens against the simulator's book`).toEqual([]);
     twin.views = expected;
     for (const path of SCREENS) {
-      const [shown, should] = await Promise.all([readScreen(page, real.base, path), readScreen(twin.page, real.base, path)]);
+      // The app opened afresh at the first screen, Home, then each screen the way its links go.
+      const reload = path === SCREENS[0];
+      const [shown, should] = await Promise.all([readScreen(page, real.base, path, reload), readScreen(twin.page, real.base, path, reload)]);
       const difference = screenDifference(shown, should);
       if (difference !== null) problems.push(`${day.date}, ${path}: ${difference}`);
       for (const p of await byHand(page, path, simulator, day.date, day.balances)) problems.push(`${day.date}, ${path}: ${p}`);

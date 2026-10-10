@@ -1048,6 +1048,16 @@ This applies to every phase and every session, cloud or local.
       this PC. The simulator's book on any day is made again from what it
       recorded (pay-period/period.ts simulatorBookAt) and checked against the
       plain data saved from its own book that evening.
+    - Found on Windows CI (Oct 10, Chromium): a page could not open,
+      net::ERR_NO_BUFFER_SPACE, with about 3,000 connections on 127.0.0.1
+      waiting to close (the most before was 1,165). The test opened the app
+      afresh for every screen of every day on two pages; it now opens it once
+      a day on each page (at Home) and moves between screens the way the
+      app's own links do (readScreen with reload false: pushState and
+      popstate, then the screen's title). Taps scroll their target to the
+      middle of the screen first (screens.ts tap): a card's last button
+      could sit under the tab bar, and Playwright's retry then stalled in
+      WebKit on a busy PC.
     - Found by it: sim-bank.ts named a transfer's leaving half differently
       from the simulator's book; it now keeps the simulator's own words.
   - Step 2, the agent (agent-pay-period/): instructions.txt, script.txt (the
@@ -1072,7 +1082,9 @@ This applies to every phase and every session, cloud or local.
     passing. The full break-it run: 1,101 breaks, 1,100 caught (7 h 36 min,
     8 workers, the browser tests in Chromium); the one that survived ("A18 a
     store refund is not known to be one") now has its test
-    (resort.test.ts) and is caught, and so are the new breaks.
+    (resort.test.ts) and is caught, and so are the new breaks. Every break in
+    the files changed after the full run started, run again on the final
+    code: 62 breaks, 62 caught. PR #19; CI green on Linux.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
   rule 9.5, depends on it), QUESTIONS.md A32 (a screen that changes an instant
   before a tap) and A33 (which purchases are likely for a refund), and his

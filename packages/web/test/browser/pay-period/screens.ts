@@ -1,6 +1,6 @@
 import { formatDollars, type Cents, type LeftoverAnswer, type Pot, type SortChoice, type SortingRule } from '@budget-app/money';
 import type { BrowserContext, Locator, Page } from 'playwright';
-import { activityPath } from '../../../src/app/routes.js';
+import { activityPath, routeOf, routeTitle } from '../../../src/app/routes.js';
 import { untilAnswered, untilQuiet, waitOrReport, watchPage } from '../harness.js';
 import type { ScreenPath, Views } from './expected.js';
 import type { RealServer } from './real-server.js';
@@ -12,9 +12,24 @@ import type { RealServer } from './real-server.js';
 export const typed = (cents: Cents): string => formatDollars(cents).replace('$', '');
 
 // What a person reads on a screen, once its numbers are in: its words and
-// numbers, with the spacing squashed.
-export async function readScreen(page: Page, base: string, path: ScreenPath): Promise<string> {
-  await page.goto(`${base}${path}`);
+// numbers, with the spacing squashed. With reload, the app is opened afresh at
+// the screen (Home's numbers are read once, when the app opens); otherwise it
+// moves there the way its own links do, without reloading, so only that
+// screen's numbers are asked for. (Opening the app afresh for every screen of
+// every day, on two pages, left about 3,000 connections waiting to close on
+// Windows CI, and one page could not open: net::ERR_NO_BUFFER_SPACE, Oct 10.)
+export async function readScreen(page: Page, base: string, path: ScreenPath, reload = true): Promise<string> {
+  if (reload || !page.url().startsWith(base)) await page.goto(`${base}${path}`);
+  else {
+    const route = routeOf(path);
+    if (route === null) throw new Error(`no screen at ${path}`);
+    await page.evaluate((to) => {
+      window.history.pushState({ from: window.location.pathname }, '', to);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }, path);
+    // The title changes in the same step as the screen, after it has asked for its numbers.
+    await page.waitForFunction((title) => document.title === title, routeTitle(route));
+  }
   await waitOrReport(page, 'main[aria-busy="false"]');
   await untilAnswered(page);
   await untilQuiet(page);
@@ -106,26 +121,36 @@ export async function noticeText(page: Page): Promise<string> {
   return (await page.getByTestId('notice').locator('.notice__text').innerText()).replace(/\s+/g, ' ').trim();
 }
 
+// A tap on something on the screen, once it is in the middle of the screen,
+// clear of the tab bar, as a person scrolls before tapping. (A card's last
+// button could sit under the tab bar, and Playwright's own retry then waited
+// out 30 s in WebKit on a busy PC, Oct 10. A button that could never be
+// scrolled clear of it would still fail.)
+async function tap(target: Locator): Promise<void> {
+  await target.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+  await target.click();
+}
+
 // Taps that make the choice on an item's card or sheet: on the card when it is
 // there, otherwise from More choices; and his yes when it asks first.
 async function choose(page: Page, card: Locator, sheet: Locator, choice: SortChoice): Promise<void> {
   if ('split' in choice) {
-    await card.getByTestId('more').click();
+    await tap(card.getByTestId('more'));
     const parts = choice.split;
     const first = parts[0];
     if (first === undefined || parts.length !== 2) throw new Error(`a split into ${parts.length} parts is not in this pay period`);
     await sheet.getByTestId(`split-${first.bucket}`).fill(typed(first.amount));
     await sheet.getByTestId('split-submit').click();
   } else if ('refundOf' in choice) {
-    await card.getByTestId(`match-${choice.refundOf}`).click();
+    await tap(card.getByTestId(`match-${choice.refundOf}`));
   } else if ('transfer' in choice) {
-    await card.getByTestId('more').click();
+    await tap(card.getByTestId('more'));
     await sheet.getByTestId(`choice-transfer-${choice.transfer}`).click();
   } else if ('to' in choice) {
     const direct = card.getByTestId(`pick-${choice.to}`);
-    if ((await direct.count()) > 0) await direct.click();
+    if ((await direct.count()) > 0) await tap(direct);
     else {
-      await card.getByTestId('more').click();
+      await tap(card.getByTestId('more'));
       await sheet.getByTestId(`choice-${choice.to}`).click();
     }
   } else {
@@ -159,7 +184,7 @@ export async function answerOnTheScreens(page: Page, real: RealServer, answer: A
         if (sorted === undefined || !('to' in sorted) || (sorted.to !== 'needs' && sorted.to !== 'wants')) throw new Error(`${id} is not waiting and not in one bucket: ${JSON.stringify(sorted)}`);
         if (!('to' in choice)) throw new Error(`sorting ${id} again with ${JSON.stringify(choice)} is not in this pay period`);
         await open(page, base, activityPath(sorted.to));
-        await page.getByTestId(`row-${id}`).click();
+        await tap(page.getByTestId(`row-${id}`));
         await page.getByTestId('activity-sheet').getByTestId(`choice-${choice.to}`).click();
         await page.getByTestId(`row-${id}`).waitFor({ state: 'detached' });
       }
@@ -170,7 +195,7 @@ export async function answerOnTheScreens(page: Page, real: RealServer, answer: A
       // 3.4: the payday questions, on Payday.
       const [id, choice] = answer.args as [string, LeftoverAnswer];
       await open(page, base, '/payday');
-      await page.getByTestId(`item-${id}`).getByTestId(`answer-${choice}`).click();
+      await tap(page.getByTestId(`item-${id}`).getByTestId(`answer-${choice}`));
       await page.getByTestId('confirm-yes').click();
       await page.getByTestId(`item-${id}`).waitFor({ state: 'detached' });
       await settled(page);
@@ -180,7 +205,7 @@ export async function answerOnTheScreens(page: Page, real: RealServer, answer: A
       // 13.3, from Buckets; 13.4 asks first when it should.
       const [move] = answer.args as [{ readonly from: Pot; readonly to: Pot; readonly amount: Cents }];
       await open(page, base, '/buckets');
-      await page.getByTestId('move-open').click();
+      await tap(page.getByTestId('move-open'));
       await page.getByTestId('move-from').selectOption(move.from);
       await page.getByTestId('move-to').selectOption(move.to);
       await page.getByTestId('move-amount').fill(typed(move.amount));
@@ -229,7 +254,7 @@ export async function answerOnTheScreens(page: Page, real: RealServer, answer: A
       const ours = book.rules().find((r) => r.contains === contains);
       if (ours === undefined) throw new Error(`no rule with the text of ${id}`);
       await open(page, base, '/settings');
-      await page.getByTestId(`rule-${ours.id}`).click();
+      await tap(page.getByTestId(`rule-${ours.id}`));
       await page.getByTestId(direction === 'up' ? 'sheet-move-up' : 'sheet-move-down').click();
       await noticeText(page);
       await settled(page);
@@ -242,7 +267,7 @@ export async function answerOnTheScreens(page: Page, real: RealServer, answer: A
 
 // Opens a Settings sheet from its row, fills it in, and saves it.
 async function sheet(page: Page, row: string, fields: Readonly<Record<string, string>>): Promise<void> {
-  await page.getByTestId(row).click();
+  await tap(page.getByTestId(row));
   for (const [testId, value] of Object.entries(fields)) {
     const field = page.getByTestId(testId);
     await field.waitFor();
