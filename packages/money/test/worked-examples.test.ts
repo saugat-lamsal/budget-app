@@ -4,6 +4,8 @@
 import { describe, expect, it } from 'vitest';
 import { checkAssignment, nextPayday, parseDollars, payoffCountdown, startTracking, startingMoney, withPendingCharges, type Book, type Cents } from '../src/index.js';
 import text from '../worked-examples.txt?raw';
+import { describeFailure, liveALife } from './sim/life.js';
+import { PAY_PERIOD, PAY_PERIOD_SEED } from './sim/pay-period.js';
 import { MOM_NAME, TEST_SETTINGS, appSide, arrived, cardCharge, deposit, dropped, openTestBook, payPerson, paycheck, pendingChanged, posted, purchase, refund, sent, takenBack, transfer, withdrawal } from './helpers.js';
 
 interface Example {
@@ -715,6 +717,39 @@ const examples: Record<number, () => Record<string, Cents>> = {
       'partial wants': partial.pots().wants,
       'partial unsorted spending': partial.pots().unsortedOut,
       'partial safe to spend': partial.safeToSpend('2026-10-06').amount,
+    };
+  },
+  41: () => {
+    // The planned pay period, lived by the simulator with all its checks.
+    const at: Record<string, Record<string, Cents>> = {};
+    const result = liveALife({
+      seed: PAY_PERIOD_SEED,
+      years: 0,
+      plan: PAY_PERIOD,
+      record: {
+        setupDay: () => undefined,
+        day: () => undefined,
+        endOfDay: ({ date, book }) => {
+          const needs = book.paydayReport().leftovers.find((l) => l.bucket === 'needs');
+          at[date] = { ...buckets(book), appSide: book.appSide(), debt: book.oldCardDebt(), needsQuestion: needs?.amount ?? -1 };
+        },
+      },
+    });
+    if (!result.ok) throw new Error(describeFailure(result, 0));
+    const day = (date: string): Record<string, Cents> => at[date] ?? {};
+    return {
+      'starting money': day('2026-10-01')['appSide'] ?? -1,
+      'first payday savings': day('2026-10-02')['savings'] ?? -1,
+      'first payday needs': day('2026-10-02')['needs'] ?? -1,
+      'first payday wants': day('2026-10-02')['wants'] ?? -1,
+      'lowered needs question': day('2026-10-03')['needsQuestion'] ?? -1,
+      'after the questions savings': day('2026-10-03')['savings'] ?? -1,
+      'after the questions wants': day('2026-10-03')['wants'] ?? -1,
+      'last savings': day('2026-10-16')['savings'] ?? -1,
+      'last needs': day('2026-10-16')['needs'] ?? -1,
+      'last wants': day('2026-10-16')['wants'] ?? -1,
+      'last mom reserve': day('2026-10-16')['mom reserve'] ?? -1,
+      'old card debt': day('2026-10-16')['debt'] ?? -1,
     };
   },
 };

@@ -1204,3 +1204,84 @@ shoes go back to review to be split again (4.5, A1):
 
 Check: full needs 500.00 | full wants 300.00 | full unsorted money in 0.00
 Check: partial needs 500.00 | partial wants 300.00 | partial unsorted spending 80.00 | partial safe to spend 220.00
+
+
+========================================================================
+EXAMPLE 41. The pay period played through the screens, Oct 1 to Oct 16 (Phase 4's finish line; rules 3.1 to 3.4, 4.4 to 4.7, 4.10, 5.2, 7.5, 8.1, 12.4, 13.1 to 13.3, 14.2; QUESTIONS.md A18, A29, B4)
+========================================================================
+
+The same pay period the browser test plays through the real server and the
+screens (packages/money/test/sim/pay-period.ts). Split 50/30/20, mom reserve
+1,500.00 a paycheck, capped at 3,000.00.
+
+Oct 1, setup day. Checking 2,412.36, less a 200.00 card payment that has
+       left for the everyday card (on its way), less a cafe charge of 6.25
+       still pending: 2,206.11. Savings 6,150.00. The everyday card owes
+       418.27 plus a grocer charge of 58.40 still pending: 476.67.
+       Starting money: 2,206.11 + 6,150.00 - 476.67 + 200.00 on its way
+       = 8,079.44 (14.2).
+       He puts 1,000.00 in the mom reserve and 6,150.00 - 1,000.00 =
+       5,150.00 in savings. The rest, 8,079.44 - 5,150.00 - 1,000.00 =
+       1,929.44: needs 60% = 1,157.66 (rounded down), wants 771.78.
+       That evening: the paycheck rule, the mom rule, and rules for GROCER
+       (needs), CAFE (wants) and MADE UP GAS (needs).
+
+Oct 2. The paycheck, 3,200.00 (3.1). The mom reserve takes 1,500.00 first:
+       1,000.00 + 1,500.00 = 2,500.00, under the cap (3.2). The rest,
+       1,700.00: savings 50% = 850.00, needs 30% = 510.00, wants 20% =
+       340.00 (3.3). Savings 5,150.00 + 850.00 = 6,000.00.
+       Needs 1,157.66 + 510.00 = 1,667.66. Wants 771.78 + 340.00 = 1,111.78.
+       It asks about the leftovers: needs 1,157.66, wants 771.78 (3.4).
+       A cafe, 4.85: wants 1,106.93.
+
+Oct 3. The cafe charge from setup day posts at 7.75 with a tip: only the
+       1.50 difference waits in review (14.2). He sorts it to needs:
+       needs 1,666.16. It was spent before payday, so the needs question
+       drops by as much: 1,157.66 - 1.50 = 1,156.16 (B4).
+       A restaurant, 46.20, pending, sorted to wants: wants 1,060.73.
+       He keeps the needs leftover (nothing moves) and moves the wants
+       leftover to savings: wants 1,060.73 - 771.78 = 288.95,
+       savings 6,000.00 + 771.78 = 6,771.78.
+
+Oct 4. A big box store, 142.80, split: needs 57.15, wants 85.65 (4.4).
+       Gas, 41.10, to needs by its rule. Needs 1,666.16 - 57.15 - 41.10 =
+       1,567.91. Wants 288.95 - 85.65 = 203.30.
+Oct 5. The restaurant posts at 55.44 with the tip (4.6): wants 203.30 -
+       9.24 = 194.06. An online order, 89.99, sorted to needs: 1,477.92.
+       600.00 to mom (8.1): the mom reserve 2,500.00 - 600.00 = 1,900.00.
+Oct 6. The pharmacy, 23.47, to needs: 1,454.45. A cinema charge, 18.00,
+       pending, left in review.
+Oct 7. The cinema posts at 21.50; sorted to wants: 194.06 - 21.50 =
+       172.56. A grocer charge, 72.15, to needs: 1,382.30. He moves 40.00
+       from wants to needs (13.3): wants 132.56, needs 1,422.30.
+Oct 8. 30.00 of the online order refunded on the everyday card, matched to
+       it (4.5, A18): needs 1,452.30. Gas charged twice: needs 1,411.20.
+Oct 9. A friend pays him back 25.00, to wants (7.5): 157.56. 150.00 to the
+       old card from checking comes out of needs (5.2): 1,261.20. A new
+       split for the next paycheck: 45/35/20 (13.1).
+Oct 10. The bank takes the copy of the gas charge back (4.10): needs
+       1,302.30. An online order on the debit card, 64.00, to needs:
+       1,238.30.
+Oct 11. A cafe, 5.40: wants 152.16. He sorts the online order of Oct 5
+       again, to wants (4.7): what is left of it, 89.99 - 30.00 = 59.99,
+       moves (B7). Needs 1,298.29, wants 92.17.
+Oct 12. The old card payment lands: it owes 2,874.55 - 150.00 = 2,724.55.
+       A refund on the old card, 12.60: it owes 2,711.95 (12.4).
+Oct 13. The debit card order refunded in full, 64.00, as money in to
+       checking, matched to it (A29): needs 1,362.29.
+Oct 14. A grocer, 96.30: needs 1,265.99.
+Oct 15. A restaurant, 38.00, pending, to wants: 54.17.
+
+Oct 16. The paycheck, 3,200.00, with the new split. The mom reserve would
+       be 1,900.00 + 1,500.00 = 3,400.00, over the 3,000.00 cap: 1,100.00
+       goes in, 400.00 to savings (3.2). The rest, 1,700.00: savings 45% =
+       765.00, needs 35% = 595.00, wants 20% = 340.00.
+       He moves the needs leftover, 1,265.99, to savings, and keeps the
+       wants leftover, 54.17.
+       Savings 6,771.78 + 400.00 + 765.00 + 1,265.99 = 9,202.77.
+       Needs 1,265.99 + 595.00 - 1,265.99 = 595.00.
+       Wants 54.17 + 340.00 = 394.17. Mom reserve 3,000.00.
+
+Check: starting money 8,079.44 | first payday savings 6,000.00 | first payday needs 1,667.66 | first payday wants 1,106.93
+Check: lowered needs question 1,156.16 | after the questions savings 6,771.78 | after the questions wants 288.95
+Check: last savings 9,202.77 | last needs 595.00 | last wants 394.17 | last mom reserve 3,000.00 | old card debt 2,711.95

@@ -17,12 +17,14 @@ const ALL = ['checking', 'savings', 'everyday-card', 'old-card'] as const;
 const CARDS = ['everyday-card', 'old-card'] as const;
 
 // How the made-up bank describes things, as bank rules. A transfer's
-// leaving half says where it went, and its arriving half where it came
-// from. Payments to people and card charges use the simulator's own words.
+// leaving half is in the simulator's own words, which say where it went
+// ("PAYMENT FROM checking TO old-card", "TRANSFER checking TO savings"), and
+// its arriving half says where it came from. Payments to people and card
+// charges use the simulator's own words too.
 export const SIM_BANK_RULES: readonly BankRule[] = checkBankRules([
   ...OWN.flatMap((from) =>
     ALL.filter((to) => to !== from).flatMap((to) => [
-      { id: `out-${from}-${to}`, account: from, contains: `SIM TRANSFER TO ${to}`, means: 'transfer', other: to },
+      { id: `out-${from}-${to}`, account: from, contains: `${from} TO ${to}`, means: 'transfer', other: to },
       { id: `in-${from}-${to}`, account: to, contains: `SIM TRANSFER FROM ${from}`, means: 'transfer', other: from },
     ]),
   ),
@@ -47,7 +49,9 @@ export const SIM_BANK_RULES: readonly BankRule[] = checkBankRules([
 // one removed and the posted one added and linked, a pending charge's new
 // amount as the pending one modified (A13), a transaction taken back as the
 // posted one removed (A14), and a transfer as two separate transactions, one
-// on each account.
+// on each account. Descriptions are the simulator's own, so the bank
+// connection's book is given what the simulator's book was; only a
+// transfer's arriving half says where it came from, for its bank rule.
 export function inPlaidFormat(fake: FakePlaid, txn: BankTransaction): void {
   switch (txn.kind) {
     case 'purchase':
@@ -69,11 +73,11 @@ export function inPlaidFormat(fake: FakePlaid, txn: BankTransaction): void {
       fake.addPosted({ id: txn.id, account: ACCOUNT[txn.account], amount: txn.amount, date: txn.date, description: txn.description });
       return;
     case 'transfer':
-      fake.addPosted({ id: `${txn.id}-out`, account: ACCOUNT[txn.from], amount: txn.amount, date: txn.date, description: `SIM TRANSFER TO ${txn.to}` });
+      fake.addPosted({ id: `${txn.id}-out`, account: ACCOUNT[txn.from], amount: txn.amount, date: txn.date, description: txn.description });
       fake.addPosted({ id: `${txn.id}-in`, account: ACCOUNT[txn.to], amount: -txn.amount, date: txn.date, description: `SIM TRANSFER FROM ${txn.from}` });
       return;
     case 'transfer-sent':
-      fake.addPosted({ id: txn.id, account: ACCOUNT[txn.from], amount: txn.amount, date: txn.date, description: `SIM TRANSFER TO ${txn.to}` });
+      fake.addPosted({ id: txn.id, account: ACCOUNT[txn.from], amount: txn.amount, date: txn.date, description: txn.description });
       return;
     case 'transfer-arrived':
       fake.addPosted({ id: txn.id, account: ACCOUNT[txn.to], amount: -txn.amount, date: txn.date, description: `SIM TRANSFER FROM ${txn.from}` });
