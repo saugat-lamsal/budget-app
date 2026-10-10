@@ -25,6 +25,7 @@ const ACTIVITY: readonly (readonly [string, string])[] = [
 ];
 const PAYDAY: readonly (readonly [string, string])[] = [
   ['payday-paid', '/payday'],
+  ['on-its-way', '/payday'],
   ['normal', '/payday'],
   ['late', '/payday'],
   ['bank-not-read', '/payday'],

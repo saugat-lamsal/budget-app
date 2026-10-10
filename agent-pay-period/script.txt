@@ -1,0 +1,214 @@
+THE PAY PERIOD: WHAT HAPPENS AT THE BANK, AND WHAT YOU DECIDE
+
+For 16 days, Thu Oct 1 to Fri Oct 16, 2026, you are the person the budget
+app is for. Everything here is made up: the bank is a made-up bank, and no
+real money is involved. The app is the one described in the rulebook
+(budget-app-rulebook.md). Use it in the browser the way a person would.
+
+How the days work
+- The app shows today's date in its own world, which starts on Thu Oct 1
+  (setup day). Real time does not matter.
+- The control page (its address is in your instructions) has two buttons:
+  "Log this browser in" (use it once, at the start, in the browser you use
+  for the app) and "Bring in the next day". Each press moves the app to 7:00
+  AM of the next day and puts that day's activity at the bank; the app reads
+  the bank by itself right after. You can also press it from the command
+  line: curl -s -X POST http://localhost:5391/next-day
+- Each day: bring in the day, then do what "You decide" says, then look at
+  every screen and write your notes for that day.
+
+What the bank shows
+- Amounts are what the bank shows on that account. On a card, a purchase is
+  money you owe; "back" or "in" means money that came back to you.
+- "Pending" is a charge the bank holds and has not posted yet. When it posts
+  later, the bank shows the final amount.
+- A transfer between your own accounts shows as two separate items: one
+  when the money leaves an account, and one when it arrives at the other.
+
+
+SETUP DAY, Thu Oct 1
+
+Already at the bank when you start (the app has read it):
+- Balances the bank shows as posted: checking $2,212.36, savings $6,150.00,
+  everyday card $418.27 owed, old card $2,874.55 owed.
+- Sep 30, checking: "PAYMENT FROM checking TO everyday-card", $200.00 left
+  checking. It has not reached the everyday card yet (it gets there Oct 2).
+- Sep 30, everyday card: MADE UP GROCER, $58.40, pending.
+- Oct 1, checking (debit card): MADE UP CAFE, $6.25, pending.
+- Earlier history the bank sent is just history.
+
+You decide:
+- Log in from the control page, then start setup day in the app.
+- Bank rules: the ones that came with the bank connection stay as they are.
+  Add one: on checking, bank text "ZELLE TO" means a payment to a person.
+- The $200.00 payment to the everyday card is on its way.
+- Your last paycheck before setup day came on Fri, Sep 18, 2026.
+- Starting money: mom reserve $1,000.00, savings $5,150.00, wants $771.78,
+  everything else in needs, nothing held for others.
+- Start tracking.
+- Then, on Settings, the same day: the paycheck rule is "ACME PAYROLL"; the
+  mom rule is "Made Up Mom". Add three sorting rules for purchases, in this
+  order: "GROCER" goes to needs, "CAFE" goes to wants, "MADE UP GAS" goes to
+  needs.
+
+
+Fri Oct 2
+
+At the bank:
+- Everyday card: the MADE UP GROCER charge of $58.40 posts, same amount.
+- Everyday card: "SIM TRANSFER FROM checking", $200.00 arrives (the payment
+  that left checking on Sep 30).
+- Checking: "ACME PAYROLL DIRECT DEP", $3,200.00 in.
+- Checking: MADE UP CAFE, $4.85, pending.
+- That evening you moved money to savings at the bank: "PAYMENT FROM
+  checking TO savings", $2,350.00 left checking (it arrives Oct 3).
+You decide: nothing to answer today. Leave any payday questions for tomorrow.
+
+
+Sat Oct 3
+
+At the bank:
+- Checking: the MADE UP CAFE charge from Oct 1 posts at $7.75 (it was $6.25
+  pending; you added a tip).
+- Checking: the MADE UP CAFE charge of $4.85 from Oct 2 posts, same amount.
+- Savings: "SIM TRANSFER FROM checking", $2,350.00 arrives.
+- Everyday card: MADE UP RESTAURANT, $46.20, pending.
+You decide:
+- The extra $1.50 on the cafe charge from setup day: needs.
+- The restaurant: wants.
+- Then the payday questions: keep the needs leftover where it is (roll it
+  over), and move the wants leftover to savings.
+
+
+Sun Oct 4
+
+At the bank:
+- Checking: MADE UP BIG BOX, $142.80, posted.
+- Everyday card: MADE UP GAS, $41.10, posted.
+You decide: split the big box purchase: $57.15 needs, the rest ($85.65) wants.
+
+
+Mon Oct 5
+
+At the bank:
+- Everyday card: the MADE UP RESTAURANT charge posts at $55.44 (it was
+  $46.20 pending; the tip).
+- Everyday card: MADE UP ONLINE SHOP, $89.99, posted.
+- Checking: "ZELLE TO Made Up Mom", $600.00 out.
+You decide: the online shop order: needs.
+
+
+Tue Oct 6
+
+At the bank:
+- Checking: MADE UP PHARMACY, $23.47, posted.
+- Everyday card: MADE UP CINEMA, $18.00, pending.
+You decide: the pharmacy: needs. Leave the cinema charge waiting until tomorrow.
+
+
+Wed Oct 7
+
+Before you bring in the day: open Review in the app (the cinema charge shows
+$18.00, pending) and leave that tab as it is.
+At the bank:
+- Everyday card: the MADE UP CINEMA charge posts at $21.50.
+- Checking: MADE UP GROCER, $72.15, pending.
+You decide:
+- Go back to the Review tab you left open, without reloading it, and sort the
+  cinema charge to wants from there. Write down exactly what happens.
+- If the cinema charge is still waiting after that, sort it to wants.
+- Move $40.00 from wants to needs by hand.
+
+
+Thu Oct 8
+
+At the bank:
+- Checking: the MADE UP GROCER charge of $72.15 posts, same amount.
+- Everyday card: "MADE UP ONLINE SHOP REFUND", $30.00 back. The bank does not
+  say which purchase it is for.
+- Everyday card: MADE UP GAS, $41.10, posted (the gas station charged you a
+  second time by mistake).
+You decide: the $30.00 refund is for the $89.99 MADE UP ONLINE SHOP order of
+Oct 5.
+
+
+Fri Oct 9
+
+At the bank:
+- Checking: "ZELLE FROM MADE UP FRIEND", $25.00 in (a friend paying you back).
+- Checking: "PAYMENT FROM checking TO old-card", $150.00 left checking (it
+  reaches the old card Oct 12).
+You decide:
+- The friend's $25.00 is a payback, into wants.
+- On Settings, change the split for your next paycheck to savings 45%, needs
+  35%, wants 20%.
+
+
+Sat Oct 10
+
+At the bank:
+- Everyday card: the bank takes back the second MADE UP GAS charge of $41.10
+  (the copy from Oct 8).
+- Checking: MADE UP ONLINE SHOP, $64.00, posted (debit card).
+You decide:
+- The online shop order: needs.
+- On Settings, add a sorting rule for purchases: "PHARMACY" goes to needs.
+  Then move it up one place.
+- After you have looked at every screen and written your notes for the day,
+  mark the bank's take-back as seen on Home.
+
+
+Sun Oct 11
+
+At the bank:
+- Checking: MADE UP CAFE, $5.40, posted.
+You decide: the MADE UP ONLINE SHOP order of Oct 5 ($89.99, $30.00 of it
+refunded) was really a want: sort it again, to wants, from the list of the
+bucket it is in now.
+
+
+Mon Oct 12
+
+At the bank:
+- Old card: "SIM TRANSFER FROM checking", $150.00 arrives (the Oct 9 payment).
+- Old card: "MADE UP STORE REFUND", $12.60 back.
+- Checking: "PAYMENT FROM checking TO everyday-card", $350.00 left checking
+  (it reaches the everyday card Oct 14).
+You decide: nothing to answer.
+
+
+Tue Oct 13
+
+At the bank:
+- Checking: "MADE UP ONLINE SHOP REFUND", $64.00 in: the store refunded the
+  Oct 10 order to your debit card.
+You decide: this money is the refund for the $64.00 MADE UP ONLINE SHOP order
+of Oct 10.
+
+
+Wed Oct 14
+
+At the bank:
+- Everyday card: "SIM TRANSFER FROM checking", $350.00 arrives.
+- Everyday card: MADE UP GROCER, $96.30, posted.
+You decide: nothing to answer.
+
+
+Thu Oct 15
+
+At the bank:
+- Checking: MADE UP RESTAURANT, $38.00, pending.
+You decide: the restaurant: wants.
+
+
+Fri Oct 16
+
+At the bank:
+- Checking: "ACME PAYROLL DIRECT DEP", $3,200.00 in.
+- That evening you moved money to savings at the bank: "PAYMENT FROM
+  checking TO savings", $2,436.78 left checking (it is still on its way at
+  the end).
+You decide: the payday questions: move the needs leftover to savings, and
+keep the wants leftover where it is (roll it over).
+
+That is the end of the pay period.

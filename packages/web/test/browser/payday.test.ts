@@ -308,6 +308,20 @@ describe.each(ENGINES)('Payday: books made for the test, in %s', (_name, engine)
 
   const RULES = [{ id: 'grocery', for: 'purchase', contains: 'GROCERY', bucket: 'needs' }] as const;
 
+  it('3.8 B46 when what is on its way covers what was left to move, it says nothing more is to move, not that the account already holds it', async () => {
+    const book = openTestBook({ pots: { savings: 200_000, momReserve: 50_000, wants: 1_000 } });
+    book.receive(paycheck('pay', '2026-10-09', 300_000));
+    const should = book.pots().savings + book.pots().momReserve;
+    // The account holds all but 120,000.00 of it; that much is on its way.
+    book.receive({ kind: 'transfer-sent', id: 'to-savings', from: 'checking', to: 'savings', date: '2026-10-09', amount: 120_000, description: 'TRANSFER TO SAVINGS' });
+    const { page, context } = await show(book, '2026-10-09', should - 120_000);
+    expect(await amountAt(page, 'savings-to-move')).toBe(0);
+    expect(await amountAt(page, 'savings-on-its-way')).toBe(120_000);
+    expect(await textAt(page, 'payday-savings')).toContain('Nothing more to move: the rest is on its way to the account.');
+    expect(await textAt(page, 'payday-savings')).not.toContain('already holds');
+    await context.close();
+  });
+
   it('3.5 a bucket with nothing left, or overspent, asks nothing and carries over, and the screen says so', async () => {
     const book = openTestBook({ pots: { needs: 0, wants: -2_500 } });
     book.receive(paycheck('p1', '2026-10-09', 400_000));
@@ -372,3 +386,34 @@ async function show(context: Awaited<ReturnType<Browser['newContext']>>, book: B
   liveServers.push(live.server);
   return { page: await openLive(context, live.base, path), context };
 }
+
+describe.each(ENGINES)('money already on its way to savings, on Payday and Home, in %s', (_name, engine) => {
+  const { browser, base } = useEngine(engine);
+
+  it('3.8 B46 Payday shows what is on its way to savings next to what is still to move, so they add up on the screen', async () => {
+    const { book, bank } = life('on-its-way');
+    const transfer = book.savingsTransfer(bank.savings);
+    const page = await openScenario(await browser().newContext(phone()), base(), 'on-its-way', '/payday');
+    expect(await amountAt(page, 'savings-on-its-way')).toBe(100_000);
+    expect(await amountAt(page, 'savings-to-move')).toBe(transfer.stillToMove);
+    // Should be, less what the account holds, less what is on its way: what is still to move (B46).
+    expect((await amountAt(page, 'savings-should')) - (await amountAt(page, 'savings-holds')) - (await amountAt(page, 'savings-on-its-way'))).toBe(transfer.stillToMove);
+    await page.context().close();
+  });
+
+  it('3.8 B46 Home\'s sheet for money to move shows what is on its way too', async () => {
+    const page = await openScenario(await browser().newContext(phone()), base(), 'on-its-way');
+    await page.getByTestId('attention-move-to-savings').click();
+    const sheet = page.getByTestId('savings-sheet');
+    await sheet.waitFor();
+    expect(await amountAt(page, 'savings-on-its-way')).toBe(100_000);
+    expect((await amountAt(page, 'savings-should')) - (await amountAt(page, 'savings-holds')) - (await amountAt(page, 'savings-on-its-way'))).toBe(await amountAt(page, 'savings-to-move'));
+    await page.context().close();
+  });
+
+  it('3.8 with nothing on its way to savings, Payday does not show a line for it', async () => {
+    const page = await openScenario(await browser().newContext(phone()), base(), 'payday-paid', '/payday');
+    expect(await page.getByTestId('savings-on-its-way').count()).toBe(0);
+    await page.context().close();
+  });
+});

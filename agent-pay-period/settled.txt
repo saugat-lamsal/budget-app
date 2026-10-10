@@ -1,0 +1,87 @@
+HOW EACH OF THE AGENT'S POINTS WAS SETTLED (Oct 10, 2026)
+
+The agent (Phase 4's finish line, Step 2) used the app on the real server
+with the made-up bank for the whole pay period, Oct 1 to Oct 16, without
+seeing the code. Its instructions, the script it was given, its notes and its
+report are in this folder. npm run pay-period-agent starts the same server
+for it again.
+
+Bottom line: every money number on every screen matched the rulebook on every
+day, worked out by the agent by hand. What it found were things shown in words
+or not shown at all, and places the rulebook does not settle. Each is settled
+against the rulebook below.
+
+
+THE DIFFERENCES IT FOUND
+
+1. Money on its way between his accounts was shown nowhere (12.5).
+   Rule 12.5 says money in transit is shown, and B44 (which he confirmed,
+   Oct 6) says money on its way to the old card is listed but not counted.
+   The screens showed only the total the check counts, in Home's check sheet.
+   A bug. Tests first (views-buckets.test.ts, buckets-text.test.ts, the
+   browser test buckets.test.ts, and the scripted pay period's own checks),
+   then fixed: Buckets lists each transfer with one side showing, "On its
+   way". QUESTIONS.md B174. Demo life: on-its-way. Breaks "[on-its-way]".
+
+2. Payday's "Move to savings" did not add up on the screen, and said "The
+   account already holds what it should" while $2,350.00 was still on its way
+   (3.8). The $0.00 still to move was right: B46 already says money on its way
+   to savings counts as moved. The words were not, and the money on its way
+   was not shown. A bug. Tests first (views-payday.test.ts,
+   views-home.test.ts, payday.test.ts), then fixed: Payday and Home's
+   "Money for savings" sheet show "On its way to the account", and Payday says
+   "Nothing more to move: the rest is on its way to the account." when it
+   covers the rest. QUESTIONS.md B175.
+
+3. Oct 7: the tap on the cinema charge was not refused (13.7). The agent's
+   background tab read its numbers again when the tap brought it forward, and
+   the tap counted against the item as it had just become, about 75 ms later.
+   As built, that is what 13.7 says (the screen showed it at the moment of the
+   tap). The rulebook does not say how long the screen must show something
+   for it to count. Not settled: QUESTIONS.md A32, with options and a
+   recommendation. The scripted pay period (Step 1) does reach the refusal.
+
+4. The Payday summary of the pay period that ended counts the $1.50 tip from
+   setup day's cafe charge in the new pay period, and shows "left in needs"
+   $1,157.66 next to a question of $1,156.16. Settled by B97 (a change after
+   payday to something from before it goes in the new pay period) and B105
+   (what was left at payday), with B109 (the question says "less $1.50 spent
+   before payday and sorted since"). No change.
+
+5. Every likely purchase for a refund was labelled "Same name" (4.5). As built
+   (B88), "made" is a name word every made-up store shares, so the label is
+   true by B88 but misleading; a real statement can do the same with a city
+   name. Rule 4.5 also lists fewer conditions than B88. Not settled:
+   QUESTIONS.md A33, with options and a recommendation.
+
+
+WHAT IT FOUND UNCLEAR IN THE RULEBOOK
+
+- 3.8: does money on its way to savings count as moved? Settled by B46: yes.
+- 10.1: what a bucket "started the pay period with" after a leftover goes to
+  savings. Settled by B56: the leftover comes out of it.
+- 3.4: is a purchase on payday itself "before payday"? Not written down
+  before: built as no; now QUESTIONS.md B176.
+- A refund on the old card. Settled by B13: it lowers the debt, no bucket.
+- 4.5: can a refund match a charge that was pending on setup day? Settled by
+  14.2: only the difference from what was counted on setup day moves.
+- 13.5: are sorting answers logged? Settled by B41: the change log has
+  settings, rules, hand moves (and take-backs); how each item was sorted is
+  kept on the item.
+- 13.7: the screen that read its numbers again at the tap. A32 above.
+- 5.2's "debt payoff" line is called "Payment to the old card" on the screen:
+  the same thing in other words.
+
+
+WHAT WAS HARD TO DO ON THE SCREENS (seen, not changed)
+
+- Typing right after a sheet opened sometimes went nowhere while it was still
+  sliding in. Not a rule; the design tests check sheets once they are still.
+  Worth a look on the phone.
+- The date field on Setup day did not take typed digits in the agent's
+  browser. On the iPhone a date field is a picker.
+- At a small window, the Add rule sheet sat partly below the screen until
+  scrolled. The design tests check the iPhone size (393 by 852 points).
+- Each screen showed "Loading your numbers" for a few seconds: the full
+  break-it run and the simulator were using every core at the time.
+- Settings is long, with the change log at the bottom.

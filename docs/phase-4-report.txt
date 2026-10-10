@@ -1,0 +1,189 @@
+PHASE 4 REPORT: THE SCREENS (end of phase, Oct 10, 2026)
+
+Testing bar point 7: every rule and its tests, the test count, the break-it
+results, and anything not tested and why. Branch phase-4-finish-line.
+
+
+BOTTOM LINE
+
+Phase 4's finish line is "an agent completes a full simulated pay period
+through the screens and every number matches". It is crossed:
+- Scripted (Step 1): one full pay period, setup day Oct 1 to the next payday
+  Oct 16, through the real server's screens in Chromium and WebKit. Every
+  day, every number on Home, Buckets, each bucket's list, Review, Payday and
+  Settings matched the simulator's own book, and the self-check passed.
+- The agent (Step 2), which had not seen the code, did the same pay period by
+  hand in a browser: every money number matched the rulebook on every screen,
+  every day. What it found (money on its way shown nowhere, and the Payday
+  sentence about it) is fixed, test first; two places the rulebook does not
+  settle are QUESTIONS.md A32 and A33.
+
+
+WHAT WAS DONE IN THIS CHUNK
+
+- Step 0: his answers to A30 (rule 0.6) and A31 (new rule 13.7), rulebook
+  draft 16, section 28.
+- Step 1: the full pay period through the screens, scripted
+  (packages/web/test/browser/pay-period.test.ts, 34 tests in each engine).
+  What happens is the simulator's planned pay period
+  (packages/money/test/sim/pay-period.ts; worked example 41 is the same
+  period by hand). On the real server (npm run serve's code) with the
+  made-up bank: an empty database, the first code and a passkey, setup day
+  through its screens, the bank's activity only by the sync timer, every
+  answer tapped on the screens, a tap refused because a sync changed the
+  item (13.7), two restarts. Every day each screen is compared three ways
+  with the simulator's own book: the numbers the server sends, the page as
+  read, and each number read by what it is against the money math.
+- Step 2: the agent (agent-pay-period/). It had only the rulebook, a script
+  of the bank's activity and his decisions, and the app's address. It did
+  setup day and every answer in a browser, worked out every number by hand
+  first, and wrote down both. Every money number matched. What it found,
+  and how each was settled, is in agent-pay-period/settled.txt:
+  - fixed, test first: money on its way between his accounts is now listed
+    on Buckets (12.5, B44; it was shown nowhere), and Payday and Home show
+    what is on its way to savings, with words that are true (3.8, B46);
+  - not settled by the rulebook: QUESTIONS.md A32 (a screen that changes an
+    instant before a tap, 13.7) and A33 (which purchases are likely for a
+    refund, 4.5 and B88);
+  - settled by part B items already there: the rest.
+
+
+THE TESTS
+
+npm test, the full run of Oct 10 at the end: 3,221 tests in 156 files, all
+passing, after the type check.
+  money 1,118, server 989, screens without a browser 105, screens in
+  Chromium and WebKit 949, repository checks 60.
+
+Simulations (Phase 2's simulator, every daily check on every day):
+- 1,000 lives of 5 years (node scripts/simulate.mjs): 1,825,000 simulated
+  days, every check passed (39 minutes on 16 threads).
+- The simulated life through the database, the server started again every
+  simulated day (SIM_DB_SEEDS=20 SIM_DB_YEARS=1): 20 simulated years; every
+  day the history replayed to its totals, the self-check passed, and every
+  bucket was the simulator's (19 minutes).
+- The pay period for the screens (pay-period.test.ts in the money package),
+  and through the screens and the real server in both engines (Step 1).
+
+
+BREAK-IT (testing bar point 3)
+
+The full run, every section, all three lists (node scripts/break-it.mjs,
+8 workers, the browser tests in Chromium: a break one engine catches is
+caught): 1,101 breaks, 1,100 caught, in 7 hours 36 minutes.
+- The one that survived: [activity] "A18 a store refund is not known to be
+  one" (packages/money/src/book.ts, the re-sort sheet of a store refund
+  sorted into a bucket). No test looked at it. A test was added
+  (resort.test.ts, "4.5 A18 B100 it is still known as a store refund ...");
+  the break is now caught.
+- New breaks for this chunk: "[pay-period]" (3, serveBooks) and
+  "[on-its-way]" (9, the fixes from the agent's findings): all caught.
+- One older break was pointed at the code again ("[activity] 3.8 the savings
+  account is read from checking", which the Payday view change had moved).
+  The test that fails on a stale break (break-it-lists.test.ts) caught it.
+- The 54 older breaks in the files changed after the full run started (the
+  screens and views for Buckets, Payday and Home, and the demo lives): run
+  again; see below once it has finished.
+
+
+EVERY RULE AND ITS TESTS
+
+How many tests have the rule's number in their name, with one of them. From
+the full run's results (node scripts/rule-table.mjs). Every numbered rule
+has at least one; test/every-rule-has-a-test.test.ts now fails if one ever
+does not.
+
+Rule  What it says                                  Tests  One of them
+0.1   All amounts are stored in whole cents.        63     0.1 dollars and cents with commas
+0.2   Every number and rule in this document is a s…90     0.2 split
+0.3   Changing a setting never rewrites a past pay …4      0.3 past paycheck split stays as it was
+0.4   The app is read-only. It never moves money.   15     0.4 the screens have source files to check
+0.5   If the app's totals do not match the bank, it…43     0.5 the day and the time, in the phone's time zone
+0.6   What the bank sent and every answer you give …9      0.6 A28 a rule changed on purpose stops the server; the check shows every event whose tot…
+3.1   A deposit that matches the paycheck rule is a…33     3.1 and 6.1 money into checking or savings is a deposit, unless it is a transfer
+3.2   The mom reserve comes off first. If the reser…57     3.2 a new paycheck adds to the reserve up to the cap
+3.3   The rest is split by the percentages. Needs a…45     3.3 3.4 the split, the leftover setting, and a text rule
+3.4   At each payday, unspent needs and unspent wan…86     3.4 the leftover answer: move to savings moves it, roll over keeps it
+3.5   An overspent bucket carries over as a negativ…18     3.5 an overspent bucket shows its negative amount
+3.6   A third paycheck in a month is handled exactl…2      3.6 three January paychecks each split and each start a period
+3.7   A paycheck-looking deposit that arrives less …21     3.7 11.2 days, one and many
+3.8   On payday the app tells you how much should b…53     3.8 shows what should be in the savings account and what is still to move
+4.1   A purchase on the debit card or the everyday …16     4.1 money out of checking or a card is a purchase, unless a rule says otherwise
+4.2   The bucket is picked by your rules. No matchi…57     4.2 6.2 7.4 takes adding, changing, and removing a rule
+4.3   Unsorted spending is held back from safe-to-s…22     4.3 a purchase no rule picks waits in review, held back from safe to spend
+4.4   A purchase can be split across buckets. The p…49     4.4 a purchase can be split from the list, with the rest worked out by the money math
+4.5   A refund goes back into the bucket the purcha…99     4.5 A18 a refund put into a bucket can be matched to its purchase, once he says yes
+4.6   A pending charge counts once. When it posts, …57     4.6 a pending charge counts once, and the posted one replaces it, even at a new amount (a…
+4.7   Re-sorting a purchase updates the buckets rig…92     4.7 sorting a purchase from needs to wants is what the book does, and the buckets change …
+4.8   Fees and interest on the everyday card go to …13     4.8 and 5.5 fees and interest on a card
+4.9   Money leaving savings that is not a transfer …22     4.9 13.6 money out of savings cannot get a rule
+4.10  If the bank takes back a transaction the app …36     4.10 the bank taking back a transaction the app counted: the app takes it back too, logs …
+5.1   Checking to everyday card: not spending. The …11     5.1 and 5.2 card payments are read as their two halves
+5.2   Checking to old card: spending. It comes out …39     5.2 a payment to the old card from savings comes out of savings once confirmed
+5.3   Checking to savings, or savings to checking: …11     5.3 a transfer between checking and savings is read as its two halves
+5.4   A new purchase on the old card is flagged and…19     5.4 a flag on the old card is cleared by seeing it, and no money moves
+5.5   Interest or fees on the old card raise the de…9      5.5 interest on the old card raises the debt, and no bucket
+5.6   Review also offers "transfer between my accou…80     5.6 A20 B110 a payment marked as going to the old card is sorted from the list as what th…
+6.1   They always go to review, with four choices:  109    6.1 money that came in can be put somewhere else
+6.2   A rule can make the choice automatic for a kn…31     6.2 7.4 a rule for money in and one for a person
+7.1   A deposit marked "not mine" adds to "held for…5      7.1 it is not income and not split
+7.2   A payment out marked "not mine" lowers "held …4      7.2 it is not spending
+7.3   "Held for others" is shown as its own number …26     7.3 B22 settled, holding money for others, or someone owes you
+7.4   Payments to people go to the daily review unl…39     7.4 and 8.1 a payment to a person comes out of checking
+7.5   A friend paying you back is a payback (6.1).  5      7.5 payback into needs
+7.6   In review, a payment to a person can go to ne…45     7.6 B73 a payment you marked for mom can be sorted to needs, and the reserve gets its mon…
+8.1   Any payment that matches the mom rule comes o…31     8.1 a payment that matches the mom rule comes out of the mom reserve
+8.2   The app shows how much you have sent this cal…47     8.2 7.3 "buckets-busy" holds a roommate's money and has sent mom 2,500.00 this month, wit…
+8.3   If a payment is bigger than the reserve, the …22     8.3 a payment bigger than the reserve counts in full toward the month
+8.4   The reserve carries over between months, up t…3      8.4 January reserve carries into February paychecks
+9.1   Everyday card: reminders show the statement b…27     9.1 days before the due date
+9.2   Old card: reminders show the minimum and the …7      9.2 the old card shows its minimum and due date only
+9.3   Everyday card: reminders continue until the p…36     9.3 the statements come in with each sync, and a payment since the statement stops the re…
+9.4   If the due date passes and the payments the a…37     9.4 past the due date with less than the minimum paid is overdue, every day
+9.5   Old card payoff countdown: what the old card …36     9.5 off until the promo end date is entered
+9.6   Home shows a card payment as due every day fr…19     9.6 on the days between the reminders too, until it is paid (A17)
+10.1  Low bucket: needs or wants falls below the al…82     10.1 what is left over what the bucket started the pay period with
+10.2  Empty bucket: needs or wants reaches zero or …38     10.2 zero and below are an empty bar
+10.3  Daily review: sent at the review time, only i…46     10.3 one and more
+10.4  Totals do not match the bank (section 12).    5      10.4 one cent off: mismatch alert with the difference
+10.5  Bank connection needs you to log in again.    11     10.5 when the bank wants a new login, the sync says so and changes nothing else
+10.6  The bank took back a transaction the app had …18     10.6 a take-back marked seen leaves Home, and picking the life again brings it back
+11.1  Safe to spend = wants left, minus unsorted sp…35     11.1 safe to spend is wants left minus unsorted spending
+11.2  It is shown with the number of days until the…48     11.2 days before payday
+11.3  Savings, mom reserve, held for others, and un…7      11.3 savings, mom reserve, held for others, and unsorted money in are left out
+12.1  Bank side: checking + savings - everyday card…18     12.1 a charge pending on savings counts while pending, and its posting replaces it (4.6, …
+12.2  App side: savings + needs + wants + mom reser…46     12.2 the total is the app side of the self-check, with unsorted money counted
+12.3  The two must be equal. If not, the app shows …34     12.3 when the totals match the bank it says so
+12.4  The old card balance is tracked separately as…25     12.4 B44 one to the old card says it is not part of the check
+12.5  Money in transit: a transfer that has left on…71     12.5 each says where it is going
+13.1  A change to the split or the mom reserve appl…81     13.1 A9 what a settings change did
+13.2  A new or changed sorting rule applies to new …123    13.2 A19 what a rule change did
+13.3  You can move money between buckets by hand at…55     13.3 wants to needs: it moves, with no question asked
+13.4  Moving money out of savings or the mom reserv…33     13.4 out of savings: it asks, with the reason, and nothing moves
+13.5  Every change and every manual move is logged …57     13.5 every setting, written for the change log
+13.6  When you correct something and choose "always…70     13.6 A20 B110 "always do this" on a marked payment makes the rule and sorts it
+13.7  An answer about an item that changed since th…14     13.7 A31 through /api/choice too: an answer sent with what the screen showed is refused w…
+14.1  The app reads your current balances.          13     14.1 12.4 A10 "setup-day": the balances with pending charges, and the old card apart
+14.2  You assign the starting money (checking + sav…43     14.2 A10 a charge pending on Setup day, through the screens, that posts with a tip after …
+14.3  The self-check must pass before tracking star…38     14.3 what still stops tracking from starting
+
+Rules: 72. Rules without a test named after them: none.
+Tests in this run: 3221, passed: 3221, failed: 0, skipped: 0.
+
+
+WHAT IS NOT TESTED, AND WHY
+
+- Phone alerts (Phase 5). The simulator checks every alert every simulated
+  day (section 10), but nothing is sent to a phone yet.
+- Hosting, backups, and the iPhone itself (Phase 6). The screens are tested
+  at the iPhone's size in Chromium and WebKit (Safari's engine), not on a
+  phone. Passkeys are tested only in Chromium's virtual authenticator; WebKit
+  has none, so its tests log in the tests' own way (login-for-tests.ts).
+- The real bank (Phase 7). Everything uses the made-up bank in Plaid's
+  format, and two recorded answers from Plaid's test bank.
+- In this pay period: no card statement closes, so Home shows no card
+  reminder in it (section 9 is tested elsewhere, and in the simulator every
+  day); and no early paycheck (3.7), money from savings (4.9), old card
+  purchase (5.4), payment marked "for mom" (7.6), or mom payment bigger than
+  the reserve (8.3). Each has its own tests and is in the simulated lives.
+- A32 and A33 are built as they are now until he answers.

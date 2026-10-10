@@ -877,8 +877,8 @@
   {
     "section": "review",
     "file": "packages/server/src/views/payday.ts",
-    "find": "transfer: book.savingsTransfer(bank.savings) }",
-    "replace": "transfer: book.savingsTransfer(bank.checking) }",
+    "find": "transfer: book.savingsTransfer(bank.savings), onItsWay",
+    "replace": "transfer: book.savingsTransfer(bank.checking), onItsWay",
     "why": "[activity] 3.8 the savings account is read from checking"
   },
   {
@@ -2350,5 +2350,54 @@
     "find": "      syncing = Promise.reject(error);",
     "replace": "      throw error;",
     "why": "[sync] section 2 a sync that cannot start stops the server"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/serve/serving.ts",
+    "find": "syncer: { syncDueIn: () => keeper.syncDueIn(), sync: () => keeper.sync(bank) },",
+    "replace": "syncer: { syncDueIn: () => null, sync: () => keeper.sync(bank) },",
+    "why": "[pay-period] section 2 the timer npm run serve starts never finds a sync due"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/serve/serving.ts",
+    "find": "    clock: input.clock,",
+    "replace": "    clock: { setTimeout: () => 0, clearTimeout: () => undefined },",
+    "why": "[pay-period] section 2 the timer npm run serve starts is never woken by its clock"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/serve/serving.ts",
+    "find": "const server = keeper.server(input.webRoot, input.origin, input.onError);",
+    "replace": "const server = keeper.server(input.webRoot, () => 'http://localhost:1', input.onError);",
+    "why": "[pay-period] Step 2 the server npm run serve starts checks requests against the wrong address"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "items: transit.items.map((item) => ({ ...item, counted: item.to !== 'old-card' }))",
+    "replace": "items: transit.items.map((item) => ({ ...item, counted: true }))",
+    "why": "[on-its-way] 12.4 B44 money on its way to the old card is said to be counted in the check"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "    onItsWay: onItsWayOf(book),",
+    "replace": "    onItsWay: { counted: 0, items: [] },",
+    "why": "[on-its-way] 12.5 B44 Buckets is told nothing is on its way"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/payday.ts",
+    "find": ".items.filter((item) => item.to === 'savings' && item.seen === 'left')",
+    "replace": ".items.filter((item) => item.to === 'savings')",
+    "why": "[on-its-way] 3.8 B46 money that reached savings before it showed leaving is shown as on its way"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/home.ts",
+    "find": "        onItsWay: onItsWayToSavings(book),",
+    "replace": "        onItsWay: 0,",
+    "why": "[on-its-way] 3.8 B46 Home is told nothing is on its way to savings"
   }
 ]

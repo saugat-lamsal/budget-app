@@ -54,6 +54,11 @@ export async function byHand(page: Page, path: string, book: Book, today: IsoDat
     same(problems, '10.1 what needs and wants started the pay period with', [await cents(page, 'bucket-needs-of'), await cents(page, 'bucket-wants-of')], [started.needs, started.wants]);
     same(problems, '8.2 sent to mom this month', await cents(page, 'mom-sent'), book.momSentInMonth(today.slice(0, 7)).sent);
     same(problems, '12.4 the old card debt', await cents(page, 'old-card-debt'), book.oldCardDebt());
+    // 12.5, B44: every transfer with one side showing, the old card's too.
+    const transit = book.inTransit().items;
+    const shownIds = await page.locator('[data-testid^="transit-"][data-testid$="-amount"]').evaluateAll((els) => els.map((e) => (e.getAttribute('data-testid') ?? '').slice('transit-'.length, -'-amount'.length)));
+    same(problems, '12.5 what is on its way', shownIds.sort(), transit.map((i) => i.id).sort());
+    for (const item of transit) same(problems, `12.5 ${item.id} on its way`, await cents(page, `transit-${item.id}-amount`), item.amount);
   } else if (path.startsWith('/buckets/')) {
     const pot = POT_SLUGS[path.slice('/buckets/'.length)] as Pot;
     same(problems, `B97 what went in and out of ${pot}`, numbersOf(await readActivity(page)), numbersOf(activityOf(book, pot)));
@@ -82,6 +87,9 @@ export async function byHand(page: Page, path: string, book: Book, today: IsoDat
       same(problems, '3.3 the parts add up to the paycheck', fits + (paycheck.amount - fits - needs - wants) + needs + wants, paycheck.amount);
       const transfer = book.savingsTransfer(bank.savings);
       same(problems, '3.8 move to savings: should be, holds, still to move, extra', [await cents(page, 'savings-should'), await cents(page, 'savings-holds'), await cents(page, 'savings-to-move'), await cents(page, 'savings-extra')], [transfer.shouldBeInSavings, transfer.savingsAccountBalance, transfer.stillToMove, transfer.extraInSavings ?? null]);
+      // B46: what is on its way to the savings account, which counts as moved.
+      const onItsWay = book.inTransit().items.filter((i) => i.to === 'savings' && i.seen === 'left').reduce((sum, i) => sum + i.amount, 0);
+      same(problems, '3.8 B46 on its way to the savings account', await cents(page, 'savings-on-its-way'), onItsWay > 0 ? onItsWay : null);
       for (const leftover of report.leftovers) {
         const card = page.getByTestId(`leftover-${leftover.bucket}`);
         const shown = (await card.count()) === 0 ? null : (await card.innerText()).replace(/\s+/g, ' ');

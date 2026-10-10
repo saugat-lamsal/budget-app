@@ -1,7 +1,7 @@
 import { itemKey } from '../src/item-key.js';
 import { type BankBalances, type Book } from '@budget-app/money';
 import { describe, expect, it } from 'vitest';
-import { MOM_NAME, START_DATE, openTestBook, payPerson, paycheck, posted, purchase } from '../../money/test/helpers.js';
+import { MOM_NAME, START_DATE, openTestBook, payPerson, paycheck, posted, purchase, sent } from '../../money/test/helpers.js';
 import { paydayView, type PaydayView } from '../src/views/payday.js';
 
 // The Payday screen's numbers (QUESTIONS.md B104 to B107), worked out on the
@@ -110,13 +110,14 @@ describe('3.8 how much to move to savings', () => {
     expect(view(book, bank(book, should - 135_000)).toSavings).toEqual({
       state: 'known',
       transfer: { shouldBeInSavings: should, savingsAccountBalance: should - 135_000, stillToMove: 135_000 },
+      onItsWay: 0,
     });
   });
 
   it('3.8 an account that holds enough has nothing to move', () => {
     const book = aBook();
     const should = book.pots().savings + book.pots().momReserve;
-    expect(view(book, bank(book, should)).toSavings).toEqual({ state: 'known', transfer: { shouldBeInSavings: should, savingsAccountBalance: should, stillToMove: 0 } });
+    expect(view(book, bank(book, should)).toSavings).toEqual({ state: 'known', transfer: { shouldBeInSavings: should, savingsAccountBalance: should, stillToMove: 0 }, onItsWay: 0 });
   });
 
   it('3.8 an account that holds more than it should has nothing to move, and the extra is shown on its own', () => {
@@ -125,6 +126,7 @@ describe('3.8 how much to move to savings', () => {
     expect(view(book, bank(book, should + 2_500)).toSavings).toEqual({
       state: 'known',
       transfer: { shouldBeInSavings: should, savingsAccountBalance: should + 2_500, stillToMove: 0, extraInSavings: 2_500 },
+      onItsWay: 0,
     });
   });
 
@@ -141,6 +143,7 @@ describe('3.8 how much to move to savings', () => {
     expect(view(book, bank(book, should - 100_000)).toSavings).toEqual({
       state: 'known',
       transfer: { shouldBeInSavings: should, savingsAccountBalance: should - 100_000, stillToMove: 0 },
+      onItsWay: 100_000,
     });
   });
 });
@@ -157,5 +160,32 @@ describe('asking changes nothing, and the answer can be sent as JSON', () => {
     const book = aBook();
     const v = paydayView({ today: '2026-10-12', book, bank: bank(book, 0), madeUpData: false });
     expect(JSON.parse(JSON.stringify(v))).toEqual(v);
+  });
+});
+
+describe('3.8 money already on its way to savings', () => {
+  it('3.8 B46 what is on its way to savings is shown with what is still to move, which counts it as moved', () => {
+    const book = aBook();
+    book.receive(sent('to-savings', '2026-10-09', 150_000, 'checking', 'savings'));
+    const v = tracking(paydayView({ today: '2026-10-09', book, bank: bank(book, 100_000), madeUpData: false }));
+    const transfer = book.savingsTransfer(100_000);
+    expect(v.toSavings).toEqual({ state: 'known', transfer, onItsWay: 150_000 });
+    expect(transfer.stillToMove).toBe(transfer.shouldBeInSavings - 100_000 - 150_000);
+  });
+
+  it('3.8 with nothing on its way to savings, nothing is shown on its way; money on its way to a card is not money to savings', () => {
+    const book = aBook();
+    book.receive(sent('to-card', '2026-10-09', 30_000, 'checking', 'everyday-card'));
+    const v = tracking(paydayView({ today: '2026-10-09', book, bank: bank(book, 100_000), madeUpData: false }));
+    expect(v.toSavings).toEqual({ state: 'known', transfer: book.savingsTransfer(100_000), onItsWay: 0 });
+  });
+});
+
+describe('3.8 money that reached savings before it showed leaving', () => {
+  it('3.8 12.5 it is in the account already, so it is not shown as on its way to it', () => {
+    const book = aBook();
+    book.receive({ kind: 'transfer-arrived', id: 'landed-first', from: 'checking', to: 'savings', date: '2026-10-09', amount: 40_000, description: 'TRANSFER FROM CHK' });
+    const v = tracking(paydayView({ today: '2026-10-09', book, bank: bank(book, 140_000), madeUpData: false }));
+    expect(v.toSavings).toMatchObject({ state: 'known', onItsWay: 0 });
   });
 });

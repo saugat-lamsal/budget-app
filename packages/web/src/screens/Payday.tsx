@@ -227,6 +227,15 @@ function MoveToSavings({ view }: { readonly view: Tracking }) {
             <dd>
               <Money cents={t.transfer.savingsAccountBalance} testId="savings-holds" />
             </dd>
+            {/* B46: money on its way to the account counts as moved. */}
+            {t.onItsWay > 0 && (
+              <>
+                <dt>On its way to the account</dt>
+                <dd>
+                  <Money cents={t.onItsWay} testId="savings-on-its-way" />
+                </dd>
+              </>
+            )}
             <dt className="figures__total">Still to move</dt>
             <dd className="figures__total">
               <Money cents={t.transfer.stillToMove} testId="savings-to-move" />
@@ -241,7 +250,11 @@ function MoveToSavings({ view }: { readonly view: Tracking }) {
             )}
           </dl>
           <p className="sheet__note" style={{ padding: '0 var(--space-4) var(--space-4)' }}>
-            {t.transfer.stillToMove > 0 ? "Move it from checking to savings in your bank's app. This app never moves money." : 'The account already holds what it should.'}
+            {t.transfer.stillToMove > 0
+              ? "Move it from checking to savings in your bank's app. This app never moves money."
+              : t.transfer.extraInSavings === undefined && t.onItsWay > 0
+                ? 'Nothing more to move: the rest is on its way to the account.'
+                : 'The account already holds what it should.'}
           </p>
         </>
       )}

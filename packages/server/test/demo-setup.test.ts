@@ -123,7 +123,7 @@ describe('14 the demo lives not set up yet', () => {
     // account holds 7,935.90 with its charge pending: 1,264.10 to move (3.8).
     expect(home.attention).toEqual([
       { kind: 'still-to-set', settings: ['paycheckRule', 'momRule'] },
-      { kind: 'move-to-savings', stillToMove: 126_410, shouldBeInSavings: 920_000, savingsAccountBalance: 793_590 },
+      { kind: 'move-to-savings', stillToMove: 126_410, shouldBeInSavings: 920_000, savingsAccountBalance: 793_590, onItsWay: 0 },
     ]);
     expect(await json<SetupView>('/api/setup', life)).toEqual({ state: 'tracking', madeUpData: true });
     // Setting up twice is refused.
