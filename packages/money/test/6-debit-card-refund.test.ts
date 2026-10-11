@@ -43,6 +43,14 @@ function twins(setup: (b: Book) => void, amount: number, of: string, date = '202
   return { byHand, byBank };
 }
 
+// Small purchases at other stores on checking, so the shop's name is not on
+// most of the purchases there (A33: then it would not be a name). Each is less
+// than any refund here, so none of them is ever a likely purchase itself.
+function otherStores(b: Book, count: number): void {
+  const names = ['CORNER DELI', 'BLUE CAFE', 'HARBOR BAKERY', 'TOWN NEWSSTAND'];
+  for (let i = 0; i < count; i += 1) b.receive(purchase(`other${i}`, '2026-10-01', 300, names[i], { account: 'checking' }));
+}
+
 function same(byHand: Book, byBank: Book): void {
   expect(byHand.pots()).toEqual(byBank.pots());
   expect(byHand.purchases()).toEqual(byBank.purchases());
@@ -57,6 +65,8 @@ describe('4.5 6.1 A29 money in to checking can be a store refund to the debit ca
     b.receive(purchase('p1', '2026-10-01', 2_000, SHOP, { account: 'checking' }));
     b.receive(purchase('p2', '2026-10-02', 5_000, SHOP, { account: 'checking' }));
     b.receive(purchase('card', '2026-10-02', 2_000, SHOP));
+    // Other stores on checking, so the shop's name is not on most of them (A33).
+    otherStores(b, 2);
     b.receive(deposit('d1', '2026-10-06', 2_000, `${SHOP} REFUND`));
     const d = detail(b, 'd1');
     expect(d.likelyPurchases.map((p) => p.id)).toEqual(['p1', 'p2']);
@@ -76,6 +86,7 @@ describe('4.5 6.1 A29 money in to checking can be a store refund to the debit ca
     b.receive(purchase('later', '2026-10-07', 5_000, SHOP, { account: 'checking' }));
     b.receive(purchase('card', '2026-10-01', 5_000, SHOP));
     b.receive(payPerson('friend', '2026-10-01', 5_000, 'MADE UP FRIEND'));
+    otherStores(b, 3);
     b.receive(deposit('d1', '2026-10-06', 2_000, `${SHOP} REFUND`));
     expect(sorting(detail(b, 'd1')).match.slice().sort()).toEqual(['exact', 'same-day']);
   });

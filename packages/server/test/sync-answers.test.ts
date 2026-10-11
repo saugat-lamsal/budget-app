@@ -111,6 +111,9 @@ describe('Step 3: an answer about something a sync just changed is refused, with
   it('13.7 A31 4.5 a new purchase joining the likely purchases of a refund waiting in review does not change the refund: matching it to the one he picked goes through', async () => {
     const life = await setUp();
     life.h.fake.addPosted({ id: 'shoes-1', account: E, amount: 8_000, date: '2026-10-02', description: 'MADE UP SHOES' });
+    // Other stores on the card, so the shoe shop's name is not on most purchases (A33).
+    life.h.fake.addPosted({ id: 'deli-1', account: E, amount: 300, date: '2026-10-02', description: 'CORNER DELI' });
+    life.h.fake.addPosted({ id: 'cafe-2', account: E, amount: 300, date: '2026-10-02', description: 'BLUE CAFE' });
     life.h.fake.addPosted({ id: 'shoes-back', account: E, amount: -2_000, date: '2026-10-03', description: 'MADE UP SHOES' });
     await life.sync();
     const refund = shown(life, 'shoes-back');

@@ -445,6 +445,8 @@ describe('20d A15 a refund lists the purchases it likely belongs to', () => {
     b.receive(purchase('amount-only', '2026-10-05', 2_000, 'UNRELATED SHOP'));
     b.receive(purchase('name-only', '2026-10-01', 5_000, 'BLUE DOOR COFFEE'));
     b.receive(purchase('both', '2026-10-02', 2_000, 'BLUE DOOR COFFEE'));
+    // Another store, so the coffee shop's name is on half the purchases, not most (A33).
+    b.receive(purchase('deli', '2026-10-01', 300, 'CORNER DELI'));
     b.receive({ ...refund('r1', '2026-10-06', 2_000, undefined, 'everyday-card'), description: 'BLUE DOOR COFFEE' });
     expect(ids(b, 'r1')).toEqual(['both', 'name-only', 'amount-only']);
   });
@@ -517,6 +519,8 @@ describe('20d A15 a refund lists the purchases it likely belongs to', () => {
   it('20d a name matches whatever the case, and whatever comes between the words', () => {
     const b = book();
     b.receive(purchase('shop', '2026-10-01', 2_000, 'blue-door  COFFEE #12'));
+    // Another store, so these words are on half the purchases, not most (A33).
+    b.receive(purchase('deli', '2026-10-01', 300, 'CORNER DELI'));
     b.receive({ ...refund('r1', '2026-10-06', 500, undefined, 'everyday-card'), description: 'Coffee, Blue Door (refund)' });
     expect(ids(b, 'r1')).toEqual(['shop']);
   });
@@ -559,6 +563,122 @@ describe('20d A15 a refund lists the purchases it likely belongs to', () => {
     const before = { pots: b.pots(), review: b.reviewItems(), log: b.changeLog() };
     b.reviewDetails();
     expect({ pots: b.pots(), review: b.reviewItems(), log: b.changeLog() }).toEqual(before);
+  });
+});
+
+// QUESTIONS.md A33, option 3: a word counts as a name only when it is not in
+// most of his purchases on that account, in the 90 days up to the refund (the
+// refund's day and the 90 days before it). So words every purchase has, such
+// as "MADE UP" here or a city, never make two things "the same name".
+describe('4.5 A33 "Same name" means a word that is not in most of his purchases on that account', () => {
+  const ids = (b: Book, id: string): string[] => detail(b, id).likelyPurchases.map((p) => p.id);
+  const refundAs = (id: string, date: string, amount: number, description: string, account: 'everyday-card' | 'checking' = 'everyday-card') => ({
+    ...refund(id, date, amount, undefined, account),
+    description,
+  });
+
+  it('4.5 A33 a word every purchase on the card has is not a name, so it lists nothing by name', () => {
+    const b = book();
+    b.receive(purchase('cafe', '2026-10-01', 1_200, 'MADE UP CAFE'));
+    b.receive(purchase('grocer', '2026-10-02', 5_400, 'MADE UP GROCER'));
+    b.receive(purchase('cinema', '2026-10-03', 1_800, 'MADE UP CINEMA'));
+    b.receive(refundAs('r1', '2026-10-06', 500, 'MADE UP BOOKSHOP'));
+    expect(ids(b, 'r1')).toEqual([]);
+  });
+
+  it('4.5 A33 the same store is still the same name when its name is not on most purchases', () => {
+    const b = book();
+    b.receive(purchase('cafe', '2026-10-01', 1_200, 'MADE UP CAFE'));
+    b.receive(purchase('grocer', '2026-10-02', 5_400, 'MADE UP GROCER'));
+    b.receive(purchase('cinema', '2026-10-03', 1_800, 'MADE UP CINEMA'));
+    b.receive(refundAs('r1', '2026-10-06', 1_000, 'MADE UP CINEMA'));
+    expect(detail(b, 'r1').likelyPurchases).toMatchObject([{ id: 'cinema', sameName: true, sameAmount: false }]);
+  });
+
+  it('4.5 A33 one purchase with the same amount is listed for the amount, not as the same name', () => {
+    const b = book();
+    b.receive(purchase('cafe', '2026-10-01', 1_200, 'MADE UP CAFE'));
+    b.receive(purchase('grocer', '2026-10-02', 5_400, 'MADE UP GROCER'));
+    b.receive(refundAs('r1', '2026-10-06', 5_400, 'MADE UP BOOKSHOP'));
+    expect(detail(b, 'r1').likelyPurchases).toMatchObject([{ id: 'grocer', sameName: false, sameAmount: true }]);
+  });
+
+  it('4.5 A33 "most" is more than half: a word in exactly half of them is a name, one more and it is not', () => {
+    const b = book();
+    b.receive(purchase('ny1', '2026-10-01', 2_000, 'DELI NEW YORK'));
+    b.receive(purchase('ny2', '2026-10-02', 2_000, 'BAGELS NEW YORK'));
+    b.receive(purchase('bos1', '2026-10-03', 2_000, 'BOOKS BOSTON'));
+    b.receive(purchase('bos2', '2026-10-04', 2_000, 'FUEL BOSTON'));
+    b.receive(refundAs('r1', '2026-10-06', 500, 'PIZZA NEW YORK'));
+    // "york" is on 2 of 4 purchases: half, not most. ("new" is too short to be a name.)
+    expect(ids(b, 'r1')).toEqual(['ny2', 'ny1']);
+    b.receive(purchase('ny3', '2026-10-05', 2_000, 'SHOES NEW YORK'));
+    b.receive(refundAs('r2', '2026-10-06', 500, 'PIZZA NEW YORK'));
+    // Now on 3 of 5: most of them.
+    expect(ids(b, 'r2')).toEqual([]);
+  });
+
+  it('4.5 A33 the 90 days: a purchase 90 days before the refund counts toward "most", one 91 days before does not', () => {
+    const counted = book();
+    const notCounted = book();
+    for (const [b, day] of [
+      [counted, '2026-07-08'],
+      [notCounted, '2026-07-07'],
+    ] as const) {
+      b.receive(purchase('old1', day, 100, 'MADE UP ONE'));
+      b.receive(purchase('old2', day, 100, 'MADE UP TWO'));
+      b.receive(purchase('shop', '2026-10-01', 2_000, 'MADE UP SHOP'));
+      b.receive(purchase('deli', '2026-10-02', 2_000, 'CORNER DELI'));
+      b.receive(purchase('cafe', '2026-10-03', 2_000, 'BLUE CAFE'));
+      b.receive(refundAs('r1', '2026-10-06', 500, 'MADE UP'));
+    }
+    // 2026-07-08 is 90 days before 2026-10-06: "made" is then on 3 of 5.
+    expect(ids(counted, 'r1')).toEqual([]);
+    // 2026-07-07 is 91 days before: "made" is on 1 of 3 in the 90 days, so it
+    // is a name. (The two old ones have less left than the refund.)
+    expect(ids(notCounted, 'r1')).toEqual(['shop']);
+  });
+
+  it('4.5 A33 purchases after the refund do not count toward "most"', () => {
+    const b = book();
+    b.receive(purchase('shop', '2026-10-01', 2_000, 'MADE UP SHOP'));
+    b.receive(purchase('deli', '2026-10-02', 2_000, 'CORNER DELI'));
+    b.receive(purchase('later1', '2026-10-08', 2_000, 'MADE UP LATER'));
+    b.receive(purchase('later2', '2026-10-09', 2_000, 'MADE UP LATEST'));
+    b.receive(refundAs('r1', '2026-10-06', 500, 'MADE UP SHOP'));
+    // Up to the refund, "made" and "shop" are each on 1 of 2.
+    expect(ids(b, 'r1')).toEqual(['shop']);
+  });
+
+  it('4.5 A33 only purchases on the refund\'s own account count toward "most"', () => {
+    const b = book();
+    for (const [i, day] of ['2026-10-01', '2026-10-02', '2026-10-03'].entries()) b.receive(purchase(`debit${i}`, day, 2_000, `MADE UP DEBIT ${i}`, { account: 'checking' }));
+    b.receive(purchase('shop', '2026-10-01', 2_000, 'MADE UP SHOP'));
+    b.receive(purchase('deli', '2026-10-02', 2_000, 'CORNER DELI'));
+    b.receive(refundAs('r1', '2026-10-06', 500, 'MADE UP'));
+    // On the card "made" is on 1 of 2; on checking it is on all 3.
+    expect(ids(b, 'r1')).toEqual(['shop']);
+    b.receive(refundAs('r2', '2026-10-06', 500, 'MADE UP', 'checking'));
+    expect(ids(b, 'r2')).toEqual([]);
+  });
+
+  it('4.5 A33 with a single purchase on the card, every word it has is on most of them: only the same amount lists it', () => {
+    const b = book();
+    b.receive(purchase('shoes', '2026-10-01', 4_500, 'MADE UP SHOES'));
+    b.receive(refundAs('r1', '2026-10-06', 1_000, 'MADE UP SHOES'));
+    expect(ids(b, 'r1')).toEqual([]);
+    b.receive(refundAs('r2', '2026-10-06', 4_500, 'MADE UP SHOES'));
+    expect(detail(b, 'r2').likelyPurchases).toMatchObject([{ id: 'shoes', sameName: false, sameAmount: true }]);
+  });
+
+  it('4.5 A33 a word written twice in one purchase counts once for that purchase', () => {
+    const b = book();
+    b.receive(purchase('twice', '2026-10-01', 2_000, 'TOWN TOWN BAKERY'));
+    b.receive(purchase('deli', '2026-10-02', 2_000, 'CORNER DELI'));
+    b.receive(purchase('cafe', '2026-10-03', 2_000, 'BLUE CAFE'));
+    b.receive(refundAs('r1', '2026-10-06', 500, 'TOWN'));
+    // "town" is on 1 of 3 purchases, not 2 of 3.
+    expect(ids(b, 'r1')).toEqual(['twice']);
   });
 });
 

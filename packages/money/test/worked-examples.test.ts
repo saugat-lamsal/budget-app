@@ -697,12 +697,17 @@ const examples: Record<number, () => Record<string, Cents>> = {
   40: () => {
     const d = parseDollars;
     const shoes = (refunded: Cents): Book => {
-      const book = openTestBook({ pots: { needs: d('500.00'), wants: d('300.00') } });
+      const book = openTestBook({ pots: { needs: d('525.00'), wants: d('305.00') } });
+      book.receive(purchase('groceries', '2026-10-01', d('25.00'), 'CORNER GROCER', { account: 'checking' }));
+      book.sort('groceries', { to: 'needs' }, '2026-10-01');
+      book.receive(purchase('coffee', '2026-10-01', d('5.00'), 'BLUE DOOR CAFE', { account: 'checking' }));
+      book.sort('coffee', { to: 'wants' }, '2026-10-01');
+      expect(book.pots()).toMatchObject({ needs: d('500.00'), wants: d('300.00') });
       book.receive(purchase('shoes', '2026-10-02', d('90.00'), 'MADE UP SHOE STORE', { account: 'checking' }));
       book.sort('shoes', { split: [{ bucket: 'needs', amount: d('60.00') }, { bucket: 'wants', amount: d('30.00') }] }, '2026-10-02');
       book.receive(deposit('back', '2026-10-06', refunded, 'MADE UP SHOE STORE REFUND'));
       expect(book.pots().unsortedIn).toBe(refunded);
-      expect(book.reviewDetails().find((r) => r.item.id === 'back')?.likelyPurchases.map((p) => p.id)).toEqual(['shoes']);
+      expect(book.reviewDetails().find((r) => r.item.id === 'back')?.likelyPurchases).toMatchObject([{ id: 'shoes', sameName: true }]);
       book.sort('back', { refundOf: 'shoes' }, '2026-10-06');
       return book;
     };

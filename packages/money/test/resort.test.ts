@@ -433,6 +433,9 @@ describe('4.5 a store refund sorted into a bucket, sorted again from its list', 
     const b = openBook();
     b.receive(purchase('shoes', '2026-10-02', 5_000, 'MADE UP STORE'));
     b.sort('shoes', { to: 'wants' }, '2026-10-02');
+    // Another store on the card, so the store's name is not on most purchases (A33).
+    b.receive(purchase('deli', '2026-10-02', 300, 'CORNER DELI'));
+    b.sort('deli', { to: 'needs' }, '2026-10-02');
     // The bank did not say which purchase it is for: it waited, and he called it a payback (6.1, B16).
     b.receive(refund('back', '2026-10-04', 2_000));
     b.sort('back', { to: 'wants' }, '2026-10-04');

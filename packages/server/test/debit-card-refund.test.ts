@@ -15,7 +15,12 @@ async function boughtAndRefunded(purchase: number, refund: number, sort: (life: 
   setUpThroughTheDesk(life);
   life.now = noonInNewYork('2026-10-02');
   life.h.fake.addPosted({ id: 'shoes', account: C, amount: purchase, date: '2026-10-02', description: 'MADE UP SHOE STORE' });
+  // Other stores on checking, so the shoe store's name is not on most of his
+  // purchases there (A33: then it would not be a name).
+  life.h.fake.addPosted({ id: 'deli', account: C, amount: 300, date: '2026-10-02', description: 'CORNER DELI' });
+  life.h.fake.addPosted({ id: 'cafe', account: C, amount: 300, date: '2026-10-02', description: 'BLUE CAFE' });
   await life.sync();
+  for (const item of ['deli', 'cafe']) expect(choose(life.keeper, { item, choice: { to: 'needs' } }).ok).toBe(true);
   sort(life);
   life.now = noonInNewYork('2026-10-06');
   // Plaid's sign: money in is negative.

@@ -4,8 +4,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readHistory } from '../../../server/src/history/history-db.js';
 import { serverLinesIn } from '../../../server/src/server-log.js';
 import { ACCOUNT_IDS } from '../../../server/test/fake-plaid.js';
-import { lifeInAFile, noonInNewYork, setUpThroughTheDesk, type Life } from '../../../server/test/keeper-harness.js';
+import { choose, lifeInAFile, noonInNewYork, setUpThroughTheDesk, type Life } from '../../../server/test/keeper-harness.js';
 import { loginCookieForTests } from '../../../server/test/login-for-tests.js';
+import { axeViolations } from './design-helpers.js';
 import { ENGINES, WEB_ROOT, close, launch, listen, phone, readCents, textAt, untilAnswered, untilQuiet, waitOrReport } from './harness.js';
 
 // Step 3 on the real server, in a browser like a person would use it: Home's
@@ -32,14 +33,14 @@ describe.each(ENGINES)('syncing on the real server in %s', (_name, engine) => {
     await browser?.close();
   });
 
-  async function realServer(): Promise<Running> {
+  async function realServer(colorScheme: 'light' | 'dark' = 'light'): Promise<Running> {
     const life = await lifeInAFile();
     setUpThroughTheDesk(life);
     life.now = noonInNewYork('2026-10-03');
     const r = { life, server: undefined as unknown as Server, base: '', context: undefined as unknown as BrowserContext };
     (r as { server: Server }).server = life.keeper.server(WEB_ROOT, () => r.base);
     r.base = await listen(r.server);
-    (r as { context: BrowserContext }).context = await browser!.newContext(phone());
+    (r as { context: BrowserContext }).context = await browser!.newContext(phone({ colorScheme, bypassCSP: true }));
     await r.context.addCookies([loginCookieForTests(life.h.db, life.now, r.base)]);
     return r;
   }
@@ -132,4 +133,270 @@ describe.each(ENGINES)('syncing on the real server in %s', (_name, engine) => {
       await done(r);
     }
   });
+
+  // QUESTIONS.md A32, his answer (option 2), rule 13.7: Review sat in the
+  // background showing the cinema at $18.00, pending; brought forward, it reads
+  // its numbers again and the card shows $21.50, posted. The card says so, and
+  // takes no tap for about a second, so a tap meant for what was there before is
+  // not sent. The tap is made inside the page the moment the new amount shows,
+  // so a slow machine cannot make it late.
+  it('13.7 A32 a card whose item changed when the screen read its numbers again says so, and takes no tap for about a second', async () => {
+    const r = await realServer();
+    try {
+      r.life.h.fake.addPending({ id: 'cinema-1', account: E, amount: 1_800, date: '2026-10-03', description: 'MADE UP CINEMA' });
+      await r.life.sync();
+      const page = await open(r, '/review');
+      await waitOrReport(page, '[data-testid="item-cinema-1"]');
+      expect(await amountOf(page, 'cinema-1')).toBe(1_800);
+      expect(await page.getByTestId('item-cinema-1').getByTestId('changed').count()).toBe(0);
+      const choices: string[] = [];
+      page.on('request', (request) => {
+        if (request.url().endsWith('/api/choice')) choices.push(request.postData() ?? '');
+      });
+      // In the background, the bank posts it with a tip and a sync reads it.
+      await setVisibility(page, 'hidden');
+      r.life.h.fake.postPending('cinema-1', { id: 'cinema-1-posted', date: '2026-10-04', amount: 2_150 });
+      await r.life.sync();
+      const events = readHistory(r.life.h.db).length;
+      const shownAt = page.evaluate(
+        () =>
+          new Promise<{ readonly changed: string; readonly disabled: boolean; readonly at: number }>((resolve) => {
+            const look = (): void => {
+              const card = document.querySelector('[data-testid="item-cinema-1"]');
+              const amount = card?.querySelector('[data-testid="item-amount"]')?.textContent ?? '';
+              if (!amount.includes('21.50')) {
+                requestAnimationFrame(look);
+                return;
+              }
+              const pick = card?.querySelector<HTMLButtonElement>('[data-testid="pick-wants"]');
+              const at = performance.now();
+              // A tap the moment the new amount shows.
+              pick?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+              pick?.click();
+              resolve({ changed: card?.querySelector('[data-testid="changed"]')?.textContent ?? '', disabled: pick?.disabled ?? false, at });
+            };
+            look();
+          }),
+      );
+      await setVisibility(page, 'visible');
+      const shown = await shownAt;
+      expect(shown.changed.replace(/\s+/g, ' ').trim()).toBe('Changed: now $21.50, posted');
+      expect(shown.disabled).toBe(true);
+      // About a second later it takes a tap again; the tap made meanwhile sent nothing.
+      const pick = page.getByTestId('item-cinema-1').getByTestId('pick-wants');
+      await expect.poll(() => pick.isEnabled(), { timeout: 5_000 }).toBe(true);
+      const heldFor = await page.evaluate((at) => performance.now() - at, shown.at);
+      expect(heldFor).toBeGreaterThanOrEqual(950);
+      expect(choices).toEqual([]);
+      expect(readHistory(r.life.h.db)).toHaveLength(events);
+      expect(r.life.keeper.book()?.pots().wants).toBe(20_000);
+      // The card still says what changed; a tap now goes through, about the item as it is.
+      expect(await textAt(page, 'changed')).toContain('Changed: now $21.50, posted');
+      await pick.click();
+      await expect.poll(() => r.life.keeper.book()?.pots().wants).toBe(20_000 - 2_150);
+      await untilQuiet(page);
+      expect(choices).toHaveLength(1);
+    } finally {
+      await done(r);
+    }
+  });
+
+  it.each(['light', 'dark'] as const)('13.7 A32 design: the changed card is readable in %s mode, in words and not only colour', async (scheme) => {
+    const r = await realServer(scheme);
+    try {
+      r.life.h.fake.addPending({ id: 'cinema-1', account: E, amount: 1_800, date: '2026-10-03', description: 'MADE UP CINEMA' });
+      await r.life.sync();
+      const page = await open(r, '/review');
+      await waitOrReport(page, '[data-testid="item-cinema-1"]');
+      await setVisibility(page, 'hidden');
+      r.life.h.fake.postPending('cinema-1', { id: 'cinema-1-posted', date: '2026-10-04', amount: 2_150 });
+      await r.life.sync();
+      await setVisibility(page, 'visible');
+      await waitOrReport(page, '[data-testid="changed"]');
+      await untilQuiet(page);
+      expect(await textAt(page, 'changed')).toContain('Changed: now $21.50, posted');
+      expect(await axeViolations(page)).toEqual([]);
+    } finally {
+      await done(r);
+    }
+  });
+
+  it('13.7 A32 with its sheet open, an item that changed as the screen read its numbers again takes no tap in the sheet either, for about a second', async () => {
+    const r = await realServer();
+    try {
+      r.life.h.fake.addPending({ id: 'cinema-1', account: E, amount: 1_800, date: '2026-10-03', description: 'MADE UP CINEMA' });
+      await r.life.sync();
+      const page = await open(r, '/review');
+      await waitOrReport(page, '[data-testid="item-cinema-1"]');
+      await page.getByTestId('item-cinema-1').getByTestId('more').click();
+      await waitOrReport(page, '[data-testid="sheet-picks"]');
+      const choices: string[] = [];
+      page.on('request', (request) => {
+        if (request.url().endsWith('/api/choice')) choices.push(request.postData() ?? '');
+      });
+      await setVisibility(page, 'hidden');
+      r.life.h.fake.postPending('cinema-1', { id: 'cinema-1-posted', date: '2026-10-04', amount: 2_150 });
+      await r.life.sync();
+      const tapped = page.evaluate(
+        () =>
+          new Promise<string>((resolve) => {
+            const look = (): void => {
+              const amount = document.querySelector('[data-testid="sheet-amount"]')?.textContent ?? '';
+              if (!amount.includes('21.50')) {
+                requestAnimationFrame(look);
+                return;
+              }
+              document.querySelector<HTMLButtonElement>('[data-testid="choice-wants"]')?.click();
+              resolve(amount);
+            };
+            look();
+          }),
+      );
+      await setVisibility(page, 'visible');
+      expect(await tapped).toContain('21.50');
+      await page.waitForTimeout(300);
+      expect(choices).toEqual([]);
+      await page.waitForTimeout(900);
+      await page.getByTestId('choice-wants').click();
+      await expect.poll(() => r.life.keeper.book()?.pots().wants).toBe(20_000 - 2_150);
+      await untilQuiet(page);
+      expect(choices).toHaveLength(1);
+    } finally {
+      await done(r);
+    }
+  });
+
+  it('13.7 A32 3.4 on Payday, a question that spending from before payday made smaller says so, and takes no tap for about a second', async () => {
+    const r = await realServer();
+    try {
+      const k = r.life.keeper;
+      const asked = k.settingsChange({ id: 'payroll-rule', settings: { paycheckRule: { contains: 'MADEUP CORP PAYROLL' } } });
+      if (asked.ok || asked.preview === undefined) throw new Error('the paycheck rule did not ask first');
+      expect(k.settingsChange({ id: 'payroll-rule', settings: { paycheckRule: { contains: 'MADEUP CORP PAYROLL' } }, confirmed: true, seen: asked.preview.key })).toMatchObject({ ok: true });
+      r.life.now = noonInNewYork('2026-10-09');
+      r.life.h.fake.addPosted({ id: 'pay-1', account: ACCOUNT_IDS.checking, amount: -250_000, date: '2026-10-09', description: 'MADEUP CORP PAYROLL' });
+      await r.life.sync();
+      const page = await open(r, '/payday');
+      const card = page.locator('[data-testid^="item-"]').filter({ hasText: 'Wants' }).first();
+      await card.waitFor();
+      const before = readCents(await card.getByTestId('item-amount').innerText());
+      await setVisibility(page, 'hidden');
+      // A purchase from before payday shows up after it, and is sorted into wants.
+      r.life.h.fake.addPosted({ id: 'late-1', account: E, amount: 2_500, date: '2026-10-08', description: 'MADE UP DINER' });
+      await r.life.sync();
+      expect(choose(k, { item: 'late-1', choice: { to: 'wants' } })).toMatchObject({ ok: true });
+      const now = ((before - 2_500) / 100).toFixed(2);
+      const shown = page.evaluate(
+        (text) =>
+          new Promise<{ readonly changed: string; readonly disabled: boolean }>((resolve) => {
+            const look = (): void => {
+              const cards = [...document.querySelectorAll('[data-testid^="item-"]')].filter((c) => (c.textContent ?? '').includes('Wants'));
+              const it = cards.find((c) => (c.querySelector('[data-testid="item-amount"]')?.textContent ?? '').includes(text));
+              if (it === undefined) {
+                requestAnimationFrame(look);
+                return;
+              }
+              const answer = it.querySelector<HTMLButtonElement>('[data-testid="answer-move-to-savings"]');
+              resolve({ changed: it.querySelector('[data-testid="changed"]')?.textContent ?? '', disabled: answer?.disabled ?? false });
+            };
+            look();
+          }),
+        now,
+      );
+      await setVisibility(page, 'visible');
+      const seen = await shown;
+      expect(seen.changed.replace(/\s+/g, ' ').trim()).toBe(`Changed: now $${now}`);
+      expect(seen.disabled).toBe(true);
+      await expect.poll(() => card.getByTestId('answer-move-to-savings').isEnabled(), { timeout: 5_000 }).toBe(true);
+      await untilQuiet(page);
+    } finally {
+      await done(r);
+    }
+  });
+
+  it('13.7 A32 read again with nothing changed, no card says so and every card takes a tap at once', async () => {
+    const r = await realServer();
+    try {
+      r.life.h.fake.addPending({ id: 'cinema-1', account: E, amount: 1_800, date: '2026-10-03', description: 'MADE UP CINEMA' });
+      await r.life.sync();
+      const page = await open(r, '/review');
+      await waitOrReport(page, '[data-testid="item-cinema-1"]');
+      await setVisibility(page, 'hidden');
+      await r.life.sync();
+      await setVisibility(page, 'visible');
+      await untilQuiet(page);
+      expect(await page.getByTestId('changed').count()).toBe(0);
+      expect(await page.getByTestId('item-cinema-1').getByTestId('pick-wants').isEnabled()).toBe(true);
+      await page.getByTestId('item-cinema-1').getByTestId('pick-wants').click();
+      await expect.poll(() => r.life.keeper.book()?.pots().wants).toBe(20_000 - 1_800);
+      await untilQuiet(page);
+    } finally {
+      await done(r);
+    }
+  });
+
+  it('13.7 A32 on a bucket\'s list, a row he sorted again himself is not marked changed; one a sync changed is, and opens only after about a second', async () => {
+    const r = await realServer();
+    try {
+      r.life.h.fake.addPosted({ id: 'books-1', account: E, amount: 4_210, date: '2026-10-03', description: 'MADE UP BOOKSHOP' });
+      r.life.h.fake.addPending({ id: 'cinema-1', account: E, amount: 1_800, date: '2026-10-03', description: 'MADE UP CINEMA' });
+      await r.life.sync();
+      for (const item of ['books-1', 'cinema-1']) expect(choose(r.life.keeper, { item, choice: { to: 'wants' } })).toMatchObject({ ok: true });
+      const page = await open(r, '/buckets/wants');
+      await waitOrReport(page, '[data-testid="row-books-1"]');
+      // He splits the books from the list, 10.00 to needs and the rest still
+      // in wants: his own change, so its row stays here with a new key, and is
+      // not marked.
+      const before = await r.life.keeper.activity('wants');
+      await page.getByTestId('row-books-1').click();
+      await page.getByTestId('split-needs').fill('10.00');
+      await page.getByTestId('split-submit').click();
+      await waitOrReport(page, '[data-testid="notice"]');
+      await untilQuiet(page);
+      const after = await r.life.keeper.activity('wants');
+      if (before.state !== 'tracking' || after.state !== 'tracking') throw new Error('not tracking');
+      expect(after.keys['books-1']).not.toBe(before.keys['books-1']);
+      expect(await page.getByTestId('row-books-1').innerText()).toContain('Part of a split');
+      expect(await page.getByTestId('changed').count()).toBe(0);
+      expect(await page.getByTestId('row-books-1').isEnabled()).toBe(true);
+      // The cinema posts with a tip while the list is in the background.
+      await setVisibility(page, 'hidden');
+      r.life.h.fake.postPending('cinema-1', { id: 'cinema-1-posted', date: '2026-10-04', amount: 2_150 });
+      await r.life.sync();
+      const opened = page.evaluate(
+        () =>
+          new Promise<{ readonly changed: boolean; readonly sheetOpened: boolean }>((resolve) => {
+            const look = (): void => {
+              const row = document.querySelector<HTMLButtonElement>('[data-testid="row-cinema-1"]');
+              if (!(row?.textContent ?? '').includes('21.50')) {
+                requestAnimationFrame(look);
+                return;
+              }
+              row?.click();
+              // The sheet would open in the same step as the tap (a layout effect).
+              requestAnimationFrame(() => resolve({ changed: row?.querySelector('[data-testid="changed"]') !== null, sheetOpened: document.querySelector('[data-testid="sheet-picks"]') !== null }));
+            };
+            look();
+          }),
+      );
+      await setVisibility(page, 'visible');
+      expect(await opened).toEqual({ changed: true, sheetOpened: false });
+      await page.waitForTimeout(1_100);
+      await page.getByTestId('row-cinema-1').click();
+      await waitOrReport(page, '[data-testid="sheet-picks"]');
+      expect(await page.getByTestId('sheet-amount').innerText()).toContain('21.50');
+      await page.keyboard.press('Escape');
+      await untilQuiet(page);
+    } finally {
+      await done(r);
+    }
+  });
 });
+
+// What a phone does when the app goes to the background and comes back.
+async function setVisibility(page: Page, state: 'hidden' | 'visible'): Promise<void> {
+  await page.evaluate((s) => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => s });
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, state);
+}

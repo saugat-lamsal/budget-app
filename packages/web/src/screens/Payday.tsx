@@ -63,7 +63,7 @@ type Tracking = Extract<PaydayView, { state: 'tracking' }>;
 function PaydayReady({ view, reload, onChanged }: { readonly view: Tracking; readonly reload: Reload; readonly onChanged: Reload }) {
   const { report } = view;
   // Answering a payday question here is the same as in Review: the same desk, the same promises.
-  const flow = useChoiceFlow({ resort: false, reload, onChanged });
+  const flow = useChoiceFlow({ resort: false, reload, onChanged, keys: new Map(view.questions.map((q) => [q.item.id, q.key])) });
   const { sheet, said, sending, setSaid, submit, choose } = flow;
   const open = sheet === null ? undefined : view.questions.find((q) => q.item.id === sheet.item);
 
@@ -106,7 +106,7 @@ function PaydayReady({ view, reload, onChanged }: { readonly view: Tracking; rea
         <Card title="Left over from the last pay period" testId="payday-leftovers">
           {report.leftovers.map((l) => {
             const question = l.question === null ? undefined : view.questions.find((q) => q.item.id === l.question);
-            return question === undefined ? <LeftoverRow key={l.bucket} leftover={l} /> : <LeftoverDecision key={l.bucket} detail={question} busy={sending} onChoose={choose} />;
+            return question === undefined ? <LeftoverRow key={l.bucket} leftover={l} /> : <LeftoverDecision key={l.bucket} detail={question} busy={sending || flow.holding(question.item.id)} changed={flow.changed(question.item.id)} onChoose={choose} />;
           })}
         </Card>
       )}

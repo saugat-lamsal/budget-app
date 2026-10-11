@@ -46,6 +46,9 @@ describe('4.5 A18 a refund in review matched to the purchase it belongs to', () 
     const b = book();
     b.receive(purchase('p1', '2026-10-01', 2_000, 'MADE UP SHOP'));
     b.receive(purchase('p2', '2026-10-02', 5_000, 'MADE UP SHOP'));
+    // Other stores on the card, so the shop's name is not on most purchases (A33).
+    b.receive(purchase('deli', '2026-10-01', 300, 'CORNER DELI'));
+    b.receive(purchase('cafe', '2026-10-01', 300, 'BLUE CAFE'));
     b.receive({ ...refund('r1', '2026-10-06', 2_000, undefined, 'everyday-card'), description: 'MADE UP SHOP' });
     const d = detail(b, 'r1');
     expect(sorting(d).match).toEqual(d.likelyPurchases.map((p) => p.id));

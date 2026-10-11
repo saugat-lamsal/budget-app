@@ -2585,8 +2585,8 @@
   {
     "section": "20",
     "file": "packages/money/src/likely-purchases.ts",
-    "find": "c.account === refund.account && ",
-    "replace": "",
+    "find": ".filter((c) => c.account === refund.account && daysBetween(c.date, refund.date) >= 0 && c.left >= refund.amount)",
+    "replace": ".filter((c) => daysBetween(c.date, refund.date) >= 0 && c.left >= refund.amount)",
     "why": "[review] 20d purchases on another account are listed"
   },
   {
@@ -3568,5 +3568,54 @@
     "find": "    match: [...f.likely],",
     "replace": "    match: f.reason === 'refund' ? [...f.likely] : [],",
     "why": "[a29] only a bank refund is offered the match"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "n * 2 > recent.length",
+    "replace": "n * 2 >= recent.length",
+    "why": "[a33] 4.5 a word on exactly half of his purchases counts as most"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "before >= 0 && before <= COMMON_WORD_DAYS",
+    "replace": "before >= 0 && before < COMMON_WORD_DAYS",
+    "why": "[a33] 4.5 a purchase exactly 90 days before the refund is left out of most"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "export const COMMON_WORD_DAYS = 90;",
+    "replace": "export const COMMON_WORD_DAYS = 30;",
+    "why": "[a33] 4.5 most is counted over 30 days, not 90"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "return c.account === refund.account && before >= 0",
+    "replace": "return before >= 0",
+    "why": "[a33] 4.5 purchases on his other accounts count toward most"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "before >= 0 && before <= COMMON_WORD_DAYS",
+    "replace": "before <= COMMON_WORD_DAYS",
+    "why": "[a33] 4.5 purchases after the refund count toward most"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "const refundWords = new Set([...nameWords(refund.description)].filter((word) => !common.has(word)));",
+    "replace": "const refundWords = nameWords(refund.description);",
+    "why": "[a33] 4.5 a word on most of his purchases is still a name"
+  },
+  {
+    "section": "4",
+    "file": "packages/money/src/likely-purchases.ts",
+    "find": "for (const c of recent) for (const word of nameWords(c.description))",
+    "replace": "for (const c of recent) for (const word of c.description.toLowerCase().split(/[^a-z0-9]+/))",
+    "why": "[a33] 4.5 a word written twice in one purchase counts twice"
   }
 ]

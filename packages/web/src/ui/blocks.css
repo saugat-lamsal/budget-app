@@ -938,6 +938,20 @@ a.bucket:active {
   color: var(--text-2);
 }
 
+/* A32 (13.7): the item changed as the screen read its numbers again. */
+.decision__changed {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+  color: var(--warning);
+  font-size: var(--text-sub);
+  font-weight: var(--weight-bold);
+}
+
 .decision__actions {
   display: flex;
   flex-direction: column;

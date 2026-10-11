@@ -517,9 +517,11 @@ A31. ANSWERED Oct 10, built. Your answer: option 1, as built. Rulebook 13.7
      option 1 (the details are B172 and B173).
 
 
-## Part A, added with Phase 4's finish line (the agent's pay period, Oct 10). Waiting on your answer.
+## Part A, added with Phase 4's finish line (the agent's pay period, Oct 10). All answered.
 
-A32. A screen that changes an instant before your tap (13.7). Found by the
+A32. ANSWERED Oct 10, built. Your answer: option 2. Rulebook 13.7 and 29a;
+     the details are B178.
+     The question was: a screen that changes an instant before your tap (13.7). Found by the
      agent on Oct 7 of the pay period. Review had sat in a background tab
      since the evening before, showing the cinema charge at $18.00, pending.
      The agent tapped Wants on it. Bringing the tab forward made the screen
@@ -545,7 +547,9 @@ A32. A screen that changes an instant before your tap (13.7). Found by the
      Step 1, taps from a screen that did not read its numbers again, and the
      refusal comes, with how the item is now.)
 
-A33. Which purchases are "likely" for a refund (4.5, B88). Rule 4.5 says a
+A33. ANSWERED Oct 10, built. Your answer: option 3. Rulebook 4.5 and 29b;
+     the details are B177.
+     The question was: which purchases are "likely" for a refund (4.5, B88). Rule 4.5 says a
      likely purchase is on the same account, made on or before the refund,
      with at least the refund's amount not yet refunded. B88, as built, adds
      two things: it must also share a name word with the refund or have
@@ -1162,7 +1166,8 @@ B88. Which purchases a refund likely belongs to (20d, A15). A purchase is
      same name, then same amount; the newest first among equals), at most
      five. A purchase you already sorted is still listed, with where it
      went. If none qualifies, the screen says "No likely purchase found."
-     What tapping does is A18.
+     What tapping does is A18. Since A33 (Oct 10), a word on most of his
+     purchases on that account is not a name word (B177).
 
 B89. Which choices an item gets is decided by the money math for that
      kind of item, from the rulebook, and the screen shows exactly those
@@ -1924,3 +1929,37 @@ B176. A purchase made on payday itself is not "made before payday" (3.4,
       B4): it does not lower a payday question, and it is on the new pay
       period's lists (B97). The agent asked: the cafe charge on Oct 2, the
       day of the paycheck, did not lower the wants question.
+
+
+## Part B, added with your answers to A32 and A33 (Oct 10). Tell me if any is wrong.
+
+B177. A33, "most of his purchases": the purchases on the refund's account
+      dated on the refund's day or in the 90 days before it (so a purchase
+      exactly 90 days before counts, one 91 days before does not), each
+      counting a word once however often it is written. A word on more than
+      half of them is not a name; on exactly half it still is. Purchases
+      after the refund, and purchases on his other accounts, do not count.
+      One thing that follows: with only one purchase on that account in
+      those days, every word it has is on all of them, so nothing there is
+      "the same name"; it is still listed when it has exactly the refund's
+      amount left. The five, and the 90 days, are fixed in the money math,
+      not settings, though 4.5 now names them (0.2): say if you want them on
+      Settings. Worked example 40 now has two other debit card purchases
+      first, so the shoes are still "the same name" there; its numbers are
+      as before. The older tests that failed because all their purchases
+      were at one store (A33 now reads its name as words on most purchases:
+      7 in the money math, 5 in the server) each got a purchase or two at
+      other stores; none of their checks changed.
+
+B178. A32, what the screens do: Review, Payday and each bucket's list
+      remember each item's key as they show it. When the screen reads its
+      numbers again (coming back from the background, after an answer, or
+      Try again) and an item's key is not the one it showed, its card says
+      "Changed: now $21.50, posted" (a payday question: "Changed: now
+      $612.44"; a row on a bucket's list: a "Changed" label), and its
+      buttons, its row, and its sheet take no tap for a second. The words
+      stay as long as the screen shows the item. An item he answered
+      himself is not marked: its change is his own. The second is fixed in
+      the screens, not a setting, though 13.7 now names it (0.2): say if you
+      want it on Settings. A tap that comes too early does nothing at all:
+      the button is greyed while it holds, and no request is sent.

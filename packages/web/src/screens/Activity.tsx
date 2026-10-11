@@ -115,7 +115,7 @@ export function rowTitle(row: ActivityRow): string {
 function ActivityReady({ view, reload, onChanged }: { readonly view: Tracking; readonly reload: Reload; readonly onChanged: Reload }) {
   const { activity, pot, balances } = view;
   const name = POT_NAMES[pot];
-  const flow = useChoiceFlow({ resort: true, reload, onChanged });
+  const flow = useChoiceFlow({ resort: true, reload, onChanged, keys: new Map(Object.entries(view.keys)) });
   const [moving, setMoving] = useState(false);
   const [moved, setMoved] = useState<Said | null>(null);
   const { sheet, said, sending, setSaid, submit, openSheet } = flow;
@@ -175,14 +175,17 @@ function ActivityReady({ view, reload, onChanged }: { readonly view: Tracking; r
               title={rowTitle(row)}
               detail={
                 <>
-                  {row.pending && <StatusLabel status="pending" />} {WHAT_WORDS[row.what]} · {shortDate(row.date)}
+                  {flow.changed(row.id) && <StatusLabel status="changed" testId="changed" />} {row.pending && <StatusLabel status="pending" />} {WHAT_WORDS[row.what]} · {shortDate(row.date)}
                   {row.account === null ? '' : ` · ${ACCOUNT_NAMES[row.account]}`}
                   {row.partOfSplit ? ' · Part of a split' : ''}
                   {row.refunded > 0 ? ` · Refunded ${moneyText(row.refunded)}` : ''}
                 </>
               }
               trailing={<Money cents={row.amount} signed testId="row-amount" />}
-              onClick={() => openSheet(row.id)}
+              onClick={() => {
+                // A32: a row that just changed opens only after a moment.
+                if (!flow.holding(row.id)) openSheet(row.id);
+              }}
               testId={`row-${row.id}`}
             />
           ))

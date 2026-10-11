@@ -21,6 +21,12 @@ export const BUCKET_NAMES: Readonly<Record<string, string>> = {
 
 type Item = ReviewDetail['item'];
 
+// A32 (13.7): what an item is now, when it changed as the screen read its
+// numbers again: its amount, and pending or posted when it can be either.
+export function changedWords(amount: Cents, pending: boolean | null): string {
+  return `Changed: now ${moneyText(amount)}${pending === null ? '' : pending ? ', pending' : ', posted'}`;
+}
+
 export function groupTitle(type: Item['type']): string {
   switch (type) {
     case 'leftover':
