@@ -50,6 +50,9 @@ describe('10 the list of alerts sent, how each time is written', () => {
     expect(alertCountText(1, 1)).toBe('1 alert');
     expect(alertCountText(2, 2)).toBe('2 alerts');
     expect(alertCountText(100, 1234)).toBe('The newest 100 of 1,234 alerts');
+    // Exactly one more than the list shows, and exactly as many.
+    expect(alertCountText(100, 101)).toBe('The newest 100 of 101 alerts');
+    expect(alertCountText(100, 100)).toBe('100 alerts');
   });
 
   it('10.3 the row on Settings: none yet, all sent, and some not sent yet', () => {

@@ -2070,3 +2070,16 @@ B182. The evening is the daily review time on the clock in his home time
       after). A time the clock shows twice (1:30 AM on Nov 1) is the first of
       the two; one it skips (2:30 AM on Mar 14) is the moment it jumps (3:00
       AM). Changing the review time moves the next evening at once.
+
+B183. The list of alerts sent (his point 4): Settings has a row "Alerts
+      sent" (on the real server only: "12 alerts, all sent", or "1 not sent
+      yet"), which opens the list, newest first: each alert's words, then
+      "Due 8:00 PM, sent 8:00 PM", or "Due 8:00 PM. Not sent yet: tried 3
+      times, trying again at 8:07 PM." Times are his home time zone's, with
+      the day when it is not today. It shows the newest 100 and says so when
+      there are more. It only reads: nothing on it can be tapped but Back.
+
+B184. The take-back alert (10.6) says the day the bank took it back
+      ("MADE UP CAFE, $11.50, taken back Sat, Oct 3."), the same day Home's
+      sheet calls "When". It used to say "from Sat, Oct 3", which read as the
+      day of the purchase.

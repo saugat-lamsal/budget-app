@@ -1,4 +1,4 @@
-import type { Db } from '../db/database.js';
+import { statement, type Db } from '../db/database.js';
 import type { AlertKind, AlertRecord } from './alerts.js';
 
 // The outbox (database step 5): every alert worked out, with when it was due
@@ -71,7 +71,7 @@ export function retryAfterMs(tries: number): number {
 }
 
 export function addToOutbox(db: Db, alert: AlertRecord, seq: number, createdAt: string): void {
-  db.prepare('INSERT INTO outbox (key, seq, kind, title, body, due_at, created_at, tries, next_try_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)').run(
+  statement(db, 'INSERT INTO outbox (key, seq, kind, title, body, due_at, created_at, tries, next_try_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)').run(
     alert.key,
     seq,
     alert.facts.kind,
@@ -85,44 +85,44 @@ export function addToOutbox(db: Db, alert: AlertRecord, seq: number, createdAt: 
 
 // Not sent yet, and due to be tried by now: the oldest first.
 export function outboxToSend(db: Db, now: string): OutboxRow[] {
-  return (db.prepare(`SELECT ${COLUMNS} FROM outbox WHERE sent_at IS NULL AND next_try_at <= ? ORDER BY due_at, created_at, key`).all(now) as Row[]).map(rowOf);
+  return (statement(db, `SELECT ${COLUMNS} FROM outbox WHERE sent_at IS NULL AND next_try_at <= ? ORDER BY due_at, created_at, key`).all(now) as Row[]).map(rowOf);
 }
 
 // The next moment something not sent yet is due to be tried; null when everything is sent.
 export function nextOutboxTry(db: Db): string | null {
-  const row = db.prepare('SELECT MIN(next_try_at) AS at FROM outbox WHERE sent_at IS NULL').get() as { at: string | null };
+  const row = statement(db, 'SELECT MIN(next_try_at) AS at FROM outbox WHERE sent_at IS NULL').get() as { at: string | null };
   return row.at;
 }
 
 // Noted before each try, so a try the server stopped in the middle of is known.
 export function markTrying(db: Db, key: string, at: string): void {
-  db.prepare('UPDATE outbox SET tries = tries + 1, last_try_at = ? WHERE key = ? AND sent_at IS NULL').run(at, key);
+  statement(db, 'UPDATE outbox SET tries = tries + 1, last_try_at = ? WHERE key = ? AND sent_at IS NULL').run(at, key);
 }
 
 export function markSent(db: Db, key: string, at: string): void {
-  db.prepare('UPDATE outbox SET sent_at = ?, last_error = NULL WHERE key = ? AND sent_at IS NULL').run(at, key);
+  statement(db, 'UPDATE outbox SET sent_at = ?, last_error = NULL WHERE key = ? AND sent_at IS NULL').run(at, key);
 }
 
 export function markFailed(db: Db, key: string, at: string, error: string): void {
-  const row = db.prepare('SELECT tries FROM outbox WHERE key = ?').get(key) as { tries: number } | undefined;
+  const row = statement(db, 'SELECT tries FROM outbox WHERE key = ?').get(key) as { tries: number } | undefined;
   if (row === undefined) return;
   const next = new Date(Date.parse(at) + retryAfterMs(row.tries)).toISOString();
-  db.prepare('UPDATE outbox SET last_error = ?, next_try_at = ? WHERE key = ? AND sent_at IS NULL').run(error, next, key);
+  statement(db, 'UPDATE outbox SET last_error = ?, next_try_at = ? WHERE key = ? AND sent_at IS NULL').run(error, next, key);
 }
 
 // The newest first, at most limit of them, and how many there are in all.
 export function readOutbox(db: Db, limit: number): { readonly rows: readonly OutboxRow[]; readonly total: number } {
-  const rows = (db.prepare(`SELECT ${COLUMNS} FROM outbox ORDER BY due_at DESC, created_at DESC, key DESC LIMIT ?`).all(limit) as Row[]).map(rowOf);
-  const { n } = db.prepare('SELECT COUNT(*) AS n FROM outbox').get() as { n: number };
+  const rows = (statement(db, `SELECT ${COLUMNS} FROM outbox ORDER BY due_at DESC, created_at DESC, key DESC LIMIT ?`).all(limit) as Row[]).map(rowOf);
+  const { n } = statement(db, 'SELECT COUNT(*) AS n FROM outbox').get() as { n: number };
   return { rows, total: n };
 }
 
 // How many there are, and how many are not sent yet (Settings' row).
 export function outboxCounts(db: Db): { readonly total: number; readonly notSent: number } {
-  const row = db.prepare('SELECT COUNT(*) AS total, COUNT(*) - COUNT(sent_at) AS notSent FROM outbox').get() as { total: number; notSent: number };
+  const row = statement(db, 'SELECT COUNT(*) AS total, COUNT(*) - COUNT(sent_at) AS notSent FROM outbox').get() as { total: number; notSent: number };
   return { total: row.total, notSent: row.notSent };
 }
 
 export function outboxKeys(db: Db): string[] {
-  return (db.prepare('SELECT key FROM outbox ORDER BY key').all() as { key: string }[]).map((r) => r.key);
+  return (statement(db, 'SELECT key FROM outbox ORDER BY key').all() as { key: string }[]).map((r) => r.key);
 }

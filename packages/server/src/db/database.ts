@@ -8,6 +8,26 @@ import Database from 'better-sqlite3';
 // decision number, so each is all or nothing.
 export type Db = Database.Database;
 
+// A query made over and over (the alert timer looks every minute), prepared
+// once per database and used again. A statement prepared afresh each time
+// holds native memory until it is collected, which can be long after: a
+// simulated half year of minutes grew the process to 2 GB.
+const PREPARED = new WeakMap<Db, Map<string, Database.Statement>>();
+
+export function statement(db: Db, sql: string): Database.Statement {
+  let bySql = PREPARED.get(db);
+  if (bySql === undefined) {
+    bySql = new Map();
+    PREPARED.set(db, bySql);
+  }
+  let prepared = bySql.get(sql);
+  if (prepared === undefined) {
+    prepared = db.prepare(sql);
+    bySql.set(sql, prepared);
+  }
+  return prepared;
+}
+
 // Each step brings the database from the version before it to the next. A
 // step is never changed once released; changes get a new step.
 const STEPS: readonly string[] = [
@@ -228,6 +248,8 @@ const STEPS: readonly string[] = [
     next_try_at TEXT NOT NULL,
     last_error TEXT
   );
+  -- What is not sent yet, by when it is to be tried: the alert timer looks every minute.
+  CREATE INDEX outbox_unsent ON outbox (next_try_at) WHERE sent_at IS NULL;
   `,
 ];
 

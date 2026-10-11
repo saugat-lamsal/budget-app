@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { readHistory } from '../src/history/history-db.js';
 import { acceptRetotal, checkRetotal } from '../src/history/retotal.js';
 import { serverLinesIn } from '../src/server-log.js';
-import { decision, lifeInAFile, noonInNewYork, setUpThroughTheDesk } from './keeper-harness.js';
+import { choose, decision, lifeInAFile, noonInNewYork, setUpThroughTheDesk } from './keeper-harness.js';
 import { checkBankRules } from '../src/bank/reading.js';
 import { connectTestBank } from '../src/connect.js';
 import { TokenBox } from '../src/crypto/token-box.js';
@@ -26,6 +26,12 @@ import { FakeClock } from './fake-clock.js';
 import { ACCOUNT_IDS, FakePlaid } from './fake-plaid.js';
 import { TOKEN_KEY, book, tracking } from './harness.js';
 import { REPLAY_KEYS, Replay, loadRecording } from './replay.js';
+import { readOutbox } from '../src/alerts/outbox.js';
+import { timeIn } from '../src/history/today.js';
+import type { AlertTimer } from '../src/serve/alert-timer.js';
+import { serveBooks } from '../src/serve/serving.js';
+import { FakePhone } from './fake-phone.js';
+import type { Life } from './keeper-harness.js';
 
 const text = readFileSync(new URL('../worked-examples.txt', import.meta.url), 'utf8');
 
@@ -415,6 +421,131 @@ describe('worked examples: syncing on a timer (Step 3)', () => {
       expect(seen).toEqual(said);
     } finally {
       for (const timer of timers) await timer.stop();
+      life.done();
+    }
+  });
+});
+
+// "Times:" lines name moments the way "Checked at" does: "low due 9:15 AM EDT".
+function timesOf(number: number): Map<string, string> {
+  const block = text.split(/^EXAMPLE /m).find((b) => b.startsWith(`${number}.`));
+  if (block === undefined) throw new Error(`no example ${number}`);
+  const times = new Map<string, string>();
+  for (const line of block.matchAll(/^Times: (.*)$/gm)) {
+    for (const part of (line[1] ?? '').split('|')) {
+      const m = /^\s*([a-z][a-z0-9 ]*?)\s+(\d{1,2}:\d{2} [AP]M E[DS]T)\s*$/.exec(part);
+      if (m === null) throw new Error(`cannot read "${part}" in example ${number}`);
+      times.set(m[1] ?? '', m[2] ?? '');
+    }
+  }
+  return times;
+}
+
+describe('worked examples: the alerts (Phase 5)', () => {
+  const E = ACCOUNT_IDS.everyday;
+  const H = 3_600_000;
+  const zone = 'America/New_York';
+  const syncNow = (life: Life): Promise<unknown> => life.keeper.sync({ plaid: life.h.plaid, box: life.h.box, log: memoryLog([]), pageSize: 3 });
+
+  // The real server on a clock the test moves, sending to a made-up phone.
+  function served(life: Life): { clock: FakeClock; phone: FakePhone; alerts: AlertTimer } {
+    const clock = new FakeClock(life);
+    const phone = new FakePhone(() => life.now);
+    const { alerts } = serveBooks({ keeper: life.keeper, bank: { plaid: life.h.plaid, box: life.h.box, log: memoryLog([]), pageSize: 3 }, clock, webRoot: 'C:/made-up/no-screens/', origin: () => '', sender: phone });
+    return { clock, phone, alerts };
+  }
+
+  const kept = (life: Life): Map<string, { readonly due: string; readonly sent: string | null; readonly body: string }> =>
+    new Map(readOutbox(life.h.db, 100).rows.map((r) => [r.key, { due: wallClock(timeIn(zone, new Date(r.dueAt))), sent: r.sentAt === null ? null : wallClock(timeIn(zone, new Date(r.sentAt))), body: r.body }]));
+
+  it("example 10, a day's alerts with their times: low at 9:15 AM, the review and a 7-day reminder at 8:00 PM", async () => {
+    const checks = checksOf(10);
+    const times = timesOf(10);
+    const life = await lifeInAFile();
+    setUpThroughTheDesk(life);
+    expect(life.keeper.book()?.startedPeriodWith().needs).toBe(checks.get('started with'));
+    expect(Math.floor(((checks.get('started with') ?? 0) * 20) / 100)).toBe(checks.get('low level'));
+    life.h.fake.setStatement(E, {
+      is_overdue: false,
+      last_payment_amount: null,
+      last_payment_date: null,
+      last_statement_issue_date: '2026-10-03',
+      last_statement_balance: (checks.get('statement balance') ?? 0) / 100,
+      minimum_payment_amount: (checks.get('minimum') ?? 0) / 100,
+      next_payment_due_date: '2026-10-10',
+    });
+    life.now = new Date('2026-10-03T12:00:00Z');
+    const { clock, alerts } = served(life);
+    const settle = (): Promise<void> => alerts.idle();
+    try {
+      alerts.start();
+      await syncNow(life);
+      await settle();
+      await clock.advance(H + 10 * 60_000, settle);
+      life.h.fake.addPosted({ id: 'grocery', account: E, amount: 190_000, date: '2026-10-03', description: 'MADE UP GROCERY' });
+      await syncNow(life);
+      await settle();
+      await clock.advance(5 * 60_000, settle);
+      expect(choose(life.keeper, { item: 'grocery', choice: { to: 'needs' } }).ok).toBe(true);
+      await settle();
+      expect(life.keeper.book()?.pots().needs).toBe(checks.get('needs after grocery'));
+      await clock.advance(3 * H + 45 * 60_000, settle);
+      life.h.fake.addPosted({ id: 'shop', account: E, amount: 1_200, date: '2026-10-03', description: 'MADE UP SHOP' });
+      life.h.fake.addPosted({ id: 'deli', account: E, amount: 850, date: '2026-10-03', description: 'MADE UP DELI' });
+      await syncNow(life);
+      await settle();
+      await clock.advance(7 * H + 30 * 60_000, settle);
+      const k = kept(life);
+      expect([...k.keys()].toSorted()).toEqual(['card-reminder everyday-card due 2026-10-10 7 days before', 'daily-review 2026-10-03', 'low-bucket needs pay period 0'].toSorted());
+      const low = k.get('low-bucket needs pay period 0');
+      const review = k.get('daily-review 2026-10-03');
+      const reminder = k.get('card-reminder everyday-card due 2026-10-10 7 days before');
+      expect([low?.due, low?.sent, review?.due, review?.sent, reminder?.due, reminder?.sent]).toEqual(['low due', 'low sent', 'review due', 'review sent', 'reminder due', 'reminder sent'].map((name) => times.get(name)));
+      expect(low?.body).toBe('$450.00 left of $2,350.00 this pay period.');
+      expect(review?.body).toBe('2 things are waiting for you to sort.');
+      expect(reminder?.body).toBe('Statement balance $450.00, minimum $35.00. Due Sat, Oct 10.');
+    } finally {
+      await alerts.stop();
+      life.done();
+    }
+  });
+
+  it('example 11 and example 12, the evening on both sides of Nov 1, and the server down over 8:00 PM', async () => {
+    const times = new Map([...timesOf(11), ...[...timesOf(12)].map(([k, v]): [string, string] => [`down ${k}`, v])]);
+    const life = await lifeInAFile();
+    setUpThroughTheDesk(life);
+    life.h.fake.addPosted({ id: 'shop', account: E, amount: checksOf(12).get('shop') ?? 0, date: '2026-10-30', description: 'MADE UP SHOP' });
+    life.now = new Date('2026-10-31T16:00:00Z');
+    let s = served(life);
+    try {
+      s.alerts.start();
+      await syncNow(life);
+      await s.alerts.idle();
+      // To Mon Nov 2, 7:59 PM EST; down until 9:30 PM.
+      await s.clock.advance(Date.parse('2026-11-03T00:59:00Z') - life.now.getTime(), () => s.alerts.idle());
+      await s.alerts.stop();
+      const shownBefore = s.phone.ids();
+      life.now = new Date('2026-11-03T02:30:00Z');
+      life.restart();
+      s = served(life);
+      s.alerts.start();
+      await s.alerts.idle();
+      await s.clock.advance(2 * H, () => s.alerts.idle());
+      const k = kept(life);
+      const oct31 = k.get('daily-review 2026-10-31');
+      const nov1 = k.get('daily-review 2026-11-01');
+      const nov2 = k.get('daily-review 2026-11-02');
+      expect([oct31?.due, oct31?.sent, nov1?.due, nov1?.sent, nov2?.due, nov2?.sent]).toEqual(['oct 31 due', 'oct 31 sent', 'nov 1 due', 'nov 1 sent', 'down due', 'down sent'].map((name) => times.get(name)));
+      expect(nov2?.body).toBe('1 thing is waiting for you to sort.');
+      const rows = readOutbox(life.h.db, 100).rows;
+      const due = (key: string): number => Date.parse(rows.find((r) => r.key === key)?.dueAt ?? '');
+      expect((due('daily-review 2026-11-01') - due('daily-review 2026-10-31')) / 36_000).toBe(checksOf(11).get('hours between the evenings'));
+      // Each went once: the two before the stop, the missed one after it.
+      expect(shownBefore).toEqual(['daily-review 2026-10-31', 'daily-review 2026-11-01']);
+      expect(s.phone.ids()).toEqual(['daily-review 2026-11-02']);
+      expect(s.phone.repeats).toBe(0);
+    } finally {
+      await s.alerts.stop();
       life.done();
     }
   });

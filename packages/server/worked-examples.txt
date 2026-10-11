@@ -356,3 +356,71 @@ at 4:30 AM EST, and reads the bank.
 
 Check: cafe pending 11.50 | cafe posted 13.50 | wants after 186.50
 Checked at: 11:30 PM EDT | 12:30 AM EDT | 1:30 AM EDT | 1:30 AM EST | 2:30 AM EST | 2:30 AM EST | 4:30 AM EST
+
+
+========================================================================
+EXAMPLE 10. A day's alerts, with their times (sections 9 and 10; Phase 5)
+========================================================================
+
+Setup day was Oct 1: Needs 2,350.00, Wants 200.00. The low alert comes
+when a bucket falls below 20% of what it started the pay period with
+(10.1). Card reminders come 7 and 2 days before the due date (9.1), and
+the daily review at 8:00 PM, only when something waits (10.3). Reminders
+come at the daily review time too (QUESTIONS.md A34). All times are New
+York time (EDT on Oct 3).
+
+Sat Oct 3, 8:00 AM. The server starts and reads the bank: the everyday
+card's statement closed Oct 3, balance 450.00, minimum 35.00, due Sat
+Oct 10.
+
+9:10 AM. MADE UP GROCERY 1,900.00 on the everyday card waits in review.
+9:15 AM. He sorts it to needs: 2,350.00 - 1,900.00 = 450.00 left.
+The low level: 20% of 2,350.00 = 470.00. 450.00 is below 470.00, so
+"Needs is low: $450.00 left of $2,350.00 this pay period." It is due the
+moment of his answer, 9:15 AM, and sent then.
+
+1:00 PM. MADE UP SHOP 12.00 and MADE UP DELI 8.50: no rule, both wait
+in review. Needs is still low; no second low alert this pay period.
+
+8:00 PM, the evening. 2 things wait: "Time to review: 2 things are
+waiting for you to sort." Oct 10 is 7 days away and nothing is paid
+toward the 450.00: "Everyday card payment due in 7 days. Statement
+balance $450.00, minimum $35.00. Due Sat, Oct 10." Both due 8:00 PM and
+sent 8:00 PM. Nothing else goes out that day: 3 alerts in all.
+
+Check: needs after grocery 450.00 | low level 470.00 | started with 2,350.00
+Check: statement balance 450.00 | minimum 35.00
+Times: low due 9:15 AM EDT | low sent 9:15 AM EDT | review due 8:00 PM EDT | review sent 8:00 PM EDT | reminder due 8:00 PM EDT | reminder sent 8:00 PM EDT
+
+
+========================================================================
+EXAMPLE 11. The evening on both sides of Nov 1 (10.3, section 2)
+========================================================================
+
+The daily review is at 8:00 PM on the clock in New York, whatever the
+clocks did. MADE UP SHOP 12.00 has waited in review since Oct 30.
+
+Sat Oct 31, 8:00 PM EDT (4 hours behind UTC, so 00:00 UTC on Nov 1):
+"Time to review: 1 thing is waiting for you to sort."
+At 2:00 AM on Nov 1 the clocks go back an hour, to EST (5 hours behind).
+Sun Nov 1, 8:00 PM EST (01:00 UTC on Nov 2): the same again, for Nov 1.
+From one evening to the next is 25 hours of real time, not 24, and both
+come at 8:00 PM on the clock.
+
+Times: oct 31 due 8:00 PM EDT | oct 31 sent 8:00 PM EDT | nov 1 due 8:00 PM EST | nov 1 sent 8:00 PM EST
+Check: hours between the evenings 25.00
+
+
+========================================================================
+EXAMPLE 12. The server down over 8:00 PM (10.3; QUESTIONS.md A36)
+========================================================================
+
+Mon Nov 2. MADE UP SHOP 12.00 still waits in review. The server stops at
+7:59 PM EST and starts again at 9:30 PM EST. Nothing changed while it was
+down, so as it starts it works out the evening it missed from the books
+as they were: 1 thing waiting. "Time to review" goes out at once, at 9:30
+PM, and is kept as due at 8:00 PM. It goes once: the restart does not
+send it again, and neither does the next evening's look.
+
+Times: due 8:00 PM EST | sent 9:30 PM EST
+Check: shop 12.00

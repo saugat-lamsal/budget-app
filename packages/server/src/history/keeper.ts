@@ -11,7 +11,7 @@ import { bankView } from '../bank/balances.js';
 import { cardStatement } from '../bank/statements.js';
 import { canonical, refuse, ChoiceDesk } from '../choices.js';
 import type { TokenBox } from '../crypto/token-box.js';
-import type { Db } from '../db/database.js';
+import { statement, type Db } from '../db/database.js';
 import { logChange, readAccounts, readBankRules, readConnection, readItems, readStatements, saveBankRules, saveItem } from '../db/store.js';
 import { createAppServer, type Seen } from '../http/server.js';
 import type { Log } from '../log.js';
@@ -108,6 +108,8 @@ export class Keeper {
   #lastSeq = 0;
   // Phase 5: told after each sync and each answer (serveBooks pokes the alert timer).
   #onChange: (() => void) | null = null;
+  // The bank's balances and statements last read from the database (#bankNow).
+  #bankRead: { readonly version: string; readonly bank: BankBalances | null; readonly statements: CardStatement[] } | null = null;
 
   private constructor(input: KeeperInput) {
     this.#db = input.db;
@@ -180,13 +182,32 @@ export class Keeper {
   // (12.1); null when the bank cannot be read: it wants him to log in again
   // (10.5), or its balances cannot be worked out.
   #bank(): BankBalances | null {
+    return this.#bankNow().bank;
+  }
+
+  #statements(): CardStatement[] {
+    return this.#bankNow().statements;
+  }
+
+  // The bank's balances and statements as the database has them, read again
+  // only once something was written to it since (by this server or another):
+  // the alert timer looks every minute.
+  #bankNow(): { readonly version: string; readonly bank: BankBalances | null; readonly statements: CardStatement[] } {
+    const { changes } = statement(this.#db, 'SELECT total_changes() AS changes').get() as { changes: number };
+    const { data_version: written } = statement(this.#db, 'PRAGMA data_version').get() as { data_version: number };
+    const version = `${changes} ${written}`;
+    if (this.#bankRead?.version !== version) this.#bankRead = { version, bank: this.#readBank(), statements: this.#readStatements() };
+    return this.#bankRead;
+  }
+
+  #readBank(): BankBalances | null {
     const connection = readConnection(this.#db);
     if (connection === null || connection.needsLogin) return null;
     const view = bankView(readAccounts(this.#db), readItems(this.#db));
     return view.ok ? view.view.withPending : null;
   }
 
-  #statements(): CardStatement[] {
+  #readStatements(): CardStatement[] {
     const stored = readStatements(this.#db);
     return readAccounts(this.#db).flatMap((a) => {
       const raw = stored.get(a.plaidAccountId)?.raw;
@@ -453,8 +474,8 @@ export class Keeper {
 
   // Milliseconds until the next evening's alerts are due; null before setup day.
   nextEveningIn(): number | null {
-    const world = this.#alertWorld();
-    return world === null ? null : nextEveningIn(world, this.#state.alerts);
+    const book = this.book();
+    return book === null ? null : nextEveningIn({ book, zone: this.timeZone(), now: this.#now() }, this.#state.alerts);
   }
 
   toSend(): readonly OutboxRow[] {

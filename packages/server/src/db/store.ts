@@ -4,7 +4,7 @@ import type { StoredAccount } from '../bank/stored-account.js';
 import { readHistory, replayHistory } from '../history/history-db.js';
 import type { PlaidAccount, PlaidCreditCard } from '../plaid/types.js';
 import type { Attention, ItemStatus, StoredItem } from '../sync/plan.js';
-import type { Db } from './database.js';
+import { statement, type Db } from './database.js';
 
 // Reading and writing the database. Nothing here talks to the bank.
 
@@ -19,7 +19,7 @@ export interface Connection {
 }
 
 export function readConnection(db: Db): Connection | null {
-  const row = db.prepare('SELECT * FROM connection WHERE id = 1').get() as
+  const row = statement(db, 'SELECT * FROM connection WHERE id = 1').get() as
     | { item_id: string; institution_id: string | null; sealed_key: string; cursor: string | null; history_complete: number; needs_login: number; connected_on: string }
     | undefined;
   if (row === undefined) return null;

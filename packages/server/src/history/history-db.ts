@@ -1,5 +1,5 @@
 import { MoneyError, type BankTransaction, type Book, type Cents, type IsoDate, type SetupInput } from '@budget-app/money';
-import type { Db } from '../db/database.js';
+import { statement, type Db } from '../db/database.js';
 import { NO_ALERTS, applyAlerts, type AlertLedger, type AlertsEvent } from '../alerts/plan.js';
 import { ReplayFailed, bookOfSetup, replayCall, sameTotals, totalsOf, type Answer, type HistoryEvent, type SavedSetupAnswers, type Totals } from './history.js';
 
@@ -56,7 +56,7 @@ export function appendEvent(db: Db, e: { readonly event: HistoryEvent; readonly 
 
 // The number of the last event in the history; 0 before the first.
 export function lastSeqOf(db: Db): number {
-  const row = db.prepare('SELECT MAX(seq) AS seq FROM book_events').get() as { seq: number | null };
+  const row = statement(db, 'SELECT MAX(seq) AS seq FROM book_events').get() as { seq: number | null };
   return row.seq ?? 0;
 }
 

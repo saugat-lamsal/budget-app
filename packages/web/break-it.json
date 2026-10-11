@@ -1867,5 +1867,54 @@
     "find": "pending === null ? '' : pending ? ', pending' : ', posted'",
     "replace": "pending === null ? '' : pending ? ', posted' : ', pending'",
     "why": "[a32] 13.7 the changed card says pending for posted"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/alerts-text.ts",
+    "find": "return date === today ? time : `${shortDate(date)}, ${time}`;",
+    "replace": "return time;",
+    "why": "[alerts] 10.3 a time on another day leaves out the day"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/alerts-text.ts",
+    "find": "const tried = line.tries === 1 ? 'tried once'",
+    "replace": "const tried = line.tries === 2 ? 'tried once'",
+    "why": "[alerts] 10.3 \"tried 1 times\""
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/alerts-text.ts",
+    "find": "if (line.sentAt !== null) return `${due}, sent ${alertMomentText(line.sentAt, today)}`;",
+    "replace": "if (line.sentAt !== null) return `${due}, sent ${alertMomentText(line.dueAt, today)}`;",
+    "why": "[alerts] 10.3 the list says it was sent when it was due"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/alerts-text.ts",
+    "find": "if (shown < total) return",
+    "replace": "if (shown < total - 1) return",
+    "why": "[alerts] 10.3 the list does not say it shows only the newest"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/alerts-text.ts",
+    "find": "return count.notSent === 0 ? `${all}, all sent`",
+    "replace": "return count.notSent <= 1 ? `${all}, all sent`",
+    "why": "[alerts] 10.3 Settings says all sent with one not sent yet"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Alerts.tsx",
+    "find": "icon={line.sentAt === null ? 'clock' : ICONS[line.kind]}",
+    "replace": "icon={ICONS[line.kind]}",
+    "why": "[alerts] 10.3 an alert not sent yet is told by color alone"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "{view.alerts !== undefined && <ListRow icon=\"tray\" title=\"Alerts sent\"",
+    "replace": "{view.alerts === undefined && <ListRow icon=\"tray\" title=\"Alerts sent\"",
+    "why": "[alerts] 10.3 Settings has no way to the list of alerts"
   }
 ]
