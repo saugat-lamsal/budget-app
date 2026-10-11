@@ -688,6 +688,69 @@ if (process.argv.some((arg) => arg.startsWith('--maxWorkers'))) {
   });
 });
 
+// A break can make a test loop for ever, or grow without end: one held a
+// worker for eight hours and 16 GB of his RAM (Oct 11). Each break's run is
+// stopped after a time limit, which counts as not caught (a test must fail in
+// good time), and the tests run with a memory cap.
+describe.skipIf(insideBreakIt)('break-it: a run of the tests that never ends, or grows without end', () => {
+  const alive = (pid: number): boolean => {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  it('is stopped after the time limit, said to have hung, counted as not caught, and nothing of it is left running', { timeout: 120_000 }, async () => {
+    const { root, workDir, base } = makeProject();
+    const pids = join(base, 'pids.txt');
+    // A stand-in for vitest: the control passes; a break's run never ends, and has a child of its own, as a test worker would.
+    put(
+      root,
+      'node_modules/vitest/vitest.mjs',
+      `import { appendFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+if (!process.argv.some((arg) => arg.startsWith('--maxWorkers'))) process.exit(0);
+const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+appendFileSync(process.env.FAKE_VITEST_PIDS, process.pid + ' ' + child.pid + '\\n');
+setInterval(() => {}, 1000);
+`,
+    );
+    process.env['FAKE_VITEST_PIDS'] = pids;
+    let results;
+    try {
+      const outcome = await runBreakIt({ root, breaks: [caughtBreak(2)], workers: 1, workDir, runTests: vitestRunner({ only: undefined, timeLimitMs: 3_000 }) });
+      results = outcome.results;
+    } finally {
+      delete process.env['FAKE_VITEST_PIDS'];
+    }
+    expect(results?.map((r) => r.outcome)).toEqual(['HUNG (stopped after 3 s)']);
+    expect(formatResults(results ?? []).ok).toBe(false);
+    const started = readFileSync(pids, 'utf8').trim().split(/\s+/).map(Number);
+    expect(started).toHaveLength(2);
+    for (const pid of started) expect(alive(pid), `process ${pid} still running`).toBe(false);
+  });
+
+  it('runs the tests with a memory cap of 4 GB for each process, added to what NODE_OPTIONS already says', { timeout: 120_000 }, async () => {
+    const { root, workDir, base } = makeProject();
+    const log = join(base, 'node-options.txt');
+    put(root, 'node_modules/vitest/vitest.mjs', `import { appendFileSync } from 'node:fs';\nappendFileSync(process.env.FAKE_VITEST_LOG, (process.env.NODE_OPTIONS ?? '') + '\\n');\nif (process.argv.some((arg) => arg.startsWith('--maxWorkers'))) { console.log('Tests  1 failed | 1 passed (2)'); process.exit(1); }\n`);
+    const before = process.env['NODE_OPTIONS'];
+    process.env['FAKE_VITEST_LOG'] = log;
+    process.env['NODE_OPTIONS'] = '--no-warnings';
+    try {
+      const outcome = await runBreakIt({ root, breaks: [caughtBreak(2)], workers: 1, workDir, runTests: vitestRunner({ only: undefined }) });
+      expect(outcome.results?.map((r) => r.outcome)).toEqual(['caught (1 tests failed)']);
+    } finally {
+      delete process.env['FAKE_VITEST_LOG'];
+      if (before === undefined) delete process.env['NODE_OPTIONS'];
+      else process.env['NODE_OPTIONS'] = before;
+    }
+    expect(readFileSync(log, 'utf8').trim().split('\n')).toEqual(['--no-warnings --max-old-space-size=4096', '--no-warnings --max-old-space-size=4096']);
+  });
+});
+
 describe('break-it: the command line', () => {
   it('reads the options', () => {
     expect(parseArgs([])).toEqual({ restore: false, only: undefined, match: undefined, file: undefined, workers: undefined, sections: [] });

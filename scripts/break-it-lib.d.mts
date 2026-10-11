@@ -41,6 +41,8 @@ export interface TestRun {
   stdout: string;
   stderr: string;
   error?: Error;
+  // Stopped after the time limit, still running.
+  timedOutAfterMs?: number;
 }
 
 export interface TestRequest {
@@ -51,8 +53,10 @@ export interface TestRequest {
 
 export type TestRunner = (request: TestRequest) => Promise<TestRun>;
 
-export function runCommand(command: string, args: readonly string[], options: { cwd: string; env: NodeJS.ProcessEnv }): Promise<TestRun>;
-export function vitestRunner(options: { only: string | undefined }): TestRunner;
+export function runCommand(command: string, args: readonly string[], options: { cwd: string; env: NodeJS.ProcessEnv; timeLimitMs?: number }): Promise<TestRun>;
+export function vitestRunner(options: { only: string | undefined; timeLimitMs?: number }): TestRunner;
+export const TIME_LIMIT_MS: number;
+export const MEMORY_CAP_MB: number;
 
 export interface BreakResult extends BreakSpec {
   outcome: string;

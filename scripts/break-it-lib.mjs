@@ -276,36 +276,56 @@ function killTree(child) {
   }
 }
 
-export function runCommand(command, args, { cwd, env }) {
+// With timeLimitMs, a command still running then is stopped, with everything
+// it started, and its run says so (timedOutAfterMs).
+export function runCommand(command, args, { cwd, env, timeLimitMs }) {
   return new Promise((resolve) => {
     const child = spawn(command, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32', windowsHide: true });
     running.add(child);
     let stdout = '';
     let stderr = '';
+    let timedOut = false;
+    const timer = timeLimitMs === undefined ? undefined : setTimeout(() => {
+      timedOut = true;
+      killTree(child);
+    }, timeLimitMs);
     child.stdout.setEncoding('utf8').on('data', (text) => (stdout += text));
     child.stderr.setEncoding('utf8').on('data', (text) => (stderr += text));
     child.on('error', (error) => {
+      clearTimeout(timer);
       running.delete(child);
       resolve({ status: null, stdout, stderr, error });
     });
     child.on('close', (status) => {
+      clearTimeout(timer);
       running.delete(child);
-      resolve({ status, stdout, stderr });
+      resolve({ status, stdout, stderr, ...(timedOut ? { timedOutAfterMs: timeLimitMs } : {}) });
     });
   });
 }
+
+// A break can make a test loop for ever or grow without end (one held a
+// worker for eight hours and 16 GB, Oct 11, 2026): each run of the tests is
+// stopped after this long, which counts as not caught, and each of its node
+// processes may use at most this much memory.
+export const TIME_LIMIT_MS = 30 * 60_000;
+export const MEMORY_CAP_MB = 4096;
+
+const timeWords = (ms) => (ms < 60_000 ? `${Math.round(ms / 1000)} s` : `${Math.round(ms / 60_000)} min`);
 
 // Runs every test in a copy, with node itself (npx cannot be started this way
 // on Windows). `threads` is how many test files may run at once inside this
 // copy; with several workers it is each one's share of the cores. The browser
 // tests run only for the screens' breaks. BREAK_IT_RUN tells the test suite
 // it is being broken on purpose (see test/break-it.test.ts).
-export function vitestRunner({ only }) {
+export function vitestRunner({ only, timeLimitMs = TIME_LIMIT_MS }) {
   return ({ workspace, withBrowsers, threads }) =>
     runCommand(process.execPath, [join(workspace.dir, 'node_modules', 'vitest', 'vitest.mjs'), 'run', ...(threads === undefined ? [] : [`--maxWorkers=${threads}`]), ...(only === undefined ? [] : [only])], {
       cwd: workspace.dir,
+      timeLimitMs,
       env: {
         ...process.env,
+        NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --max-old-space-size=${MEMORY_CAP_MB}`.trim(),
         SKIP_BROWSER_TESTS: withBrowsers ? '0' : '1',
         BREAK_IT_RUN: '1',
         // Browsers keep their profiles in the temp folder: one folder for each copy.
@@ -330,7 +350,9 @@ async function judge(workspace, b, runTests, threads) {
     const failed = /Tests\s+(\d+) failed/.exec(`${run.stdout}${run.stderr}`)?.[1];
     // A break that stops the tests from loading proves nothing, so it counts
     // as a bad break to fix, not as caught.
-    const outcome = run.status === 0 ? 'SURVIVED (no test failed)' : failed ? `caught (${failed} tests failed)` : 'INVALID (tests did not run)';
+    // One that never ends in good time is a test to make fail sooner, not caught.
+    const outcome =
+      run.timedOutAfterMs !== undefined ? `HUNG (stopped after ${timeWords(run.timedOutAfterMs)})` : run.status === 0 ? 'SURVIVED (no test failed)' : failed ? `caught (${failed} tests failed)` : 'INVALID (tests did not run)';
     return { ...b, outcome };
   } finally {
     writeFileSync(path, original);
