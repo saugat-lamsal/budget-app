@@ -138,7 +138,7 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 17. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 18. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
@@ -155,7 +155,8 @@ This applies to every phase and every session, cloud or local.
   6.1; 27c staying logged in, 27d syncing every 60 minutes, section 2),
   section 28 his answers after syncing on a timer (A30: rule 0.6; A31: rule
   13.7), section 29 his answers after Phase 4's finish line (A32: rule 13.7;
-  A33: rule 4.5).
+  A33: rule 4.5), section 30 his answers after the alerts were kept (A34 to
+  A39: rules 9.7, 10.4, 10.5, 10.7 to 10.10, and section 2).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -1161,6 +1162,67 @@ This applies to every phase and every session, cloud or local.
       half year stays near 350 MB. With the long lives in it, break-it needs a
       smaller --workers or --only.
   - QUESTIONS.md A34 to A39 (built on the plain reading), B179 to B184.
+- PR #20 merged (Oct 11, 2026).
+- His answers to A34 to A39, and two browser tests that failed now and then:
+  branch alerts-answers (Oct 11, 2026), one pull request. Then stop.
+  - Step 0, its own commit: rulebook draft 18 (section 2, 9.7, 10.4, 10.5,
+    10.7 to 10.10, section 30), QUESTIONS.md A34 to A39 answered, B185 to
+    B191. There was no real database to convert (no data folder on his PC).
+    - Three new settings, kept with the others in the money package's
+      Settings (the money math only keeps them, like the home time zone):
+      quietHours { from: '22:00', to: '07:00' } (the same time twice is
+      none), bankNotReadAlertHours 24 (1 to 168), amountsOnLockScreen false.
+      On Settings in "Alerts and reminders" (rows quiet-hours, not-read,
+      lock-amounts), through the usual settings sheet and desk.
+    - alerts/plan.ts: evenings that came while the server was not looking are
+      one "alerts" event, check { kind: 'evening', from, date } (from only
+      when more than one): the newest of each kind (one daily review, one
+      card per card: reminder and overdue are one kind, the lasting repeats),
+      only if still true now (a card: cardDue today, 9.6), each due at its
+      own evening (10.9, A36). 10.4 and 10.5 repeat at the evening while they
+      last, not twice on one day (facts day and again; key "... again
+      <date>"; the ledger's lasting state has lastDay) (A37). 10.7 (A38):
+      'bank-not-read', due at the last good read (bank_reads) plus the hours,
+      cleared only by a newer read (lasting about). nextDueIn (was
+      nextEveningIn) wakes the timer for it too.
+    - alerts/sending.ts: quietUntil (10.8), dueWords ("Due 3:10 AM.", B185),
+      wordsToSend (10.10). The Keeper sends nothing in quiet hours (toSend
+      returns [], nextTryIn waits for their end), words without amounts
+      unless the setting says so, and the due words when late. The outbox
+      keeps each alert's facts (database step 6) so the words can be made
+      when it is sent. The alerts list says "Waits for quiet hours to end at
+      7:00 AM." (AlertLine quietUntil). OutgoingAlert has due.
+    - alertWords(facts, { amounts }) (alerts.ts): words only for the lock
+      screen; "still" on repeats; "The bank has not been read for 24 hours".
+    - The simulated life through the real server (test/alerts-sim.ts) now
+      also has, worked out from the rulebook with its own arithmetic (cards
+      9.3 and 9.6, quiet hours): syncs in the night and a server back at 3:00
+      AM (held for 7:00 AM, saying when due), the server down over 2 to 4
+      evenings (one daily review, newest, still true), a login lasting days
+      and a day the bank cannot be reached (the days' activity held back and
+      read in order the next good morning, the not-read alert), the bank's
+      balance drifting for days (FakePlaid drift: the mismatch once, then each
+      evening), and no amount on the lock screen. A good day has a 9:00 PM
+      sync, so a read is never a day old. Its own card arithmetic is checked
+      against the simulator's on every normal evening.
+    - today.ts keeps one date formatter per zone (making one is slow, and the
+      timer asks every minute): example 11/12 went from 3 s to 0.5 s.
+    - Tests: money 0-ground-rules; server alerts-plan (A34 to A39), alerts-
+      sending (quiet hours and due words, pure and with the real books and
+      the timer, the lock screen), alerts-random (quiet hours: the server
+      restarted may lag only in quiet hours), choices-settings, database step
+      6; web settings-text, alerts-text; browser settings, design-settings,
+      random-lives-settings. Worked examples bank 13 (quiet hours) and 14
+      (back after three evenings down).
+    - Break-it: new breaks tagged "[a35]" to "[a39]" and "[b185]"; ten older
+      ones pointed at the code again. All 88 of the changed sections' breaks
+      without browsers caught, and the Settings screen's 3 (Chromium). Four
+      survived at first and got tests: the quiet hours kept as a copy, a
+      login repeat in the same look as the login was fixed, a longer
+      not-read setting while it is told, and sending the moment quiet hours
+      end (the timer's looks fell at :30 in the test). Two breaks made a
+      timer fire for ever at one moment, which the test's own time limit
+      could not stop (it is all promises): FakeClock now fails at once after
+      1,000 timers at one moment (test/fake-clock.ts, fake-clock.test.ts).
 - Waiting on: the promo end date for the old card (only the payoff countdown,
-  rule 9.5, depends on it), QUESTIONS.md A34 to A39, and his check of part B
-  (the list at its top).
+  rule 9.5, depends on it), and his check of part B (the list at its top).

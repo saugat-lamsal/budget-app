@@ -25,6 +25,9 @@ import {
   leftoverText,
   recheckedText,
   retotaledText,
+  lockAmountsText,
+  notReadText,
+  quietHoursText,
   reminderText,
   ruleDoneText,
   ruleText,
@@ -102,7 +105,7 @@ function SettingsLoading() {
 
 // What is being changed in the sheet.
 type Editing =
-  | { readonly what: 'split' | 'reserve' | 'target' | 'low-alert' | 'reminders' | 'review-time' | 'time-zone' | 'leftover' | 'promo' | 'paycheck-rule' | 'pay-schedule' | 'mom-rule' | 'early-days' }
+  | { readonly what: 'split' | 'reserve' | 'target' | 'low-alert' | 'reminders' | 'review-time' | 'time-zone' | 'quiet-hours' | 'not-read' | 'lock-amounts' | 'leftover' | 'promo' | 'paycheck-rule' | 'pay-schedule' | 'mom-rule' | 'early-days' }
   // A sorting rule: null to add one.
   | { readonly what: 'rule'; readonly rule: RuleRow | null };
 
@@ -234,6 +237,9 @@ function SettingsReady({ view, reload, onChanged }: { readonly view: Tracking; r
         {textRow('reminders', 'Card reminders', reminderText(s.cardReminderDaysBefore), 'Before each card is due')}
         {row('review-time', 'Daily review', timeText(s.dailyReviewTime), 'Only when something waits in Review')}
         {textRow('time-zone', 'Home time zone', zoneText(s.homeTimeZone), 'Today is the date here, and the daily review time is in it')}
+        {textRow('quiet-hours', 'Quiet hours', quietHoursText(s.quietHours), 'No alerts then. What comes due waits until they end')}
+        {textRow('not-read', 'Bank not read', notReadText(s.bankNotReadAlertHours), 'An alert when the bank has not been read for this long')}
+        {textRow('lock-amounts', 'Amounts on the lock screen', lockAmountsText(s.amountsOnLockScreen), 'The amounts are always in the app')}
         {view.alerts !== undefined && <ListRow icon="tray" title="Alerts sent" detail={alertsRowText(view.alerts)} href={pathOfRoute({ screen: 'alerts' })} testId="row-alerts-sent" />}
       </Card>
 
@@ -461,6 +467,12 @@ function startFields(editing: Editing, s: Settings): Fields {
       return { time: s.dailyReviewTime };
     case 'time-zone':
       return { zone: s.homeTimeZone };
+    case 'quiet-hours':
+      return { from: s.quietHours.from, to: s.quietHours.to };
+    case 'not-read':
+      return { hours: String(s.bankNotReadAlertHours) };
+    case 'lock-amounts':
+      return { on: s.amountsOnLockScreen ? 'on' : 'off' };
     case 'leftover':
       return { needs: s.leftoverAtPayday.needs, wants: s.leftoverAtPayday.wants };
     case 'promo':
@@ -523,6 +535,14 @@ function readSettings(editing: Editing, f: Fields): Reading<Partial<Settings>> {
       return /^\d{2}:\d{2}$/.test(get('time')) ? { value: { dailyReviewTime: get('time') } } : { problem: 'Pick a time' };
     case 'time-zone':
       return { value: { homeTimeZone: get('zone') } };
+    case 'quiet-hours':
+      return /^\d{2}:\d{2}$/.test(get('from')) && /^\d{2}:\d{2}$/.test(get('to')) ?{ value: { quietHours: { from: get('from'), to: get('to') } } } : { problem: 'Pick two times' };
+    case 'not-read': {
+      const r = wholes(['hours']);
+      return 'problem' in r ? r : { value: { bankNotReadAlertHours: r.value[0] ?? 0 } };
+    }
+    case 'lock-amounts':
+      return { value: { amountsOnLockScreen: get('on') === 'on' } };
     case 'leftover':
       return { value: { leftoverAtPayday: { needs: get('needs') as LeftoverChoice, wants: get('wants') as LeftoverChoice } } };
     case 'promo':
@@ -558,6 +578,9 @@ const TITLES: Readonly<Record<Editing['what'], string>> = {
   reminders: 'Card reminders',
   'review-time': 'Daily review',
   'time-zone': 'Home time zone',
+  'quiet-hours': 'Quiet hours',
+  'not-read': 'Bank not read',
+  'lock-amounts': 'Amounts on the lock screen',
   leftover: 'Leftover at payday',
   promo: 'Old card promo end date',
   'paycheck-rule': 'Paycheck rule',
@@ -779,6 +802,28 @@ function SheetFields({ editing, get, set, view, kind }: { readonly editing: Edit
       const zones = ZONE_CHOICES.includes(get('zone')) ? ZONE_CHOICES : [get('zone'), ...ZONE_CHOICES];
       return <SelectField label="Time zone" value={get('zone')} onChange={set('zone')} options={zones.map((z) => ({ value: z, label: zoneText(z) }))} testId="field-time-zone" />;
     }
+    case 'quiet-hours':
+      return (
+        <>
+          <TextField label="From" kind="time" value={get('from')} onChange={set('from')} testId="field-quiet-from" />
+          <TextField label="To" kind="time" value={get('to')} onChange={set('to')} testId="field-quiet-to" hint="No alert is sent then; what comes due waits until they end and says when it was due. The same time twice means no quiet hours." />
+        </>
+      );
+    case 'not-read':
+      return <TextField label="Alert after this many hours" kind="whole" value={get('hours')} onChange={set('hours')} testId="field-not-read" hint="1 to 168 (a week). Told once, and again only after the bank is read." />;
+    case 'lock-amounts':
+      return (
+        <SelectField
+          label="On the lock screen"
+          value={get('on')}
+          onChange={set('on')}
+          options={[
+            { value: 'off', label: 'Words only, such as "Needs is low"' },
+            { value: 'on', label: 'With the amounts' },
+          ]}
+          testId="field-lock-amounts"
+        />
+      );
     case 'leftover':
       return (
         <>

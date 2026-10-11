@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 17)
+# Budget App Rulebook (draft 18)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -42,6 +42,10 @@ number so a test can point at it. Nothing gets coded until you approve this.
 - Low-bucket alert: 20% of what the bucket started the pay period with
 - Card reminders: 7 days and 2 days before the due date
 - Daily review time: 8:00 PM
+- Quiet hours: 10:00 PM to 7:00 AM. No alert is sent then (10.8).
+- Bank not read: an alert after 24 hours without a good read of the bank
+  (10.7).
+- Amounts on the lock screen: off (10.10).
 - Stay logged in: 30 days on a device, counted from the login. Logins, new
   passkeys and log outs are logged (13.5).
 - Sync with the bank: every 60 minutes, of real time, counted from when the
@@ -262,6 +266,8 @@ number so a test can point at it. Nothing gets coded until you approve this.
      until the payments the app sees add up to what 9.3 asks for. After the
      due date, it shows overdue as in 9.4. The reminders on your phone still
      come only on the reminder days.
+9.7  Card reminders and the overdue alert come at the daily review time
+     (section 2), with the daily review (10.3).
 
 
 ## 10. Alerts
@@ -278,11 +284,24 @@ number so a test can point at it. Nothing gets coded until you approve this.
       second alert. Still empty when a new pay period starts, the alert
       comes again (B50).
 10.3  Daily review: sent at the review time, only if something is unsorted.
-10.4  Totals do not match the bank (section 12).
-10.5  Bank connection needs you to log in again.
+10.4  Totals do not match the bank (section 12). Told when it starts, then
+      once a day at the daily review time while it lasts.
+10.5  Bank connection needs you to log in again. Told the same way as 10.4.
 10.6  The bank took back a transaction the app had counted (4.10). Once,
       when it happens. On Home it stays in Needs attention until you mark it
       seen.
+10.7  The bank has not been read for 24 hours (a setting): the sync keeps
+      failing, or the app was not running. Told once, when the last good
+      read of the bank is that old, and again only after a good read.
+10.8  Quiet hours (section 2): no alert is sent from 10:00 PM to 7:00 AM.
+      What comes due then waits until they end, and says when it was due.
+10.9  Alerts that came due while the app was not running (the daily review,
+      a reminder day): when it is back, only the newest of each kind, and
+      only if it is still true then. One daily review, one reminder per
+      card.
+10.10 On the phone's lock screen an alert shows amounts only if the setting
+      says so (off to start): words only, such as "Needs is low", and the
+      amounts are in the app.
 
 
 ## 11. Safe to spend
@@ -599,3 +618,20 @@ b.  A refund's likely purchases share a name with it or have exactly its
     amount left, at most five. A word on most of your purchases on that
     account, over the refund's day and the 90 days before it, is not a
     name, so "Same name" is true (4.5, QUESTIONS.md A33).
+
+
+## 30. Answers after the alerts were worked out and kept (Oct 11, 2026)
+
+a.  Card reminders and the overdue alert come at the daily review time,
+    with the daily review (9.7, QUESTIONS.md A34).
+b.  Quiet hours, 10:00 PM to 7:00 AM, a setting: what comes due then
+    waits until they end, and says when it was due (10.8, A35).
+c.  Alerts that came due while the app was not running: when it is back,
+    only the newest of each kind, and only if it is still true (10.9,
+    A36).
+d.  "Totals do not match the bank" and "log in to the bank again" repeat
+    once a day at the daily review time while they last (10.4, 10.5,
+    A37).
+e.  A new alert when the bank has not been read for 24 hours, a setting;
+    again only after a good read (10.7, A38).
+f.  Amounts on the lock screen are a setting, off to start (10.10, A39).

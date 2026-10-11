@@ -288,6 +288,14 @@ const SETTING_READERS: { readonly [K in keyof Settings]: (value: unknown) => Set
   earlyPaycheckDays: whole,
   // Section 2: a time zone by its name; whether there is such a zone is the money math's to say.
   homeTimeZone: (v) => (typeof v === 'string' && v.length <= 64 ? v : undefined),
+  // 10.8: two times on the clock; whether they are times is the money math's to say.
+  quietHours: (v) => {
+    if (!isRecord(v) || Object.keys(v).length !== 2 || !onlyKeys(v, ['from', 'to'])) return undefined;
+    const { from, to } = v;
+    return typeof from === 'string' && from.length <= 5 && typeof to === 'string' && to.length <= 5 ? { from, to } : undefined;
+  },
+  bankNotReadAlertHours: whole,
+  amountsOnLockScreen: (v) => (typeof v === 'boolean' ? v : undefined),
 };
 
 // A change to one or more settings, exactly as the money math keeps them; otherwise null.

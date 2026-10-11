@@ -5,8 +5,17 @@ import type { IsoDate } from '@budget-app/money';
 // server's own clock is set to. Dates the bank sends are kept exactly as sent;
 // only the app's own today comes from here.
 
-const dateParts = (zone: string): Intl.DateTimeFormat =>
-  new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23', timeZoneName: 'longOffset' });
+// One per zone: making one is slow, and the alert timer asks every minute.
+const formats = new Map<string, Intl.DateTimeFormat>();
+
+function dateParts(zone: string): Intl.DateTimeFormat {
+  let format = formats.get(zone);
+  if (format === undefined) {
+    format = new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23', timeZoneName: 'longOffset' });
+    formats.set(zone, format);
+  }
+  return format;
+}
 
 function partsAt(zone: string, at: Date): Record<string, string> {
   return Object.fromEntries(dateParts(zone).formatToParts(at).map((p) => [p.type, p.value]));

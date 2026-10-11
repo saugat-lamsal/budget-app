@@ -398,7 +398,8 @@ EXAMPLE 11. The evening on both sides of Nov 1 (10.3, section 2)
 ========================================================================
 
 The daily review is at 8:00 PM on the clock in New York, whatever the
-clocks did. MADE UP SHOP 12.00 has waited in review since Oct 30.
+clocks did. MADE UP SHOP 12.00 has waited in review since Oct 30. The
+server reads the bank on its timer (section 2), so it is never a day old.
 
 Sat Oct 31, 8:00 PM EDT (4 hours behind UTC, so 00:00 UTC on Nov 1):
 "Time to review: 1 thing is waiting for you to sort."
@@ -424,3 +425,81 @@ send it again, and neither does the next evening's look.
 
 Times: due 8:00 PM EST | sent 9:30 PM EST
 Check: shop 12.00
+
+
+========================================================================
+EXAMPLE 13. Quiet hours, and the lock screen (10.8, 10.10; QUESTIONS.md A35, A39)
+========================================================================
+
+No alert is sent from 10:00 PM to 7:00 AM in New York (a setting). What
+comes due then waits until 7:00 AM, and says when it was due. On the
+lock screen an alert has no amounts (a setting, off to start); the list
+of alerts in the app has them. Setup day was Oct 1. All times are New
+York time (EDT).
+
+Fri Oct 2, 9:54 PM. MADE UP CAFE 11.50 shows on the everyday card.
+9:55 PM. The bank takes it back (4.10): "The bank took something back"
+comes due at 9:55 PM. The phone cannot be reached until 11:00 PM. It is
+tried at 9:55, 9:56 and 9:58 PM (after a minute, then two). The next try
+would be 10:02 PM, in quiet hours, so it waits.
+
+Sat Oct 3, 3:10 AM. A sync finds the bank wants him to log in again
+(10.5): "Log in to your bank again" comes due at 3:10 AM, in quiet hours.
+It waits too.
+
+7:00 AM. Quiet hours end. Both go, the oldest first:
+  "The bank took something back: MADE UP CAFE, taken back Fri, Oct 2. It
+  is undone in your buckets too." It says "Due Fri, Oct 2, 9:55 PM.":
+  another day, so the day too.
+  "Log in to your bank again." It says "Due 3:10 AM.": the same day.
+On the lock screen the cafe has no amount. The list in the app says
+"MADE UP CAFE, $11.50, taken back Fri, Oct 2."
+The phone was tried 3 times for the cafe before 10:00 PM, and at 7:00 AM
+once for each alert: 5 tries in all, and each alert shown once.
+
+Times: cafe due 9:55 PM EDT | cafe sent 7:00 AM EDT | login due 3:10 AM EDT | login sent 7:00 AM EDT
+Check: cafe 11.50 | tries before quiet hours 3.00 | tries in all 5.00
+
+
+========================================================================
+EXAMPLE 14. Back after three evenings down (10.9, 10.7; QUESTIONS.md A36, A38)
+========================================================================
+
+When the server comes back, of what came due while it was down it sends
+only the newest of each kind, and only if it is still true: one daily
+review, one reminder per card. Each says when it was due. Setup day was
+Oct 1. The everyday card's statement closed Oct 3: balance 450.00,
+minimum 35.00, due Sat Oct 10. Reminders come 7 and 2 days before. All
+times are New York time (EDT).
+
+Sat Oct 3, noon. The server reads the bank, with the statement.
+6:00 PM. It reads the bank again: MADE UP SHOP 12.00 waits in review.
+That is the last good read.
+7:30 PM. The server stops. It is down over the evenings of Sat Oct 3,
+Sun Oct 4 and Mon Oct 5.
+
+What came due while it was down:
+  Sat Oct 3, 8:00 PM   the daily review (1 thing waits), and the everyday
+                       card's reminder: Oct 10 is 7 days away, nothing paid
+  Sun Oct 4, 6:00 PM   the bank not read for 24 hours (10.7)
+  Sun Oct 4, 8:00 PM   the daily review
+  Mon Oct 5, 8:00 PM   the daily review
+
+Tue Oct 6, 7:30 AM. The server starts again. Of the three daily reviews,
+only the newest, Oct 5's. 1 thing still waits, so it is still true:
+"Time to review: 1 thing is waiting for you to sort." It says "Due Mon,
+Oct 5, 8:00 PM."
+Of the card, its newest reminder, Oct 3's. Oct 10 is now 4 days away:
+after the first reminder day (7 days before) and before the due date,
+with nothing paid, so it is still true. "Everyday card payment due in 7
+days. Due Sat, Oct 10." on the lock screen; the list in the app adds
+"Statement balance $450.00, minimum $35.00." It says "Due Sat, Oct 3,
+8:00 PM."
+The bank not read: "The bank has not been read for 24 hours. Last read
+Sat, Oct 3 at 6:00 PM." It says "Due Sun, Oct 4, 6:00 PM."
+3 alerts go at 7:30 AM, not 5.
+8:00 AM. The bank is read again. The not-read alert is cleared: it comes
+again only if the bank goes 24 hours unread again.
+
+Times: review due 8:00 PM EDT | review sent 7:30 AM EDT | reminder due 8:00 PM EDT | reminder sent 7:30 AM EDT | not read due 6:00 PM EDT | not read sent 7:30 AM EDT
+Check: shop 12.00 | statement balance 450.00 | minimum 35.00 | alerts sent 3.00

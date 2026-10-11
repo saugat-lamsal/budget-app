@@ -571,77 +571,43 @@ A33. ANSWERED Oct 10, built. Your answer: option 3. Rulebook 4.5 and 29b;
      and makes "Same name" true. Built: option 1 (B88).
 
 
-## Part A, added with Phase 5, part one (alerts worked out and kept, Oct 10). Waiting on your answer.
+## Part A, added with Phase 5, part one (alerts worked out and kept, Oct 10). All answered.
 
-The rulebook does not say these. Each is built on the plain reading, as it
-says, until you answer.
+A34. ANSWERED Oct 11, built. Your answer: option 1, as built. Rulebook 9.7
+     and 30a: card reminders and the overdue alert come at the daily review
+     time, with the daily review.
+     The question was: what time of day card reminders (9.1 to 9.3) and the
+     overdue alert (9.4) come; the rulebook gave a day, not a time.
 
-A34. What time of day card reminders (9.1 to 9.3) and the overdue alert
-     (9.4) come. The rulebook gives a day, not a time.
-     Option 1: at the daily review time (8:00 PM), with the daily review: the
-     one time of day the rulebook has. The day's payments are in by then, so
-     one made that day stops the reminder.
-     Option 2: a new setting, a morning time (9:00 AM, say), so there is a
-     whole day to pay.
-     Option 3: as soon as the day starts (just after midnight).
-     Recommendation: option 1. One moment a day for everything that is not
-     urgent, and 8:00 PM still leaves time to pay online. Built: option 1.
+A35. ANSWERED Oct 11, built. Your answer: option 2, quiet hours from 10:00 PM
+     to 7:00 AM, a setting. Rulebook section 2, 10.8 and 30b; the details are
+     B185 and B188.
+     The question was: whether an alert caused by a sync in the night waits
+     until morning (a purchase posting at 3 AM that makes wants low, a
+     take-back, the bank wanting a login). Built before: it went at once.
 
-A35. Whether an alert caused by a sync in the night waits until morning (a
-     purchase posting at 3 AM that makes wants low, a take-back, the bank
-     wanting a login).
-     Option 1: no, it goes at once, whatever the hour.
-     Option 2: quiet hours, a setting (10:00 PM to 7:00 AM, say): what comes
-     due then waits until they end, and says when it was due.
-     Recommendation: option 2. Nothing in the night is urgent enough to wake
-     you. Built: option 1 (the plain reading: it goes when it happens).
+A36. ANSWERED Oct 11, built. Your answer: option 2. Rulebook 10.9 and 30c;
+     the details are B186.
+     The question was: what to do with alerts that came due while the server
+     was down (the 8:00 PM daily review, a reminder day). Built before:
+     option 1, each one sent when it was back, oldest first.
 
-A36. What to do with an alert that came due while the server was down (the
-     8:00 PM daily review, a reminder day).
-     Option 1: each one is sent when the server is back, late, oldest first,
-     saying when it was due. Down for three evenings: three daily reviews.
-     Option 2: when it is back, only the newest of each kind, and only if it
-     is still true now (one daily review, one reminder per card).
-     Option 3: none: what came due while it was down is dropped; Home still
-     shows it.
-     Recommendation: option 2. Nothing is lost that still matters, and you
-     get no pile of stale ones. Built: option 1 (the plain reading of "never
-     lose one"). Each is worked out from the books as they were (nothing
-     changes while the server is down), for its own day: a reminder for Oct 16
-     counts only the payments seen by Oct 16.
+A37. ANSWERED Oct 11, built. Your answer: option 2. Rulebook 10.4, 10.5 and
+     30d; the details are B187.
+     The question was: how often "totals do not match the bank" (10.4) and
+     "log in to the bank again" (10.5) repeat while they stay true. Built
+     before: option 1, once when it starts.
 
-A37. How often the "totals do not match the bank" (10.4) and "log in to the
-     bank again" (10.5) alerts repeat while they stay true.
-     Option 1: once when it starts; again only after it stopped being true
-     and started again.
-     Option 2: once a day while it lasts, at the daily review time.
-     Option 3: after every sync that finds it still true.
-     Recommendation: option 2. Home already says so the whole time (0.5);
-     a daily nudge is enough, and never a storm. Built: option 1. While the
-     bank cannot be read (it wants a login), the mismatch is neither told nor
-     cleared: there is no new balance to compare.
+A38. ANSWERED Oct 11, built. Your answer: option 2, 24 hours, a setting.
+     Rulebook section 2, 10.7 and 30e; the details are B189.
+     The question was: a new alert when the bank has not been read for a day
+     (the sync keeps failing, or the server was down). Built before: none.
 
-A38. A new alert when the bank has not been checked for a day (the sync keeps
-     failing, or the server was down), which the rulebook does not have.
-     Option 1: no such alert; Home's "Checked at" shows it.
-     Option 2: an alert once when the last good read is more than 24 hours
-     old (a setting), and again only after a good read.
-     Recommendation: option 2. A silent app is the worst case for money:
-     you would trust numbers that are a day old. Built: option 1 (nothing
-     new without your OK).
-
-A39. Whether the lock screen shows amounts. The rules say a reminder shows
-     the statement balance and the minimum (9.1, 9.2), and the mismatch
-     alert the difference (10.4).
-     Option 1: yes, the words have the amounts ("Needs is low: $99.99 left of
-     $500.00"), as the rules say.
-     Option 2: on the lock screen, words only ("Needs is low"); the amounts
-     inside the app.
-     Option 3: a setting, amounts on by default.
-     Recommendation: option 3, off by default: anyone who picks up your
-     phone sees your money otherwise. Built: option 1 (the words kept in the
-     outbox have the amounts; how the phone shows them comes with the phone,
-     later in Phase 5).
+A39. ANSWERED Oct 11, built. Your answer: option 3, amounts off by default.
+     Rulebook section 2, 10.10 and 30f; the details are B190.
+     The question was: whether the lock screen shows amounts. Built before:
+     the words kept had the amounts; how the phone shows them comes with the
+     phone, later in Phase 5.
 
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
@@ -746,6 +712,7 @@ so if you want them here too. B4, B20, B82 and B84 are answered.
   B174. Money on its way between your accounts is listed on Buckets (12.5, B44).
   B175. Payday and Home show what is on its way to the savings account (3.8, B46).
   B176. A purchase made on payday itself is not "made before payday" (3.4, B4).
+  B177 to B184 (Phase 5, part one) and B185 to B191 (your answers to A34 to A39, Oct 11): in their own sections at the end of part B.
 
 B1. Paycheck smaller than the mom reserve (3.2).
     A $1,200 paycheck can only give the reserve $1,200, not $1,500. The
@@ -2083,3 +2050,78 @@ B184. The take-back alert (10.6) says the day the bank took it back
       ("MADE UP CAFE, $11.50, taken back Sat, Oct 3."), the same day Home's
       sheet calls "When". It used to say "from Sat, Oct 3", which read as the
       day of the purchase.
+
+
+## Part B, added with your answers to A34 to A39 (Oct 11). Tell me if any is wrong.
+
+B185. An alert that goes out later than the minute it came due says when it
+      was due, on his clock: "Due 3:10 AM." on the same day, "Due Fri, Oct 2,
+      9:55 PM." on another. That is held for quiet hours (10.8), worked out
+      when the server is back (10.9), and tried again after the phone could
+      not be reached. One sent in the minute it came due says nothing more.
+      The list of alerts in the app already shows when each was due and sent.
+
+B186. "Still true" when the server is back (10.9, A36), for each kind:
+      - the daily review: something waits in review now; it says how many
+        wait now, and is due at the newest evening it missed;
+      - one reminder per card (a reminder and the overdue alert are one
+        kind): the newest one that came due; a reminder goes only if the card
+        is still due today (9.6: from the first reminder day to the due date,
+        not paid enough), the overdue alert only if it is still overdue. Back
+        the morning after the due date, the 2-day reminder is no longer true,
+        and the overdue alert comes that evening;
+      - "totals do not match" and "log in again" (A37): once, for the newest
+        evening, if still true;
+      - the bank not read for a day (10.7): it goes when the server is back,
+        due when it came due.
+      Each keeps its own words and its own due moment ("Everyday card payment
+      due in 7 days", due Sat Oct 3 at 8:00 PM, says "Due Sat, Oct 3, 8:00
+      PM."). The same rule handles one evening missed and several: with one,
+      it is that evening's alerts, as before. Example 14.
+
+B187. "Once a day" for 10.4 and 10.5 (A37): told when it starts, at once;
+      then at the daily review time on each later day it lasts. A day it
+      started on gets no second one that evening (started at 3:00 AM or at
+      7:55 PM: nothing more at 8:00 PM). The repeat says the difference then
+      ("Your totals still do not match the bank"; "The bank still wants you
+      to log in again"). While the bank cannot be read (it wants a login),
+      the mismatch is not repeated, as it is neither told nor cleared then;
+      the login alert is. After it stops and starts again it counts from
+      the 1st again.
+
+B188. Quiet hours (10.8, A35): nothing at all is sent in them, so a send
+      that failed before 10:00 PM is not tried again until 7:00 AM either.
+      The setting in force when an alert is sent counts: changed to end
+      earlier, what waits goes then. What waits goes at 7:00 AM even if it is
+      no longer true by then (a login wanted at 3:10 AM and fixed at 6:30
+      AM, say), saying when it was due: 10.8 says it waits, not that it is
+      dropped. Two times on his clock, in his home time zone; the same time
+      twice means no quiet hours. On Settings, "Quiet hours", with From and
+      To. The list of alerts says "Waits for quiet hours to end at 7:00 AM."
+
+B189. The bank not read (10.7, A38): due at the last good read plus the hours
+      of the setting (24 to start), to the minute. A good read is a sync
+      that reached the bank (one that failed, or found the bank wanting a
+      login, is not). Told once; again only after a newer good read, so
+      making the setting longer while it is told does not tell it again.
+      Before the first read there is nothing to count from, and no alert.
+      The words: "The bank has not been read for 24 hours. Last read Sat, Oct
+      3 at 6:00 PM. Your numbers may be out of date until it is read again."
+      The setting is whole hours from 1 to 168 (a week), on Settings as
+      "Bank not read".
+
+B190. The lock screen (10.10, A39): with the setting off, each alert's words
+      without its amounts: "Needs is low. Open the app to see what is left
+      this pay period." "Everyday card payment due in 7 days. Due Fri, Oct
+      23." "Your totals do not match the bank. Safe to spend is hidden until
+      they match." "MADE UP CAFE, taken back Sat, Oct 3." The count in the
+      daily review is not an amount and stays. The list of alerts in the
+      app always has the amounts. The setting in force when it is sent
+      counts. On Settings, "Amounts on the lock screen", off ("words only")
+      or on. Until the phone gets them (web push, later in Phase 5), npm run
+      serve writes them in its own window, as it did.
+
+B191. The three new settings (quiet hours, the bank-not-read hours, amounts on
+      the lock screen) are kept with the others in section 2: changed on
+      Settings like any setting, in force at once (13.1), each change in the
+      change log (13.5).

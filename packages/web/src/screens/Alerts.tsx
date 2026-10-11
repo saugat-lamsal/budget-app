@@ -21,6 +21,7 @@ const ICONS: Readonly<Record<AlertLine['kind'], IconName>> = {
   'totals-mismatch': 'alert',
   'bank-login': 'bank',
   'bank-took-back': 'undo',
+  'bank-not-read': 'clock',
 };
 
 export function AlertsScreen({ load, onRetry, back }: { readonly load: Load<AlertsView>; readonly onRetry: Reload; readonly back: Back }) {

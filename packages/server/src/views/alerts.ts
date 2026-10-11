@@ -18,6 +18,8 @@ export interface AlertLine {
   // While it is not sent: why the last try failed, and when it is tried again.
   readonly lastError: string | null;
   readonly nextTryAt: string | null;
+  // Not sent yet because it is quiet hours (10.8): when they end.
+  readonly quietUntil: string | null;
 }
 
 export type AlertsView =

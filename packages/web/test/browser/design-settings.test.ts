@@ -45,6 +45,18 @@ const SHEETS: readonly (readonly [string, string, (page: Page) => Promise<void>]
     await page.getByTestId('row-time-zone').click();
     await page.getByTestId('field-time-zone').waitFor();
   }],
+  ['10.8 quiet hours', 'normal', async (page) => {
+    await page.getByTestId('row-quiet-hours').click();
+    await page.getByTestId('field-quiet-to').waitFor();
+  }],
+  ['10.7 the bank-not-read alert', 'normal', async (page) => {
+    await page.getByTestId('row-not-read').click();
+    await page.getByTestId('field-not-read').waitFor();
+  }],
+  ['10.10 amounts on the lock screen', 'normal', async (page) => {
+    await page.getByTestId('row-lock-amounts').click();
+    await page.getByTestId('field-lock-amounts').waitFor();
+  }],
   ['the promo end date, set', 'settings-busy', async (page) => {
     await page.getByTestId('row-promo').click();
     await page.getByTestId('sheet-clear').waitFor();

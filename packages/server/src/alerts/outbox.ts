@@ -1,5 +1,5 @@
 import { statement, type Db } from '../db/database.js';
-import type { AlertKind, AlertRecord } from './alerts.js';
+import type { AlertFacts, AlertKind, AlertRecord } from './alerts.js';
 
 // The outbox (database step 5): every alert worked out, with when it was due
 // and when it was sent. A row is written in the same step as the "alerts"
@@ -17,6 +17,8 @@ export interface OutboxRow {
   readonly kind: AlertKind;
   readonly title: string;
   readonly body: string;
+  // What it is about (database step 6, 10.10); null for one kept before.
+  readonly facts: AlertFacts | null;
   readonly dueAt: string;
   readonly createdAt: string;
   // When the plug said it was handed over; null until then.
@@ -33,6 +35,7 @@ interface Row {
   kind: AlertKind;
   title: string;
   body: string;
+  facts: string | null;
   due_at: string;
   created_at: string;
   sent_at: string | null;
@@ -42,7 +45,7 @@ interface Row {
   last_error: string | null;
 }
 
-const COLUMNS = 'key, seq, kind, title, body, due_at, created_at, sent_at, tries, last_try_at, next_try_at, last_error';
+const COLUMNS = 'key, seq, kind, title, body, facts, due_at, created_at, sent_at, tries, last_try_at, next_try_at, last_error';
 
 function rowOf(r: Row): OutboxRow {
   return {
@@ -51,6 +54,7 @@ function rowOf(r: Row): OutboxRow {
     kind: r.kind,
     title: r.title,
     body: r.body,
+    facts: r.facts === null ? null : (JSON.parse(r.facts) as AlertFacts),
     dueAt: r.due_at,
     createdAt: r.created_at,
     sentAt: r.sent_at,
@@ -71,12 +75,13 @@ export function retryAfterMs(tries: number): number {
 }
 
 export function addToOutbox(db: Db, alert: AlertRecord, seq: number, createdAt: string): void {
-  statement(db, 'INSERT INTO outbox (key, seq, kind, title, body, due_at, created_at, tries, next_try_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)').run(
+  statement(db, 'INSERT INTO outbox (key, seq, kind, title, body, facts, due_at, created_at, tries, next_try_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)').run(
     alert.key,
     seq,
     alert.facts.kind,
     alert.title,
     alert.body,
+    JSON.stringify(alert.facts),
     alert.dueAt,
     createdAt,
     createdAt,

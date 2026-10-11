@@ -33,18 +33,30 @@ export class FakeClock implements TimerClock {
   }
 
   // Moves the clock on by ms, running each timer at its moment, oldest first,
-  // and after each one waiting for what it started (settle).
+  // and after each one waiting for what it started (settle). A timer that
+  // keeps setting itself again for the same moment would never let the clock
+  // move, and never let the test's own time limit fire (it all runs as
+  // promises): that fails at once, saying when.
   async advance(ms: number, settle: () => Promise<void>): Promise<void> {
     const end = this.#clock.now.getTime() + ms;
+    let atOneMoment = 0;
     for (;;) {
       let first: [number, { readonly at: number; readonly run: () => void }] | undefined;
       for (const entry of this.#timers) if (entry[1].at <= end && (first === undefined || entry[1].at < first[1].at)) first = entry;
       if (first === undefined) break;
       this.#timers.delete(first[0]);
-      if (first[1].at > this.#clock.now.getTime()) this.#clock.now = new Date(first[1].at);
+      if (first[1].at > this.#clock.now.getTime()) {
+        this.#clock.now = new Date(first[1].at);
+        atOneMoment = 0;
+      }
+      atOneMoment += 1;
+      if (atOneMoment > FakeClock.MOST_AT_ONE_MOMENT) throw new Error(`the timers keep firing at ${this.#clock.now.toISOString()} without the clock moving`);
       first[1].run();
       await settle();
     }
     this.#clock.now = new Date(end);
   }
+
+  // More timers than this at one moment is a timer setting itself again for that same moment.
+  static readonly MOST_AT_ONE_MOMENT = 1_000;
 }

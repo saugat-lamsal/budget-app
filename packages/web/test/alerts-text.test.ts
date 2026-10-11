@@ -33,16 +33,22 @@ describe('10 the list of alerts sent, how each time is written', () => {
 
   it('10.3 sent: when it came due and when it went out', () => {
     const due = '2026-10-12T20:00:00-04:00';
-    expect(alertWhenText({ dueAt: due, sentAt: due, tries: 1, nextTryAt: null }, '2026-10-12')).toBe('Due 8:00 PM, sent 8:00 PM');
-    expect(alertWhenText({ dueAt: due, sentAt: '2026-10-12T21:30:00-04:00', tries: 1, nextTryAt: null }, '2026-10-12')).toBe('Due 8:00 PM, sent 9:30 PM');
-    expect(alertWhenText({ dueAt: due, sentAt: '2026-10-13T07:30:00-04:00', tries: 2, nextTryAt: null }, '2026-10-13')).toBe('Due Mon, Oct 12, 8:00 PM, sent 7:30 AM');
+    expect(alertWhenText({ dueAt: due, sentAt: due, tries: 1, nextTryAt: null, quietUntil: null }, '2026-10-12')).toBe('Due 8:00 PM, sent 8:00 PM');
+    expect(alertWhenText({ dueAt: due, sentAt: '2026-10-12T21:30:00-04:00', tries: 1, nextTryAt: null, quietUntil: null }, '2026-10-12')).toBe('Due 8:00 PM, sent 9:30 PM');
+    expect(alertWhenText({ dueAt: due, sentAt: '2026-10-13T07:30:00-04:00', tries: 2, nextTryAt: null, quietUntil: null }, '2026-10-13')).toBe('Due Mon, Oct 12, 8:00 PM, sent 7:30 AM');
   });
 
   it('10.3 not sent yet: never tried, or tried and failing, with when it is tried again', () => {
     const due = '2026-10-12T20:00:00-04:00';
-    expect(alertWhenText({ dueAt: due, sentAt: null, tries: 0, nextTryAt: null }, '2026-10-12')).toBe('Due 8:00 PM. Not sent yet.');
-    expect(alertWhenText({ dueAt: due, sentAt: null, tries: 1, nextTryAt: '2026-10-12T20:01:00-04:00' }, '2026-10-12')).toBe('Due 8:00 PM. Not sent yet: tried once, trying again at 8:01 PM.');
-    expect(alertWhenText({ dueAt: due, sentAt: null, tries: 3, nextTryAt: '2026-10-12T20:07:00-04:00' }, '2026-10-12')).toBe('Due 8:00 PM. Not sent yet: tried 3 times, trying again at 8:07 PM.');
+    expect(alertWhenText({ dueAt: due, sentAt: null, tries: 0, nextTryAt: null, quietUntil: null }, '2026-10-12')).toBe('Due 8:00 PM. Not sent yet.');
+    expect(alertWhenText({ dueAt: due, sentAt: null, tries: 1, nextTryAt: '2026-10-12T20:01:00-04:00', quietUntil: null }, '2026-10-12')).toBe('Due 8:00 PM. Not sent yet: tried once, trying again at 8:01 PM.');
+    expect(alertWhenText({ dueAt: due, sentAt: null, tries: 3, nextTryAt: '2026-10-12T20:07:00-04:00', quietUntil: null }, '2026-10-12')).toBe('Due 8:00 PM. Not sent yet: tried 3 times, trying again at 8:07 PM.');
+  });
+
+  it('10.8 not sent yet because it is quiet hours: when they end, whether it was tried or not', () => {
+    const due = '2026-10-13T03:10:00-04:00';
+    expect(alertWhenText({ dueAt: due, sentAt: null, tries: 0, nextTryAt: null, quietUntil: '2026-10-13T07:00:00-04:00' }, '2026-10-13')).toBe('Due 3:10 AM. Waits for quiet hours to end at 7:00 AM.');
+    expect(alertWhenText({ dueAt: '2026-10-12T21:55:00-04:00', sentAt: null, tries: 3, nextTryAt: '2026-10-12T22:02:00-04:00', quietUntil: '2026-10-13T07:00:00-04:00' }, '2026-10-12')).toBe('Due 9:55 PM. Waits for quiet hours to end at Tue, Oct 13, 7:00 AM.');
   });
 
   it('10.3 how many: none, one, and more than the list shows', () => {

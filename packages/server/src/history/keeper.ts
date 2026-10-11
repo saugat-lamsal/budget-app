@@ -1,7 +1,8 @@
 import type { IncomingMessage, Server } from 'node:http';
 import { DEFAULT_SETTINGS, type BankBalances, type Book, type CardStatement, type IsoDate, type Pot } from '@budget-app/money';
-import { applyAlerts, nextAlertsEvent, nextEveningIn, type AlertLedger, type AlertWorld } from '../alerts/plan.js';
-import { addToOutbox, markFailed, markSent, markTrying, nextOutboxTry, outboxCounts, outboxToSend, readOutbox, type OutboxRow } from '../alerts/outbox.js';
+import { applyAlerts, nextAlertsEvent, nextDueIn, type AlertLedger, type AlertWorld } from '../alerts/plan.js';
+import { addToOutbox, markFailed, markSent, markTrying, nextOutboxTry, outboxCounts, outboxToSend, readOutbox } from '../alerts/outbox.js';
+import { dueWords, quietUntil, wordsToSend } from '../alerts/sending.js';
 import { Auth } from '../auth/auth.js';
 import { answerAuth, loginViewOf } from '../auth/http.js';
 import { BankRulesDesk } from '../bank-rules-desk.js';
@@ -22,6 +23,7 @@ import { NO_ANSWERS, SETUP_LOOK_BACK_DAYS, type SetupAnswers } from '../setup-vi
 import { FEWEST_MINUTES, MOST_MINUTES, readLastRead, saveSyncEveryMinutes, syncEveryMinutes } from '../sync/bank-reads.js';
 import type { Plan, PlanInput } from '../sync/plan.js';
 import { syncBank, type SyncResult } from '../sync/sync.js';
+import type { OutgoingAlert } from '../serve/alert-timer.js';
 import { ALERTS_SHOWN, type AlertsView } from '../views/alerts.js';
 import { activityView, type ActivityView } from '../views/activity.js';
 import type { BankRuleRequest, BankRuleResponse } from '../views/bank-rules.js';
@@ -451,7 +453,7 @@ export class Keeper {
   #alertWorld(): AlertWorld | null {
     const book = this.book();
     if (book === null) return null;
-    return { book, now: this.#now(), zone: this.timeZone(), bank: this.#bank(), needsLogin: readConnection(this.#db)?.needsLogin ?? false, statements: this.#statements() };
+    return { book, now: this.#now(), zone: this.timeZone(), bank: this.#bank(), needsLogin: readConnection(this.#db)?.needsLogin ?? false, statements: this.#statements(), lastRead: this.lastRead() };
   }
 
   // Works out every alert due now (alerts/plan.ts) and keeps it: each
@@ -472,19 +474,35 @@ export class Keeper {
     throw new Error('the alerts would not stop');
   }
 
-  // Milliseconds until the next evening's alerts are due; null before setup day.
-  nextEveningIn(): number | null {
+  // Milliseconds until the next alert comes due by the clock alone (the next
+  // evening, or the bank not read for a day, 10.7); null before setup day.
+  nextDueIn(): number | null {
     const book = this.book();
-    return book === null ? null : nextEveningIn({ book, zone: this.timeZone(), now: this.#now() }, this.#state.alerts);
+    return book === null ? null : nextDueIn({ book, zone: this.timeZone(), now: this.#now(), lastRead: this.lastRead() }, this.#state.alerts);
   }
 
-  toSend(): readonly OutboxRow[] {
-    return outboxToSend(this.#db, this.#now().toISOString());
+  // 10.8: when quiet hours end, if it is in them now (section 2, his home time zone).
+  #quietUntil(now: Date): Date | null {
+    return quietUntil(this.timeZone(), (this.book()?.settings() ?? DEFAULT_SETTINGS).quietHours, now);
+  }
+
+  // What is not sent yet and due to be tried now, oldest first, as the phone
+  // is to get it: nothing in quiet hours (10.8); words only on the lock screen
+  // unless the setting says amounts (10.10); and, sent late, when it was due.
+  toSend(): readonly OutgoingAlert[] {
+    const now = this.#now();
+    if (this.#quietUntil(now) !== null) return [];
+    const zone = this.timeZone();
+    const amounts = (this.book()?.settings() ?? DEFAULT_SETTINGS).amountsOnLockScreen;
+    return outboxToSend(this.#db, now.toISOString()).map((row) => ({ id: row.key, ...wordsToSend(row, amounts), dueAt: row.dueAt, due: dueWords(zone, row.dueAt, now) }));
   }
 
   nextTryIn(): number | null {
     const at = nextOutboxTry(this.#db);
-    return at === null ? null : Date.parse(at) - this.#now().getTime();
+    if (at === null) return null;
+    const now = this.#now();
+    const quiet = this.#quietUntil(now);
+    return Math.max(Date.parse(at), quiet?.getTime() ?? 0) - now.getTime();
   }
 
   trying(key: string): void {
@@ -505,6 +523,7 @@ export class Keeper {
     const zone = this.timeZone();
     const local = (at: string): string => timeIn(zone, new Date(at));
     const { rows, total } = readOutbox(this.#db, ALERTS_SHOWN);
+    const quiet = this.#quietUntil(this.#now());
     return {
       state: 'tracking',
       today: this.today(),
@@ -520,6 +539,7 @@ export class Keeper {
         tries: row.tries,
         lastError: row.sentAt === null ? row.lastError : null,
         nextTryAt: row.sentAt === null && row.tries > 0 ? local(row.nextTryAt) : null,
+        quietUntil: row.sentAt === null && quiet !== null ? local(quiet.toISOString()) : null,
       })),
     };
   }

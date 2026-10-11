@@ -1,6 +1,6 @@
-import { addDays, bucketLevel, cardNotices, type BankBalances, type Book, type CardStatement, type IsoDate } from '@budget-app/money';
+import { addDays, bucketLevel, cardDue, cardNotices, type BankBalances, type Book, type CardStatement, type IsoDate } from '@budget-app/money';
 import { ReplayFailed } from '../history/history.js';
-import { instantIn, todayIn } from '../history/today.js';
+import { instantIn, timeIn, todayIn } from '../history/today.js';
 import { alertRecord, type AlertFacts, type AlertRecord, type LastingKind } from './alerts.js';
 
 // Which alerts are due, worked out from the book and what is known of the
@@ -13,22 +13,29 @@ import { alertRecord, type AlertFacts, type AlertRecord, type LastingKind } from
 // history, saved with its alerts in the outbox in one step:
 // - start: the first look on a database. From then on the evenings count; the
 //   take-backs already there are known, and get no alert.
-// - evening: each evening (the daily review time, section 2, in his home time
-//   zone) not handled yet whose moment has come, oldest first, even with
-//   nothing to give, so it is never handled twice. One that came while the
-//   server was down is handled when it is back, and says when it was due
-//   (QUESTIONS.md A36). The daily review (10.3), card reminders (9.1 to 9.3)
-//   and the overdue alert (9.4) come then (A34).
+// - evening: the evening (the daily review time, section 2, in his home time
+//   zone) not handled yet whose moment has come, even with nothing to give, so
+//   it is never handled twice. The daily review (10.3), card reminders (9.1 to
+//   9.3) and the overdue alert (9.4) come then (9.7, A34), and the totals not
+//   matching the bank (10.4) and the bank wanting a new login (10.5) once more
+//   each day they last (A37). Evenings that came while the server was not
+//   looking (it was down) are handled together when it is back: only the
+//   newest of each kind, and only if it is still true then (10.9, A36), each
+//   due at its own evening.
 // - change: what is true now that has not been told: needs or wants low or
 //   empty (10.1, 10.2, once per bucket per pay period), what the bank took
 //   back (10.6, once), the totals not matching the bank (10.4) and the bank
-//   wanting a new login (10.5), each once when it starts (A37). Made only when
-//   it gives or clears something. An alert caused by a sync in the night goes
-//   at once (A35).
+//   wanting a new login (10.5) when they start, and the bank not read for the
+//   hours of the setting (10.7, A38), due at the moment the last good read
+//   became that old. Made only when it gives or clears something.
+// Quiet hours (10.8, A35) and the lock screen (10.10, A39) are about sending:
+// the alerts are kept at the moment they come due all the same (keeper.ts).
 
 export type AlertCheck =
   | { readonly kind: 'start'; readonly eveningsFrom: IsoDate; readonly known: readonly string[] }
-  | { readonly kind: 'evening'; readonly date: IsoDate; readonly dueAt: string }
+  // The evening of date; with from, every evening from `from` to date, which
+  // came while the server was not looking (10.9).
+  | { readonly kind: 'evening'; readonly date: IsoDate; readonly dueAt: string; readonly from?: IsoDate }
   | { readonly kind: 'change' };
 
 export interface AlertsEvent {
@@ -36,9 +43,19 @@ export interface AlertsEvent {
   readonly at: string;
   readonly check: AlertCheck;
   readonly given: readonly AlertRecord[];
-  // Lasting alerts that stopped being true (10.4, 10.5): told again only
+  // Lasting alerts that stopped being true (10.4, 10.5, 10.7): told again only
   // after this.
   readonly cleared: readonly LastingKind[];
+}
+
+// A lasting alert (10.4, 10.5, 10.7): whether it is told and still true, how
+// many times it has started, the last day it was told (10.4, 10.5: once a
+// day), and the read it is about (10.7: again only after a newer one).
+export interface LastingState {
+  readonly on: boolean;
+  readonly times: number;
+  readonly lastDay: IsoDate | null;
+  readonly about: string | null;
 }
 
 export interface AlertLedger {
@@ -49,17 +66,17 @@ export interface AlertLedger {
   readonly given: ReadonlySet<string>;
   // Take-backs already there at the start: no alert for them.
   readonly known: ReadonlySet<string>;
-  // For 10.4 and 10.5: whether it is told and still true, and how many times
-  // it has started.
-  readonly lasting: Readonly<Record<LastingKind, { readonly on: boolean; readonly times: number }>>;
+  readonly lasting: Readonly<Record<LastingKind, LastingState>>;
 }
+
+const OFF: LastingState = { on: false, times: 0, lastDay: null, about: null };
 
 export const NO_ALERTS: AlertLedger = {
   started: false,
   nextEvening: null,
   given: new Set(),
   known: new Set(),
-  lasting: { 'totals-mismatch': { on: false, times: 0 }, 'bank-login': { on: false, times: 0 } },
+  lasting: { 'totals-mismatch': OFF, 'bank-login': OFF, 'bank-not-read': OFF },
 };
 
 // What is known at the moment the server looks.
@@ -69,16 +86,22 @@ export interface AlertWorld {
   // His home time zone (section 2).
   readonly zone: string;
   // The bank's balances with pending charges (12.1) as last read; null when
-  // they cannot be worked out. The mismatch is then neither told nor cleared.
+  // they cannot be worked out. The mismatch is then neither told, cleared,
+  // nor told again.
   readonly bank: BankBalances | null;
   readonly needsLogin: boolean;
   // The latest statement of each card (section 9).
   readonly statements: readonly CardStatement[];
+  // The last good read of the bank, as an instant; null before the first (10.7).
+  readonly lastRead: string | null;
 }
+
+const HOUR = 3_600_000;
 
 // The ledger after one "alerts" event: the same live and in a replay. An
 // event that does not fit what came before (an alert given twice, an evening
-// out of turn, a second start) is a history that cannot be replayed.
+// out of turn, a second start, a lasting alert out of turn) is a history that
+// cannot be replayed.
 export function applyAlerts(ledger: AlertLedger, event: AlertsEvent): AlertLedger {
   const given = new Set(ledger.given);
   for (const alert of event.given) {
@@ -88,23 +111,37 @@ export function applyAlerts(ledger: AlertLedger, event: AlertsEvent): AlertLedge
   const lasting = { ...ledger.lasting };
   for (const alert of event.given) {
     const f = alert.facts;
+    const outOfTurn = (): ReplayFailed => new ReplayFailed(`the alert "${alert.key}" is out of turn`);
     if (f.kind === 'totals-mismatch' || f.kind === 'bank-login') {
-      if (lasting[f.kind].on || f.time !== lasting[f.kind].times + 1) throw new ReplayFailed(`the alert "${alert.key}" is out of turn`);
-      lasting[f.kind] = { on: true, times: f.time };
+      const state = lasting[f.kind];
+      if (!f.again) {
+        if (state.on || f.time !== state.times + 1) throw outOfTurn();
+        lasting[f.kind] = { on: true, times: f.time, lastDay: f.day, about: null };
+      } else {
+        if (!state.on || f.time !== state.times || (state.lastDay !== null && f.day <= state.lastDay)) throw outOfTurn();
+        lasting[f.kind] = { ...state, lastDay: f.day };
+      }
+    }
+    if (f.kind === 'bank-not-read') {
+      const state = lasting[f.kind];
+      if (state.on || f.time !== state.times + 1) throw outOfTurn();
+      lasting[f.kind] = { on: true, times: f.time, lastDay: null, about: f.lastRead };
     }
   }
   for (const kind of event.cleared) {
     if (!lasting[kind].on) throw new ReplayFailed(`${kind} was cleared without being on`);
-    lasting[kind] = { on: false, times: lasting[kind].times };
+    lasting[kind] = { ...lasting[kind], on: false, about: null };
   }
   const check = event.check;
   switch (check.kind) {
     case 'start':
       if (ledger.started) throw new ReplayFailed('alerts started twice');
       return { ...ledger, started: true, nextEvening: check.eveningsFrom, given, known: new Set(check.known), lasting };
-    case 'evening':
-      if (!ledger.started || check.date !== ledger.nextEvening) throw new ReplayFailed(`the evening of ${check.date} is out of turn (next is ${ledger.nextEvening ?? 'none'})`);
+    case 'evening': {
+      const first = check.from ?? check.date;
+      if (!ledger.started || first !== ledger.nextEvening || check.date < first) throw new ReplayFailed(`the evening of ${check.date} is out of turn (next is ${ledger.nextEvening ?? 'none'})`);
       return { ...ledger, nextEvening: addDays(check.date, 1), given, lasting };
+    }
     case 'change':
       if (!ledger.started) throw new ReplayFailed('alerts given before they started');
       return { ...ledger, given, lasting };
@@ -128,38 +165,70 @@ export function nextAlertsEvent(world: AlertWorld, ledger: AlertLedger): AlertsE
       .flatMap((line) => (line.kind === 'bank-took-back' ? [line.id] : []));
     return { at, check: { kind: 'start', eveningsFrom, known }, given: [], cleared: [] };
   }
-  const evening = ledger.nextEvening;
-  if (evening !== null) {
-    const due = eveningAt(world, evening);
-    if (due.getTime() <= world.now.getTime()) return eveningEvent(world, ledger, evening, due.toISOString(), at);
+  const from = ledger.nextEvening;
+  if (from !== null && eveningAt(world, from).getTime() <= world.now.getTime()) {
+    // Every evening whose moment has come: one when the server looks on time,
+    // more when it was down (10.9).
+    let to = from;
+    while (eveningAt(world, addDays(to, 1)).getTime() <= world.now.getTime()) to = addDays(to, 1);
+    return eveningsEvent(world, ledger, from, to, at);
   }
   return changeEvent(world, ledger, at);
 }
 
-// Milliseconds until the next evening is due; 0 or less when it is; null before the start.
-export function nextEveningIn(world: Pick<AlertWorld, 'book' | 'zone' | 'now'>, ledger: AlertLedger): number | null {
-  if (ledger.nextEvening === null) return null;
-  return eveningAt(world, ledger.nextEvening).getTime() - world.now.getTime();
+// Milliseconds until the next alert comes due by the clock alone: the next
+// evening, or the bank's last good read becoming too old (10.7). 0 or less
+// when one is due; null before the start.
+export function nextDueIn(world: Pick<AlertWorld, 'book' | 'zone' | 'now' | 'lastRead'>, ledger: AlertLedger): number | null {
+  if (!ledger.started || ledger.nextEvening === null) return null;
+  const now = world.now.getTime();
+  let next = eveningAt(world, ledger.nextEvening).getTime() - now;
+  if (!ledger.lasting['bank-not-read'].on && world.lastRead !== null) next = Math.min(next, Date.parse(world.lastRead) + world.book.settings().bankNotReadAlertHours * HOUR - now);
+  return next;
 }
 
-function eveningEvent(world: AlertWorld, ledger: AlertLedger, date: IsoDate, dueAt: string, at: string): AlertsEvent {
+// Which alerts are one kind, of which only the newest goes when several
+// evenings came while the server was down (10.9): one daily review, one
+// reminder per card, one more of each lasting alert.
+function kindOf(f: AlertFacts): string {
+  return f.kind === 'card-reminder' || f.kind === 'card-overdue' ? `card ${f.card}` : f.kind;
+}
+
+// The evenings from `from` to `to`, all due by now. Each evening's alerts are
+// worked out with the books as they are now (nothing changes while the server
+// is down), for its own day; then only the newest of each kind, if it is
+// still true now, each due at its own evening. On time, that is the one
+// evening's alerts.
+function eveningsEvent(world: AlertWorld, ledger: AlertLedger, from: IsoDate, to: IsoDate, at: string): AlertsEvent {
+  const newest = new Map<string, { readonly facts: AlertFacts; readonly dueAt: string }>();
+  for (let date = from; date <= to; date = addDays(date, 1)) {
+    const dueAt = eveningAt(world, date).toISOString();
+    for (const facts of eveningAlerts(world, ledger, date)) newest.set(kindOf(facts), { facts, dueAt });
+  }
+  const today = todayIn(world.zone, world.now);
+  const given = [...newest.values()]
+    .filter(({ facts }) => stillTrue(world, today, facts))
+    .map(({ facts, dueAt }) => alertRecord(facts, dueAt))
+    .filter((record) => !ledger.given.has(record.key));
+  const dueAt = eveningAt(world, to).toISOString();
+  return { at, check: from === to ? { kind: 'evening', date: to, dueAt } : { kind: 'evening', from, date: to, dueAt }, given, cleared: [] };
+}
+
+// One evening's alerts, with the books now.
+function eveningAlerts(world: AlertWorld, ledger: AlertLedger, date: IsoDate): AlertFacts[] {
   const { book } = world;
-  const given: AlertRecord[] = [];
-  const give = (facts: AlertFacts): void => {
-    const record = alertRecord(facts, dueAt);
-    if (!ledger.given.has(record.key) && !given.some((g) => g.key === record.key)) given.push(record);
-  };
-  // 10.3: only if something is waiting then.
+  const facts: AlertFacts[] = [];
+  // 10.3: only if something is waiting.
   const waiting = book.reviewItems().length;
-  if (waiting > 0) give({ kind: 'daily-review', date, waiting });
+  if (waiting > 0) facts.push({ kind: 'daily-review', date, waiting });
   // 9.1 to 9.4, for that day, with the payments seen by then.
   const settings = book.settings();
   for (const statement of world.statements) {
     for (const notice of cardNotices(date, statement, book.cardPayments(statement.card), settings)) {
       if (notice.kind === 'overdue') {
-        give({ kind: 'card-overdue', card: notice.card, dueDate: notice.dueDate, minimumPayment: notice.minimumPayment, date });
+        facts.push({ kind: 'card-overdue', card: notice.card, dueDate: notice.dueDate, minimumPayment: notice.minimumPayment, date });
       } else {
-        give({
+        facts.push({
           kind: 'card-reminder',
           card: notice.card,
           dueDate: notice.dueDate,
@@ -170,14 +239,32 @@ function eveningEvent(world: AlertWorld, ledger: AlertLedger, date: IsoDate, due
       }
     }
   }
-  return { at, check: { kind: 'evening', date, dueAt }, given, cleared: [] };
+  // 10.4 and 10.5 (A37): once more, on a day it lasts and was not told yet.
+  const again = (state: LastingState): boolean => state.on && (state.lastDay === null || state.lastDay < date);
+  const mismatch = ledger.lasting['totals-mismatch'];
+  const check = world.bank === null ? null : book.selfCheck(world.bank);
+  if (again(mismatch) && check !== null && !check.ok) facts.push({ kind: 'totals-mismatch', time: mismatch.times, difference: check.difference, day: date, again: true });
+  const login = ledger.lasting['bank-login'];
+  if (again(login) && world.needsLogin) facts.push({ kind: 'bank-login', time: login.times, day: date, again: true });
+  return facts;
+}
+
+// 10.9: an evening's alert is still true now. A reminder: the card is still
+// due (9.6: not enough paid, the due date not passed); the overdue alert:
+// still overdue. The rest are worked out with the books now already.
+function stillTrue(world: AlertWorld, today: IsoDate, f: AlertFacts): boolean {
+  if (f.kind !== 'card-reminder' && f.kind !== 'card-overdue') return true;
+  const statement = world.statements.find((s) => s.card === f.card);
+  if (statement === undefined) return false;
+  const due = cardDue(today, statement, world.book.cardPayments(statement.card), world.book.settings());
+  return due !== null && due.dueDate === f.dueDate && due.kind === (f.kind === 'card-reminder' ? 'due' : 'overdue');
 }
 
 function changeEvent(world: AlertWorld, ledger: AlertLedger, at: string): AlertsEvent | null {
   const { book } = world;
   const given: AlertRecord[] = [];
-  const give = (facts: AlertFacts): void => {
-    const record = alertRecord(facts, at);
+  const give = (facts: AlertFacts, dueAt = at): void => {
+    const record = alertRecord(facts, dueAt);
     if (!ledger.given.has(record.key)) given.push(record);
   };
   // 10.1 and 10.2: the level of each bucket now, once per pay period each.
@@ -195,16 +282,28 @@ function changeEvent(world: AlertWorld, ledger: AlertLedger, at: string): Alerts
     if (line.kind === 'bank-took-back' && !ledger.known.has(line.id)) give({ kind: 'bank-took-back', id: line.id, date: line.date, description: line.description, amount: line.amount });
   }
   // 10.4 and 10.5: told when they start, cleared when they stop.
+  const today = todayIn(world.zone, world.now);
   const cleared: LastingKind[] = [];
-  const lasting = (kind: LastingKind, now: boolean | null, facts: (time: number) => AlertFacts): void => {
+  const lasting = (kind: 'totals-mismatch' | 'bank-login', now: boolean | null, facts: (time: number) => AlertFacts): void => {
     if (now === null) return;
     const state = ledger.lasting[kind];
     if (now && !state.on) give(facts(state.times + 1));
     if (!now && state.on) cleared.push(kind);
   };
   const check = world.bank === null ? null : book.selfCheck(world.bank);
-  lasting('totals-mismatch', check === null ? null : !check.ok, (time) => ({ kind: 'totals-mismatch', time, difference: check?.difference ?? 0 }));
-  lasting('bank-login', world.needsLogin, (time) => ({ kind: 'bank-login', time }));
+  lasting('totals-mismatch', check === null ? null : !check.ok, (time) => ({ kind: 'totals-mismatch', time, difference: check?.difference ?? 0, day: today, again: false }));
+  lasting('bank-login', world.needsLogin, (time) => ({ kind: 'bank-login', time, day: today, again: false }));
+  // 10.7: once, when the last good read is the setting's hours old; cleared by a newer read.
+  const notRead = ledger.lasting['bank-not-read'];
+  if (notRead.on) {
+    if (world.lastRead !== notRead.about) cleared.push('bank-not-read');
+  } else if (world.lastRead !== null) {
+    const hours = book.settings().bankNotReadAlertHours;
+    const due = Date.parse(world.lastRead) + hours * HOUR;
+    if (due <= world.now.getTime()) {
+      give({ kind: 'bank-not-read', time: notRead.times + 1, hours, lastRead: world.lastRead, lastReadLocal: timeIn(world.zone, new Date(world.lastRead)) }, new Date(due).toISOString());
+    }
+  }
   if (given.length === 0 && cleared.length === 0) return null;
   return { at, check: { kind: 'change' }, given, cleared };
 }

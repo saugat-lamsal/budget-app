@@ -3617,5 +3617,61 @@
     "find": "for (const c of recent) for (const word of nameWords(c.description))",
     "replace": "for (const c of recent) for (const word of c.description.toLowerCase().split(/[^a-z0-9]+/))",
     "why": "[a33] 4.5 a word written twice in one purchase counts twice"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/settings.ts",
+    "find": "isClockTime(s.quietHours.from) && isClockTime(s.quietHours.to)",
+    "replace": "isClockTime(s.quietHours.from)",
+    "why": "[a35] section 2 quiet hours that end at no time are taken"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/settings.ts",
+    "find": "isWholeInRange(s.bankNotReadAlertHours, 1, 168)",
+    "replace": "isWholeInRange(s.bankNotReadAlertHours, 0, 168)",
+    "why": "[a38] section 2 a bank-not-read alert after 0 hours is taken"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/settings.ts",
+    "find": "isWholeInRange(s.bankNotReadAlertHours, 1, 168)",
+    "replace": "isWholeInRange(s.bankNotReadAlertHours, 1, 169)",
+    "why": "[a38] section 2 a bank-not-read alert after 169 hours is taken"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/settings.ts",
+    "find": "typeof s.amountsOnLockScreen === 'boolean'",
+    "replace": "s.amountsOnLockScreen !== undefined",
+    "why": "[a39] section 2 amounts on the lock screen that are not on or off are taken"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/settings.ts",
+    "find": "  quietHours: { from: '22:00', to: '07:00' },",
+    "replace": "  quietHours: { from: '23:00', to: '07:00' },",
+    "why": "[a35] section 2 quiet hours start at 11:00 PM"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/settings.ts",
+    "find": "  bankNotReadAlertHours: 24,",
+    "replace": "  bankNotReadAlertHours: 25,",
+    "why": "[a38] section 2 the bank-not-read alert after 25 hours"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/settings.ts",
+    "find": "  amountsOnLockScreen: false,",
+    "replace": "  amountsOnLockScreen: true,",
+    "why": "[a39] section 2 amounts on the lock screen to start"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/settings.ts",
+    "find": "    quietHours: { ...s.quietHours },\n",
+    "replace": "",
+    "why": "[a35] section 2 quiet hours can be changed through the settings kept"
   }
 ]

@@ -21,18 +21,21 @@ export type AlertFacts =
   | { readonly kind: 'card-reminder'; readonly card: Card; readonly dueDate: IsoDate; readonly daysBefore: number; readonly minimumPayment: Cents; readonly statementBalance: Cents | null }
   // 9.4: every day after the due date until the minimum is paid (B30).
   | { readonly kind: 'card-overdue'; readonly card: Card; readonly dueDate: IsoDate; readonly minimumPayment: Cents; readonly date: IsoDate }
-  // 10.4 and 10.5: when it starts (the time-th time), and again only after it
-  // stopped being true (QUESTIONS.md A37 asks how often).
-  | { readonly kind: 'totals-mismatch'; readonly time: number; readonly difference: Cents }
-  | { readonly kind: 'bank-login'; readonly time: number }
+  // 10.4 and 10.5 (A37): when it starts (the time-th time it starts, on its
+  // day), then again (again: true) once each day it lasts, at the review time.
+  | { readonly kind: 'totals-mismatch'; readonly time: number; readonly difference: Cents; readonly day: IsoDate; readonly again: boolean }
+  | { readonly kind: 'bank-login'; readonly time: number; readonly day: IsoDate; readonly again: boolean }
+  // 10.7 (A38): the last good read of the bank is this many hours old (the
+  // time-th time), and when that read was, as an instant and on his clock.
+  | { readonly kind: 'bank-not-read'; readonly time: number; readonly hours: number; readonly lastRead: string; readonly lastReadLocal: string }
   // 10.6: once, when it happens.
   | { readonly kind: 'bank-took-back'; readonly id: string; readonly date: IsoDate; readonly description: string; readonly amount: Cents };
 
 export type AlertKind = AlertFacts['kind'];
 
-// The alerts that stay true for a while (10.4, 10.5).
-export type LastingKind = 'totals-mismatch' | 'bank-login';
-export const LASTING_KINDS: readonly LastingKind[] = ['totals-mismatch', 'bank-login'];
+// The alerts that stay true for a while (10.4, 10.5, 10.7).
+export type LastingKind = 'totals-mismatch' | 'bank-login' | 'bank-not-read';
+export const LASTING_KINDS: readonly LastingKind[] = ['totals-mismatch', 'bank-login', 'bank-not-read'];
 
 // One alert as it was worked out: kept in the book's history (an "alerts"
 // event) and in the outbox, in the same step.
@@ -61,7 +64,9 @@ export function alertKey(f: AlertFacts): string {
       return `card-overdue ${f.card} due ${f.dueDate} on ${f.date}`;
     case 'totals-mismatch':
     case 'bank-login':
-      return `${f.kind} ${f.time}`;
+      return f.again ? `${f.kind} ${f.time} again ${f.day}` : `${f.kind} ${f.time}`;
+    case 'bank-not-read':
+      return `bank-not-read ${f.time}`;
     case 'bank-took-back':
       return `bank-took-back ${f.id}`;
   }
@@ -79,34 +84,59 @@ export function dayWords(date: IsoDate): string {
   return new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
-// What the phone shows: a title and a line. The amounts are in it, as the
-// rules say (9.1, 9.2, 10.4; QUESTIONS.md A39 asks about the lock screen).
-export function alertWords(f: AlertFacts): { readonly title: string; readonly body: string } {
+// "9:00 AM", from a time on his clock as timeIn writes it ("2026-10-02T09:00:00-04:00").
+export function clockWords(local: string): string {
+  const hour = Number(local.slice(11, 13));
+  const minute = local.slice(14, 16);
+  return `${hour % 12 === 0 ? 12 : hour % 12}:${minute} ${hour < 12 ? 'AM' : 'PM'}`;
+}
+
+// What the phone shows: a title and a line. With amounts, as the rules say
+// (9.1, 9.2, 10.4): the alerts list in the app always has them. Without them,
+// words only, for the lock screen (10.10, A39): the same alert, its amounts
+// left out.
+export function alertWords(f: AlertFacts, options: { readonly amounts?: boolean } = {}): { readonly title: string; readonly body: string } {
+  const amounts = options.amounts ?? true;
   switch (f.kind) {
     case 'low-bucket':
-      return { title: `${BUCKETS[f.bucket]} is low`, body: `${formatDollars(f.amount)} left of ${formatDollars(f.startedWith)} this pay period.` };
+      return { title: `${BUCKETS[f.bucket]} is low`, body: amounts ? `${formatDollars(f.amount)} left of ${formatDollars(f.startedWith)} this pay period.` : 'Open the app to see what is left this pay period.' };
     case 'empty-bucket':
       return {
         title: `${BUCKETS[f.bucket]} is empty`,
-        body: f.amount < 0 ? `It is ${formatDollars(-f.amount)} over for this pay period.` : 'Nothing is left in it for this pay period.',
+        body: f.amount >= 0 ? 'Nothing is left in it for this pay period.' : amounts ? `It is ${formatDollars(-f.amount)} over for this pay period.` : 'It is over for this pay period.',
       };
     case 'daily-review':
       return { title: 'Time to review', body: f.waiting === 1 ? '1 thing is waiting for you to sort.' : `${f.waiting} things are waiting for you to sort.` };
     case 'card-reminder': {
       const when = f.daysBefore === 0 ? 'today' : f.daysBefore === 1 ? 'tomorrow' : `in ${f.daysBefore} days`;
-      const amounts = f.statementBalance === null ? `Minimum ${formatDollars(f.minimumPayment)}.` : `Statement balance ${formatDollars(f.statementBalance)}, minimum ${formatDollars(f.minimumPayment)}.`;
-      return { title: `${CARDS[f.card]} payment due ${when}`, body: `${amounts} Due ${dayWords(f.dueDate)}.` };
+      const owed = f.statementBalance === null ? `Minimum ${formatDollars(f.minimumPayment)}.` : `Statement balance ${formatDollars(f.statementBalance)}, minimum ${formatDollars(f.minimumPayment)}.`;
+      return { title: `${CARDS[f.card]} payment due ${when}`, body: amounts ? `${owed} Due ${dayWords(f.dueDate)}.` : `Due ${dayWords(f.dueDate)}.` };
     }
     case 'card-overdue':
-      return { title: `${CARDS[f.card]} payment is overdue`, body: `The minimum, ${formatDollars(f.minimumPayment)}, was due ${dayWords(f.dueDate)}, and less than that has been paid since the statement.` };
+      return {
+        title: `${CARDS[f.card]} payment is overdue`,
+        body: amounts
+          ? `The minimum, ${formatDollars(f.minimumPayment)}, was due ${dayWords(f.dueDate)}, and less than that has been paid since the statement.`
+          : `The minimum was due ${dayWords(f.dueDate)}, and less than that has been paid since the statement.`,
+      };
     case 'totals-mismatch':
       return {
-        title: 'Your totals do not match the bank',
-        body: `Off by ${formatDollars(Math.abs(f.difference))}: the bank shows ${f.difference < 0 ? 'less' : 'more'} than your buckets add up to. Safe to spend is hidden until they match.`,
+        title: f.again ? 'Your totals still do not match the bank' : 'Your totals do not match the bank',
+        body: amounts
+          ? `Off by ${formatDollars(Math.abs(f.difference))}: the bank shows ${f.difference < 0 ? 'less' : 'more'} than your buckets add up to. Safe to spend is hidden until they match.`
+          : 'Safe to spend is hidden until they match.',
       };
     case 'bank-login':
-      return { title: 'Log in to your bank again', body: 'The bank wants you to log in again before the app can read it.' };
+      return { title: 'Log in to your bank again', body: f.again ? 'The bank still wants you to log in again before the app can read it.' : 'The bank wants you to log in again before the app can read it.' };
     case 'bank-took-back':
-      return { title: 'The bank took something back', body: `${f.description}, ${formatDollars(f.amount)}, taken back ${dayWords(f.date)}. It is undone in your buckets too.` };
+      return {
+        title: 'The bank took something back',
+        body: amounts ? `${f.description}, ${formatDollars(f.amount)}, taken back ${dayWords(f.date)}. It is undone in your buckets too.` : `${f.description}, taken back ${dayWords(f.date)}. It is undone in your buckets too.`,
+      };
+    case 'bank-not-read':
+      return {
+        title: `The bank has not been read for ${f.hours} ${f.hours === 1 ? 'hour' : 'hours'}`,
+        body: `Last read ${dayWords(f.lastReadLocal.slice(0, 10))} at ${clockWords(f.lastReadLocal)}. Your numbers may be out of date until it is read again.`,
+      };
   }
 }

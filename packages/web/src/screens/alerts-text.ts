@@ -21,9 +21,11 @@ export function alertMomentText(at: string, today: IsoDate): string {
 }
 
 // When it came due, and when it went out or why not yet.
-export function alertWhenText(line: { readonly dueAt: string; readonly sentAt: string | null; readonly tries: number; readonly nextTryAt: string | null }, today: IsoDate): string {
+export function alertWhenText(line: { readonly dueAt: string; readonly sentAt: string | null; readonly tries: number; readonly nextTryAt: string | null; readonly quietUntil: string | null }, today: IsoDate): string {
   const due = `Due ${alertMomentText(line.dueAt, today)}`;
   if (line.sentAt !== null) return `${due}, sent ${alertMomentText(line.sentAt, today)}`;
+  // 10.8: nothing goes in quiet hours.
+  if (line.quietUntil !== null) return `${due}. Waits for quiet hours to end at ${alertMomentText(line.quietUntil, today)}.`;
   if (line.tries === 0 || line.nextTryAt === null) return `${due}. Not sent yet.`;
   const tried = line.tries === 1 ? 'tried once' : `tried ${line.tries.toLocaleString('en-US')} times`;
   return `${due}. Not sent yet: ${tried}, trying again at ${alertMomentText(line.nextTryAt, today)}.`;

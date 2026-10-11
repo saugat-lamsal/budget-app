@@ -1916,5 +1916,61 @@
     "find": "{view.alerts !== undefined && <ListRow icon=\"tray\" title=\"Alerts sent\"",
     "replace": "{view.alerts === undefined && <ListRow icon=\"tray\" title=\"Alerts sent\"",
     "why": "[alerts] 10.3 Settings has no way to the list of alerts"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "return quiet.from === quiet.to ? 'None' :",
+    "replace": "return false ? 'None' :",
+    "why": "[a35] the same time twice is not written as no quiet hours"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "return `After ${hours} ${hours === 1 ? 'hour' : 'hours'}`;",
+    "replace": "return `After ${hours} hours`;",
+    "why": "[a38] \"After 1 hours\""
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "return on ? 'On' : 'Off, words only';",
+    "replace": "return on ? 'Off, words only' : 'On';",
+    "why": "[a39] amounts on the lock screen written the wrong way round"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "    case 'quietHours':\n      return quietHoursText(v as Settings['quietHours']);",
+    "replace": "    case 'quietHours':\n      return String(v);",
+    "why": "[a35] 13.5 a change to quiet hours is logged as [object Object]"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/alerts-text.ts",
+    "find": "if (line.quietUntil !== null) return",
+    "replace": "if (line.quietUntil === 'never') return",
+    "why": "[a35] 10.8 the list does not say an alert waits for quiet hours"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "{ value: { quietHours: { from: get('from'), to: get('to') } } }",
+    "replace": "{ value: { quietHours: { from: get('to'), to: get('from') } } }",
+    "why": "[a35] Settings sends quiet hours the wrong way round"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "return { value: { amountsOnLockScreen: get('on') === 'on' } };",
+    "replace": "return { value: { amountsOnLockScreen: get('on') === 'off' } };",
+    "why": "[a39] Settings sends amounts on the lock screen the wrong way round"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "bankNotReadAlertHours: r.value[0] ?? 0",
+    "replace": "bankNotReadAlertHours: (r.value[0] ?? 0) * 2",
+    "why": "[a38] Settings sends twice the hours typed"
   }
 ]

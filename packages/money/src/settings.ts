@@ -36,6 +36,17 @@ export interface Settings {
   // app's today is the date there. The money math has no clock: it only
   // keeps this, for whoever reads the clock (the server).
   readonly homeTimeZone: string;
+  // Rule 10.8: no alert is sent from `from` to `to` ("HH:MM", 24-hour clock,
+  // in his home time zone); what comes due then waits until they end. The
+  // same time twice is no quiet hours at all.
+  readonly quietHours: { readonly from: string; readonly to: string };
+  // Rule 10.7: an alert once the last good read of the bank is this many
+  // hours old.
+  readonly bankNotReadAlertHours: number;
+  // Rule 10.10: whether an alert shows its amounts on the phone's lock
+  // screen. The money math only keeps these three, for the server that sends
+  // the alerts.
+  readonly amountsOnLockScreen: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = deepFreeze({
@@ -53,6 +64,9 @@ export const DEFAULT_SETTINGS: Settings = deepFreeze({
   momRule: null,
   earlyPaycheckDays: 10,
   homeTimeZone: 'America/New_York',
+  quietHours: { from: '22:00', to: '07:00' },
+  bankNotReadAlertHours: 24,
+  amountsOnLockScreen: false,
 });
 
 const LEFTOVER_CHOICES: readonly LeftoverChoice[] = ['ask', 'roll-over', 'move-to-savings'];
@@ -82,7 +96,7 @@ export function validateSettings(settings: Settings): Settings {
   check(s.momMonthlyTarget.low <= s.momMonthlyTarget.high, 'mom monthly target low end must not be above the high end');
   check(isWholeInRange(s.lowBucketAlertPercent, 0, 100), 'low-bucket alert must be a whole percent from 0 to 100');
   check(s.cardReminderDaysBefore.every((d) => isWholeInRange(d, 0, Infinity)), 'card reminder days must be whole days, zero or more');
-  check(/^([01]\d|2[0-3]):[0-5]\d$/.test(s.dailyReviewTime), 'daily review time must be HH:MM');
+  check(isClockTime(s.dailyReviewTime), 'daily review time must be HH:MM');
   check(LEFTOVER_CHOICES.includes(s.leftoverAtPayday.needs), 'leftover choice for needs is not one of the options');
   check(LEFTOVER_CHOICES.includes(s.leftoverAtPayday.wants), 'leftover choice for wants is not one of the options');
   if (s.oldCardPromoEndDate !== null) {
@@ -97,6 +111,9 @@ export function validateSettings(settings: Settings): Settings {
   check(isWholeInRange(s.payScheduleDays, 1, Infinity), 'pay schedule must be a whole number of days, at least 1');
   check(isWholeInRange(s.earlyPaycheckDays, 0, Infinity), 'early paycheck days must be a whole number, zero or more');
   check(isTimeZone(s.homeTimeZone), 'home time zone must be the name of a time zone, such as America/New_York');
+  check(typeof s.quietHours === 'object' && s.quietHours !== null && isClockTime(s.quietHours.from) && isClockTime(s.quietHours.to), 'quiet hours must be two times, HH:MM');
+  check(isWholeInRange(s.bankNotReadAlertHours, 1, 168), 'the bank-not-read alert must be a whole number of hours from 1 to 168');
+  check(typeof s.amountsOnLockScreen === 'boolean', 'amounts on the lock screen must be on or off');
   return deepFreeze(copySettings(s));
 }
 
@@ -109,7 +126,13 @@ function copySettings(s: Settings): Settings {
     leftoverAtPayday: { ...s.leftoverAtPayday },
     paycheckRule: s.paycheckRule === null ? null : { ...s.paycheckRule },
     momRule: s.momRule === null ? null : { ...s.momRule },
+    quietHours: { ...s.quietHours },
   };
+}
+
+// "HH:MM" on a 24-hour clock.
+function isClockTime(time: string): boolean {
+  return typeof time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
 }
 
 function check(ok: boolean, message: string): void {
