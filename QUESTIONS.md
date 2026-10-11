@@ -2133,3 +2133,15 @@ B192. Review, the bucket lists and Payday (Step 1 of this chunk, as B92 did for
       with, so the books changed once, but two requests went). His PC found
       it under full load in WebKit (Oct 11).
 
+
+## Part B, added with the phone (Phase 5, Oct 11). Tell me if any is wrong.
+
+B193. Raising the low alert level (10.1) above where a bucket stands sends
+      the low alert right then, once for the pay period, as any setting other
+      than the split and the mom reserve applies at once (13.1). Raised to
+      exactly where the bucket stands, nothing comes (below means strictly
+      below, B57). Lowered and raised again in the same pay period, it does
+      not come a second time. Found by the simulated life (seed 1507): the
+      money math and the server already did this; the simulator itself
+      checked the alerts after the change with the old level, and now changes
+      its own record with the book's.

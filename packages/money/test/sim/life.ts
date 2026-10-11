@@ -1640,6 +1640,24 @@ class Life {
     return this.#rules.find((rule) => rule.for === kind && text.includes(rule.contains.toLowerCase()));
   }
 
+  // A settings change, as the real server lives it: the bank's activity so
+  // far is one sync, its alerts worked out under the settings as they were;
+  // then the simulator's own record changes with the book's, so the alerts
+  // due right after the change are worked out under the new ones (a higher
+  // low alert level makes a bucket low at once: 10.1, 13.1). Every settings
+  // change in the simulator goes through here.
+  #changeSettings(patch: Partial<Settings>): ReturnType<Book['changeSettings']> {
+    this.#syncPoint();
+    const before = this.#settings;
+    this.#settings = { ...before, ...patch };
+    try {
+      return this.#book.changeSettings(patch, this.#date);
+    } catch (error) {
+      this.#settings = before;
+      throw error;
+    }
+  }
+
   // ---- The mom rule and the paycheck rule, cleared and set again (13.2, A9)
 
   // Clearing a rule sorts nothing: the preview says so, and nothing changes.
@@ -1648,9 +1666,8 @@ class Life {
     const logBefore = this.#book.changeLog().length;
     const preview = this.#book.previewSettingsChange({ [key]: null }, this.#date);
     if (preview.items.length !== 0 || !same(preview.potsAfter, before)) throw new CheckFailed('13.2 A9 clearing a rule sorts nothing', JSON.stringify(preview));
-    const { rechecked } = this.#book.changeSettings({ [key]: null }, this.#date);
+    const { rechecked } = this.#changeSettings({ [key]: null });
     if (rechecked.length !== 0) throw new CheckFailed('13.2 A9 clearing a rule sorts nothing', JSON.stringify(rechecked));
-    this.#settings = { ...this.#settings, [key]: null };
     this.#expectChange(before, {}, '13.2 A9 clearing a rule sorts nothing', key);
     if (this.#book.changeLog().length !== logBefore + 1) throw new CheckFailed('13.5 every change is logged', `clearing ${key} was not logged`);
     this.#note(`${key} cleared`);
@@ -1701,9 +1718,8 @@ class Life {
     });
     const preview = this.#book.previewSettingsChange(patch, this.#date);
     if (!same(preview.items, expected)) throw new CheckFailed('13.2 A9 what setting the mom rule would do', `expected ${JSON.stringify(expected)}, the preview says ${JSON.stringify(preview.items)}`);
-    const { rechecked } = this.#book.changeSettings(patch, this.#date);
+    const { rechecked } = this.#changeSettings(patch);
     if (!same(rechecked, preview.items) || !same(this.#book.pots(), preview.potsAfter)) throw new CheckFailed('13.2 A9 the change is what the preview said', JSON.stringify({ rechecked, after: this.#book.pots(), preview }));
-    this.#settings = { ...this.#settings, momRule: patch.momRule };
     const taken = expected.reduce((sum, item) => sum + (item.kind === 'mom' ? item.fromReserve : 0), 0);
     this.#expectChange(before, { momReserve: -taken, unsortedOut: -taken }, '13.2 A9 8.1 setting the mom rule', `${expected.length} waiting`);
     for (const { txn, refunded } of this.#waitingForMomRule) {
@@ -1742,9 +1758,8 @@ class Life {
     if (!same({ momReserve: first.split.momReserve, savings: first.split.savings, needs: first.split.needs, wants: first.split.wants }, expectedSplit)) {
       throw new CheckFailed('13.2 A9 3.2 3.3 the paycheck the rule would make', `expected ${JSON.stringify(expectedSplit)}, the preview says ${JSON.stringify(first.split)}`);
     }
-    const { rechecked } = this.#book.changeSettings(patch, this.#date);
+    const { rechecked } = this.#changeSettings(patch);
     if (!same(rechecked, preview.items) || !same(this.#book.pots(), preview.potsAfter)) throw new CheckFailed('13.2 A9 the change is what the preview said', JSON.stringify({ rechecked, preview }));
-    this.#settings = { ...this.#settings, paycheckRule: patch.paycheckRule };
     this.#paycheckWaitingForRule = null;
     this.#onPaycheck(before, asked, txn.amount, txn.date, true);
     this.#stats.paycheckRuleSetWhileWaiting++;
@@ -2154,8 +2169,7 @@ class Life {
       patch.leftoverAtPayday = { needs: r.pick(choices), wants: r.pick(choices) };
     }
     const logBefore = this.#book.changeLog().length;
-    this.#book.changeSettings(patch, this.#date);
-    this.#settings = { ...this.#settings, ...patch };
+    this.#changeSettings(patch);
     this.#stats.settingsChanges++;
     this.#note(`settings changed: ${JSON.stringify(patch)}`);
     if (this.#book.changeLog().length !== logBefore + 1) throw new CheckFailed('13.5 every change is logged', 'a settings change was not logged');
@@ -2319,8 +2333,7 @@ class Life {
       case 'settings': {
         // 13.1: a new split or mom reserve waits for the next paycheck; the
         // simulator's own record of the split this pay period stays as it is.
-        this.#book.changeSettings(answer.patch, today);
-        this.#settings = { ...this.#settings, ...answer.patch };
+        this.#changeSettings(answer.patch);
         this.#stats.settingsChanges++;
         this.#note(`settings changed: ${JSON.stringify(answer.patch)}`);
         this.#expectChange(before, {}, '13.1 a settings change with nothing waiting moves no money', JSON.stringify(answer.patch));

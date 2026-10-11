@@ -145,6 +145,10 @@ describe('simulator: a simulated life', () => {
     expect(liveALife({ seed: 233, years: 4.3 })).toMatchObject({ ok: true });
   });
 
+  it('10.1 13.1 raising the low alert level above where a bucket stands sends the low alert right then (the simulator still had the old level: seed 1507, day 80)', { timeout: 120_000 }, () => {
+    expect(liveALife({ seed: 1507, years: 0.4 })).toMatchObject({ ok: true });
+  });
+
   it('12.3 a balance the book was never told about fails that day\'s self-check, and the report names the seed and the day', () => {
     const result = liveALife({ seed: 3, years: 1, sabotageOnDay: 40 });
     expect(result).toMatchObject({ ok: false, seed: 3, day: 40, check: '12.3 daily self-check' });

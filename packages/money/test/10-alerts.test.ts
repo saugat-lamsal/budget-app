@@ -155,6 +155,20 @@ describe('10.1 low bucket: needs or wants falls below 20% of what it started the
     expect(never.takeAlerts(fine(never))).toEqual([]);
   });
 
+  it('10.1 13.1 raising the alert level to exactly where a bucket stands sends nothing; one point above it sends the low alert right then, once', () => {
+    const b = paid();
+    // Needs 375.00 of 750.00: exactly 50%.
+    spend(b, 'e1', 37_500, 'needs');
+    b.changeSettings({ lowBucketAlertPercent: 50 }, '2026-10-11');
+    expect(b.takeAlerts(fine(b))).toEqual([]);
+    b.changeSettings({ lowBucketAlertPercent: 51 }, '2026-10-11');
+    expect(b.takeAlerts(fine(b))).toEqual([{ kind: 'low-bucket', bucket: 'needs', amount: 37_500, startedWith: 75_000 }]);
+    // Lowered and raised again in the same pay period: still once (10.1).
+    b.changeSettings({ lowBucketAlertPercent: 20 }, '2026-10-12');
+    b.changeSettings({ lowBucketAlertPercent: 60 }, '2026-10-12');
+    expect(b.takeAlerts(fine(b))).toEqual([]);
+  });
+
   it('10.1 very large amounts are compared exactly', () => {
     const MAX = Number.MAX_SAFE_INTEGER;
     // 20% of MAX is 1,801,439,850,948,198.2 cents.
