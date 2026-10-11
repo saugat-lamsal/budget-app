@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { isTimeZone, timeIn, todayIn } from '../src/history/today.js';
+import { instantIn, isTimeZone, timeIn, todayIn } from '../src/history/today.js';
 
 // Rulebook section 2, the home time zone: the app's today is the date in his
 // home time zone, never in the server's own clock zone. Checked one second
@@ -62,5 +62,38 @@ describe('section 2 today is the date in his home time zone', () => {
   it('section 2 only a time zone this computer knows is one', () => {
     expect([NY, 'America/Phoenix', 'Pacific/Honolulu', 'UTC'].every(isTimeZone)).toBe(true);
     expect(['', 'New York', 'Mars/Olympus_Mons'].some(isTimeZone)).toBe(false);
+  });
+});
+
+// Phase 5: the moment a time of day comes on a date in his home time zone,
+// for the evening's alerts (the daily review time, section 2).
+describe('section 2 a time of day in his home time zone, as a moment', () => {
+  it('section 2 8:00 PM in New York is 00:00 UTC the next day in summer time, 01:00 in winter time', () => {
+    expect(instantIn(NY, '2026-10-10', '20:00').toISOString()).toBe('2026-10-11T00:00:00.000Z');
+    expect(instantIn(NY, '2026-12-24', '20:00').toISOString()).toBe('2026-12-25T01:00:00.000Z');
+    expect(instantIn('America/Los_Angeles', '2026-10-10', '20:00').toISOString()).toBe('2026-10-11T03:00:00.000Z');
+    expect(instantIn('UTC', '2026-10-10', '08:05').toISOString()).toBe('2026-10-10T08:05:00.000Z');
+  });
+
+  it('section 2 on the days the clocks change, 8:00 PM is still 8:00 PM on the clock', () => {
+    expect(instantIn(NY, '2026-11-01', '20:00').toISOString()).toBe('2026-11-02T01:00:00.000Z');
+    expect(instantIn(NY, '2027-03-14', '20:00').toISOString()).toBe('2027-03-15T00:00:00.000Z');
+    expect(instantIn(NY, '2026-03-08', '00:00').toISOString()).toBe('2026-03-08T05:00:00.000Z');
+  });
+
+  it('section 2 a time the clock shows twice (1:30 AM on Nov 1) is the first of the two; one it skips (2:30 AM on Mar 14) is the moment it jumps', () => {
+    expect(instantIn(NY, '2026-11-01', '01:30').toISOString()).toBe('2026-11-01T05:30:00.000Z');
+    expect(timeIn(NY, instantIn(NY, '2026-11-01', '01:30'))).toBe('2026-11-01T01:30:00-04:00');
+    expect(instantIn(NY, '2027-03-14', '02:30').toISOString()).toBe('2027-03-14T07:00:00.000Z');
+    expect(timeIn(NY, instantIn(NY, '2027-03-14', '02:30'))).toBe('2027-03-14T03:00:00-04:00');
+    expect(instantIn(NY, '2027-03-14', '01:59').toISOString()).toBe('2027-03-14T06:59:00.000Z');
+    expect(instantIn(NY, '2027-03-14', '03:00').toISOString()).toBe('2027-03-14T07:00:00.000Z');
+  });
+
+  it('section 2 the date in the zone at that moment is the date asked for, every day of a year', () => {
+    for (let day = 0; day < 366; day += 1) {
+      const date = new Date(Date.UTC(2026, 9, 1 + day)).toISOString().slice(0, 10);
+      for (const time of ['00:00', '08:00', '20:00', '23:59']) expect(todayIn(NY, instantIn(NY, date, time))).toBe(date);
+    }
   });
 });

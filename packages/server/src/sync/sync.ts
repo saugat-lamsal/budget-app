@@ -22,7 +22,7 @@ import { BankKey, PlaidError, type PlaidClient } from '../plaid/client.js';
 import type { AccountsGetResponse, LiabilitiesGetResponse, PlaidCreditCard, TransactionsSyncResponse } from '../plaid/types.js';
 import { appendEvent } from '../history/history-db.js';
 import { saveBankRead } from './bank-reads.js';
-import { planSync, type Attention } from './plan.js';
+import { planSync, type Attention, type Plan, type PlanInput } from './plan.js';
 
 // One sync: everything Plaid has that is new since the last one, then the
 // balances and card statements, saved in one transaction together with the
@@ -53,6 +53,8 @@ export interface SyncInput {
   // else can run: the real server reads its books again there, so an answer
   // that comes in next is given to the book with the sync in it.
   readonly afterSave?: (result: SyncResult) => void;
+  // For tests only: how what the bank sent becomes what the book is given.
+  readonly plan?: (input: PlanInput) => Plan;
 }
 
 export interface SyncResult {
@@ -195,7 +197,7 @@ function save(input: SyncInput, startCursor: string | null, fetched: Fetched): S
   );
 
   const book = loadBook(db);
-  const plan = planSync({
+  const plan = (input.plan ?? planSync)({
     stored: readItems(db),
     changed: [...latest.values()],
     removed: [...removed],

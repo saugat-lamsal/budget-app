@@ -1,11 +1,11 @@
 import { parseDollars, type AccountId, type ActivityRow, type Cents, type IsoDate, type LikelyPurchase, type PaycheckSplit, type PickTo, type ReviewDetail, type ReviewOptions, type SortedNow } from '@budget-app/money';
 import type { ChoiceOf, ChoicePart, ChoiceRequest, KeyedDetail } from '@budget-app/server/views';
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { newDecisionId, sendChoice, type Reload } from '../app/api.js';
 import { BottomSheet, Button, ButtonRow, Card, Decision, ListRow, Money, Notice, TextField, ToggleRow } from '../ui/blocks.js';
 import { shortDate } from '../ui/dates.js';
 import { moneyText } from '../ui/money-format.js';
-import { ACCOUNT_NAMES, BUCKET_NAMES, doneText, lessSincePaydayWords, markedWords, nowWords, pickLabel, reasonText, sortedWords, titleOf, transferWords } from './review-text.js';
+import { ACCOUNT_NAMES, BUCKET_NAMES, changedWords, doneText, lessSincePaydayWords, markedWords, nowWords, pickLabel, reasonText, sortedWords, titleOf, transferWords } from './review-text.js';
 
 // Choosing what happens to an item: the same for an item waiting in Review
 // and for one sorted already, from the list of what went in and out of a
@@ -132,13 +132,25 @@ export function subjectOfRow(row: ActivityRow, seen: string | undefined): Subjec
 
 // ----- Sending a choice -----
 
+// QUESTIONS.md A32, rule 13.7: how long an item whose key changed when the
+// screen read its numbers again takes no tap, so a tap meant for what was
+// there before is not sent.
+export const CHANGED_HOLD_MS = 1_000;
+
 // The state of choosing and sending, for a screen. One request at a time: a
 // second tap before the screen has redrawn must not send a second request.
-export function useChoiceFlow(options: { readonly resort: boolean; readonly reload: Reload; readonly onChanged: Reload }) {
+//
+// keys: each item's key as the screen shows it now, by its id (Step 3). When
+// the screen reads its numbers again and an item's key is not the one it
+// showed (a sync changed it), the item is marked changed for as long as the
+// screen shows it, and takes no tap for CHANGED_HOLD_MS (A32). An item he
+// answered himself is not marked: its change is his own.
+export function useChoiceFlow(options: { readonly resort: boolean; readonly reload: Reload; readonly onChanged: Reload; readonly keys: ReadonlyMap<string, string> }) {
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [said, setSaid] = useState<Said | null>(null);
   const [sending, setSending] = useState(false);
   const lock = useRef(false);
+  const fresh = useFresh(options.keys);
 
   // Closing the sheet by hand drops a refusal he has read. The sheet also
   // closes by itself when a choice goes through (or the item was already
@@ -174,6 +186,7 @@ export function useChoiceFlow(options: { readonly resort: boolean; readonly relo
         lock.current = false;
         setSending(false);
         if (answer.ok) {
+          fresh.answered(pending.item);
           setSheet(null);
           setSaid({ tone: 'ok', text: doneText(pending.label, pending.kind, answer.done, pending.about) });
         } else if (answer.code === 'not-waiting' || answer.code === 'changed') {
@@ -218,7 +231,52 @@ export function useChoiceFlow(options: { readonly resort: boolean; readonly relo
     } else submit(pending);
   };
 
-  return { sheet, said, sending, setSaid, setSheet, openSheet, closeSheet, submit, choose };
+  return { sheet, said, sending, setSaid, setSheet, openSheet, closeSheet, submit, choose, changed: fresh.changed, holding: fresh.holding };
+}
+
+// A32: which items changed when the screen last read its numbers, and which
+// of them still take no tap. Worked out as the new numbers are drawn, in the
+// same step, so no tap can reach a card between the new numbers and the hold.
+function useFresh(keys: ReadonlyMap<string, string>) {
+  const shown = useRef<ReadonlyMap<string, string> | null>(null);
+  const signature = useRef('');
+  // Changed items, and until when (performance.now()) each takes no tap.
+  const changedUntil = useRef(new Map<string, number>());
+  // Items he answered since the screen last read its numbers.
+  const own = useRef(new Set<string>());
+  const [, redraw] = useState(0);
+
+  const now = [...keys].map(([id, key]) => `${id}=${key}`).join('&');
+  if (now !== signature.current) {
+    const before = shown.current;
+    const at = performance.now();
+    for (const id of [...changedUntil.current.keys()]) if (!keys.has(id) || own.current.has(id)) changedUntil.current.delete(id);
+    if (before !== null) {
+      for (const [id, key] of keys) {
+        const was = before.get(id);
+        if (was !== undefined && was !== key && !own.current.has(id)) changedUntil.current.set(id, at + CHANGED_HOLD_MS);
+      }
+    }
+    own.current.clear();
+    shown.current = new Map(keys);
+    signature.current = now;
+  }
+
+  // Drawn again when the first hold ends, so its buttons take a tap.
+  useEffect(() => {
+    const left = Math.min(...[...changedUntil.current.values()].map((until) => until - performance.now()).filter((ms) => ms > 0));
+    if (!Number.isFinite(left)) return undefined;
+    const timer = setTimeout(() => redraw((n) => n + 1), left + 1);
+    return () => clearTimeout(timer);
+  });
+
+  return {
+    changed: (id: string): boolean => changedUntil.current.has(id),
+    holding: (id: string): boolean => (changedUntil.current.get(id) ?? 0) > performance.now(),
+    answered: (id: string): void => {
+      own.current.add(id);
+    },
+  };
 }
 
 export type ChoiceFlow = ReturnType<typeof useChoiceFlow>;
@@ -250,7 +308,7 @@ export function SaidNotice({ said, sending, onRetry, onDismiss, sticky = false }
 
 // ----- A payday question (3.4): the same card in Review and on Payday -----
 
-export function LeftoverDecision({ detail, busy, onChoose }: { readonly detail: KeyedDetail; readonly busy: boolean; readonly onChoose: Choose }) {
+export function LeftoverDecision({ detail, busy, changed, onChoose }: { readonly detail: KeyedDetail; readonly busy: boolean; readonly changed?: boolean; readonly onChoose: Choose }) {
   const { item, options } = detail;
   if (item.type !== 'leftover' || options.type !== 'leftover') return null;
   const bucket = BUCKET_NAMES[item.bucket] ?? item.bucket;
@@ -261,6 +319,7 @@ export function LeftoverDecision({ detail, busy, onChoose }: { readonly detail: 
       title={titleOf(item)}
       amount={<Money cents={item.amount} testId="item-amount" />}
       detail={`${reasonText(item)} · ${shortDate(item.date)}`}
+      changed={changed === true ? changedWords(item.amount, null) : undefined}
       actions={
         <ButtonRow>
           {options.answers.map((answer) => (
@@ -317,7 +376,9 @@ export function ChoiceSheet({
   // Shown above the choices.
   readonly children?: ReactNode;
 }) {
-  const { sheet, said, sending, setSaid, setSheet, closeSheet, submit, choose } = flow;
+  const { sheet, said, setSaid, setSheet, closeSheet, submit, choose } = flow;
+  // A32: an item that just changed takes no tap here either.
+  const sending = flow.sending || (itemId !== undefined && flow.holding(itemId));
   return (
     <BottomSheet open={sheet !== null && itemId !== undefined} title={title} onClose={closeSheet} testId={testId}>
       {itemId !== undefined && sheet !== null && (

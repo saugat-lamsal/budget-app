@@ -138,7 +138,7 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 16. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 17. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
@@ -154,7 +154,8 @@ This applies to every phase and every session, cloud or local.
   section 27 his answers after the real server (A28: rule 0.6; A29: 4.5,
   6.1; 27c staying logged in, 27d syncing every 60 minutes, section 2),
   section 28 his answers after syncing on a timer (A30: rule 0.6; A31: rule
-  13.7).
+  13.7), section 29 his answers after Phase 4's finish line (A32: rule 13.7;
+  A33: rule 4.5).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -1085,7 +1086,81 @@ This applies to every phase and every session, cloud or local.
     (resort.test.ts) and is caught, and so are the new breaks. Every break in
     the files changed after the full run started, run again on the final
     code: 62 breaks, 62 caught. PR #19; CI green on Linux.
+- PR #19 merged (Oct 10, 2026).
+- Phase 5, part one (alerts worked out and kept; no phone yet), branch
+  phase-5-alerts-kept (Oct 10, 2026), one pull request (PR #20). Then stop,
+  for his feedback.
+  - Step 0, its own commit: A32 option 2 (13.7: a card that changed when the
+    screen read its numbers again says "Changed: now $21.50, posted" and takes
+    no tap for a second; useChoiceFlow keys in screens/choose.tsx, B178) and
+    A33 option 3 (4.5: a word on most of his purchases on that account in the
+    90 days up to the refund is not a name; likely-purchases.ts, B177).
+    Breaks "[a32]" (10) and "[a33]" (7), all caught.
+  - Step 1: packages/server/src/alerts (alerts.ts: facts, keys,
+    words; plan.ts: which alerts are due when, the ledger, "alerts" events;
+    outbox.ts), serve/alert-timer.ts (AlertTimer, the AlertSender plug,
+    logSender for npm run serve), database step 5 (book_events takes kind
+    "alerts"; the outbox table; migrate() turns foreign keys off for a step
+    that makes a table again), history/today.ts instantIn, the Keeper
+    (checkAlerts, the Alerter methods, alertsView, whenChanged; SyncBank.plan
+    is a test seam), serveBooks makes the AlertTimer (main.ts starts it before the sync timer) and returns it as
+    alerts, GET /api/alerts in ROUTES (the /alerts screen address joins
+    SCREEN_PATHS with the web side). The simulator now records
+    each day as steps (setup, each sync, each answer, the evening) with the
+    alerts the server should send after each (DayStep, ExpectedAlert in
+    packages/money/test/sim/life.ts), and checks card notices every evening
+    for the latest statement of each card. Tests: alerts-plan, alert-timer,
+    serving (a take-back alert at the sync moment), today, database step 5.
+    Fake phone: packages/server/test/fake-phone.ts.
+  - Step 1, finished (a second session, Oct 10):
+    - The list in the app: /alerts (screens/Alerts.tsx, words in
+      alerts-text.ts), from Settings' row "Alerts sent" (SettingsView alerts,
+      real server only, like the Bank card), GET /api/alerts. Newest first,
+      due and sent times, or why not sent yet. It only reads (read-only.test.ts
+      unchanged). Browser test alerts.test.ts (both engines: the list against
+      the outbox, every state, the design rules).
+    - The take-back alert says "taken back Sat, Oct 3" (B184).
+    - The Keeper keeps the bank's balances and statements between writes to
+      the database (#bankNow, by total_changes() and data_version): the alert
+      timer looks every minute. Database step 5 has the index outbox_unsent.
+    - The simulated life through the real server (test/alerts-sim.ts, two
+      files): the simulator's own transactions given to the book through the
+      sync's test seam, the bank's items, balances and statements read from
+      the made-up bank, his answers saved as answer events, and the server's
+      own alert timer on a fake clock sending to a FakePhone. Every day: the
+      outbox is exactly what the simulator expects (keys and due moments),
+      everything sent, each shown once at its moment, and in the end the
+      history's facts are the simulator's and there is one evening per day.
+      alerts-simulated-life.test.ts: one server for 146 days from Oct 25 (seed
+      188), the phone failing over some evenings, night syncs at 2:30 AM.
+      alerts-simulated-life-restarts.test.ts: stopped every night and started
+      every morning, 157 days from Oct 17 (seed 12), down over some evenings
+      (sent at 9:30 PM, due 8:00 PM), syncs failing (tried again 5 minutes
+      later), the bank wanting a login (alert "bank-login N"). Both cross Nov 1
+      and Mar 14. ALERT_SIM_SEEDS, ALERT_SIM_FIRST_SEED, ALERT_SIM_YEARS,
+      ALERT_SIM_ONE_SERVER_YEARS run more; ALERT_SIM_DEBUG=<file> writes each
+      day's progress there.
+    - alerts-random.test.ts: two servers, the same random activity, one
+      restarted at random moments, also right after the phone got an alert
+      and before it was marked sent, and with a save stopped halfway
+      (ALERT_SCENARIOS, SEED). alerts-keeping.test.ts: the replay check covers
+      alerts (one given twice, an evening twice), and outbox and history agree.
+    - Worked examples bank 10 (a day's alerts with times), 11 (both sides of
+      Nov 1), 12 (down over 8:00 PM).
+    - Break-it: "[alerts]" and "[outbox]" (server sections "alerts" and
+      "outbox"), the words' in web section "settings", the screen's in
+      section "home". 45 breaks, all caught, judged by the alert tests only
+      (--only alert, 3 workers: his PC was in use) and the 5 last by hand (the
+      words by alerts-text, B182 by today, the screen by alerts.test.ts in
+      Chromium). Two survived at first and now have tests: the outbox's next
+      try (B181, alerts-keeping) and the list one more than it shows.
+    - Found running it: each copy grew to 2 GB and filled his RAM (31 GB, 14
+      copies). A query prepared afresh every minute holds native memory until
+      it is collected; the hot ones are now prepared once per database
+      (db/database.ts statement(), prepared-statements.test.ts): a simulated
+      half year stays near 350 MB. With the long lives in it, break-it needs a
+      smaller --workers or --only.
+  - QUESTIONS.md A34 to A39 (built on the plain reading), B179 to B184.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
-  rule 9.5, depends on it), QUESTIONS.md A32 (a screen that changes an instant
-  before a tap) and A33 (which purchases are likely for a refund), and his
-  check of part B (the list at its top).
+  rule 9.5, depends on it), QUESTIONS.md A34 to A39, and his check of part B
+  (the list at its top).

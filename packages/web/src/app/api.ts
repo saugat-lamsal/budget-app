@@ -1,6 +1,7 @@
 import type { Pot } from '@budget-app/money';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
+  AlertsView,
   ActivityView,
   AuthState,
   BankRuleRequest,
@@ -37,6 +38,7 @@ const READS = {
   '/api/payday': () => fetch('/api/payday', READ),
   '/api/settings': () => fetch('/api/settings', READ),
   '/api/setup': () => fetch('/api/setup', READ),
+  '/api/alerts': () => fetch('/api/alerts', READ),
   '/api/activity/savings': () => fetch('/api/activity/savings', READ),
   '/api/activity/needs': () => fetch('/api/activity/needs', READ),
   '/api/activity/wants': () => fetch('/api/activity/wants', READ),
@@ -232,4 +234,5 @@ export const useReview = (): [Load<ReviewView>, Reload] => useView<ReviewView>('
 export const usePayday = (): [Load<PaydayView>, Reload] => useView<PaydayView>('/api/payday');
 export const useSettings = (): [Load<SettingsView>, Reload] => useView<SettingsView>('/api/settings');
 export const useSetup = (): [Load<SetupView>, Reload] => useView<SetupView>('/api/setup');
+export const useAlerts = (): [Load<AlertsView>, Reload] => useView<AlertsView>('/api/alerts');
 export const useActivity = (pot: Pot): [Load<ActivityView>, Reload] => useView<ActivityView>(ACTIVITY_URL[pot]);

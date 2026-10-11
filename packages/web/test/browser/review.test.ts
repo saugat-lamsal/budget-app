@@ -1014,6 +1014,9 @@ describe.each(ENGINES)('Review, books made for the test, in %s', (_name, engine)
     const book = openTestBook({ pots: { needs: 100_000, wants: 100_000 } });
     book.receive(purchase('hw', '2026-10-01', 9_000, 'HARDWARE SUPERSTORE'));
     book.sort('hw', { split: [{ bucket: 'needs', amount: 6_000 }, { bucket: 'wants', amount: 3_000 }] }, START_DATE);
+    // Another store on the card, so the store's name is not on most purchases (A33).
+    book.receive(purchase('deli', '2026-10-01', 300, 'CORNER DELI'));
+    book.sort('deli', { to: 'needs' }, START_DATE);
     book.receive({ ...refund('r1', START_DATE, 9_000, undefined, 'everyday-card'), description: 'HARDWARE SUPERSTORE' });
     const { page, context } = await show(book);
     const text = (await item(page, 'r1').getByTestId('likely-hw').innerText()).replace(/\s+/g, ' ');

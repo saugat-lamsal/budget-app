@@ -134,6 +134,28 @@ export interface BookTotals {
   readonly oldCardDebt: Cents;
 }
 
+// Phase 5: an alert the real server should send, worked out here from the
+// rulebook on its own (the server's names, without its keys).
+export type ExpectedAlert =
+  | { readonly kind: 'low-bucket'; readonly bucket: 'needs' | 'wants'; readonly period: number; readonly amount: Cents; readonly startedWith: Cents }
+  | { readonly kind: 'empty-bucket'; readonly bucket: 'needs' | 'wants'; readonly period: number; readonly amount: Cents }
+  | { readonly kind: 'bank-took-back'; readonly id: string; readonly date: IsoDate; readonly description: string; readonly amount: Cents }
+  | { readonly kind: 'daily-review'; readonly waiting: number }
+  | { readonly kind: 'card-reminder'; readonly card: Card; readonly dueDate: IsoDate; readonly daysBefore: number; readonly minimumPayment: Cents; readonly statementBalance: Cents | null }
+  | { readonly kind: 'card-overdue'; readonly card: Card; readonly dueDate: IsoDate; readonly minimumPayment: Cents };
+
+// Phase 5: the day as the real server lives it, in order, each step with the
+// alerts due right after it: setup day itself; a part of the bank's activity
+// one sync brings (the day's feed up to afterFeed); an answer (the index-th
+// answer of the day); and the evening, at the daily review time (10.3, 9.1 to
+// 9.4). Steps before the evening's review are in the day; from it on, in the
+// evening.
+export type DayStep =
+  | { readonly kind: 'setup'; readonly alerts: readonly ExpectedAlert[] }
+  | { readonly kind: 'sync'; readonly afterFeed: number; readonly phase: 'day' | 'evening'; readonly alerts: readonly ExpectedAlert[] }
+  | { readonly kind: 'answer'; readonly index: number; readonly phase: 'day' | 'evening'; readonly alerts: readonly ExpectedAlert[] }
+  | { readonly kind: 'evening'; readonly alerts: readonly ExpectedAlert[] };
+
 export interface RecordedBankDay {
   readonly date: IsoDate;
   // What the bank sent that day, in the order it sent it.
@@ -147,6 +169,9 @@ export interface RecordedBankDay {
   // Every bucket at the end of the day, and how many items wait in review.
   readonly pots: Pots;
   readonly waiting: number;
+  // Phase 5: the day's steps, and the card statements that closed that day.
+  readonly steps: readonly DayStep[];
+  readonly statements: readonly CardStatement[];
 }
 
 // One answer the person gave the book, exactly as the book took it, and how
@@ -172,14 +197,17 @@ export interface LifeRecorder {
 const ANSWERS = new Set(['sort', 'sortAlways', 'answerLeftover', 'acknowledge', 'moveMoney', 'changeSettings', 'addRule', 'changeRule', 'removeRule', 'moveRule']);
 
 // The book, telling each answer it takes. A refused one (it throws, and
-// changes nothing) is not told, nor a hand move that only asks first.
-function answering(book: Book, told: (method: string, args: readonly unknown[]) => void): Book {
+// changes nothing) is not told, nor a hand move that only asks first. Before
+// each answer it is about to be given, `before` runs (Phase 5: the bank's
+// activity until then is one sync).
+function answering(book: Book, before: () => void, told: (method: string, args: readonly unknown[]) => void): Book {
   return new Proxy(book, {
     get(target, prop) {
       const value: unknown = Reflect.get(target, prop, target);
       if (typeof value !== 'function') return value;
       if (typeof prop !== 'string' || !ANSWERS.has(prop)) return (value as (...a: unknown[]) => unknown).bind(target);
       return (...args: unknown[]): unknown => {
+        before();
         const result = (value as (...a: unknown[]) => unknown).apply(target, args);
         if (prop !== 'moveMoney' || (result as { moved: boolean }).moved) told(prop, structuredClone(args));
         return result;
@@ -445,6 +473,15 @@ class Life {
   // Purchases the person sorted by hand to one bucket, which they may re-sort.
   readonly #handSorted: { readonly id: string; to: 'needs' | 'wants' }[] = [];
   readonly #alertsGiven = new Set<string>();
+  // Phase 5: today's steps as the real server lives them, how far the feed
+  // was at the last one, how many answers today, whether the evening's review
+  // has begun, the statements that closed today, and each card's latest.
+  #steps: DayStep[] = [];
+  #pointFeed = 0;
+  #answersToday = 0;
+  #phase: 'day' | 'evening' = 'day';
+  #statementsToday: CardStatement[] = [];
+  readonly #latestStatement: Partial<Record<Card, CardStatement>> = {};
   // 10.6: what the bank took back, oldest first, for the alerts still to come.
   readonly #tookBack: { readonly id: string; readonly date: IsoDate; readonly description: string; readonly amount: Cents }[] = [];
   // Payments for mom that are not the mom rule's, which the person may sort
@@ -621,24 +658,39 @@ class Life {
     const setup = startTracking(this.#setupInput);
     if (!setup.ok) throw new Error(`seed ${options.seed}: the simulator's setup day did not add up (${setup.difference})`);
     const answer = options.record?.answer?.bind(options.record);
-    this.#book = answer === undefined ? setup.book : answering(setup.book, (method, args) => answer({ method, args, afterFeed: this.#bank.feed.length - this.#recordedUpTo }));
+    this.#book = answering(
+      setup.book,
+      () => this.#syncPoint(),
+      (method, args) => {
+        answer?.({ method, args, afterFeed: this.#bank.feed.length - this.#recordedUpTo });
+        this.#steps.push({ kind: 'answer', index: this.#answersToday++, phase: this.#phase, alerts: this.#eventPoint() });
+      },
+    );
   }
 
   live(): LifeResult {
     try {
       this.#checkSetupDay();
+      this.#pointFeed = this.#bank.feed.length;
+      this.#steps.push({ kind: 'setup', alerts: this.#eventPoint() });
       if (this.#record !== undefined) {
         this.#recordedUpTo = this.#bank.feed.length;
         this.#record.setupDay({ start: { ...this.#startPosted }, feed: [...this.#bank.feed], input: this.#setupInput, totals: this.#totals() });
       }
       for (this.#day = 0; this.#day < this.#days; this.#day++) {
         this.#date = addDays(this.#start, this.#day);
+        this.#phase = 'day';
         this.#bankDay();
         if (this.#day === this.#sabotageOnDay) this.#bank.changeWithoutTelling('checking', -1);
+        this.#phase = 'evening';
         this.#evening();
         this.#check();
         this.#recordDay();
         this.#record?.endOfDay?.({ date: this.#date, book: this.#book, balances: this.#bank.balances() });
+        this.#steps = [];
+        this.#statementsToday = [];
+        this.#answersToday = 0;
+        this.#pointFeed = this.#bank.feed.length;
         this.#stats.days++;
       }
       return { ok: true, seed: this.#seed, days: this.#days, stats: this.#stats };
@@ -681,7 +733,18 @@ class Life {
       .halvesShowing()
       .map((h) => `${h.from} ${h.to} ${h.amount} ${h.kind === 'transfer-sent' ? 'left' : 'arrived'}`)
       .sort();
-    this.#record.day({ date: this.#date, feed, posted: { ...this.#bank.posted }, balances: this.#bank.balances(), halvesShowing, totals: this.#totals(), pots: this.#book.pots(), waiting: this.#book.reviewItems().length });
+    this.#record.day({
+      date: this.#date,
+      feed,
+      posted: { ...this.#bank.posted },
+      balances: this.#bank.balances(),
+      halvesShowing,
+      totals: this.#totals(),
+      pots: this.#book.pots(),
+      waiting: this.#book.reviewItems().length,
+      steps: this.#steps,
+      statements: this.#statementsToday,
+    });
   }
 
   // 14.3: an assignment a cent off either way is refused, saying what is left.
@@ -1380,8 +1443,11 @@ class Life {
     const statement = this.#bank.closeStatement(card, this.#date);
     this.#statements.push(statement);
     const { closingDate, dueDate, statementBalance: balance, minimumPayment: minimum } = statement;
-    for (const days of this.#settings.cardReminderDaysBefore) this.#laterOn(addDays(dueDate, -days), () => this.#noticesDue(statement));
-    this.#laterOn(dueDate, () => this.#noticesDue(statement));
+    // 9.1 to 9.4 are checked each evening against the latest statement of each
+    // card (#eveningPoint); the bank charges a late fee the day after the due
+    // date if the minimum is not paid.
+    this.#statementsToday.push(statement);
+    this.#latestStatement[card] = statement;
     this.#laterOn(addDays(dueDate, 1), () => this.#dueDatePassed(statement));
     if (balance <= 0) return;
     const before = (days: number): IsoDate => addDays(dueDate, -days);
@@ -1506,40 +1572,41 @@ class Life {
     return paid;
   }
 
-  // 9.1 to 9.3: a reminder on the reminder days while not enough is paid:
-  // the full statement balance on the everyday card, the minimum on the old
-  // card. Never one with nothing owed (B29), and no overdue alert on the due
-  // date itself (9.4).
-  #noticesDue(statement: CardStatement): void {
+  // 9.1 to 9.4, each evening, for the latest statement of a card: a reminder
+  // on the reminder days while not enough is paid (the full statement balance
+  // on the everyday card, the minimum on the old card; never one with nothing
+  // owed, B29), and the overdue alert on every day after the due date while
+  // the payments since the statement add up to less than the minimum (B30),
+  // none on the due date itself. Checked against the money math, and returned
+  // as the alerts the server should send that evening.
+  #cardAlerts(statement: CardStatement): ExpectedAlert[] {
     const { card, dueDate, statementBalance, minimumPayment } = statement;
     const daysLeft = daysBetween(this.#date, dueDate);
+    const paid = this.#paidToward(statement, this.#date);
     const owed = card === 'everyday-card' ? statementBalance : minimumPayment;
-    const remind = this.#settings.cardReminderDaysBefore.includes(daysLeft) && owed > 0 && this.#paidToward(statement, this.#date) < owed;
-    let expected: CardNotice[] = [];
-    if (remind && card === 'everyday-card') expected = [{ kind: 'reminder', card, daysBefore: daysLeft, dueDate, statementBalance, minimumPayment }];
-    if (remind && card === 'old-card') expected = [{ kind: 'reminder', card, daysBefore: daysLeft, dueDate, minimumPayment }];
-    this.#expectNotices(statement, expected, '9.1 to 9.3 card reminders');
-  }
-
-  // 9.4: the day after the due date, an overdue alert if the payments since
-  // the statement add up to less than the minimum, and then a late fee.
-  #dueDatePassed(statement: CardStatement): void {
-    const overdue = this.#paidToward(statement, this.#date) < statement.minimumPayment;
-    const { card, dueDate, minimumPayment } = statement;
-    this.#expectNotices(statement, overdue ? [{ kind: 'overdue', card, dueDate, minimumPayment }] : [], '9.4 the overdue alert');
-    if (overdue) {
-      this.#stats.overdueAlerts++;
-      this.#cardCharge(card, 'fee', 2_900);
-    }
-  }
-
-  #expectNotices(statement: CardStatement, expected: CardNotice[], check: string): void {
+    const expected: CardNotice[] = [];
+    if (daysLeft < 0 && paid < minimumPayment) expected.push({ kind: 'overdue', card, dueDate, minimumPayment });
+    const remind = daysLeft >= 0 && this.#settings.cardReminderDaysBefore.includes(daysLeft) && owed > 0 && paid < owed;
+    if (remind && card === 'everyday-card') expected.push({ kind: 'reminder', card, daysBefore: daysLeft, dueDate, statementBalance, minimumPayment });
+    if (remind && card === 'old-card') expected.push({ kind: 'reminder', card, daysBefore: daysLeft, dueDate, minimumPayment });
     this.#stats.remindersChecked++;
     const notices = cardNotices(this.#date, statement, this.#book.cardPayments(statement.card), this.#book.settings());
     if (!same(notices, expected)) {
-      const paid = this.#paidToward(statement, this.#date);
-      throw new CheckFailed(check, `${statement.card} closed ${statement.closingDate}, due ${statement.dueDate}, paid ${paid}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(notices)}`);
+      throw new CheckFailed(daysLeft < 0 ? '9.4 the overdue alert' : '9.1 to 9.3 card reminders', `${statement.card} closed ${statement.closingDate}, due ${statement.dueDate}, paid ${paid}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(notices)}`);
     }
+    if (expected.some((n) => n.kind === 'overdue')) this.#stats.overdueAlerts++;
+    return expected.map(
+      (n): ExpectedAlert =>
+        n.kind === 'overdue'
+          ? { kind: 'card-overdue', card, dueDate, minimumPayment }
+          : { kind: 'card-reminder', card, dueDate, daysBefore: n.daysBefore, minimumPayment, statementBalance: n.card === 'everyday-card' ? n.statementBalance : null },
+    );
+  }
+
+  // 9.4: the day after the due date the bank charges a late fee if the
+  // payments since the statement add up to less than the minimum.
+  #dueDatePassed(statement: CardStatement): void {
+    if (this.#paidToward(statement, this.#date) < statement.minimumPayment) this.#cardCharge(statement.card, 'fee', 2_900);
   }
 
   // 4.8 and 5.5: fees and interest on the everyday card wait in review with
@@ -2383,7 +2450,8 @@ class Life {
       if (review.filter((i) => i.type === 'leftover' && i.bucket === bucket).length > 1) throw new CheckFailed('3.4 one leftover question per bucket', `${bucket} has more than one`);
     }
     this.#checkMomMonth(this.#date);
-    this.#checkAlerts(pots, review.length, bank);
+    this.#syncPoint();
+    this.#eveningPoint(review.length);
     this.#checkActivity();
   }
 
@@ -2403,44 +2471,84 @@ class Life {
     this.#stats.activityChecks++;
   }
 
-  // Section 10, taken every day like the phone will: the low alert below the
-  // level and the empty alert at zero or below, each once per bucket per pay
-  // period, exactly when due; the daily review only when something waits;
-  // no login alert while the connection is fine.
-  #checkAlerts(pots: Pots, waiting: number, bank: ReturnType<SimBank['balances']>): void {
+  // Phase 5: the bank's activity since the last step is one sync. Called
+  // before each answer and at the end of the day.
+  #syncPoint(): void {
+    const fed = this.#bank.feed.length;
+    if (fed === this.#pointFeed) return;
+    this.#pointFeed = fed;
+    this.#steps.push({ kind: 'sync', afterFeed: fed - this.#recordedUpTo, phase: this.#phase, alerts: this.#eventPoint() });
+  }
+
+  // Section 10 at one moment, as the real server works it out after each
+  // sync and each answer: the low alert below the level and the empty alert
+  // at zero or below, each once per bucket per pay period, exactly when due
+  // (10.1, 10.2); each take-back once (10.6); no login or mismatch alert while
+  // all is well. Worked out here on its own, checked against the money math's
+  // takeAlerts, and returned as the alerts due now.
+  #eventPoint(): ExpectedAlert[] {
     const book = this.#book;
+    const pots = book.pots();
     const period = book.period().number;
     const started = book.startedPeriodWith();
     const percent = BigInt(this.#settings.lowBucketAlertPercent);
-    const due = new Set<string>();
+    const due: ExpectedAlert[] = [];
     for (const bucket of ['needs', 'wants'] as const) {
       const amount = pots[bucket];
-      if (amount <= 0 && !this.#alertsGiven.has(`${period} ${bucket} empty-bucket`)) due.add(`${bucket} empty-bucket`);
-      if (amount > 0 && BigInt(amount) * 100n < BigInt(started[bucket]) * percent && !this.#alertsGiven.has(`${period} ${bucket} low-bucket`)) due.add(`${bucket} low-bucket`);
-    }
-    const alerts = book.takeAlerts({ bankConnection: 'ok', bankBalances: bank });
-    const given = new Set<string>();
-    for (const alert of alerts) {
-      if (alert.kind === 'bank-login' || alert.kind === 'totals-mismatch') throw new CheckFailed(`10.4 and 10.5 no ${alert.kind} alert when all is well`, JSON.stringify(alert));
-      if (alert.kind === 'daily-review') {
-        if (alert.waiting !== waiting || alert.at !== this.#settings.dailyReviewTime) throw new CheckFailed('10.3 the daily review', `${JSON.stringify(alert)} with ${waiting} waiting`);
-        continue;
+      if (amount <= 0 && !this.#alertsGiven.has(`${period} ${bucket} empty-bucket`)) due.push({ kind: 'empty-bucket', bucket, period, amount });
+      if (amount > 0 && BigInt(amount) * 100n < BigInt(started[bucket]) * percent && !this.#alertsGiven.has(`${period} ${bucket} low-bucket`)) {
+        due.push({ kind: 'low-bucket', bucket, period, amount, startedWith: started[bucket] });
       }
+    }
+    const alerts = book.takeAlerts({ bankConnection: 'ok', bankBalances: this.#bank.balances() });
+    const given: ExpectedAlert[] = [];
+    for (const alert of alerts) {
+      if (alert.kind === 'totals-mismatch') {
+        // The self-check fails here, between the bank's activity and an answer:
+        // the same failure as at the end of the day (12.3).
+        const check = book.selfCheck(this.#bank.balances());
+        throw new CheckFailed('12.3 daily self-check', `bank side ${check.bankSide} + in transit ${check.inTransit} should equal app side ${check.appSide}; difference ${check.difference}`);
+      }
+      if (alert.kind === 'bank-login') throw new CheckFailed('10.5 no bank-login alert when all is well', JSON.stringify(alert));
+      if (alert.kind === 'daily-review') continue;
       if (alert.kind === 'bank-took-back') {
         // 10.6: once, for each transaction the bank took back since the alerts were last taken.
         const expected = this.#tookBack.shift();
         if (expected === undefined || !same(alert, { kind: 'bank-took-back', ...expected })) throw new CheckFailed('10.6 the take-back alert', `${JSON.stringify(alert)}, expected ${JSON.stringify(expected)}`);
+        given.push({ kind: 'bank-took-back', ...expected });
         continue;
       }
       if (alert.amount !== pots[alert.bucket] || (alert.kind === 'low-bucket' && alert.startedWith !== started[alert.bucket])) throw new CheckFailed('10.1 and 10.2 alert amounts', JSON.stringify(alert));
-      given.add(`${alert.bucket} ${alert.kind}`);
+      given.push(alert.kind === 'low-bucket' ? { kind: 'low-bucket', bucket: alert.bucket, period, amount: alert.amount, startedWith: alert.startedWith } : { kind: 'empty-bucket', bucket: alert.bucket, period, amount: alert.amount });
       this.#alertsGiven.add(`${period} ${alert.bucket} ${alert.kind}`);
     }
-    if (!same([...given].sort(), [...due].sort())) {
-      throw new CheckFailed('10.1 and 10.2 low and empty alerts', `due ${JSON.stringify([...due])}, given ${JSON.stringify([...given])}, with needs ${pots.needs} and wants ${pots.wants} after starting at ${JSON.stringify(started)}`);
+    const names = (list: readonly ExpectedAlert[]): string[] =>
+      list
+        .filter((a) => a.kind !== 'bank-took-back')
+        .map((a) => JSON.stringify(sortedKeys(a)))
+        .sort();
+    if (!same(names(given), names(due))) {
+      throw new CheckFailed('10.1 and 10.2 low and empty alerts', `due ${JSON.stringify(due)}, given ${JSON.stringify(given)}, with needs ${pots.needs} and wants ${pots.wants} after starting at ${JSON.stringify(started)}`);
     }
-    if ((waiting > 0) !== alerts.some((a) => a.kind === 'daily-review')) throw new CheckFailed('10.3 the daily review only when something waits', `${waiting} waiting`);
     if (this.#tookBack.length > 0) throw new CheckFailed('10.6 the take-back alert', `no alert for ${JSON.stringify(this.#tookBack)}`);
+    return given;
+  }
+
+  // The evening, at the daily review time: the daily review only when
+  // something waits (10.3), with how many, and the card reminders and the
+  // overdue alert for the latest statement of each card (9.1 to 9.4).
+  #eveningPoint(waiting: number): void {
+    const alerts = this.#book.takeAlerts({ bankConnection: 'ok', bankBalances: this.#bank.balances() });
+    const review = alerts.find((a) => a.kind === 'daily-review');
+    if (alerts.some((a) => a.kind !== 'daily-review')) throw new CheckFailed('10.1 10.2 10.6 nothing new since the last sync or answer', JSON.stringify(alerts));
+    if ((waiting > 0) !== (review !== undefined)) throw new CheckFailed('10.3 the daily review only when something waits', `${waiting} waiting`);
+    if (review !== undefined && (review.waiting !== waiting || review.at !== this.#settings.dailyReviewTime)) throw new CheckFailed('10.3 the daily review', `${JSON.stringify(review)} with ${waiting} waiting`);
+    const expected: ExpectedAlert[] = waiting > 0 ? [{ kind: 'daily-review', waiting }] : [];
+    for (const card of ['everyday-card', 'old-card'] as const) {
+      const statement = this.#latestStatement[card];
+      if (statement !== undefined) expected.push(...this.#cardAlerts(statement));
+    }
+    this.#steps.push({ kind: 'evening', alerts: expected });
   }
 
   // The buckets changed by exactly this much, and nothing else changed

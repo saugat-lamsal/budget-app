@@ -968,8 +968,8 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Activity.tsx",
-    "find": "onClick={() => openSheet(row.id)}",
-    "replace": "onClick={() => openSheet(activity.rows[0]?.id ?? row.id)}",
+    "find": "if (!flow.holding(row.id)) openSheet(row.id);",
+    "replace": "if (!flow.holding(row.id)) openSheet(activity.rows[0]?.id ?? row.id);",
     "why": "[activity] 4.7 every row opens the first one"
   },
   {
@@ -1059,8 +1059,8 @@
   {
     "section": "home",
     "file": "packages/web/src/app/routes.ts",
-    "find": "return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : 'buckets';",
-    "replace": "return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : 'home';",
+    "find": "return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : route.screen === 'alerts' ? 'settings' : 'buckets';",
+    "replace": "return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : route.screen === 'alerts' ? 'settings' : 'home';",
     "why": "[activity] B97 a bucket's screen lights the wrong tab"
   },
   {
@@ -1797,5 +1797,124 @@
     "find": "return item.counted ? where : ",
     "replace": "return !item.counted ? where : ",
     "why": "[on-its-way] 12.4 the words say the wrong one is not part of the check"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "export const CHANGED_HOLD_MS = 1_000;",
+    "replace": "export const CHANGED_HOLD_MS = 0;",
+    "why": "[a32] 13.7 a card that just changed takes a tap at once"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "if (was !== undefined && was !== key && !own.current.has(id))",
+    "replace": "if (was !== undefined && was !== key)",
+    "why": "[a32] 13.7 a row he sorted again himself is marked changed"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "if (was !== undefined && was !== key && !own.current.has(id))",
+    "replace": "if (was !== undefined && !own.current.has(id))",
+    "why": "[a32] 13.7 every card is marked changed when the screen reads its numbers again"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "  const sending = flow.sending || (itemId !== undefined && flow.holding(itemId));\n",
+    "replace": "  const sending = flow.sending;\n",
+    "why": "[a32] 13.7 the sheet of an item that just changed takes a tap at once"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Review.tsx",
+    "find": "busy={sending || flow.holding(d.item.id)}",
+    "replace": "busy={sending}",
+    "why": "[a32] 13.7 a Review card that just changed takes a tap at once"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Review.tsx",
+    "find": "changed={changedNote}\n        actions={\n          <>",
+    "replace": "actions={\n          <>",
+    "why": "[a32] 13.7 a Review card does not say it changed"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Payday.tsx",
+    "find": "busy={sending || flow.holding(question.item.id)}",
+    "replace": "busy={sending}",
+    "why": "[a32] 13.7 a payday question that just changed takes a tap at once"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Payday.tsx",
+    "find": "keys: new Map(view.questions.map((q) => [q.item.id, q.key]))",
+    "replace": "keys: new Map()",
+    "why": "[a32] 13.7 Payday never notices a question changed"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Activity.tsx",
+    "find": "if (!flow.holding(row.id)) openSheet(row.id);",
+    "replace": "openSheet(row.id);",
+    "why": "[a32] 13.7 a row that just changed opens at once"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/review-text.ts",
+    "find": "pending === null ? '' : pending ? ', pending' : ', posted'",
+    "replace": "pending === null ? '' : pending ? ', posted' : ', pending'",
+    "why": "[a32] 13.7 the changed card says pending for posted"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/alerts-text.ts",
+    "find": "return date === today ? time : `${shortDate(date)}, ${time}`;",
+    "replace": "return time;",
+    "why": "[alerts] 10.3 a time on another day leaves out the day"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/alerts-text.ts",
+    "find": "const tried = line.tries === 1 ? 'tried once'",
+    "replace": "const tried = line.tries === 2 ? 'tried once'",
+    "why": "[alerts] 10.3 \"tried 1 times\""
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/alerts-text.ts",
+    "find": "if (line.sentAt !== null) return `${due}, sent ${alertMomentText(line.sentAt, today)}`;",
+    "replace": "if (line.sentAt !== null) return `${due}, sent ${alertMomentText(line.dueAt, today)}`;",
+    "why": "[alerts] 10.3 the list says it was sent when it was due"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/alerts-text.ts",
+    "find": "if (shown < total) return",
+    "replace": "if (shown < total - 1) return",
+    "why": "[alerts] 10.3 the list does not say it shows only the newest"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/alerts-text.ts",
+    "find": "return count.notSent === 0 ? `${all}, all sent`",
+    "replace": "return count.notSent <= 1 ? `${all}, all sent`",
+    "why": "[alerts] 10.3 Settings says all sent with one not sent yet"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Alerts.tsx",
+    "find": "icon={line.sentAt === null ? 'clock' : ICONS[line.kind]}",
+    "replace": "icon={ICONS[line.kind]}",
+    "why": "[alerts] 10.3 an alert not sent yet is told by color alone"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "{view.alerts !== undefined && <ListRow icon=\"tray\" title=\"Alerts sent\"",
+    "replace": "{view.alerts === undefined && <ListRow icon=\"tray\" title=\"Alerts sent\"",
+    "why": "[alerts] 10.3 Settings has no way to the list of alerts"
   }
 ]

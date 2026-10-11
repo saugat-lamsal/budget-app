@@ -517,9 +517,11 @@ A31. ANSWERED Oct 10, built. Your answer: option 1, as built. Rulebook 13.7
      option 1 (the details are B172 and B173).
 
 
-## Part A, added with Phase 4's finish line (the agent's pay period, Oct 10). Waiting on your answer.
+## Part A, added with Phase 4's finish line (the agent's pay period, Oct 10). All answered.
 
-A32. A screen that changes an instant before your tap (13.7). Found by the
+A32. ANSWERED Oct 10, built. Your answer: option 2. Rulebook 13.7 and 29a;
+     the details are B178.
+     The question was: a screen that changes an instant before your tap (13.7). Found by the
      agent on Oct 7 of the pay period. Review had sat in a background tab
      since the evening before, showing the cinema charge at $18.00, pending.
      The agent tapped Wants on it. Bringing the tab forward made the screen
@@ -545,7 +547,9 @@ A32. A screen that changes an instant before your tap (13.7). Found by the
      Step 1, taps from a screen that did not read its numbers again, and the
      refusal comes, with how the item is now.)
 
-A33. Which purchases are "likely" for a refund (4.5, B88). Rule 4.5 says a
+A33. ANSWERED Oct 10, built. Your answer: option 3. Rulebook 4.5 and 29b;
+     the details are B177.
+     The question was: which purchases are "likely" for a refund (4.5, B88). Rule 4.5 says a
      likely purchase is on the same account, made on or before the refund,
      with at least the refund's amount not yet refunded. B88, as built, adds
      two things: it must also share a name word with the refund or have
@@ -565,6 +569,79 @@ A33. Which purchases are "likely" for a refund (4.5, B88). Rule 4.5 says a
      so "made up" or a city never makes things "the same name".
      Recommendation: option 3, with 4.5 saying so. It keeps the short list
      and makes "Same name" true. Built: option 1 (B88).
+
+
+## Part A, added with Phase 5, part one (alerts worked out and kept, Oct 10). Waiting on your answer.
+
+The rulebook does not say these. Each is built on the plain reading, as it
+says, until you answer.
+
+A34. What time of day card reminders (9.1 to 9.3) and the overdue alert
+     (9.4) come. The rulebook gives a day, not a time.
+     Option 1: at the daily review time (8:00 PM), with the daily review: the
+     one time of day the rulebook has. The day's payments are in by then, so
+     one made that day stops the reminder.
+     Option 2: a new setting, a morning time (9:00 AM, say), so there is a
+     whole day to pay.
+     Option 3: as soon as the day starts (just after midnight).
+     Recommendation: option 1. One moment a day for everything that is not
+     urgent, and 8:00 PM still leaves time to pay online. Built: option 1.
+
+A35. Whether an alert caused by a sync in the night waits until morning (a
+     purchase posting at 3 AM that makes wants low, a take-back, the bank
+     wanting a login).
+     Option 1: no, it goes at once, whatever the hour.
+     Option 2: quiet hours, a setting (10:00 PM to 7:00 AM, say): what comes
+     due then waits until they end, and says when it was due.
+     Recommendation: option 2. Nothing in the night is urgent enough to wake
+     you. Built: option 1 (the plain reading: it goes when it happens).
+
+A36. What to do with an alert that came due while the server was down (the
+     8:00 PM daily review, a reminder day).
+     Option 1: each one is sent when the server is back, late, oldest first,
+     saying when it was due. Down for three evenings: three daily reviews.
+     Option 2: when it is back, only the newest of each kind, and only if it
+     is still true now (one daily review, one reminder per card).
+     Option 3: none: what came due while it was down is dropped; Home still
+     shows it.
+     Recommendation: option 2. Nothing is lost that still matters, and you
+     get no pile of stale ones. Built: option 1 (the plain reading of "never
+     lose one"). Each is worked out from the books as they were (nothing
+     changes while the server is down), for its own day: a reminder for Oct 16
+     counts only the payments seen by Oct 16.
+
+A37. How often the "totals do not match the bank" (10.4) and "log in to the
+     bank again" (10.5) alerts repeat while they stay true.
+     Option 1: once when it starts; again only after it stopped being true
+     and started again.
+     Option 2: once a day while it lasts, at the daily review time.
+     Option 3: after every sync that finds it still true.
+     Recommendation: option 2. Home already says so the whole time (0.5);
+     a daily nudge is enough, and never a storm. Built: option 1. While the
+     bank cannot be read (it wants a login), the mismatch is neither told nor
+     cleared: there is no new balance to compare.
+
+A38. A new alert when the bank has not been checked for a day (the sync keeps
+     failing, or the server was down), which the rulebook does not have.
+     Option 1: no such alert; Home's "Checked at" shows it.
+     Option 2: an alert once when the last good read is more than 24 hours
+     old (a setting), and again only after a good read.
+     Recommendation: option 2. A silent app is the worst case for money:
+     you would trust numbers that are a day old. Built: option 1 (nothing
+     new without your OK).
+
+A39. Whether the lock screen shows amounts. The rules say a reminder shows
+     the statement balance and the minimum (9.1, 9.2), and the mismatch
+     alert the difference (10.4).
+     Option 1: yes, the words have the amounts ("Needs is low: $99.99 left of
+     $500.00"), as the rules say.
+     Option 2: on the lock screen, words only ("Needs is low"); the amounts
+     inside the app.
+     Option 3: a setting, amounts on by default.
+     Recommendation: option 3, off by default: anyone who picks up your
+     phone sees your money otherwise. Built: option 1 (the words kept in the
+     outbox have the amounts; how the phone shows them comes with the phone,
+     later in Phase 5).
 
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
@@ -1162,7 +1239,8 @@ B88. Which purchases a refund likely belongs to (20d, A15). A purchase is
      same name, then same amount; the newest first among equals), at most
      five. A purchase you already sorted is still listed, with where it
      went. If none qualifies, the screen says "No likely purchase found."
-     What tapping does is A18.
+     What tapping does is A18. Since A33 (Oct 10), a word on most of his
+     purchases on that account is not a name word (B177).
 
 B89. Which choices an item gets is decided by the money math for that
      kind of item, from the rulebook, and the screen shows exactly those
@@ -1924,3 +2002,84 @@ B176. A purchase made on payday itself is not "made before payday" (3.4,
       B4): it does not lower a payday question, and it is on the new pay
       period's lists (B97). The agent asked: the cafe charge on Oct 2, the
       day of the paycheck, did not lower the wants question.
+
+
+## Part B, added with your answers to A32 and A33 (Oct 10). Tell me if any is wrong.
+
+B177. A33, "most of his purchases": the purchases on the refund's account
+      dated on the refund's day or in the 90 days before it (so a purchase
+      exactly 90 days before counts, one 91 days before does not), each
+      counting a word once however often it is written. A word on more than
+      half of them is not a name; on exactly half it still is. Purchases
+      after the refund, and purchases on his other accounts, do not count.
+      One thing that follows: with only one purchase on that account in
+      those days, every word it has is on all of them, so nothing there is
+      "the same name"; it is still listed when it has exactly the refund's
+      amount left. The five, and the 90 days, are fixed in the money math,
+      not settings, though 4.5 now names them (0.2): say if you want them on
+      Settings. Worked example 40 now has two other debit card purchases
+      first, so the shoes are still "the same name" there; its numbers are
+      as before. The older tests that failed because all their purchases
+      were at one store (A33 now reads its name as words on most purchases:
+      7 in the money math, 5 in the server) each got a purchase or two at
+      other stores; none of their checks changed.
+
+B178. A32, what the screens do: Review, Payday and each bucket's list
+      remember each item's key as they show it. When the screen reads its
+      numbers again (coming back from the background, after an answer, or
+      Try again) and an item's key is not the one it showed, its card says
+      "Changed: now $21.50, posted" (a payday question: "Changed: now
+      $612.44"; a row on a bucket's list: a "Changed" label), and its
+      buttons, its row, and its sheet take no tap for a second. The words
+      stay as long as the screen shows the item. An item he answered
+      himself is not marked: its change is his own. The second is fixed in
+      the screens, not a setting, though 13.7 now names it (0.2): say if you
+      want it on Settings. A tap that comes too early does nothing at all:
+      the button is greyed while it holds, and no request is sent.
+
+
+## Part B, added with Phase 5, part one (Oct 10). Tell me if any is wrong.
+
+B179. The overdue alert (9.4, B30) comes every evening after the due date
+      while the payments since the statement add up to less than the
+      minimum, at the daily review time (A34), once each evening. It is for
+      the latest statement of each card the bank has sent: once a new
+      statement comes, the old one is not reminded about any more.
+
+B180. "Once" is kept by a name for each alert: needs low in pay period 3,
+      the daily review of Oct 12, the 7-day reminder for the everyday card's
+      Oct 23 due date, the take-back of one transaction, the 2nd time the
+      bank wanted a login. What went out is in the book's history (an
+      "alerts" event, with each alert's words and when it came due) and in
+      the outbox, saved in one step. A history that gives the same alert
+      twice, or handles an evening out of turn, does not replay, and the
+      server does not start (0.6). The alerts start with the first look on a
+      database (right after setup day): take-backs already there then get no
+      alert, and evenings count from then on.
+
+B181. Sending: each alert is tried, the oldest first; one that fails is tried
+      again after 1 minute, then 2, 4, 8 and so on, never more than an hour
+      apart, and never given up on. Every try of an alert has the same id, so
+      a try the server could not mark as done (it stopped in between) is
+      shown on the phone once. Until the phone gets them (web push, later in
+      Phase 5), npm run serve writes each alert in its own window, and that
+      counts as sent.
+
+B182. The evening is the daily review time on the clock in his home time
+      zone, whatever the clocks did (8:00 PM EDT before Nov 1, 8:00 PM EST
+      after). A time the clock shows twice (1:30 AM on Nov 1) is the first of
+      the two; one it skips (2:30 AM on Mar 14) is the moment it jumps (3:00
+      AM). Changing the review time moves the next evening at once.
+
+B183. The list of alerts sent (his point 4): Settings has a row "Alerts
+      sent" (on the real server only: "12 alerts, all sent", or "1 not sent
+      yet"), which opens the list, newest first: each alert's words, then
+      "Due 8:00 PM, sent 8:00 PM", or "Due 8:00 PM. Not sent yet: tried 3
+      times, trying again at 8:07 PM." Times are his home time zone's, with
+      the day when it is not today. It shows the newest 100 and says so when
+      there are more. It only reads: nothing on it can be tapped but Back.
+
+B184. The take-back alert (10.6) says the day the bank took it back
+      ("MADE UP CAFE, $11.50, taken back Sat, Oct 3."), the same day Home's
+      sheet calls "When". It used to say "from Sat, Oct 3", which read as the
+      day of the purchase.

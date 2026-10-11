@@ -8,6 +8,26 @@ import Database from 'better-sqlite3';
 // decision number, so each is all or nothing.
 export type Db = Database.Database;
 
+// A query made over and over (the alert timer looks every minute), prepared
+// once per database and used again. A statement prepared afresh each time
+// holds native memory until it is collected, which can be long after: a
+// simulated half year of minutes grew the process to 2 GB.
+const PREPARED = new WeakMap<Db, Map<string, Database.Statement>>();
+
+export function statement(db: Db, sql: string): Database.Statement {
+  let bySql = PREPARED.get(db);
+  if (bySql === undefined) {
+    bySql = new Map();
+    PREPARED.set(db, bySql);
+  }
+  let prepared = bySql.get(sql);
+  if (prepared === undefined) {
+    prepared = db.prepare(sql);
+    bySql.set(sql, prepared);
+  }
+  return prepared;
+}
+
 // Each step brings the database from the version before it to the next. A
 // step is never changed once released; changes get a new step.
 const STEPS: readonly string[] = [
@@ -191,7 +211,52 @@ const STEPS: readonly string[] = [
     changed INTEGER NOT NULL CHECK (changed IN (0, 1))
   );
   `,
+  `
+  -- Step 5 (Phase 5, alerts): the alerts the server worked out join the
+  -- book's history, as "alerts" events, so a restart knows every alert that
+  -- went out. The table is made again to let it take them (SQLite cannot
+  -- change a CHECK); every event keeps its number, so the decision numbers
+  -- still name theirs.
+  CREATE TABLE book_events_5 (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- The sync that brought it, for what the bank sent.
+    sync INTEGER,
+    kind TEXT NOT NULL CHECK (kind IN ('setup', 'receive', 'answer', 'alerts')),
+    date TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    totals TEXT
+  );
+  INSERT INTO book_events_5 (seq, sync, kind, date, payload, totals) SELECT seq, sync, kind, date, payload, totals FROM book_events;
+  DROP TABLE book_events;
+  ALTER TABLE book_events_5 RENAME TO book_events;
+
+  -- The outbox: every alert worked out, with when it came due and when it was
+  -- sent, written in the same step as the event that gave it. Instants are
+  -- ISO, UTC.
+  CREATE TABLE outbox (
+    key TEXT PRIMARY KEY,
+    seq INTEGER NOT NULL REFERENCES book_events (seq),
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    due_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    -- When the sender said it was handed over; NULL until then.
+    sent_at TEXT,
+    tries INTEGER NOT NULL CHECK (tries >= 0),
+    last_try_at TEXT,
+    next_try_at TEXT NOT NULL,
+    last_error TEXT
+  );
+  -- What is not sent yet, by when it is to be tried: the alert timer looks every minute.
+  CREATE INDEX outbox_unsent ON outbox (next_try_at) WHERE sent_at IS NULL;
+  `,
 ];
+
+// Steps that make a table again, which SQLite does with foreign keys off
+// (they cannot be turned off inside the step's transaction); every foreign key
+// is checked before the step is kept.
+const REMAKES_TABLES = new Set([4]);
 
 export const SCHEMA_VERSION = STEPS.length;
 
@@ -220,9 +285,16 @@ function migrate(db: Db, upTo: number): void {
     throw new Error(`the database is from a newer version of the app (schema ${version}, this app knows ${SCHEMA_VERSION})`);
   }
   for (let step = version; step < upTo; step += 1) {
-    db.transaction(() => {
-      db.exec(STEPS[step] ?? '');
-      db.pragma(`user_version = ${step + 1}`);
-    })();
+    const remakes = REMAKES_TABLES.has(step);
+    if (remakes) db.pragma('foreign_keys = OFF');
+    try {
+      db.transaction(() => {
+        db.exec(STEPS[step] ?? '');
+        if (remakes && (db.pragma('foreign_key_check') as unknown[]).length > 0) throw new Error(`step ${step + 1} of the database would break a foreign key`);
+        db.pragma(`user_version = ${step + 1}`);
+      })();
+    } finally {
+      if (remakes) db.pragma('foreign_keys = ON');
+    }
   }
 }

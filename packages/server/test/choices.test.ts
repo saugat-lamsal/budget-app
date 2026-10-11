@@ -583,6 +583,16 @@ describe('QUESTIONS.md A18 4.5 "this refund is for this one"', () => {
     made.book.sort('pur_shoes_0001', { to: 'wants' }, TODAY);
     made.book.receive(purchase('pur_mixed_0002', START_DATE, 5_000, 'MADE UP SHOE SHOP'));
     made.book.sort('pur_mixed_0002', { split: [{ bucket: 'needs', amount: 2_000 }, { bucket: 'wants', amount: 3_000 }] }, TODAY);
+    // Other stores on the card, so the shop's name is not on most purchases
+    // (A33). Each is refunded in full, so every bucket is as before.
+    for (const [id, name] of [
+      ['pur_deli_0004', 'CORNER DELI'],
+      ['pur_cafe_0005', 'BLUE CAFE'],
+    ] as const) {
+      made.book.receive(purchase(id, START_DATE, 300, name));
+      made.book.sort(id, { to: 'needs' }, TODAY);
+      made.book.receive(refund(`${id}_back`, START_DATE, 300, id, 'everyday-card'));
+    }
     made.book.receive(refund('ref_back_0003', '2026-10-10', 5_000, undefined, 'everyday-card'));
     return made;
   }

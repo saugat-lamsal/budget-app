@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 16)
+# Budget App Rulebook (draft 17)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -116,7 +116,12 @@ number so a test can point at it. Nothing gets coded until you approve this.
      lists the purchases it likely belongs to; picking one ("this refund is
      for this one") matches it exactly as if the bank had, and cannot be
      undone in review. A likely purchase is on the same account, made on or
-     before the refund, with at least the refund's amount not yet refunded.
+     before the refund, with at least the refund's amount not yet refunded,
+     and either has the same name as the refund or exactly the refund's
+     amount left. The same name means a word of the name is in both; a word
+     on most of your purchases on that account (more than half of those on
+     the refund's day and in the 90 days before it), such as a city, is not
+     a name. At most five are listed, the best first.
      A store's refund to the debit card shows up as money in to checking,
      so money in to checking also lists its likely purchases on checking,
      and picking one makes it that refund (6.1).
@@ -353,6 +358,12 @@ number so a test can point at it. Nothing gets coded until you approve this.
       and the settings are not about one item: a move still asks first when
       it would leave a bucket below zero (13.4), and the paycheck rule and
       the mom rule ask again when what they would do has changed.
+      When a screen reads its numbers again (coming back from the
+      background, for example) and an item on it is not what it showed
+      before, the item says so where it is ("Changed: now $21.50,
+      posted") and takes no tap for about a second, so a tap meant for what
+      was there before is not sent. An item you answered yourself is not
+      marked.
 
 
 ## 14. Setup day
@@ -577,3 +588,14 @@ a.  An old event the money math now refuses: the server stays stopped, and
 b.  An answer about something a sync just changed is refused with how it
     is now, and nothing changes: an item that is not what the screen showed
     (13.7, QUESTIONS.md A31).
+
+
+## 29. Answers after Phase 4's finish line (Oct 10, 2026)
+
+a.  When a screen reads its numbers again and an item on it has changed,
+    the item says so and takes no tap for about a second, so a tap meant
+    for what was there before is not sent (13.7, QUESTIONS.md A32).
+b.  A refund's likely purchases share a name with it or have exactly its
+    amount left, at most five. A word on most of your purchases on that
+    account, over the refund's day and the 90 days before it, is not a
+    name, so "Same name" is true (4.5, QUESTIONS.md A33).

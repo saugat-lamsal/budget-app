@@ -20,7 +20,7 @@ describe('the database', () => {
     const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[]).map(
       (t) => t.name,
     );
-    expect(tables).toEqual(['accounts', 'attention', 'bank_items', 'bank_reads', 'book_events', 'change_log', 'connection', 'decisions', 'last_checked', 'login_codes', 'passkeys', 'sessions', 'settings', 'statements', 'syncs']);
+    expect(tables).toEqual(['accounts', 'attention', 'bank_items', 'bank_reads', 'book_events', 'change_log', 'connection', 'decisions', 'last_checked', 'login_codes', 'outbox', 'passkeys', 'sessions', 'settings', 'statements', 'syncs']);
     expect(db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION);
     expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
     db.close();
@@ -121,6 +121,31 @@ describe('the database', () => {
     read.run('2026-10-04T16:00:00.000Z', 1);
     expect(() => read.run('2026-10-04T17:00:00.000Z', 2)).toThrow();
     expect(() => read.run(null, 0)).toThrow();
+    db.close();
+  });
+
+  it('step 5 (Phase 5, alerts) keeps the history and the decision numbers that name its events, lets it keep alerts, and adds the outbox, empty', () => {
+    const path = tempFile();
+    const old = openDatabase(path, { upTo: 4 });
+    expect(old.pragma('user_version', { simple: true })).toBe(4);
+    const seq = Number(old.prepare("INSERT INTO book_events (sync, kind, date, payload, totals) VALUES (NULL, 'answer', '2026-10-04', '{\"seen\":\"x\"}', 'null')").run().lastInsertRowid);
+    old.prepare("INSERT INTO decisions (id, desk, fingerprint, answer, seq) VALUES ('decision-1', 'choice', '{}', '{}', ?)").run(seq);
+    expect(() => old.prepare("INSERT INTO book_events (sync, kind, date, payload, totals) VALUES (NULL, 'alerts', '2026-10-04', '{}', 'null')").run()).toThrow();
+    old.close();
+    const db = openDatabase(path);
+    expect(db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION);
+    expect(db.prepare('SELECT seq, kind, date, payload FROM book_events').all()).toEqual([{ seq, kind: 'answer', date: '2026-10-04', payload: '{\"seen\":\"x\"}' }]);
+    expect(db.prepare('SELECT id, seq FROM decisions').all()).toEqual([{ id: 'decision-1', seq }]);
+    expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(db.pragma('foreign_key_check')).toEqual([]);
+    const alerts = Number(db.prepare("INSERT INTO book_events (sync, kind, date, payload, totals) VALUES (NULL, 'alerts', '2026-10-04', '{}', 'null')").run().lastInsertRowid);
+    expect(alerts).toBe(seq + 1);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM outbox').get()).toEqual({ n: 0 });
+    const add = db.prepare("INSERT INTO outbox (key, seq, kind, title, body, due_at, created_at, tries, next_try_at) VALUES (?, ?, 'daily-review', 'Time to review', '1 thing', '2026-10-05T00:00:00.000Z', '2026-10-05T00:00:00.000Z', 0, '2026-10-05T00:00:00.000Z')");
+    add.run('daily-review 2026-10-04', alerts);
+    // Each alert once; each from an event of the history.
+    expect(() => add.run('daily-review 2026-10-04', alerts)).toThrow();
+    expect(() => add.run('daily-review 2026-10-05', 999)).toThrow();
     db.close();
   });
 

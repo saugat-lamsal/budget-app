@@ -140,7 +140,7 @@ export function LinkButton({ children, href, variant = 'primary', wide = false, 
 
 // ----- Status label: a word and an icon, so color is never the only signal -----
 
-export type Status = 'low' | 'empty' | 'overdue' | 'pending' | 'under-target' | 'in-target' | 'over-target' | 'changes';
+export type Status = 'low' | 'empty' | 'overdue' | 'pending' | 'under-target' | 'in-target' | 'over-target' | 'changes' | 'changed';
 
 const STATUS: Readonly<Record<Status, { readonly word: string; readonly icon: IconName; readonly tone: Tone }>> = {
   low: { word: 'Low', icon: 'low', tone: 'warning' },
@@ -151,12 +151,14 @@ const STATUS: Readonly<Record<Status, { readonly word: string; readonly icon: Ic
   'in-target': { word: 'In the target', icon: 'check', tone: 'info' },
   'over-target': { word: 'Over target', icon: 'alert', tone: 'warning' },
   changes: { word: 'Changes', icon: 'swap', tone: 'info' },
+  // A32 (13.7): the item is not what the screen showed before it read its numbers again.
+  changed: { word: 'Changed', icon: 'alert', tone: 'warning' },
 };
 
-export function StatusLabel({ status }: { readonly status: Status }) {
+export function StatusLabel({ status, testId }: { readonly status: Status; readonly testId?: string | undefined }) {
   const s = STATUS[status];
   return (
-    <span className={`status status--${s.tone}`} data-status={status}>
+    <span className={`status status--${s.tone}`} data-status={status} data-testid={testId}>
       <Icon name={s.icon} size={12} />
       {s.word}
     </span>
@@ -569,6 +571,7 @@ export function Decision({
   amount,
   detail,
   status,
+  changed,
   children,
   actions,
   testId,
@@ -577,6 +580,9 @@ export function Decision({
   readonly amount?: ReactNode;
   readonly detail: ReactNode;
   readonly status?: Status | undefined;
+  // A32 (13.7): what the item is now, when it changed as the screen read its
+  // numbers again ("Changed: now $21.50, posted"). In words, with an icon.
+  readonly changed?: string | undefined;
   readonly children?: ReactNode;
   readonly actions: ReactNode;
   readonly testId?: string | undefined;
@@ -591,6 +597,12 @@ export function Decision({
         {status !== undefined && <StatusLabel status={status} />}
         <span>{detail}</span>
       </p>
+      {changed !== undefined && (
+        <p className="decision__changed" data-testid="changed">
+          <Icon name="alert" size={14} />
+          <span>{changed}</span>
+        </p>
+      )}
       {children}
       <div className="decision__actions">{actions}</div>
     </article>

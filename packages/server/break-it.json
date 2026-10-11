@@ -856,8 +856,8 @@
   {
     "section": "review",
     "file": "packages/server/src/http/server.ts",
-    "find": "export const SCREEN_PATHS: readonly string[] = ['/payday', ...",
-    "replace": "export const SCREEN_PATHS: readonly string[] = [...",
+    "find": "export const SCREEN_PATHS: readonly string[] = ['/payday', '/alerts', ...",
+    "replace": "export const SCREEN_PATHS: readonly string[] = ['/alerts', ...",
     "why": "[activity] B104 Payday has no address of its own"
   },
   {
@@ -2399,5 +2399,271 @@
     "find": "        onItsWay: onItsWayToSavings(book),",
     "replace": "        onItsWay: 0,",
     "why": "[on-its-way] 3.8 B46 Home is told nothing is on its way to savings"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "if (given.has(alert.key)) throw new ReplayFailed(",
+    "replace": "if (given.has(alert.key + ' ')) throw new ReplayFailed(",
+    "why": "[alerts] 0.6 an alert given twice in the history still replays"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "if (ledger.started) throw new ReplayFailed('alerts started twice');",
+    "replace": "if (ledger.started && ledger.given.size < 0) throw new ReplayFailed('alerts started twice');",
+    "why": "[alerts] 0.6 the alerts started twice still replay"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "if (!ledger.started || check.date !== ledger.nextEvening) throw",
+    "replace": "if (!ledger.started) throw",
+    "why": "[alerts] 0.6 an evening out of turn still replays"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "return { ...ledger, nextEvening: addDays(check.date, 1), given, lasting };",
+    "replace": "return { ...ledger, nextEvening: addDays(check.date, 2), given, lasting };",
+    "why": "[alerts] 10.3 every other evening is skipped"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "const eveningsFrom = eveningAt(world, today).getTime() > world.now.getTime() ? today : addDays(today, 1);",
+    "replace": "const eveningsFrom = addDays(today, 1);",
+    "why": "[alerts] 10.3 the first evening is skipped when the alerts start in the morning"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "      .flatMap((line) => (line.kind === 'bank-took-back' ? [line.id] : []));",
+    "replace": "      .flatMap(() => []);",
+    "why": "[alerts] 10.6 take-backs from before the alerts started are told after all"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "if (waiting > 0) give({ kind: 'daily-review', date, waiting });",
+    "replace": "if (waiting >= 0) give({ kind: 'daily-review', date, waiting });",
+    "why": "[alerts] 10.3 the daily review comes with nothing waiting"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "    const record = alertRecord(facts, dueAt);",
+    "replace": "    const record = alertRecord(facts, at);",
+    "why": "[alerts] A36 an evening worked out late is kept as due when it was worked out, not at 8:00 PM"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "if (level === 'low') give({ kind: 'low-bucket'",
+    "replace": "if (level === 'empty') give({ kind: 'low-bucket'",
+    "why": "[alerts] 10.1 the low alert comes for an empty bucket instead"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "if (level === 'empty') give({ kind: 'empty-bucket'",
+    "replace": "if (level === 'low') give({ kind: 'empty-bucket'",
+    "why": "[alerts] 10.2 the empty alert comes for a low bucket instead"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "if (line.kind === 'bank-took-back' && !ledger.known.has(line.id)) give(",
+    "replace": "if (line.kind === 'bank-took-back') give(",
+    "why": "[alerts] 10.6 a take-back from before the alerts started is told"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "if (now && !state.on) give(facts(state.times + 1));",
+    "replace": "if (now && !state.on) give(facts(state.times + 2));",
+    "why": "[alerts] 10.4 10.5 a lasting alert is numbered out of turn"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "if (!now && state.on) cleared.push(kind);",
+    "replace": "if (!now && state.on && kind === \"totals-mismatch\") cleared.push(kind);",
+    "why": "[alerts] 10.5 the bank wanting a login is never cleared, so the next one is not told"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "lasting('bank-login', world.needsLogin, (time) => ({ kind: 'bank-login', time }));",
+    "replace": "lasting('bank-login', false, (time) => ({ kind: 'bank-login', time }));",
+    "why": "[alerts] 10.5 no alert when the bank wants a login"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "lasting('totals-mismatch', check === null ? null : !check.ok,",
+    "replace": "lasting('totals-mismatch', check === null ? null : check.ok,",
+    "why": "[alerts] 10.4 the mismatch alert comes when the totals match"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "return `${f.kind} ${f.bucket} pay period ${f.period}`;",
+    "replace": "return `${f.kind} ${f.bucket}`;",
+    "why": "[alerts] 10.1 10.2 low and empty once ever, not once per pay period"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "return `daily-review ${f.date}`;",
+    "replace": "return 'daily-review';",
+    "why": "[alerts] 10.3 the daily review once ever, not once a day"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "return `card-overdue ${f.card} due ${f.dueDate} on ${f.date}`;",
+    "replace": "return `card-overdue ${f.card} due ${f.dueDate}`;",
+    "why": "[alerts] 9.4 B30 the overdue alert once, not every day after the due date"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "return `card-reminder ${f.card} due ${f.dueDate} ${f.daysBefore} days before`;",
+    "replace": "return `card-reminder ${f.card} due ${f.dueDate}`;",
+    "why": "[alerts] 9.1 only the first reminder before a due date"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "body: `${formatDollars(f.amount)} left of ${formatDollars(f.startedWith)} this pay period.` };",
+    "replace": "body: `${formatDollars(f.startedWith)} left of ${formatDollars(f.amount)} this pay period.` };",
+    "why": "[alerts] 10.1 the low alert says the amounts the wrong way round"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": ": `in ${f.daysBefore} days`;",
+    "replace": ": `in ${f.daysBefore + 1} days`;",
+    "why": "[alerts] 9.1 a reminder says the wrong number of days"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "body: f.waiting === 1 ? '1 thing is waiting for you to sort.' : `${f.waiting} things are waiting for you to sort.` };",
+    "replace": "body: `${f.waiting} things are waiting for you to sort.` };",
+    "why": "[alerts] 10.3 \"1 things are waiting\""
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "taken back ${dayWords(f.date)}.",
+    "replace": "from ${dayWords(f.date)}.",
+    "why": "[alerts] 10.6 the take-back alert reads as the day of the purchase"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/history/today.ts",
+    "find": "if (shows.length > 0) return new Date(Math.min(...shows));",
+    "replace": "if (shows.length > 0) return new Date(Math.max(...shows));",
+    "why": "[alerts] B182 a time the clock shows twice is the second of the two"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/history/today.ts",
+    "find": "  return new Date(after);\n}",
+    "replace": "  return new Date(before);\n}",
+    "why": "[alerts] B182 a time the clock skips is an hour early"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/outbox.ts",
+    "find": "return Math.min(LONGEST_RETRY_MS, FIRST_RETRY_MS * 2 ** Math.max(0, Math.min(tries - 1, 20)));",
+    "replace": "return Math.min(LONGEST_RETRY_MS, FIRST_RETRY_MS * 2 ** Math.max(0, Math.min(tries, 20)));",
+    "why": "[outbox] B181 the first retry after 2 minutes, not 1"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/outbox.ts",
+    "find": "export const LONGEST_RETRY_MS = 3_600_000;",
+    "replace": "export const LONGEST_RETRY_MS = 7_200_000;",
+    "why": "[outbox] B181 retries more than an hour apart"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/outbox.ts",
+    "find": "FROM outbox WHERE sent_at IS NULL AND next_try_at <= ? ORDER BY due_at, created_at, key",
+    "replace": "FROM outbox WHERE next_try_at <= ? ORDER BY due_at, created_at, key",
+    "why": "[outbox] what was sent is sent again"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/outbox.ts",
+    "find": "'UPDATE outbox SET sent_at = ?, last_error = NULL WHERE key = ? AND sent_at IS NULL'",
+    "replace": "'UPDATE outbox SET last_error = NULL WHERE ? IS NOT NULL AND key = ? AND sent_at IS NULL'",
+    "why": "[outbox] nothing is marked sent"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/outbox.ts",
+    "find": "'SELECT MIN(next_try_at) AS at FROM outbox WHERE sent_at IS NULL'",
+    "replace": "'SELECT MAX(next_try_at) AS at FROM outbox WHERE sent_at IS NULL'",
+    "why": "[outbox] B181 the next try is the last one due, not the first"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/serve/alert-timer.ts",
+    "find": "        this.#alerter.sent(row.key);\n",
+    "replace": "",
+    "why": "[outbox] a send that went through is not marked sent"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/serve/alert-timer.ts",
+    "find": "for (const ms of [this.#alerter.nextEveningIn(), this.#alerter.nextTryIn()])",
+    "replace": "for (const ms of [this.#alerter.nextTryIn()])",
+    "why": "[outbox] 10.3 the evening is noticed up to a minute late"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/serve/alert-timer.ts",
+    "find": "    this.#on = true;\n    this.#look();",
+    "replace": "    this.#on = true;\n    this.#sleep();",
+    "why": "[outbox] A36 what came due while the server was down waits a minute after the start"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/serve/alert-timer.ts",
+    "find": "        this.#alerter.trying(row.key);\n",
+    "replace": "",
+    "why": "[outbox] a try is not counted before it is made"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "        for (const alert of event.given) addToOutbox(this.#db, alert, seq, event.at);\n",
+    "replace": "",
+    "why": "[outbox] an alert worked out is kept but never put in the outbox"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "if (this.#bankRead?.version !== version) this.#bankRead =",
+    "replace": "if (this.#bankRead === null) this.#bankRead =",
+    "why": "[outbox] the bank balances and statements are read once and never again"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "        if (result.changed || lastSeqOf(this.#db) !== this.#lastSeq) this.reload();\n        this.#changed();",
+    "replace": "        if (result.changed || lastSeqOf(this.#db) !== this.#lastSeq) this.reload();",
+    "why": "[outbox] the alerts are not looked at right after a sync"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    return book === null ? null : nextEveningIn({ book, zone: this.timeZone(), now: this.#now() }, this.#state.alerts);",
+    "replace": "    return book === null ? null : nextEveningIn({ book, zone: this.timeZone(), now: this.#now() }, this.#state.alerts) + 60_000;",
+    "why": "[outbox] 10.3 the timer wakes a minute after the evening"
   }
 ]

@@ -4,6 +4,7 @@ import { extname, join, resolve, sep } from 'node:path';
 import type { Pot } from '@budget-app/money';
 import { parseRequest } from '../choices.js';
 import { POT_SLUGS, potOfSlug, type ActivityView } from '../views/activity.js';
+import type { AlertsView } from '../views/alerts.js';
 import type { BucketsView } from '../views/buckets.js';
 import type { BankRuleRequest, BankRuleResponse } from '../views/bank-rules.js';
 import type { ChoiceRequest, ChoiceResponse, MoveRequest, MoveResponse, RuleRequest, RuleResponse, SettingsRequest, SettingsResponse, SetupRequest, SetupResponse } from '../views/choice.js';
@@ -24,9 +25,10 @@ import type { SetupView } from '../views/setup.js';
 // test checks).
 export const APP_PATHS: readonly string[] = ['/', '/home', '/buckets', '/review', '/settings'];
 
-// The screens that are not tabs: the activity of each bucket and Payday. They
-// get the app too. Must match packages/web/src/app/routes.ts (a test checks).
-export const SCREEN_PATHS: readonly string[] = ['/payday', ...Object.keys(POT_SLUGS).map((slug) => `/buckets/${slug}`)];
+// The screens that are not tabs: the activity of each bucket, Payday, and the
+// alerts sent (Phase 5). They get the app too. Must match
+// packages/web/src/app/routes.ts (a test checks).
+export const SCREEN_PATHS: readonly string[] = ['/payday', '/alerts', ...Object.keys(POT_SLUGS).map((slug) => `/buckets/${slug}`)];
 
 // The Setup day screens, one address per step (section 14). They get the app
 // too. Must match packages/web/src/app/routes.ts (a test checks).
@@ -67,7 +69,7 @@ export const AUTH_ROUTES: readonly Route[] = [
 export const ROUTES: readonly Route[] = [
   ...[...APP_PATHS, ...SCREEN_PATHS, ...SETUP_PATHS].map((path): Route => ({ method: 'GET', path, login: true })),
   { method: 'GET', path: LOGIN_PATH, login: false },
-  ...['home', 'buckets', 'review', 'settings', 'setup', 'payday', ...Object.keys(POT_SLUGS).map((slug) => `activity/${slug}`)].map((name): Route => ({ method: 'GET', path: `/api/${name}`, login: true })),
+  ...['home', 'buckets', 'review', 'settings', 'setup', 'payday', 'alerts', ...Object.keys(POT_SLUGS).map((slug) => `activity/${slug}`)].map((name): Route => ({ method: 'GET', path: `/api/${name}`, login: true })),
   { method: 'POST', path: '/api/choice', login: true },
   { method: 'POST', path: '/api/seen', login: true },
   { method: 'POST', path: SYNC_EVERY_PATH, login: true },
@@ -128,6 +130,9 @@ export interface AppServerOptions {
   // Step 3: how often the real server syncs with the bank, in minutes (section
   // 2). The books check it. Without it (the demo, which has no bank), none can be sent.
   readonly syncEvery?: (request: IncomingMessage, minutes: unknown) => { readonly ok: true } | { readonly ok: false; readonly why: string };
+  // Phase 5: the alerts the real server worked out and sent. Without it (the
+  // demo, which sends none), /api/alerts is not there.
+  readonly alerts?: (request: IncomingMessage) => AlertsView | Promise<AlertsView>;
 }
 
 export type Seen = { readonly kind: 'bank-took-back'; readonly id: string };
@@ -360,9 +365,10 @@ export function createAppServer(options: AppServerOptions): Server {
       ['review', options.review],
       ['settings', options.settings],
       ['setup', options.setupView],
+      ['alerts', options.alerts],
     ] as const) {
       if (path !== `/api/${name}` || make === undefined) continue;
-      let view: BucketsView | ReviewView | SettingsView | SetupView;
+      let view: BucketsView | ReviewView | SettingsView | SetupView | AlertsView;
       try {
         view = await make(request);
       } catch (error) {

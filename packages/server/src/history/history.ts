@@ -1,4 +1,5 @@
 import { MoneyError, startTracking, type BankTransaction, type Book, type Cents, type IsoDate, type SetupInput } from '@budget-app/money';
+import type { AlertsEvent } from '../alerts/plan.js';
 import type { BankRuleLogLine } from '../views/bank-rules.js';
 
 // The book's history (Step 1 of the real server): what the bank sent and
@@ -49,7 +50,11 @@ export interface Answer {
 export type HistoryEvent =
   | { readonly kind: 'setup'; readonly input: SetupInput }
   | { readonly kind: 'receive'; readonly txn: BankTransaction }
-  | { readonly kind: 'answer'; readonly answer: Answer };
+  | { readonly kind: 'answer'; readonly answer: Answer }
+  // Phase 5: alerts the server worked out (alerts/plan.ts), so a restart
+  // knows every alert that went out and never gives one twice. They change
+  // nothing in the book.
+  | { readonly kind: 'alerts'; readonly alerts: AlertsEvent };
 
 // What is checked after each event: every bucket, the money waiting in
 // review both ways, the old card debt, money in transit, and how many items

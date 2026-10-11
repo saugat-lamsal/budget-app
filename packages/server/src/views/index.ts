@@ -11,3 +11,4 @@ export * from './setup.js';
 export type * from './bank-rules.js';
 export type * from './server-log.js';
 export type * from './login.js';
+export * from './alerts.js';

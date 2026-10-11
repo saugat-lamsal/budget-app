@@ -4,7 +4,7 @@ import { newDecisionId, type Load, type Reload } from '../app/api.js';
 import { Button, ButtonRow, Card, Decision, Hero, HeroCount, MadeUpPill, Money, Skeleton, StateMessage } from '../ui/blocks.js';
 import { longDate, shortDate } from '../ui/dates.js';
 import { ChoiceSheet, LeftoverDecision, LikelyPurchases, SaidNotice, askFor, subjectOfReview, useChoiceFlow, type Choose, type Kind, type Pending, type Target } from './choose.js';
-import { ACCOUNT_NAMES, groupTitle, pickLabel, reasonText, titleOf } from './review-text.js';
+import { ACCOUNT_NAMES, changedWords, groupTitle, pickLabel, reasonText, titleOf } from './review-text.js';
 
 // Review: everything waiting for him to decide, one tap each. Every choice
 // shown is one the money math offers for that kind of item (the server sends
@@ -60,7 +60,7 @@ type Tracking = Extract<ReviewView, { state: 'tracking' }>;
 const targetOf = (detail: KeyedDetail): Target => ({ id: detail.item.id, label: titleOf(detail.item), kind: detail.item.type, seen: detail.key });
 
 function ReviewReady({ view, reload, onChanged }: { readonly view: Tracking; readonly reload: Reload; readonly onChanged: Reload }) {
-  const flow = useChoiceFlow({ resort: false, reload, onChanged });
+  const flow = useChoiceFlow({ resort: false, reload, onChanged, keys: new Map(view.items.map((d) => [d.item.id, d.key])) });
   const { sheet, said, sending, setSaid, submit, choose, openSheet } = flow;
 
   const byId = new Map(view.items.map((d) => [d.item.id, d]));
@@ -111,7 +111,7 @@ function ReviewReady({ view, reload, onChanged }: { readonly view: Tracking; rea
       {groups.map((group) => (
         <Card key={group.type} title={groupTitle(group.type)} testId={`group-${group.type}`}>
           {group.items.map((d) => (
-            <ItemCard key={d.item.id} detail={d} busy={sending} onChoose={choose} onSend={submit} onMore={() => openSheet(d.item.id)} />
+            <ItemCard key={d.item.id} detail={d} busy={sending || flow.holding(d.item.id)} changed={flow.changed(d.item.id)} onChoose={choose} onSend={submit} onMore={() => openSheet(d.item.id)} />
           ))}
         </Card>
       ))}
@@ -143,12 +143,15 @@ function quickPicks(detail: ReviewDetail): { readonly to: PickTo; readonly final
 function ItemCard({
   detail,
   busy,
+  changed,
   onChoose,
   onSend,
   onMore,
 }: {
   readonly detail: KeyedDetail;
   readonly busy: boolean;
+  // A32: the item changed when the screen read its numbers again.
+  readonly changed: boolean;
   readonly onChoose: Choose;
   readonly onSend: (pending: Pending) => void;
   readonly onMore: () => void;
@@ -157,7 +160,8 @@ function ItemCard({
   const testId = `item-${item.id}`;
   const where = detail.account === null ? '' : ` · ${ACCOUNT_NAMES[detail.account]}`;
 
-  if (item.type === 'leftover' && options.type === 'leftover') return <LeftoverDecision detail={detail} busy={busy} onChoose={onChoose} />;
+  if (item.type === 'leftover' && options.type === 'leftover') return <LeftoverDecision detail={detail} busy={busy} changed={changed} onChoose={onChoose} />;
+  const changedNote = changed && item.type !== 'leftover' ? changedWords(item.amount, detail.pending) : undefined;
 
   if (item.type === 'old-card-purchase') {
     return (
@@ -167,6 +171,7 @@ function ItemCard({
         amount={<Money cents={item.amount} testId="item-amount" />}
         detail={`${reasonText(item)} · ${shortDate(item.date)}${where}`}
         status={detail.pending ? 'pending' : undefined}
+        changed={changedNote}
         actions={
           <Button
             wide
@@ -194,6 +199,7 @@ function ItemCard({
         amount={<Money cents={item.amount} testId="item-amount" />}
         detail={`${reasonText(item)} · ${shortDate(item.date)}${where}`}
         status={detail.pending ? 'pending' : undefined}
+        changed={changedNote}
         actions={
           <>
             <ButtonRow>
