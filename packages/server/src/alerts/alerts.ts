@@ -107,6 +107,6 @@ export function alertWords(f: AlertFacts): { readonly title: string; readonly bo
     case 'bank-login':
       return { title: 'Log in to your bank again', body: 'The bank wants you to log in again before the app can read it.' };
     case 'bank-took-back':
-      return { title: 'The bank took something back', body: `${f.description}, ${formatDollars(f.amount)}, from ${dayWords(f.date)}. It is undone in your buckets too.` };
+      return { title: 'The bank took something back', body: `${f.description}, ${formatDollars(f.amount)}, taken back ${dayWords(f.date)}. It is undone in your buckets too.` };
   }
 }

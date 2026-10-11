@@ -1,4 +1,5 @@
 import type { BankBalances, Book, IsoDate, Pot } from '@budget-app/money';
+import { outboxCounts } from '../../../../server/src/alerts/outbox.js';
 import { bankRuleLogIn } from '../../../../server/src/bank-rules-db.js';
 import { RECENT_DAYS } from '../../../../server/src/bank-rules.js';
 import { readBankRules } from '../../../../server/src/db/store.js';
@@ -18,8 +19,8 @@ import type { RealServer } from './real-server.js';
 // server's screens from its books. The few things only the real server knows,
 // and the simulator does not, are taken from the real server: when it last
 // read the bank, the take-backs he has marked seen, the bank rules and their
-// log lines, and its own log lines (logins). Everything about money is the
-// simulator's.
+// log lines, its own log lines (logins), and how many alerts it kept (Phase 5).
+// Everything about money is the simulator's.
 
 export const SCREENS: readonly string[] = ['/home', '/buckets', ...Object.keys(POT_SLUGS).map((slug) => `/buckets/${slug}`), '/review', '/payday', '/settings'];
 export type ScreenPath = string;
@@ -52,6 +53,7 @@ export function expectedViews(book: Book, today: IsoDate, bank: BankBalances, re
       bankRules: { rules: readBankRules(db), log: bankRuleLogIn(db), recentDays: RECENT_DAYS },
       serverLog: serverLinesIn(db),
       sync: { everyMinutes: real.keeper.syncEveryMinutes(), checkedAt, today },
+      alerts: outboxCounts(db),
     }),
   };
   for (const [slug, pot] of Object.entries(POT_SLUGS) as [string, Pot][]) views[`/api/activity/${slug}`] = activityView({ today, book, pot, madeUpData: false });

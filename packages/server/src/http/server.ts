@@ -25,9 +25,10 @@ import type { SetupView } from '../views/setup.js';
 // test checks).
 export const APP_PATHS: readonly string[] = ['/', '/home', '/buckets', '/review', '/settings'];
 
-// The screens that are not tabs: the activity of each bucket and Payday. They
-// get the app too. Must match packages/web/src/app/routes.ts (a test checks).
-export const SCREEN_PATHS: readonly string[] = ['/payday', ...Object.keys(POT_SLUGS).map((slug) => `/buckets/${slug}`)];
+// The screens that are not tabs: the activity of each bucket, Payday, and the
+// alerts sent (Phase 5). They get the app too. Must match
+// packages/web/src/app/routes.ts (a test checks).
+export const SCREEN_PATHS: readonly string[] = ['/payday', '/alerts', ...Object.keys(POT_SLUGS).map((slug) => `/buckets/${slug}`)];
 
 // The Setup day screens, one address per step (section 14). They get the app
 // too. Must match packages/web/src/app/routes.ts (a test checks).

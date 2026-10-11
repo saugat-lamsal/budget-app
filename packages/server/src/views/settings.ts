@@ -45,6 +45,14 @@ export interface SettingsInput {
   readonly login?: LoginView;
   // Step 3: syncing with the bank, on the real server only (the demo has no bank).
   readonly sync?: SyncView;
+  // Phase 5: the list of alerts sent, on the real server only (the demo sends none).
+  readonly alerts?: AlertsCount;
+}
+
+// Phase 5: how many alerts the app worked out, and how many are not sent yet.
+export interface AlertsCount {
+  readonly total: number;
+  readonly notSent: number;
 }
 
 // Step 3: how often the real server syncs with the bank (section 2), in
@@ -101,7 +109,7 @@ export type LogRow =
 
 export type SettingsView =
   // Before setup day there are no settings yet, but he can still log out.
-  | { readonly state: 'not-set-up'; readonly madeUpData: boolean; readonly login?: LoginView; readonly sync?: SyncView }
+  | { readonly state: 'not-set-up'; readonly madeUpData: boolean; readonly login?: LoginView; readonly sync?: SyncView; readonly alerts?: AlertsCount }
   | {
       readonly state: 'tracking';
       readonly madeUpData: boolean;
@@ -109,6 +117,8 @@ export type SettingsView =
       readonly login?: LoginView;
       // Step 3: syncing with the bank, on the real server only.
       readonly sync?: SyncView;
+      // Phase 5: the list of alerts sent, on the real server only.
+      readonly alerts?: AlertsCount;
       readonly today: IsoDate;
       // 0.5: Settings says so too when the totals do not match the bank.
       readonly check: { readonly state: 'matches' } | { readonly state: 'does-not-match'; readonly difference: Cents } | { readonly state: 'bank-not-read' };
@@ -152,7 +162,7 @@ export function ruleViewOf(rule: SortingRule): RuleView {
 
 export function settingsView(input: SettingsInput): SettingsView {
   const { today, book, bank, madeUpData } = input;
-  const login = { ...(input.login === undefined ? {} : { login: input.login }), ...(input.sync === undefined ? {} : { sync: input.sync }) };
+  const login = { ...(input.login === undefined ? {} : { login: input.login }), ...(input.sync === undefined ? {} : { sync: input.sync }), ...(input.alerts === undefined ? {} : { alerts: input.alerts }) };
   if (book === null) return { state: 'not-set-up', madeUpData, ...login };
 
   let check: Extract<SettingsView, { state: 'tracking' }>['check'];

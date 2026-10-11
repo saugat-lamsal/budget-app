@@ -2,10 +2,11 @@ import { formatDollars, parseDollars, type Cents, type LeftoverChoice, type Sett
 import type { BankRuleChange, LoginView, LogRow, RuleRequest, RuleRow, RuleSpec, SettingsPreviewView, SettingsRequest, SettingsView, SyncView } from '@budget-app/server/views';
 import { useRef, useState, type ReactNode } from 'react';
 import { newDecisionId, sendChoice, type Load, type Reload } from '../app/api.js';
-import { pathOf } from '../app/routes.js';
+import { pathOf, pathOfRoute } from '../app/routes.js';
 import { Banner, BottomSheet, Button, ButtonRow, Card, CompareTable, ListRow, MadeUpPill, Money, Notice, SelectField, Skeleton, StateMessage, TextField } from '../ui/blocks.js';
 import { dayWithYear, longDate, shortDate } from '../ui/dates.js';
 import { POT_NAMES } from '../ui/names.js';
+import { alertsRowText } from './alerts-text.js';
 import { BankRuleRows, BankRuleSheet, type Editing as BankEditing } from './bank-rules.js';
 import { bankRuleDoneText } from './bank-rules-text.js';
 import { SaidNotice, type Said } from './choose.js';
@@ -233,6 +234,7 @@ function SettingsReady({ view, reload, onChanged }: { readonly view: Tracking; r
         {textRow('reminders', 'Card reminders', reminderText(s.cardReminderDaysBefore), 'Before each card is due')}
         {row('review-time', 'Daily review', timeText(s.dailyReviewTime), 'Only when something waits in Review')}
         {textRow('time-zone', 'Home time zone', zoneText(s.homeTimeZone), 'Today is the date here, and the daily review time is in it')}
+        {view.alerts !== undefined && <ListRow icon="tray" title="Alerts sent" detail={alertsRowText(view.alerts)} href={pathOfRoute({ screen: 'alerts' })} testId="row-alerts-sent" />}
       </Card>
 
       <Card title="Old card" testId="old-card-card">

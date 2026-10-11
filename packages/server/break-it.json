@@ -856,8 +856,8 @@
   {
     "section": "review",
     "file": "packages/server/src/http/server.ts",
-    "find": "export const SCREEN_PATHS: readonly string[] = ['/payday', ...",
-    "replace": "export const SCREEN_PATHS: readonly string[] = [...",
+    "find": "export const SCREEN_PATHS: readonly string[] = ['/payday', '/alerts', ...",
+    "replace": "export const SCREEN_PATHS: readonly string[] = ['/alerts', ...",
     "why": "[activity] B104 Payday has no address of its own"
   },
   {

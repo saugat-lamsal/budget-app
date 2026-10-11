@@ -117,6 +117,12 @@ export function readOutbox(db: Db, limit: number): { readonly rows: readonly Out
   return { rows, total: n };
 }
 
+// How many there are, and how many are not sent yet (Settings' row).
+export function outboxCounts(db: Db): { readonly total: number; readonly notSent: number } {
+  const row = db.prepare('SELECT COUNT(*) AS total, COUNT(*) - COUNT(sent_at) AS notSent FROM outbox').get() as { total: number; notSent: number };
+  return { total: row.total, notSent: row.notSent };
+}
+
 export function outboxKeys(db: Db): string[] {
   return (db.prepare('SELECT key FROM outbox ORDER BY key').all() as { key: string }[]).map((r) => r.key);
 }

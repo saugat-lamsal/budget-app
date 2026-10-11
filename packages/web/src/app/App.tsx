@@ -1,6 +1,7 @@
 import type { Pot } from '@budget-app/money';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityScreen, type Back } from '../screens/Activity.js';
+import { AlertsScreen } from '../screens/Alerts.js';
 import { BucketsScreen } from '../screens/Buckets.js';
 import { HomeScreen } from '../screens/Home.js';
 import { PaydayScreen } from '../screens/Payday.js';
@@ -8,7 +9,7 @@ import { ReviewScreen } from '../screens/Review.js';
 import { SettingsScreen } from '../screens/Settings.js';
 import { SetupScreen } from '../screens/Setup.js';
 import { TabBar } from '../ui/TabBar.js';
-import { useActivity, useBuckets, useHome, usePayday, useReview, useSettings, useSetup, type Reload } from './api.js';
+import { useActivity, useAlerts, useBuckets, useHome, usePayday, useReview, useSettings, useSetup, type Reload } from './api.js';
 import { backTarget, pathOfRoute, routeLabel, routeOf, routeTitle, tabOfRoute, type Route, type SetupStepName, type Tab } from './routes.js';
 
 // Each of these loads its numbers when its screen opens, so it is always fresh.
@@ -37,6 +38,12 @@ function ActivityTab({ pot, onChanged, back }: { readonly pot: Pot; readonly onC
 function PaydayTab({ onChanged, back }: { readonly onChanged: Reload; readonly back: Back }) {
   const [load, reload] = usePayday();
   return <PaydayScreen load={load} onRetry={reload} onChanged={onChanged} back={back} />;
+}
+
+// The alerts sent (Phase 5), opened from Settings. It only reads.
+function AlertsTab({ back }: { readonly back: Back }) {
+  const [load, reload] = useAlerts();
+  return <AlertsScreen load={load} onRetry={reload} back={back} />;
 }
 
 // Setup day (section 14). Once tracking starts, Home shows.
@@ -118,6 +125,8 @@ export function App() {
         <ActivityTab key={route.pot} pot={route.pot} onChanged={retryHome} back={back} />
       ) : route.screen === 'payday' ? (
         <PaydayTab onChanged={retryHome} back={back} />
+      ) : route.screen === 'alerts' ? (
+        <AlertsTab back={back} />
       ) : route.screen === 'setup' ? (
         <SetupTab
           step={route.step}

@@ -198,6 +198,11 @@ button.row:active {
   color: var(--text-2);
 }
 
+/* A detail in more than one part (an alert's words, then its times): each on its own line. */
+.row__line {
+  display: block;
+}
+
 .row__trailing {
   flex: none;
   color: var(--text-2);

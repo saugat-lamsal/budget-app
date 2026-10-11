@@ -76,6 +76,22 @@ describe('the tab bar says where you are', () => {
   });
 });
 
+describe('10 the list of alerts sent has its own address', () => {
+  it('10.3 the list is at /alerts, on the Settings tab, and goes back to Settings', () => {
+    expect(pathOfRoute({ screen: 'alerts' })).toBe('/alerts');
+    expect(routeOf('/alerts')).toEqual({ screen: 'alerts' });
+    expect(routeOf('/alerts/')).toEqual({ screen: 'alerts' });
+    expect(routeOf('/alerts/extra')).toBeNull();
+    expect(tabOfRoute({ screen: 'alerts' })).toBe('settings');
+    expect(routeTitle({ screen: 'alerts' })).toBe('Alerts · Budget');
+    expect(backTarget({ screen: 'alerts' }, undefined)).toEqual({ screen: 'tab', tab: 'settings' });
+    expect(backTarget({ screen: 'alerts' }, '/alerts')).toEqual({ screen: 'tab', tab: 'settings' });
+    expect(backTarget({ screen: 'alerts' }, '/home')).toEqual({ screen: 'tab', tab: 'home' });
+    // Going back from the other screens is as it was.
+    expect(backTarget({ screen: 'payday' }, '/alerts')).toEqual({ screen: 'alerts' });
+  });
+});
+
 describe('the server answers every one of them with the app', () => {
   it('the server\'s list of screens is the app\'s list of screens, and none is a tab', () => {
     expect([...SCREEN_PATHS].sort()).toEqual(SCREEN_ROUTES.map(pathOfRoute).sort());

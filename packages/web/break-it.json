@@ -1059,8 +1059,8 @@
   {
     "section": "home",
     "file": "packages/web/src/app/routes.ts",
-    "find": "return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : 'buckets';",
-    "replace": "return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : 'home';",
+    "find": "return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : route.screen === 'alerts' ? 'settings' : 'buckets';",
+    "replace": "return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : route.screen === 'alerts' ? 'settings' : 'home';",
     "why": "[activity] B97 a bucket's screen lights the wrong tab"
   },
   {

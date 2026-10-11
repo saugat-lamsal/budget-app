@@ -1,7 +1,7 @@
 import type { IncomingMessage, Server } from 'node:http';
 import { DEFAULT_SETTINGS, type BankBalances, type Book, type CardStatement, type IsoDate, type Pot } from '@budget-app/money';
 import { applyAlerts, nextAlertsEvent, nextEveningIn, type AlertLedger, type AlertWorld } from '../alerts/plan.js';
-import { addToOutbox, markFailed, markSent, markTrying, nextOutboxTry, outboxToSend, readOutbox, type OutboxRow } from '../alerts/outbox.js';
+import { addToOutbox, markFailed, markSent, markTrying, nextOutboxTry, outboxCounts, outboxToSend, readOutbox, type OutboxRow } from '../alerts/outbox.js';
 import { Auth } from '../auth/auth.js';
 import { answerAuth, loginViewOf } from '../auth/http.js';
 import { BankRulesDesk } from '../bank-rules-desk.js';
@@ -249,6 +249,7 @@ export class Keeper {
       serverLog: serverLinesIn(this.#db),
       ...(session === null ? {} : { login: loginViewOf(this.#auth, session) }),
       sync: { everyMinutes: this.syncEveryMinutes(), checkedAt: this.#checkedAt(), today: this.today() },
+      alerts: outboxCounts(this.#db),
     });
   }
 

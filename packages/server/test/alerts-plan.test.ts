@@ -221,7 +221,7 @@ describe('10.6 the bank taking something back', () => {
     b.sort('dup', { to: 'wants' }, '2026-10-02');
     b.receive(takenBack('tb', 'dup', '2026-10-03'));
     const l = look(world(b, '2026-10-03T14:00:00Z'), ledger);
-    expect(given(l).map((g) => [g.key, g.title, g.body])).toEqual([['bank-took-back dup', 'The bank took something back', 'MADE UP CAFE, $12.50, from Sat, Oct 3. It is undone in your buckets too.']]);
+    expect(given(l).map((g) => [g.key, g.title, g.body])).toEqual([['bank-took-back dup', 'The bank took something back', 'MADE UP CAFE, $12.50, taken back Sat, Oct 3. It is undone in your buckets too.']]);
     expect(keys(look(world(b, '2026-10-03T15:00:00Z'), l.ledger))).toEqual([]);
   });
 });

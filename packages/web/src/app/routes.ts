@@ -41,6 +41,8 @@ export type Route =
   | { readonly screen: 'activity'; readonly pot: Pot }
   // What the last paycheck did, and the pay period that just ended.
   | { readonly screen: 'payday' }
+  // Phase 5: the alerts the app worked out and sent, newest first (real server only).
+  | { readonly screen: 'alerts' }
   // Setup day, one step at a time (section 14).
   | { readonly screen: 'setup'; readonly step: SetupStepName };
 
@@ -70,7 +72,7 @@ export function setupPath(step: SetupStepName): string {
 
 // The screens that are not tabs. The server answers each address with the
 // app (packages/server/src/http/server.ts, SCREEN_PATHS; a test checks).
-export const SCREEN_ROUTES: readonly Route[] = Object.freeze([{ screen: 'payday' }, ...MOVABLE_POTS.map((pot): Route => ({ screen: 'activity', pot }))]);
+export const SCREEN_ROUTES: readonly Route[] = Object.freeze([{ screen: 'payday' }, { screen: 'alerts' }, ...MOVABLE_POTS.map((pot): Route => ({ screen: 'activity', pot }))]);
 
 export function activityPath(pot: Pot): string {
   const found = Object.entries(POT_SLUGS).find(([, p]) => p === pot);
@@ -86,6 +88,8 @@ export function pathOfRoute(route: Route): string {
       return activityPath(route.pot);
     case 'payday':
       return '/payday';
+    case 'alerts':
+      return '/alerts';
     case 'setup':
       return setupPath(route.step);
   }
@@ -97,6 +101,7 @@ export function routeOf(pathname: string): Route | null {
   if (tab !== null) return { screen: 'tab', tab };
   const path = pathname.replace(/\/$/, '');
   if (path === '/payday') return { screen: 'payday' };
+  if (path === '/alerts') return { screen: 'alerts' };
   const step = /^\/setup\/([^/]+)$/.exec(path)?.[1];
   if (step !== undefined && (SETUP_STEPS as readonly string[]).includes(step)) return { screen: 'setup', step: step as SetupStepName };
   const slug = /^\/buckets\/([^/]+)$/.exec(path)?.[1];
@@ -108,9 +113,10 @@ export function routeOf(pathname: string): Route | null {
 }
 
 // Which tab is lit while a screen is showing: a bucket's screen and Payday
-// are about the buckets; Setup day leads to Home.
+// are about the buckets; Setup day leads to Home; the alerts are opened from
+// Settings.
 export function tabOfRoute(route: Route): Tab {
-  return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : 'buckets';
+  return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : route.screen === 'alerts' ? 'settings' : 'buckets';
 }
 
 export function routeTitle(route: Route): string {
@@ -121,6 +127,8 @@ export function routeTitle(route: Route): string {
       return `${POT_NAMES[route.pot]} · Budget`;
     case 'payday':
       return 'Payday · Budget';
+    case 'alerts':
+      return 'Alerts · Budget';
     case 'setup':
       return 'Setup day · Budget';
   }
@@ -135,15 +143,18 @@ export function routeLabel(route: Route): string {
       return POT_NAMES[route.pot];
     case 'payday':
       return 'Payday';
+    case 'alerts':
+      return 'Alerts';
     case 'setup':
       return SETUP_STEP_TITLES[route.step];
   }
 }
 
 // Where "back" goes from a screen: the screen he came from, if the app knows
-// it (the address it left, kept in the history entry), otherwise Buckets.
+// it (the address it left, kept in the history entry), otherwise Buckets (the
+// alerts: Settings, where they are opened).
 export function backTarget(route: Route, cameFrom: unknown): Route {
-  const home: Route = { screen: 'tab', tab: 'buckets' };
+  const home: Route = { screen: 'tab', tab: route.screen === 'alerts' ? 'settings' : 'buckets' };
   if (typeof cameFrom !== 'string') return home;
   const from = routeOf(cameFrom);
   if (from === null || pathOfRoute(from) === pathOfRoute(route)) return home;
