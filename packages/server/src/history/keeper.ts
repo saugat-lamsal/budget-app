@@ -1,5 +1,7 @@
 import type { IncomingMessage, Server } from 'node:http';
 import { DEFAULT_SETTINGS, type BankBalances, type Book, type CardStatement, type IsoDate, type Pot } from '@budget-app/money';
+import { applyAlerts, nextAlertsEvent, nextEveningIn, type AlertLedger, type AlertWorld } from '../alerts/plan.js';
+import { addToOutbox, markFailed, markSent, markTrying, nextOutboxTry, outboxToSend, readOutbox, type OutboxRow } from '../alerts/outbox.js';
 import { Auth } from '../auth/auth.js';
 import { answerAuth, loginViewOf } from '../auth/http.js';
 import { BankRulesDesk } from '../bank-rules-desk.js';
@@ -18,7 +20,9 @@ import { saveServerLine, serverLinesIn } from '../server-log.js';
 import { SetupDesk } from '../setup-desk.js';
 import { NO_ANSWERS, SETUP_LOOK_BACK_DAYS, type SetupAnswers } from '../setup-view.js';
 import { FEWEST_MINUTES, MOST_MINUTES, readLastRead, saveSyncEveryMinutes, syncEveryMinutes } from '../sync/bank-reads.js';
+import type { Plan, PlanInput } from '../sync/plan.js';
 import { syncBank, type SyncResult } from '../sync/sync.js';
+import { ALERTS_SHOWN, type AlertsView } from '../views/alerts.js';
 import { activityView, type ActivityView } from '../views/activity.js';
 import type { BankRuleRequest, BankRuleResponse } from '../views/bank-rules.js';
 import { bucketsView, type BucketsView } from '../views/buckets.js';
@@ -70,6 +74,8 @@ interface State {
   readonly choices: ChoiceDesk | null;
   // Before tracking starts.
   readonly setup: SetupDesk | null;
+  // Phase 5: the alerts given so far, from the history.
+  readonly alerts: AlertLedger;
 }
 
 // What a sync needs to reach the bank.
@@ -78,6 +84,10 @@ export interface SyncBank {
   readonly box: TokenBox;
   readonly log: Log;
   readonly pageSize?: number;
+  // For tests only: how what the bank sent becomes what the book is given
+  // (planSync). The simulated life's alert tests give the book the
+  // simulator's own transactions, so its answers fit them.
+  readonly plan?: (input: PlanInput) => Plan;
 }
 
 const NOUNS: Readonly<Record<DeskName, string>> = { choice: 'choice', move: 'move', settings: 'change', rule: 'change', setup: 'answer', 'bank-rule': 'change' };
@@ -96,6 +106,8 @@ export class Keeper {
   #lastTry: number | null;
   // The last event of the history the books in memory have.
   #lastSeq = 0;
+  // Phase 5: told after each sync and each answer (serveBooks pokes the alert timer).
+  #onChange: (() => void) | null = null;
 
   private constructor(input: KeeperInput) {
     this.#db = input.db;
@@ -144,7 +156,7 @@ export class Keeper {
         answers: replayed.setupAnswers === null ? NO_ANSWERS : setupAnswersOf(replayed.setupAnswers),
       });
     }
-    this.#state = { recorder, seen: replayed.seen, bankRules, choices: book === null ? null : new ChoiceDesk(book, today), setup };
+    this.#state = { recorder, seen: replayed.seen, bankRules, choices: book === null ? null : new ChoiceDesk(book, today), setup, alerts: replayed.alerts };
     this.#lastSeq = history.at(-1)?.seq ?? 0;
   }
 
@@ -296,6 +308,7 @@ export class Keeper {
       saveDecision(this.#db, { ...decision, seq });
     });
     this.reload();
+    this.#changed();
     return response;
   }
 
@@ -350,10 +363,18 @@ export class Keeper {
       ...(this.#beforeCommit === undefined ? {} : { beforeCommit: this.#beforeCommit }),
       // Read again when it saved anything, or when the history has more than
       // the books in memory (another copy of the server saved a sync).
+      ...(bank.plan === undefined ? {} : { plan: bank.plan }),
       afterSave: (result) => {
         if (result.changed || lastSeqOf(this.#db) !== this.#lastSeq) this.reload();
+        this.#changed();
       },
-    }).finally(() => {
+    })
+      .then((result) => {
+        // 10.5: the bank wants a new login; the sync saved only that.
+        if (result.needsLogin) this.#changed();
+        return result;
+      })
+      .finally(() => {
       this.#syncing = null;
     });
     this.#syncing = running;
@@ -394,6 +415,93 @@ export class Keeper {
     return { ok: true };
   }
 
+  // ----- Alerts (Phase 5) -----
+
+  // Called after each sync and each answer: the alert timer looks then.
+  whenChanged(run: () => void): void {
+    this.#onChange = run;
+  }
+
+  #changed(): void {
+    this.#onChange?.();
+  }
+
+  #alertWorld(): AlertWorld | null {
+    const book = this.book();
+    if (book === null) return null;
+    return { book, now: this.#now(), zone: this.timeZone(), bank: this.#bank(), needsLogin: readConnection(this.#db)?.needsLogin ?? false, statements: this.#statements() };
+  }
+
+  // Works out every alert due now (alerts/plan.ts) and keeps it: each
+  // "alerts" event in the book's history with its alerts in the outbox, in one
+  // step. Before setup day there is nothing to tell.
+  checkAlerts(): void {
+    for (let made = 0; made < 100_000; made += 1) {
+      const world = this.#alertWorld();
+      if (world === null) return;
+      const event = nextAlertsEvent(world, this.#state.alerts);
+      if (event === null) return;
+      this.#write(() => {
+        const seq = appendEvent(this.#db, { event: { kind: 'alerts', alerts: event }, date: todayIn(world.zone, world.now), sync: null, totals: totalsOf(world.book) });
+        for (const alert of event.given) addToOutbox(this.#db, alert, seq, event.at);
+      });
+      this.#state = { ...this.#state, alerts: applyAlerts(this.#state.alerts, event) };
+    }
+    throw new Error('the alerts would not stop');
+  }
+
+  // Milliseconds until the next evening's alerts are due; null before setup day.
+  nextEveningIn(): number | null {
+    const world = this.#alertWorld();
+    return world === null ? null : nextEveningIn(world, this.#state.alerts);
+  }
+
+  toSend(): readonly OutboxRow[] {
+    return outboxToSend(this.#db, this.#now().toISOString());
+  }
+
+  nextTryIn(): number | null {
+    const at = nextOutboxTry(this.#db);
+    return at === null ? null : Date.parse(at) - this.#now().getTime();
+  }
+
+  trying(key: string): void {
+    markTrying(this.#db, key, this.#now().toISOString());
+  }
+
+  sent(key: string): void {
+    markSent(this.#db, key, this.#now().toISOString());
+  }
+
+  failed(key: string, why: string): void {
+    markFailed(this.#db, key, this.#now().toISOString(), why);
+  }
+
+  // The alerts the app worked out, newest first, in his home time zone.
+  alertsView(): AlertsView {
+    if (this.book() === null) return { state: 'not-set-up' };
+    const zone = this.timeZone();
+    const local = (at: string): string => timeIn(zone, new Date(at));
+    const { rows, total } = readOutbox(this.#db, ALERTS_SHOWN);
+    return {
+      state: 'tracking',
+      today: this.today(),
+      timeZone: zone,
+      total,
+      alerts: rows.map((row) => ({
+        key: row.key,
+        kind: row.kind,
+        title: row.title,
+        body: row.body,
+        dueAt: local(row.dueAt),
+        sentAt: row.sentAt === null ? null : local(row.sentAt),
+        tries: row.tries,
+        lastError: row.sentAt === null ? row.lastError : null,
+        nextTryAt: row.sentAt === null && row.tries > 0 ? local(row.nextTryAt) : null,
+      })),
+    };
+  }
+
   // The web server for the screens, with these books behind it. Every
   // screen and every /api address needs a login (Step 2), checked against
   // the app's own address, `origin`.
@@ -423,6 +531,7 @@ export class Keeper {
       bankRule: (_request, change) => this.bankRule(change),
       seen: (_request, what) => this.seen(what),
       syncEvery: (_request, minutes) => this.changeSyncEvery(minutes),
+      alerts: () => this.alertsView(),
     });
   }
 
@@ -497,6 +606,7 @@ export class Keeper {
       }
       if (what.decision !== undefined) saveDecision(this.#db, { ...what.decision, seq });
     });
+    this.#changed();
   }
 
   // One transaction. If it does not go through, nothing of it is saved, and

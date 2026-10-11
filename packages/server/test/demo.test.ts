@@ -346,7 +346,11 @@ describe('the demo is made-up data only', () => {
     // Setup day (section 14) reads a made-up bank history the way the bank
     // connection reads a real one: bank/ and sync/plan.ts read Plaid's
     // format, and nothing there opens the database or calls the bank.
+    // Phase 5: the history's types name the alerts (alerts/plan.ts), which
+    // only work alerts out; nothing there opens the database either.
     expect(files.sort()).toEqual([
+      'alerts/alerts.ts',
+      'alerts/plan.ts',
       'bank-rules-desk.ts',
       'bank-rules.ts',
       'bank/amounts.ts',
@@ -374,6 +378,7 @@ describe('the demo is made-up data only', () => {
       'setup-view.ts',
       'sync/plan.ts',
       'views/activity.ts',
+      'views/alerts.ts',
       'views/bank-rules.ts',
       'views/buckets.ts',
       'views/choice.ts',

@@ -571,6 +571,79 @@ A33. ANSWERED Oct 10, built. Your answer: option 3. Rulebook 4.5 and 29b;
      and makes "Same name" true. Built: option 1 (B88).
 
 
+## Part A, added with Phase 5, part one (alerts worked out and kept, Oct 10). Waiting on your answer.
+
+The rulebook does not say these. Each is built on the plain reading, as it
+says, until you answer.
+
+A34. What time of day card reminders (9.1 to 9.3) and the overdue alert
+     (9.4) come. The rulebook gives a day, not a time.
+     Option 1: at the daily review time (8:00 PM), with the daily review: the
+     one time of day the rulebook has. The day's payments are in by then, so
+     one made that day stops the reminder.
+     Option 2: a new setting, a morning time (9:00 AM, say), so there is a
+     whole day to pay.
+     Option 3: as soon as the day starts (just after midnight).
+     Recommendation: option 1. One moment a day for everything that is not
+     urgent, and 8:00 PM still leaves time to pay online. Built: option 1.
+
+A35. Whether an alert caused by a sync in the night waits until morning (a
+     purchase posting at 3 AM that makes wants low, a take-back, the bank
+     wanting a login).
+     Option 1: no, it goes at once, whatever the hour.
+     Option 2: quiet hours, a setting (10:00 PM to 7:00 AM, say): what comes
+     due then waits until they end, and says when it was due.
+     Recommendation: option 2. Nothing in the night is urgent enough to wake
+     you. Built: option 1 (the plain reading: it goes when it happens).
+
+A36. What to do with an alert that came due while the server was down (the
+     8:00 PM daily review, a reminder day).
+     Option 1: each one is sent when the server is back, late, oldest first,
+     saying when it was due. Down for three evenings: three daily reviews.
+     Option 2: when it is back, only the newest of each kind, and only if it
+     is still true now (one daily review, one reminder per card).
+     Option 3: none: what came due while it was down is dropped; Home still
+     shows it.
+     Recommendation: option 2. Nothing is lost that still matters, and you
+     get no pile of stale ones. Built: option 1 (the plain reading of "never
+     lose one"). Each is worked out from the books as they were (nothing
+     changes while the server is down), for its own day: a reminder for Oct 16
+     counts only the payments seen by Oct 16.
+
+A37. How often the "totals do not match the bank" (10.4) and "log in to the
+     bank again" (10.5) alerts repeat while they stay true.
+     Option 1: once when it starts; again only after it stopped being true
+     and started again.
+     Option 2: once a day while it lasts, at the daily review time.
+     Option 3: after every sync that finds it still true.
+     Recommendation: option 2. Home already says so the whole time (0.5);
+     a daily nudge is enough, and never a storm. Built: option 1. While the
+     bank cannot be read (it wants a login), the mismatch is neither told nor
+     cleared: there is no new balance to compare.
+
+A38. A new alert when the bank has not been checked for a day (the sync keeps
+     failing, or the server was down), which the rulebook does not have.
+     Option 1: no such alert; Home's "Checked at" shows it.
+     Option 2: an alert once when the last good read is more than 24 hours
+     old (a setting), and again only after a good read.
+     Recommendation: option 2. A silent app is the worst case for money:
+     you would trust numbers that are a day old. Built: option 1 (nothing
+     new without your OK).
+
+A39. Whether the lock screen shows amounts. The rules say a reminder shows
+     the statement balance and the minimum (9.1, 9.2), and the mismatch
+     alert the difference (10.4).
+     Option 1: yes, the words have the amounts ("Needs is low: $99.99 left of
+     $500.00"), as the rules say.
+     Option 2: on the lock screen, words only ("Needs is low"); the amounts
+     inside the app.
+     Option 3: a setting, amounts on by default.
+     Recommendation: option 3, off by default: anyone who picks up your
+     phone sees your money otherwise. Built: option 1 (the words kept in the
+     outbox have the amounts; how the phone shows them comes with the phone,
+     later in Phase 5).
+
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 WAITING FOR YOU TO CHECK (Oct 10, 2026, the end of Phase 4). Each was
@@ -1963,3 +2036,37 @@ B178. A32, what the screens do: Review, Payday and each bucket's list
       the screens, not a setting, though 13.7 now names it (0.2): say if you
       want it on Settings. A tap that comes too early does nothing at all:
       the button is greyed while it holds, and no request is sent.
+
+
+## Part B, added with Phase 5, part one (Oct 10). Tell me if any is wrong.
+
+B179. The overdue alert (9.4, B30) comes every evening after the due date
+      while the payments since the statement add up to less than the
+      minimum, at the daily review time (A34), once each evening. It is for
+      the latest statement of each card the bank has sent: once a new
+      statement comes, the old one is not reminded about any more.
+
+B180. "Once" is kept by a name for each alert: needs low in pay period 3,
+      the daily review of Oct 12, the 7-day reminder for the everyday card's
+      Oct 23 due date, the take-back of one transaction, the 2nd time the
+      bank wanted a login. What went out is in the book's history (an
+      "alerts" event, with each alert's words and when it came due) and in
+      the outbox, saved in one step. A history that gives the same alert
+      twice, or handles an evening out of turn, does not replay, and the
+      server does not start (0.6). The alerts start with the first look on a
+      database (right after setup day): take-backs already there then get no
+      alert, and evenings count from then on.
+
+B181. Sending: each alert is tried, the oldest first; one that fails is tried
+      again after 1 minute, then 2, 4, 8 and so on, never more than an hour
+      apart, and never given up on. Every try of an alert has the same id, so
+      a try the server could not mark as done (it stopped in between) is
+      shown on the phone once. Until the phone gets them (web push, later in
+      Phase 5), npm run serve writes each alert in its own window, and that
+      counts as sent.
+
+B182. The evening is the daily review time on the clock in his home time
+      zone, whatever the clocks did (8:00 PM EDT before Nov 1, 8:00 PM EST
+      after). A time the clock shows twice (1:30 AM on Nov 1) is the first of
+      the two; one it skips (2:30 AM on Mar 14) is the moment it jumps (3:00
+      AM). Changing the review time moves the next evening at once.

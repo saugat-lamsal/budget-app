@@ -1,5 +1,6 @@
 import { MoneyError, type BankTransaction, type Book, type Cents, type IsoDate, type SetupInput } from '@budget-app/money';
 import type { Db } from '../db/database.js';
+import { NO_ALERTS, applyAlerts, type AlertLedger, type AlertsEvent } from '../alerts/plan.js';
 import { ReplayFailed, bookOfSetup, replayCall, sameTotals, totalsOf, type Answer, type HistoryEvent, type SavedSetupAnswers, type Totals } from './history.js';
 
 // The book's history in the database (table book_events), the decision
@@ -22,7 +23,7 @@ export interface StoredEvent {
 interface Row {
   seq: number;
   sync: number | null;
-  kind: 'setup' | 'receive' | 'answer';
+  kind: 'setup' | 'receive' | 'answer' | 'alerts';
   date: string;
   payload: string;
   totals: string | null;
@@ -33,7 +34,13 @@ export function readHistory(db: Db): StoredEvent[] {
   return rows.map((row) => {
     const payload = JSON.parse(row.payload) as unknown;
     const event: HistoryEvent =
-      row.kind === 'setup' ? { kind: 'setup', input: payload as SetupInput } : row.kind === 'receive' ? { kind: 'receive', txn: payload as BankTransaction } : { kind: 'answer', answer: payload as Answer };
+      row.kind === 'setup'
+        ? { kind: 'setup', input: payload as SetupInput }
+        : row.kind === 'receive'
+          ? { kind: 'receive', txn: payload as BankTransaction }
+          : row.kind === 'alerts'
+            ? { kind: 'alerts', alerts: payload as AlertsEvent }
+            : { kind: 'answer', answer: payload as Answer };
     const totals = row.totals === null ? null : (JSON.parse(row.totals) as Totals | null);
     return { seq: row.seq, date: row.date, sync: row.sync, event, totals, sealed: row.totals !== null };
   });
@@ -42,7 +49,7 @@ export function readHistory(db: Db): StoredEvent[] {
 // Adds one event at the end of the history, with the totals after it.
 // Returns its number.
 export function appendEvent(db: Db, e: { readonly event: HistoryEvent; readonly date: IsoDate; readonly sync: number | null; readonly totals: Totals | null }): number {
-  const payload = e.event.kind === 'setup' ? e.event.input : e.event.kind === 'receive' ? e.event.txn : e.event.answer;
+  const payload = e.event.kind === 'setup' ? e.event.input : e.event.kind === 'receive' ? e.event.txn : e.event.kind === 'alerts' ? e.event.alerts : e.event.answer;
   const info = db.prepare('INSERT INTO book_events (sync, kind, date, payload, totals) VALUES (?, ?, ?, ?, ?)').run(e.sync, e.event.kind, e.date, JSON.stringify(payload), JSON.stringify(e.totals));
   return Number(info.lastInsertRowid);
 }
@@ -62,6 +69,8 @@ export interface Replayed {
   readonly seen: Set<string>;
   // Setup day, before tracking starts: his answers so far; null before the first.
   readonly setupAnswers: SavedSetupAnswers | null;
+  // Phase 5: the alerts given so far, and the evenings handled.
+  readonly alerts: AlertLedger;
   // Events saved before their totals were, with the totals they replay to.
   readonly unsealed: readonly { readonly seq: number; readonly totals: Totals | null }[];
 }
@@ -99,6 +108,11 @@ export function describeEvent(e: StoredEvent): string {
       ];
       return `his answer: ${parts.join(', ') || 'nothing'}`;
     }
+    case 'alerts': {
+      const a = e.event.alerts;
+      const what = a.check.kind === 'evening' ? `the evening of ${a.check.date}` : a.check.kind === 'start' ? 'the start' : 'a change';
+      return `alerts for ${what}: ${a.given.map((g) => g.key).join(', ') || 'none'}`;
+    }
   }
 }
 
@@ -131,8 +145,15 @@ export function replayEach(
   let book: Book | null = null;
   const seen = new Set<string>();
   let setupAnswers: SavedSetupAnswers | null = null;
+  let alerts = NO_ALERTS;
   for (const stored of events) {
     try {
+      // Phase 5: an alert given twice, or an evening out of turn, is a
+      // history that cannot be replayed.
+      if (stored.event.kind === 'alerts') {
+        if (book === null) throw new ReplayFailed('alerts before setup day');
+        alerts = applyAlerts(alerts, stored.event.alerts);
+      }
       book = applyEvent(book, stored.event, seen, (answers) => {
         setupAnswers = answers;
       });
@@ -142,7 +163,7 @@ export function replayEach(
     }
     after?.(stored, totalsOf(book));
   }
-  return { ok: true, replayed: { book, seen, setupAnswers } };
+  return { ok: true, replayed: { book, seen, setupAnswers, alerts } };
 }
 
 function applyEvent(book: Book | null, event: HistoryEvent, seen: Set<string>, setSetup: (answers: SavedSetupAnswers) => void): Book | null {
@@ -164,6 +185,9 @@ function applyEvent(book: Book | null, event: HistoryEvent, seen: Set<string>, s
       if (a.setup !== undefined) setSetup(a.setup);
       return book;
     }
+    case 'alerts':
+      // Nothing in the book: replayEach keeps the alerts given.
+      return book;
   }
 }
 

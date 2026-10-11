@@ -9,6 +9,7 @@ import { consoleLog } from '../log.js';
 import { PlaidClient } from '../plaid/client.js';
 import { plaidKeysFromEnv, type PlaidKeys } from '../plaid/sandbox-lock.js';
 import { serveOptions, type ServeOptions } from './options.js';
+import { logSender } from './alert-timer.js';
 import { serveBooks } from './serving.js';
 import { connectLikeHis } from './test-bank.js';
 
@@ -70,13 +71,15 @@ if (options.sync) {
 // The screens, and (Step 3) the timer that syncs by itself, every interval
 // (section 2), and at once if one is due.
 const webRoot = process.env['WEB_ROOT'] ?? fileURLToPath(new URL('../../../web/dist/', import.meta.url));
-const { server, timer } = serveBooks({
+const { server, timer, alerts } = serveBooks({
   keeper,
   bank: { plaid, box, log },
   clock: { setTimeout: (run, ms) => setTimeout(run, ms), clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>) },
   webRoot,
   origin: () => origin,
   onError: (error) => log.error('a request failed', { error: error instanceof Error ? error.message : String(error) }),
+  // Phase 5: no phone yet; each alert is written here, in this window.
+  sender: logSender(log),
 });
 server.listen(options.port, '127.0.0.1', () => {
   const address = server.address();
@@ -92,7 +95,9 @@ server.listen(options.port, '127.0.0.1', () => {
     console.log('  Good once, for 15 minutes. npm run login-code prints a new one.');
   }
   console.log(`  It syncs with the test bank by itself every ${keeper.syncEveryMinutes()} minutes (a setting).`);
+  console.log('  Alerts are worked out and written here, in this window, until the phone gets them.');
   console.log('Stop it with Ctrl+C.');
+  alerts.start();
   timer.start();
 });
 
@@ -100,7 +105,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
     server.close();
     // A sync on its way saves all or nothing; it is let finish first.
-    void timer.stop().finally(() => {
+    void Promise.all([timer.stop(), alerts.stop()]).finally(() => {
       db.close();
       process.exit(0);
     });

@@ -138,7 +138,7 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 16. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 17. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
@@ -154,7 +154,8 @@ This applies to every phase and every session, cloud or local.
   section 27 his answers after the real server (A28: rule 0.6; A29: 4.5,
   6.1; 27c staying logged in, 27d syncing every 60 minutes, section 2),
   section 28 his answers after syncing on a timer (A30: rule 0.6; A31: rule
-  13.7).
+  13.7), section 29 his answers after Phase 4's finish line (A32: rule 13.7;
+  A33: rule 4.5).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -1085,7 +1086,33 @@ This applies to every phase and every session, cloud or local.
     (resort.test.ts) and is caught, and so are the new breaks. Every break in
     the files changed after the full run started, run again on the final
     code: 62 breaks, 62 caught. PR #19; CI green on Linux.
+- PR #19 merged (Oct 10, 2026).
+- Phase 5, part one (alerts worked out and kept; no phone yet), branch
+  phase-5-alerts-kept (Oct 10, 2026), one pull request. NOT FINISHED: see
+  handoff-phase-5.md at the repo root (not in git) for what is left.
+  - Step 0, its own commit: A32 option 2 (13.7: a card that changed when the
+    screen read its numbers again says "Changed: now $21.50, posted" and takes
+    no tap for a second; useChoiceFlow keys in screens/choose.tsx, B178) and
+    A33 option 3 (4.5: a word on most of his purchases on that account in the
+    90 days up to the refund is not a name; likely-purchases.ts, B177).
+    Breaks "[a32]" (10) and "[a33]" (7), all caught.
+  - Step 1, part done: packages/server/src/alerts (alerts.ts: facts, keys,
+    words; plan.ts: which alerts are due when, the ledger, "alerts" events;
+    outbox.ts), serve/alert-timer.ts (AlertTimer, the AlertSender plug,
+    logSender for npm run serve), database step 5 (book_events takes kind
+    "alerts"; the outbox table; migrate() turns foreign keys off for a step
+    that makes a table again), history/today.ts instantIn, the Keeper
+    (checkAlerts, the Alerter methods, alertsView, whenChanged; SyncBank.plan
+    is a test seam), serveBooks makes the AlertTimer (main.ts starts it before the sync timer) and returns it as
+    alerts, GET /api/alerts in ROUTES (the /alerts screen address joins
+    SCREEN_PATHS with the web side). The simulator now records
+    each day as steps (setup, each sync, each answer, the evening) with the
+    alerts the server should send after each (DayStep, ExpectedAlert in
+    packages/money/test/sim/life.ts), and checks card notices every evening
+    for the latest statement of each card. Tests: alerts-plan, alert-timer,
+    serving (a take-back alert at the sync moment), today, database step 5.
+    Fake phone: packages/server/test/fake-phone.ts.
+  - QUESTIONS.md A34 to A39 (built on the plain reading) and B179 to B182.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
-  rule 9.5, depends on it), QUESTIONS.md A32 (a screen that changes an instant
-  before a tap) and A33 (which purchases are likely for a refund), and his
-  check of part B (the list at its top).
+  rule 9.5, depends on it), QUESTIONS.md A34 to A39, and his check of part B
+  (the list at its top).

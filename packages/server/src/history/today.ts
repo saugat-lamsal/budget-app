@@ -26,6 +26,35 @@ export function timeIn(zone: string, at: Date): string {
   return `${p['year']}-${p['month']}-${p['day']}T${p['hour']}:${p['minute']}:${p['second']}${offset}`;
 }
 
+// The zone's clock at that moment, written as if it were UTC, in milliseconds.
+function wallAt(zone: string, at: number): number {
+  const p = partsAt(zone, new Date(at));
+  return Date.UTC(Number(p['year']), Number(p['month']) - 1, Number(p['day']), Number(p['hour']), Number(p['minute']), Number(p['second']));
+}
+
+// Phase 5: the moment the zone's clock first shows that time ("20:00") on
+// that date. A time it shows twice (1:30 AM the day the clocks go back) is
+// the first of the two; a time it skips (2:30 AM the day they go forward) is
+// the moment it jumps past it.
+export function instantIn(zone: string, date: IsoDate, time: string): Date {
+  const [hour, minute] = time.split(':').map(Number);
+  const wall = Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10)), hour ?? 0, minute ?? 0);
+  // The zone's offset a day either side: on an ordinary day the same, on the
+  // day the clocks change the one before and the one after.
+  const offsets = [...new Set([wallAt(zone, wall - 86_400_000) - (wall - 86_400_000), wallAt(zone, wall + 86_400_000) - (wall + 86_400_000)])];
+  const shows = offsets.map((offset) => wall - offset).filter((at) => wallAt(zone, at) === wall);
+  if (shows.length > 0) return new Date(Math.min(...shows));
+  // Skipped: the first moment the clock shows a later time.
+  let before = Math.min(...offsets.map((offset) => wall - offset));
+  let after = Math.max(...offsets.map((offset) => wall - offset));
+  while (after - before > 1_000) {
+    const middle = before + Math.floor((after - before) / 2_000) * 1_000;
+    if (wallAt(zone, middle) >= wall) after = middle;
+    else before = middle;
+  }
+  return new Date(after);
+}
+
 // Whether the name is a time zone this computer knows.
 export function isTimeZone(zone: string): boolean {
   try {

@@ -9,6 +9,7 @@ import { memoryLog, type LogLine } from '../../../../server/src/log.js';
 import { serveBooks } from '../../../../server/src/serve/serving.js';
 import type { SyncTimer } from '../../../../server/src/serve/sync-timer.js';
 import { FakeClock } from '../../../../server/test/fake-clock.js';
+import { FakePhone } from '../../../../server/test/fake-phone.js';
 import { connected, type Harness } from '../../../../server/test/harness.js';
 import { SIM_BANK_RULES, inPlaidFormat } from '../../../../server/test/sim-bank.js';
 import type { Period } from './period.js';
@@ -97,6 +98,9 @@ export class RealServer {
       clock: this.fakeClock,
       webRoot: this.#serving.webRoot,
       origin: () => this.base,
+      // The alerts (Phase 5) are not looked at in the pay period: their timer
+      // is not started, so the server works as it did for Phase 4.
+      sender: new FakePhone(() => this.clock.now),
     });
     this.#server = server;
     this.#timer = timer;
