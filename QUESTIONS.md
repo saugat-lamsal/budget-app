@@ -712,7 +712,7 @@ so if you want them here too. B4, B20, B82 and B84 are answered.
   B174. Money on its way between your accounts is listed on Buckets (12.5, B44).
   B175. Payday and Home show what is on its way to the savings account (3.8, B46).
   B176. A purchase made on payday itself is not "made before payday" (3.4, B4).
-  B177 to B184 (Phase 5, part one) and B185 to B191 (your answers to A34 to A39, Oct 11): in their own sections at the end of part B.
+  B177 to B184 (Phase 5, part one) and B185 to B192 (your answers to A34 to A39, Oct 11): in their own sections at the end of part B.
 
 B1. Paycheck smaller than the mom reserve (3.2).
     A $1,200 paycheck can only give the reserve $1,200, not $1,500. The
@@ -2125,3 +2125,11 @@ B191. The three new settings (quiet hours, the bank-not-read hours, amounts on
       the lock screen) are kept with the others in section 2: changed on
       Settings like any setting, in force at once (13.1), each change in the
       change log (13.5).
+
+B192. Review, the bucket lists and Payday (Step 1 of this chunk, as B92 did for
+      Setup day): after an answer went through, their buttons stay off until
+      the numbers asked for after it are shown. Before, a second tap in that
+      moment sent a second decision (refused by the server as already dealt
+      with, so the books changed once, but two requests went). His PC found
+      it under full load in WebKit (Oct 11).
+

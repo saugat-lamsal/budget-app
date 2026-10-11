@@ -146,6 +146,66 @@ describe.each(ENGINES)('the count of requests on their way, in %s', (_name, engi
   });
 });
 
+// A page that cannot open says, at once, what it and its server were doing:
+// the test closes it afterwards, so the report made when a test fails finds no
+// page open (CI, Oct 10, random-lives-activity, twice). Here the server takes
+// the request for the page's script and never answers it.
+describe.each(ENGINES)('a page that cannot open says why, in %s', (_name, engine) => {
+  it('its report names the request never answered, what the server was asked, and the connections to its port', async () => {
+    const server = createServer((request, response) => {
+      if (request.url === '/never.js') return;
+      response.writeHead(200, { 'Content-Type': 'text/html' });
+      response.end('<!doctype html><title>stuck</title><script src="/never.js"></script>');
+    });
+    const base = await listen(server);
+    const browser = await launch(engine);
+    try {
+      const page = await (await browser.newContext()).newPage();
+      const error = await page.goto(`${base}/stuck`, { timeout: 2_000 }).then(
+        () => null,
+        (e: unknown) => e as Error,
+      );
+      expect(error?.name).toBe('TimeoutError');
+      expect(error?.message).toContain('Timeout 2000ms exceeded');
+      expect(error?.message).toContain(`page ${base}/stuck`);
+      expect(error?.message).toMatch(/still waits on: .*GET http:\/\/127\.0\.0\.1:\d+\/never\.js/);
+      expect(error?.message).toMatch(/server, last requests: GET \/stuck from :\d+ at -\d+ms: 200 after \d+ms; GET \/never\.js from :\d+ at -\d+ms: NOT ANSWERED/);
+      expect(error?.message).toMatch(/machine, connections to or from its port: \{.*"(ESTAB|ESTABLISHED)":/);
+    } finally {
+      await browser.close();
+      await close(server);
+    }
+  });
+
+  // What CI showed (Oct 11, WebKit on Linux): a new page whose very first
+  // address never arrived stays blank, and the report then still names the
+  // server it was opening, and what that server was asked.
+  it('a new page whose first address never arrives: the report names the server it was opening, and what the browser started', async () => {
+    const server = createServer((request, response) => {
+      if (request.url === '/never') return;
+      response.writeHead(200, { 'Content-Type': 'text/html' });
+      response.end('<!doctype html><title>fine</title>');
+    });
+    const base = await listen(server);
+    const browser = await launch(engine);
+    try {
+      const page = await (await browser.newContext()).newPage();
+      const error = await page.goto(`${base}/never`, { timeout: 2_000 }).then(
+        () => null,
+        (e: unknown) => e as Error,
+      );
+      expect(error?.name).toBe('TimeoutError');
+      expect(error?.message).toContain('page about:blank');
+      expect(error?.message).toMatch(/browser requests started, the last 15: GET http:\/\/127\.0\.0\.1:\d+\/never at -\d+ms/);
+      expect(error?.message).toMatch(/server, last requests: GET \/never from :\d+ at -\d+ms: NOT ANSWERED/);
+      expect(error?.message).toMatch(/machine, connections to or from its port: \{.*"(ESTAB|ESTABLISHED)":/);
+    } finally {
+      await browser.close();
+      await close(server);
+    }
+  });
+});
+
 // Leaving a page cancels what it still has on its way, and the browsers then
 // sometimes lose the next request (CLAUDE.md, CI Oct 7 and Oct 8). So no page
 // of a browser the tests launch is ever left while a request of its own is on

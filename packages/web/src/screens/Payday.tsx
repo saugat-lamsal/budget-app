@@ -63,7 +63,7 @@ type Tracking = Extract<PaydayView, { state: 'tracking' }>;
 function PaydayReady({ view, reload, onChanged }: { readonly view: Tracking; readonly reload: Reload; readonly onChanged: Reload }) {
   const { report } = view;
   // Answering a payday question here is the same as in Review: the same desk, the same promises.
-  const flow = useChoiceFlow({ resort: false, reload, onChanged, keys: new Map(view.questions.map((q) => [q.item.id, q.key])) });
+  const flow = useChoiceFlow({ resort: false, reload, onChanged, keys: new Map(view.questions.map((q) => [q.item.id, q.key])), view });
   const { sheet, said, sending, setSaid, submit, choose } = flow;
   const open = sheet === null ? undefined : view.questions.find((q) => q.item.id === sheet.item);
 

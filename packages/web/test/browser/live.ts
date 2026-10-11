@@ -44,6 +44,21 @@ export async function startLive(life: LiveLife): Promise<{ readonly server: Serv
   return { server, base: await listen(server) };
 }
 
+// Shows another screen of a live book in a page already open, and waits for
+// its numbers: the address is opened afresh in the same page, a whole new
+// document that asks the server for everything again, as a new page would.
+// WebKit as Playwright builds it for Linux (CI, Oct 10 and 11) sometimes never
+// shows the first address of a new page opened right after the last one was
+// closed: the test server answered at once, the answer reached the browser's
+// side of the connection, which never read it, and the page stayed blank. A
+// test that looks at many screens opens one page and moves it, so no page is
+// closed and opened again in between.
+export async function showLive(page: Page, base: string, path: string): Promise<void> {
+  await page.goto(`${base}${path}`);
+  await waitOrReport(page, 'main[aria-busy="false"]');
+  await untilAnswered(page);
+}
+
 // Opens a screen of a live book and waits for its numbers.
 export async function openLive(context: BrowserContext, base: string, path: string): Promise<Page> {
   const page = await context.newPage();

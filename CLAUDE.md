@@ -1224,5 +1224,52 @@ This applies to every phase and every session, cloud or local.
       timer fire for ever at one moment, which the test's own time limit
       could not stop (it is all promises): FakeClock now fails at once after
       1,000 timers at one moment (test/fake-clock.ts, fake-clock.test.ts).
+  - Step 1, two browser tests that failed now and then.
+    - Review's double tap (WebKit on his PC under full load): the app could
+      send two. After an answer went through, Review, the bucket lists and
+      Payday turned their buttons on again before the numbers asked for
+      after it were shown (useChoiceFlow), and a second tap sent a second
+      decision (the server refused it as already dealt with; two requests
+      all the same). useChoiceFlow now takes the screen's view and keeps the
+      buttons off until a new one is shown (answeredOn), as Setup day's
+      useSender does (B92). Tests "B92 ..." in review, payday and activity
+      hold the fresh numbers at that moment (two requests before the fix).
+      B192. Breaks "[b192]".
+    - random-lives-activity (Linux CI, WebKit): reproduced on a throwaway
+      branch whose workflow ran the WebKit suite and then 30 more lives on 8
+      and 16 Linux machines at once. A new page opened right after the test
+      closed the one before, on the same test server, sometimes never shows
+      its first address: the browser asked, the test server answered 200 at
+      once, the answer reached the browser's side of the connection, which
+      never read it (CLOSE-WAIT; the server's side FIN-WAIT-2), and the page
+      stayed at about:blank until the time limit. One WPEWebProcess, no
+      zombies, memory and /dev/shm fine. Inside WebKit as Playwright builds
+      it for Linux, not the app, the server or the network. The test opened
+      and closed about 70 pages a run, so it was hit most; the same stall was
+      seen in alerts.test.ts, design-real-server.test.ts and
+      unmark-old-card.test.ts (not changed: tests not touched).
+      Fix: live.ts showLive (opens the next address in the same page, a
+      whole new document, and waits for its numbers); random-lives-activity
+      opens one page per test and moves it from list to list: the same
+      checks. 16 Linux machines (the suite, then 30 more lives each, about
+      1,700 runs of the test) then had no stall in it.
+    - The failure report (harness.ts) says more and stays: a goto that times
+      out reports at once, before the test closes the page (withReport);
+      for a page still blank it names the server it was opening
+      (stuckReport opening); the requests the browser started; the
+      connections to that server's port by state; and on Linux the browser
+      processes, zombies, /dev/shm and memory (machineState). The look inside
+      the page gives up after 2 s. page-quiet tests check it. Breaks "[ci]".
+    - Seen on the throwaway runs, tests not touched and not changed:
+      settings.test.ts "B92 a double tap on Save sends one decision"
+      (WebKit, the notice never came), and design checks that ran out of
+      time under load. Simulated life seed 1507 fails its own check (a low
+      alert at 22.5%): flagged to him as a task of its own.
+  - Break-it can no longer fill the PC (his PC, overnight Oct 11: one break
+    looped for ever, a worker held 16 GB and every core for eight hours):
+    each run of the tests is stopped after 30 minutes (TIME_LIMIT_MS), which
+    counts as not caught ("HUNG"), and each of its node processes may use at
+    most 4 GB (MEMORY_CAP_MB, through NODE_OPTIONS). test/break-it.test.ts
+    checks both.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
   rule 9.5, depends on it), and his check of part B (the list at its top).

@@ -1,9 +1,10 @@
 import { MOVABLE_POTS, type Pot } from '@budget-app/money';
+import type { Page } from 'playwright';
 import { describe, expect, it } from 'vitest';
 import { Random } from '../../../money/test/sim/random.js';
 import { activityOf, amountAt, numbersOf, pathOfPot, readActivity } from './activity-screens.js';
 import { ENGINES, close, phone, untilQuiet, useEngine } from './harness.js';
-import { openLive, startLive } from './live.js';
+import { openLive, showLive, startLive } from './live.js';
 import { FIRST_SEED, LIVES, randomDay } from './random-day.js';
 import { watchChoices } from './screens.js';
 
@@ -13,7 +14,9 @@ import { watchChoices } from './screens.js';
 // for that book, the lists must add up, and a few random taps (sorting
 // something again, moving money by hand) must do exactly what the same answers
 // do to a twin of the book given straight to the money math.
-// WEB_LIVES and WEB_FIRST_SEED run more, or replay one.
+// Each test opens one page and moves it from screen to screen, each loaded
+// afresh (showLive in live.ts says why). WEB_LIVES and WEB_FIRST_SEED run
+// more, or replay one.
 
 describe.each(ENGINES)('random lives on the bucket lists and Payday in %s', (_name, engine) => {
   const { browser } = useEngine(engine);
@@ -25,17 +28,20 @@ describe.each(ENGINES)('random lives on the bucket lists and Payday in %s', (_na
     const live = await startLive(life);
     const context = await browser().newContext(phone());
     try {
+      let page: Page | null = null;
       for (const pot of MOVABLE_POTS) {
-        const page = await openLive(context, live.base, pathOfPot(pot));
-        page.setDefaultTimeout(20_000);
+        if (page === null) {
+          page = await openLive(context, live.base, pathOfPot(pot));
+          page.setDefaultTimeout(20_000);
+        } else await showLive(page, live.base, pathOfPot(pot));
         const shown = await readActivity(page);
         expect(numbersOf(shown), `${where} ${pot}`).toEqual(numbersOf(activityOf(life.book, pot)));
         // Added up here by hand, from what is on the screen.
         expect(shown.opening + shown.in + shown.out, `${where} ${pot}`).toBe(shown.closing);
         expect(shown.rows.reduce((sum, r) => sum + r.amount, 0), `${where} ${pot}`).toBe(shown.in + shown.out);
         expect(shown.now, `${where} ${pot}`).toBe(life.book.pots()[pot]);
-        await page.close();
       }
+      await page?.close();
     } finally {
       await context.close();
       await close(live.server);
@@ -88,14 +94,20 @@ describe.each(ENGINES)('random lives on the bucket lists and Payday in %s', (_na
     const context = await browser().newContext(phone());
     try {
       const random = new Random(seed * 53);
-      const watch: { posts: ReturnType<typeof watchChoices>['posts'] } = { posts: [] };
       let taps = 0;
-      const ids = new Set<string>();
+      // One page, moved from list to list; what it sends to /api/choice is watched throughout.
+      const one: { opened: { readonly page: Page; readonly watch: ReturnType<typeof watchChoices> } | null } = { opened: null };
+      const show = async (pot: Pot): Promise<Page> => {
+        if (one.opened === null) {
+          const first = await openLive(context, live.base, pathOfPot(pot));
+          first.setDefaultTimeout(20_000);
+          one.opened = { page: first, watch: watchChoices(first) };
+        } else await showLive(one.opened.page, live.base, pathOfPot(pot));
+        return one.opened.page;
+      };
       for (let attempt = 0; attempt < 10 && taps < 4; attempt += 1) {
         const pot = random.pick<Pot>(['needs', 'wants', 'savings', 'momReserve', 'heldForOthers']);
-        const page = await openLive(context, live.base, pathOfPot(pot));
-        page.setDefaultTimeout(20_000);
-        const w = watchChoices(page);
+        const page = await show(pot);
         const rows = twin.book.activity(pot).rows;
         // A row that can be sorted again, with a choice that asks nothing and is not where it already is.
         const options = rows.flatMap((r) => {
@@ -127,23 +139,18 @@ describe.each(ENGINES)('random lives on the bucket lists and Payday in %s', (_na
           await page.getByTestId('notice').waitFor();
           twin.book.moveMoney({ from: 'wants', to: 'needs', amount: cents, confirmed: asked }, twin.today);
         }
-        for (const id of w.ids()) ids.add(id);
         taps += 1;
-        watch.posts.push(...w.posts);
         await untilQuiet(page);
-        await page.close();
       }
       // Each tap was one decision, with a decision number of its own, however many requests it took.
-      expect(ids.size, where).toBe(taps);
+      expect(new Set(one.opened?.watch.ids() ?? []).size, where).toBe(taps);
       expect(life.book.pots(), where).toEqual(twin.book.pots());
       expect(life.book.recountPots(), where).toEqual(life.book.pots());
       expect(life.book.changeLog(), where).toEqual(twin.book.changeLog());
       expect(life.book.selfCheck(life.bank).ok, where).toBe(true);
       for (const pot of MOVABLE_POTS) {
-        const page = await openLive(context, live.base, pathOfPot(pot));
-        page.setDefaultTimeout(20_000);
+        const page = await show(pot);
         expect(numbersOf(await readActivity(page)), `${where} ${pot}`).toEqual(numbersOf(activityOf(twin.book, pot)));
-        await page.close();
       }
     } finally {
       await context.close();

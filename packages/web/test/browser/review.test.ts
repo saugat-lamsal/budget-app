@@ -312,6 +312,44 @@ describe.each(ENGINES)('Review in %s', (_name, engine) => {
     await page.context().close();
   });
 
+  // What the double tap above did on his PC under full load (Oct 11, WebKit):
+  // the second tap came after the first answer was back but before Review
+  // showed the numbers asked for after it, with the card's buttons on again,
+  // and it sent a second decision. Here those numbers are held at exactly
+  // that moment, whatever the timing of the taps (as for Setup day, B92).
+  it('B92 an answer already given cannot be sent again while Review still shows the numbers from before it', async () => {
+    const mine = life('review-busy');
+    const twin = life('review-busy');
+    const id = idOf(mine.book, 'CORNER STORE');
+    const page = await openReview(await browser().newContext(phone()), base(), 'review-busy');
+    const watch = watchChoices(page);
+    const button = item(page, id).getByTestId('pick-wants');
+    let release = (): void => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    let asked = false;
+    await page.route('**/api/review', async (route) => {
+      asked = true;
+      await held;
+      await route.continue();
+    });
+    await button.click();
+    // The answer is back and the screen has asked for its fresh numbers.
+    await expect.poll(() => asked).toBe(true);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 0)))));
+    expect(await button.isDisabled()).toBe(true);
+    await button.click({ force: true });
+    release();
+    await item(page, id).waitFor({ state: 'detached' });
+    await page.unrouteAll({ behavior: 'wait' });
+    twin.book.sort(id, { to: 'wants' }, twin.today);
+    expect(watch.posts).toHaveLength(1);
+    expect(await bucketsOnScreen(page)).toEqual(bucketsOf(twin.book));
+    // Once the fresh numbers are shown, the next item takes a tap again.
+    const next = idOf(mine.book, 'CORNER DELI');
+    expect(await item(page, next).getByTestId('pick-needs').isDisabled()).toBe(false);
+    await page.context().close();
+  });
+
   it('a retry on bad signal: it says so, Try again sends the same decision, and the books change once', async () => {
     const mine = life('review-busy');
     const twin = life('review-busy');
