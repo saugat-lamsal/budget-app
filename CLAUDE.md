@@ -1271,5 +1271,9 @@ This applies to every phase and every session, cloud or local.
     counts as not caught ("HUNG"), and each of its node processes may use at
     most 4 GB (MEMORY_CAP_MB, through NODE_OPTIONS). test/break-it.test.ts
     checks both.
+  - The proof: the Tests workflow run by hand on Linux 5 times in a row
+    (runs 38148899781, 38149980939, 38150776127, 38151934145, 38152749704,
+    Oct 11, 14:51 to 16:00 UTC): the WebKit job green every time, and checks
+    and Chromium too. PR #21 open, CI green.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
   rule 9.5, depends on it), and his check of part B (the list at its top).
