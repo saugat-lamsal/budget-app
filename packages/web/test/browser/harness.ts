@@ -59,10 +59,14 @@ interface ServerLogEntry {
   readonly method: string;
   readonly url: string;
   readonly at: number;
+  // The browser's end of the connection it came on.
+  readonly from: number | undefined;
   done: number | null;
   status: number | null;
 }
 const serverLogs = new Map<string, ServerLogEntry[]>();
+// The connections each test server has open now, by the browser's end, with when each opened.
+const serverConnections = new Map<string, Map<number | undefined, number>>();
 
 // Every answer closes its connection (test/test-server.test.ts says why): WebKit,
 // as Playwright builds it for Linux and Windows, loses the answer to a request
@@ -76,8 +80,15 @@ export async function listen(server: Server, port = 0): Promise<string> {
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const log: ServerLogEntry[] = [];
   serverLogs.set(base, log);
+  const open = new Map<number | undefined, number>();
+  serverConnections.set(base, open);
+  server.on('connection', (socket) => {
+    const from = socket.remotePort;
+    open.set(from, Date.now());
+    socket.on('close', () => open.delete(from));
+  });
   server.on('request', (request, response) => {
-    const entry: ServerLogEntry = { method: request.method ?? '?', url: request.url ?? '?', at: Date.now(), done: null, status: null };
+    const entry: ServerLogEntry = { method: request.method ?? '?', url: request.url ?? '?', at: Date.now(), from: request.socket.remotePort, done: null, status: null };
     log.push(entry);
     if (log.length > 200) log.shift();
     response.on('finish', () => {
@@ -165,13 +176,17 @@ function trackFetches(): void {
 }
 
 // Follows a page's requests and console, for the report when it gets stuck.
-const pageWatch = new WeakMap<Page, { readonly pending: Map<Request, number>; readonly failed: string[]; readonly console: string[] }>();
+const pageWatch = new WeakMap<Page, { readonly pending: Map<Request, number>; readonly started: [string, number][]; readonly failed: string[]; readonly console: string[] }>();
 
 function followEvents(page: Page): void {
   if (pageWatch.has(page)) return;
-  const watch = { pending: new Map<Request, number>(), failed: [] as string[], console: [] as string[] };
+  const watch = { pending: new Map<Request, number>(), started: [] as [string, number][], failed: [] as string[], console: [] as string[] };
   pageWatch.set(page, watch);
-  page.on('request', (r) => watch.pending.set(r, Date.now()));
+  page.on('request', (r) => {
+    watch.pending.set(r, Date.now());
+    watch.started.push([`${r.method()} ${r.url()}`, Date.now()]);
+    if (watch.started.length > 50) watch.started.shift();
+  });
   page.on('requestfinished', (r) => watch.pending.delete(r));
   // Playwright reports "finished" only for answers it counts as loaded: an error
   // answer (500) never says so. It is an answer all the same.
@@ -240,10 +255,11 @@ export async function untilAnswered(page: Page): Promise<void> {
 // What a stuck page was doing: the page itself, what it was still waiting on
 // (its own count, and Playwright's events), what failed, its console, and what
 // the test server it talks to was asked and answered.
-export async function stuckReport(page: Page): Promise<string> {
+// opening: the address it was asked to open, for a page still on its first (blank) one.
+export async function stuckReport(page: Page, opening?: string): Promise<string> {
   const now = Date.now();
   const watch = pageWatch.get(page);
-  const state = await page
+  const state = page
     .evaluate(() => {
       const f = (window as unknown as { __fetches?: PageFetches }).__fetches;
       return {
@@ -258,20 +274,56 @@ export async function stuckReport(page: Page): Promise<string> {
       };
     })
     .catch((error: unknown) => ({ evaluateFailed: String(error) }));
+  // A page in the middle of opening an address may never answer: the report does not wait for it.
+  const looked = await Promise.race([state, new Promise<{ readonly evaluateFailed: string }>((done) => setTimeout(() => done({ evaluateFailed: 'the page did not answer within 2 s' }), 2_000))]);
   let origin = '';
-  try {
-    origin = new URL(page.url()).origin;
-  } catch {
-    // A page that never opened an address has no server.
+  for (const address of [page.url(), opening ?? '']) {
+    try {
+      const url = new URL(address);
+      if (url.protocol === 'http:' || url.protocol === 'https:') {
+        origin = url.origin;
+        break;
+      }
+    } catch {
+      // A page that never opened an address has no server.
+    }
   }
-  const server = (serverLogs.get(origin) ?? []).slice(-12).map((e) => `${e.method} ${e.url} at -${now - e.at}ms: ${e.done === null ? 'NOT ANSWERED' : `${e.status} after ${e.done - e.at}ms`}`);
+  const server = (serverLogs.get(origin) ?? []).slice(-12).map((e) => `${e.method} ${e.url} from :${e.from ?? '?'} at -${now - e.at}ms: ${e.done === null ? 'NOT ANSWERED' : `${e.status} after ${e.done - e.at}ms`}`);
+  const connections = [...(serverConnections.get(origin) ?? new Map<number | undefined, number>())].map(([from, at]) => `:${from ?? '?'} open for ${now - at}ms`);
   return [
-    `page ${page.url()}: ${JSON.stringify(state)}`,
+    `page ${page.url()}: ${JSON.stringify(looked)}`,
     `Playwright's events say the browser still waits on: ${watch === undefined ? '(not followed)' : [...watch.pending].map(([r, at]) => `${r.method()} ${r.url()} for ${now - at}ms`).join('; ') || 'nothing'}`,
+    `browser requests started, the last 15: ${watch?.started.slice(-15).map(([url, at]) => `${url} at -${now - at}ms`).join('; ') || 'none'}`,
     `browser requests that failed: ${watch?.failed.join('; ') || 'none'}`,
     `console: ${watch?.console.slice(-10).join(' | ') || 'nothing'}`,
     `server, last requests: ${server.join('; ') || 'none'}`,
+    `server, connections open now: ${connections.join('; ') || 'none'}`,
+    `machine, connections to or from its port: ${origin === '' ? 'no port' : loopbackConnections(Number(new URL(origin).port))}`,
+    `machine, browsers and memory: ${machineState()}`,
   ].join('\n');
+}
+
+// On Linux, the browser processes alive by name (with those left as zombies),
+// the shared memory in use, the load and the free memory: a new page whose
+// first address never starts loading points at the browser's own processes.
+function machineState(): string {
+  if (process.platform !== 'linux') return 'only looked at on Linux';
+  try {
+    const processes = new Map<string, number>();
+    let zombies = 0;
+    for (const line of execFileSync('ps', ['-eo', 'stat=,comm='], { encoding: 'utf8' }).split('\n')) {
+      const [stat, name] = line.trim().split(/\s+/);
+      if (stat === undefined || name === undefined || !/web|browser|pw_|playwright|node/i.test(name)) continue;
+      processes.set(name, (processes.get(name) ?? 0) + 1);
+      if (stat.startsWith('Z')) zombies += 1;
+    }
+    const shm = execFileSync('df', ['-k', '/dev/shm'], { encoding: 'utf8' }).trim().split('\n').at(-1)?.split(/\s+/).slice(2, 5).join(' ') ?? '?';
+    const load = execFileSync('cat', ['/proc/loadavg'], { encoding: 'utf8' }).trim();
+    const free = /MemAvailable:\s+(\d+)/.exec(execFileSync('cat', ['/proc/meminfo'], { encoding: 'utf8' }))?.[1] ?? '?';
+    return `${JSON.stringify(Object.fromEntries(processes))}, ${zombies} zombies; /dev/shm used, free, use%: ${shm}; load ${load}; memory available ${free} kB`;
+  } catch (error) {
+    return `could not tell (${String(error)})`;
+  }
 }
 
 // Waits for something on the page; if it never comes, fails with what the
@@ -337,6 +389,18 @@ async function settle(page: Page): Promise<void> {
   }
 }
 
+// A page that could not open an address says what it and its server were
+// doing, at once: the test closes it afterwards, and the report made when a
+// test fails then finds no page open (CI, Oct 10, twice).
+async function withReport(page: Page, error: unknown, opening: string): Promise<unknown> {
+  if (!(error instanceof Error) || error.name !== 'TimeoutError' || page.isClosed()) return error;
+  const report = await stuckReport(page, opening).catch((also: unknown) => `no report: ${String(also)}`);
+  const stuck = new Error(`${error.message}
+${report}`, { cause: error });
+  stuck.name = error.name;
+  return stuck;
+}
+
 function leaveOnlyWhenQuiet(context: BrowserContext): void {
   const closeContext = context.close.bind(context);
   context.close = async (options?: Parameters<BrowserContext['close']>[0]): Promise<void> => {
@@ -354,7 +418,11 @@ function leaveOnlyWhenQuiet(context: BrowserContext): void {
     };
     page.goto = async (url: string, options?: Parameters<Page['goto']>[1]) => {
       await settle(page);
-      return goto(url, options);
+      try {
+        return await goto(url, options);
+      } catch (error) {
+        throw await withReport(page, error, url);
+      }
     };
     page.reload = async (options?: Parameters<Page['reload']>[0]) => {
       await settle(page);
@@ -382,18 +450,23 @@ beforeEach(({ onTestFailed }) => {
 // How many TCP connections on 127.0.0.1 are in each state. A machine that ran
 // out of ports would show it here (CI, Oct 9: the most the tests ever had
 // waiting to be freed was 1,165 on Windows, of about 16,000).
-function loopbackConnections(): string {
+// With a port: only the connections to or from it (a test server's), each
+// one, so a page that got stuck says whether the browser connected at all.
+function loopbackConnections(port?: number): string {
   try {
     const windows = process.platform === 'win32';
     const out = windows ? execFileSync('netstat', ['-an', '-p', 'tcp'], { encoding: 'utf8', maxBuffer: 64 << 20 }) : execFileSync('ss', ['-tan'], { encoding: 'utf8', maxBuffer: 64 << 20 });
     const counts = new Map<string, number>();
+    const each: string[] = [];
     for (const line of out.split(/\r?\n/)) {
       const parts = line.trim().split(/\s+/);
-      const [local, state] = windows ? [parts[1], parts[3]] : [parts[3], parts[0]];
+      const [local, peer, state] = windows ? [parts[1], parts[2], parts[3]] : [parts[3], parts[4], parts[0]];
       if (local?.startsWith('127.0.0.1') !== true || state === undefined) continue;
+      if (port !== undefined && !local.endsWith(`:${port}`) && peer?.endsWith(`:${port}`) !== true) continue;
       counts.set(state, (counts.get(state) ?? 0) + 1);
+      if (port !== undefined && state !== 'TIME-WAIT' && state !== 'TIME_WAIT') each.push(`${state} ${local} ${peer ?? '?'}`);
     }
-    return JSON.stringify(Object.fromEntries(counts));
+    return JSON.stringify(Object.fromEntries(counts)) + (each.length === 0 ? '' : `; not waiting to close: ${each.slice(0, 40).join(', ')}`);
   } catch (error) {
     return `could not tell (${String(error)})`;
   }

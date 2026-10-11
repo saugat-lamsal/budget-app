@@ -1,14 +1,15 @@
 import type { Log } from '../log.js';
-import type { OutboxRow } from '../alerts/outbox.js';
 import { LONGEST_SLEEP_MS, type TimerClock } from './sync-timer.js';
 
 // Phase 5, part one: npm run serve works out the alerts of rulebook sections 9
 // and 10 by itself, keeps them, and sends them (alerts/plan.ts says which and
 // when; alerts/outbox.ts keeps them).
 // - It looks when the server starts, right after each sync and each answer
-//   (the books poke it), and on its own at each evening's moment. It sleeps at
-//   most a minute at a time, so a computer waking from sleep, or a setting
-//   made earlier, is noticed within a minute.
+//   (the books poke it), and on its own at each moment an alert comes due by
+//   the clock alone (each evening, the bank not read for a day, 10.7), and
+//   when quiet hours end (10.8). It sleeps at most a minute at a time, so a
+//   computer waking from sleep, or a setting made earlier, is noticed within
+//   a minute.
 // - Each alert worked out is kept before it is sent. Then it is handed to the
 //   sender, the oldest first, one at a time. A send that fails is tried again
 //   later (outbox.ts); one the server stopped in the middle of is tried again
@@ -17,13 +18,17 @@ import { LONGEST_SLEEP_MS, type TimerClock } from './sync-timer.js';
 //   looks again later.
 
 // One alert as the sender gets it. The id is the same on every try of the
-// same alert.
+// same alert. The words are for the lock screen: without amounts unless the
+// setting says so (10.10).
 export interface OutgoingAlert {
   readonly id: string;
   readonly title: string;
   readonly body: string;
   // When it came due, as an instant (ISO, UTC).
   readonly dueAt: string;
+  // Sent later than the minute it came due, when that was, on his clock
+  // ("Due 3:10 AM."; 10.8, B185); null otherwise.
+  readonly due: string | null;
 }
 
 // The plug that sends an alert to the phone (web push comes later; tests use
@@ -39,7 +44,7 @@ export interface AlertSender {
 export function logSender(log: Log): AlertSender {
   return {
     send: (alert) => {
-      log.info('alert', { title: alert.title, body: alert.body, due: alert.dueAt });
+      log.info('alert', { title: alert.title, body: alert.body, ...(alert.due === null ? {} : { late: alert.due }), due: alert.dueAt });
       return Promise.resolve();
     },
   };
@@ -49,11 +54,13 @@ export function logSender(log: Log): AlertSender {
 export interface Alerter {
   // Works out every alert due now and keeps it (the book's history and the outbox).
   checkAlerts(): void;
-  // Milliseconds until the next evening is due; null when nothing is tracked yet.
-  nextEveningIn(): number | null;
-  // Not sent yet and due to be tried now, the oldest first.
-  toSend(): readonly OutboxRow[];
-  // Milliseconds until the next try of something not sent yet; null when all is sent.
+  // Milliseconds until the next alert comes due by the clock alone; null when nothing is tracked yet.
+  nextDueIn(): number | null;
+  // Not sent yet and due to be tried now, the oldest first, as the phone is
+  // to get them; none in quiet hours (10.8).
+  toSend(): readonly OutgoingAlert[];
+  // Milliseconds until the next try of something not sent yet (in quiet
+  // hours, not before they end); null when all is sent.
   nextTryIn(): number | null;
   trying(key: string): void;
   sent(key: string): void;
@@ -136,7 +143,7 @@ export class AlertTimer {
   }
 
   async #sendDue(): Promise<void> {
-    let rows: readonly OutboxRow[];
+    let rows: readonly OutgoingAlert[];
     try {
       rows = this.#alerter.toSend();
     } catch (error) {
@@ -146,16 +153,16 @@ export class AlertTimer {
     for (const row of rows) {
       if (!this.#on) return;
       try {
-        this.#alerter.trying(row.key);
-        await this.#sender.send({ id: row.key, title: row.title, body: row.body, dueAt: row.dueAt });
-        this.#alerter.sent(row.key);
+        this.#alerter.trying(row.id);
+        await this.#sender.send(row);
+        this.#alerter.sent(row.id);
       } catch (error) {
         const why = error instanceof Error ? error.message : String(error);
-        this.#log.warn('an alert could not be sent; it is tried again later', { alert: row.key, error: why });
+        this.#log.warn('an alert could not be sent; it is tried again later', { alert: row.id, error: why });
         try {
-          this.#alerter.failed(row.key, why);
+          this.#alerter.failed(row.id, why);
         } catch (also) {
-          this.#log.warn('a failed send could not be noted', { alert: row.key, error: also instanceof Error ? also.message : String(also) });
+          this.#log.warn('a failed send could not be noted', { alert: row.id, error: also instanceof Error ? also.message : String(also) });
         }
       }
     }
@@ -164,7 +171,7 @@ export class AlertTimer {
   #sleep(): void {
     let wait = LONGEST_SLEEP_MS;
     try {
-      if (!this.#failing) for (const ms of [this.#alerter.nextEveningIn(), this.#alerter.nextTryIn()]) if (ms !== null) wait = Math.min(wait, ms);
+      if (!this.#failing) for (const ms of [this.#alerter.nextDueIn(), this.#alerter.nextTryIn()]) if (ms !== null) wait = Math.min(wait, ms);
     } catch (error) {
       this.#log.warn('the timer could not work out when to look; it looks again in a minute', { error: error instanceof Error ? error.message : String(error) });
     }

@@ -1,4 +1,4 @@
-import type { Db } from '../db/database.js';
+import { statement, type Db } from '../db/database.js';
 
 // When the bank was read, and how often to read it (Step 3, rulebook section
 // 2). A read is a sync that reached the bank, whether or not it brought
@@ -16,8 +16,9 @@ export const MOST_MINUTES = 1440;
 const EVERY = 'sync-every-minutes';
 
 // The moment the bank was last read, as an instant (ISO, UTC); null before the first.
+// Read each minute by the alert timer (10.7): prepared once.
 export function readLastRead(db: Db): string | null {
-  const row = db.prepare('SELECT at FROM bank_reads ORDER BY id DESC LIMIT 1').get() as { at: string } | undefined;
+  const row = statement(db, 'SELECT at FROM bank_reads ORDER BY id DESC LIMIT 1').get() as { at: string } | undefined;
   return row?.at ?? null;
 }
 

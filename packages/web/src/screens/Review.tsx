@@ -60,7 +60,7 @@ type Tracking = Extract<ReviewView, { state: 'tracking' }>;
 const targetOf = (detail: KeyedDetail): Target => ({ id: detail.item.id, label: titleOf(detail.item), kind: detail.item.type, seen: detail.key });
 
 function ReviewReady({ view, reload, onChanged }: { readonly view: Tracking; readonly reload: Reload; readonly onChanged: Reload }) {
-  const flow = useChoiceFlow({ resort: false, reload, onChanged, keys: new Map(view.items.map((d) => [d.item.id, d.key])) });
+  const flow = useChoiceFlow({ resort: false, reload, onChanged, keys: new Map(view.items.map((d) => [d.item.id, d.key])), view });
   const { sheet, said, sending, setSaid, submit, choose, openSheet } = flow;
 
   const byId = new Map(view.items.map((d) => [d.item.id, d]));

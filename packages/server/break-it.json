@@ -2172,8 +2172,8 @@
   {
     "section": "sync",
     "file": "packages/server/src/sync/bank-reads.ts",
-    "find": "  const row = db.prepare('SELECT at FROM bank_reads ORDER BY id DESC LIMIT 1').get()",
-    "replace": "  const row = db.prepare('SELECT at FROM bank_reads ORDER BY id LIMIT 1').get()",
+    "find": "  const row = statement(db, 'SELECT at FROM bank_reads ORDER BY id DESC LIMIT 1').get()",
+    "replace": "  const row = statement(db, 'SELECT at FROM bank_reads ORDER BY id LIMIT 1').get()",
     "why": "[sync] B171 Checked at is the first read, not the last"
   },
   {
@@ -2417,7 +2417,7 @@
   {
     "section": "alerts",
     "file": "packages/server/src/alerts/plan.ts",
-    "find": "if (!ledger.started || check.date !== ledger.nextEvening) throw",
+    "find": "if (!ledger.started || first !== ledger.nextEvening || check.date < first) throw",
     "replace": "if (!ledger.started) throw",
     "why": "[alerts] 0.6 an evening out of turn still replays"
   },
@@ -2445,8 +2445,8 @@
   {
     "section": "alerts",
     "file": "packages/server/src/alerts/plan.ts",
-    "find": "if (waiting > 0) give({ kind: 'daily-review', date, waiting });",
-    "replace": "if (waiting >= 0) give({ kind: 'daily-review', date, waiting });",
+    "find": "if (waiting > 0) facts.push({ kind: 'daily-review', date, waiting });",
+    "replace": "if (waiting >= 0) facts.push({ kind: 'daily-review', date, waiting });",
     "why": "[alerts] 10.3 the daily review comes with nothing waiting"
   },
   {
@@ -2494,8 +2494,8 @@
   {
     "section": "alerts",
     "file": "packages/server/src/alerts/plan.ts",
-    "find": "lasting('bank-login', world.needsLogin, (time) => ({ kind: 'bank-login', time }));",
-    "replace": "lasting('bank-login', false, (time) => ({ kind: 'bank-login', time }));",
+    "find": "lasting('bank-login', world.needsLogin, (time) => ({ kind: 'bank-login', time, day: today, again: false }));",
+    "replace": "lasting('bank-login', false, (time) => ({ kind: 'bank-login', time, day: today, again: false }));",
     "why": "[alerts] 10.5 no alert when the bank wants a login"
   },
   {
@@ -2536,8 +2536,8 @@
   {
     "section": "alerts",
     "file": "packages/server/src/alerts/alerts.ts",
-    "find": "body: `${formatDollars(f.amount)} left of ${formatDollars(f.startedWith)} this pay period.` };",
-    "replace": "body: `${formatDollars(f.startedWith)} left of ${formatDollars(f.amount)} this pay period.` };",
+    "find": "body: amounts ? `${formatDollars(f.amount)} left of ${formatDollars(f.startedWith)} this pay period.`",
+    "replace": "body: amounts ? `${formatDollars(f.startedWith)} left of ${formatDollars(f.amount)} this pay period.`",
     "why": "[alerts] 10.1 the low alert says the amounts the wrong way round"
   },
   {
@@ -2557,8 +2557,8 @@
   {
     "section": "alerts",
     "file": "packages/server/src/alerts/alerts.ts",
-    "find": "taken back ${dayWords(f.date)}.",
-    "replace": "from ${dayWords(f.date)}.",
+    "find": "`${f.description}, ${formatDollars(f.amount)}, taken back ${dayWords(f.date)}.",
+    "replace": "`${f.description}, ${formatDollars(f.amount)}, from ${dayWords(f.date)}.",
     "why": "[alerts] 10.6 the take-back alert reads as the day of the purchase"
   },
   {
@@ -2613,14 +2613,14 @@
   {
     "section": "outbox",
     "file": "packages/server/src/serve/alert-timer.ts",
-    "find": "        this.#alerter.sent(row.key);\n",
+    "find": "        this.#alerter.sent(row.id);\n",
     "replace": "",
     "why": "[outbox] a send that went through is not marked sent"
   },
   {
     "section": "outbox",
     "file": "packages/server/src/serve/alert-timer.ts",
-    "find": "for (const ms of [this.#alerter.nextEveningIn(), this.#alerter.nextTryIn()])",
+    "find": "for (const ms of [this.#alerter.nextDueIn(), this.#alerter.nextTryIn()])",
     "replace": "for (const ms of [this.#alerter.nextTryIn()])",
     "why": "[outbox] 10.3 the evening is noticed up to a minute late"
   },
@@ -2634,7 +2634,7 @@
   {
     "section": "outbox",
     "file": "packages/server/src/serve/alert-timer.ts",
-    "find": "        this.#alerter.trying(row.key);\n",
+    "find": "        this.#alerter.trying(row.id);\n",
     "replace": "",
     "why": "[outbox] a try is not counted before it is made"
   },
@@ -2662,8 +2662,232 @@
   {
     "section": "outbox",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "    return book === null ? null : nextEveningIn({ book, zone: this.timeZone(), now: this.#now() }, this.#state.alerts);",
-    "replace": "    return book === null ? null : nextEveningIn({ book, zone: this.timeZone(), now: this.#now() }, this.#state.alerts) + 60_000;",
+    "find": "    return book === null ? null : nextDueIn({ book, zone: this.timeZone(), now: this.#now(), lastRead: this.lastRead() }, this.#state.alerts);",
+    "replace": "    return book === null ? null : (nextDueIn({ book, zone: this.timeZone(), now: this.#now(), lastRead: this.lastRead() }, this.#state.alerts) ?? 0) + 60_000;",
     "why": "[outbox] 10.3 the timer wakes a minute after the evening"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "newest.set(kindOf(facts), { facts, dueAt });",
+    "replace": "newest.set(`${kindOf(facts)} ${date}`, { facts, dueAt });",
+    "why": "[a36] 10.9 back after evenings down, it sends every one of them, not the newest of each kind"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "    .filter(({ facts }) => stillTrue(world, today, facts))",
+    "replace": "    .filter(() => true)",
+    "why": "[a36] 10.9 back after evenings down, it sends what is no longer true"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "return due !== null && due.dueDate === f.dueDate && due.kind === (f.kind === 'card-reminder' ? 'due' : 'overdue');",
+    "replace": "return due !== null && due.dueDate === f.dueDate;",
+    "why": "[a36] 10.9 a reminder past its due date counts as still true"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "    while (eveningAt(world, addDays(to, 1)).getTime() <= world.now.getTime()) to = addDays(to, 1);\n",
+    "replace": "",
+    "why": "[a36] 10.9 each evening missed is handled on its own, as option 1 did"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "state.on && (state.lastDay === null || state.lastDay < date);",
+    "replace": "state.on && (state.lastDay === null || state.lastDay <= date);",
+    "why": "[a37] 10.4 the mismatch is told twice on the day it starts"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "if (again(mismatch) && check !== null && !check.ok) facts.push({ kind: 'totals-mismatch', time: mismatch.times, difference: check.difference, day: date, again: true });",
+    "replace": "if (again(mismatch) && (check === null || !check.ok)) facts.push({ kind: 'totals-mismatch', time: mismatch.times, difference: check?.difference ?? 0, day: date, again: true });",
+    "why": "[a37] 10.4 the mismatch is told again while the bank cannot be read"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "if (again(login) && world.needsLogin) facts.push(",
+    "replace": "if (again(login)) facts.push(",
+    "why": "[a37] 10.5 the login alert is told again though the bank no longer wants it"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "(state.lastDay !== null && f.day <= state.lastDay)) throw outOfTurn();",
+    "replace": "(state.lastDay !== null && f.day < state.lastDay)) throw outOfTurn();",
+    "why": "[a37] 0.6 a second repeat on one day still replays"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "    const due = Date.parse(world.lastRead) + hours * HOUR;",
+    "replace": "    const due = Date.parse(world.lastRead) + (hours + 1) * HOUR;",
+    "why": "[a38] 10.7 the bank-not-read alert comes an hour late"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "    if (world.lastRead !== notRead.about) cleared.push('bank-not-read');",
+    "replace": "    if (world.lastRead !== notRead.about || Date.parse(world.lastRead ?? '') + book.settings().bankNotReadAlertHours * HOUR > world.now.getTime()) cleared.push('bank-not-read');",
+    "why": "[a38] 10.7 a longer setting clears it, so it is told again with no good read"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "lastReadLocal: timeIn(world.zone, new Date(world.lastRead)) }, new Date(due).toISOString());",
+    "replace": "lastReadLocal: timeIn(world.zone, new Date(world.lastRead)) });",
+    "why": "[a38] 10.7 the bank-not-read alert is due when it is found, not when it came due"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  if (!ledger.lasting['bank-not-read'].on && world.lastRead !== null) next = Math.min(",
+    "replace": "  if (false && world.lastRead !== null) next = Math.min(",
+    "why": "[a38] 10.7 the timer does not wake when the bank becomes a day unread"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": ": 'Open the app to see what is left this pay period.' };",
+    "replace": ": `${formatDollars(f.amount)} left this pay period.` };",
+    "why": "[a39] 10.10 the low alert shows its amount on the lock screen"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "body: amounts ? `${owed} Due ${dayWords(f.dueDate)}.` : `Due ${dayWords(f.dueDate)}.` };",
+    "replace": "body: `${owed} Due ${dayWords(f.dueDate)}.` };",
+    "why": "[a39] 10.10 a card reminder shows the amounts on the lock screen"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": ": `${f.description}, taken back ${dayWords(f.date)}. It is undone in your buckets too.`,",
+    "replace": ": `${f.description}, ${formatDollars(f.amount)}, taken back ${dayWords(f.date)}. It is undone in your buckets too.`,",
+    "why": "[a39] 10.10 a take-back shows its amount on the lock screen"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "title: f.again ? 'Your totals still do not match the bank' : 'Your totals do not match the bank',",
+    "replace": "title: 'Your totals do not match the bank',",
+    "why": "[a37] 10.4 the repeat does not say they still do not match"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "${f.hours === 1 ? 'hour' : 'hours'}",
+    "replace": "hours",
+    "why": "[a38] 10.7 \"1 hours\""
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    if (this.#quietUntil(now) !== null) return [];\n",
+    "replace": "",
+    "why": "[a35] 10.8 alerts are sent in quiet hours"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "return Math.max(Date.parse(at), quiet?.getTime() ?? 0) - now.getTime();",
+    "replace": "return Math.max(Date.parse(at), (quiet?.getTime() ?? 0) + 60_000) - now.getTime();",
+    "why": "[a35] 10.8 what waited goes a minute after quiet hours end"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "return quietUntil(this.timeZone(), (this.book()?.settings() ?? DEFAULT_SETTINGS).quietHours, now);",
+    "replace": "return quietUntil(this.timeZone(), DEFAULT_SETTINGS.quietHours, now);",
+    "why": "[a35] section 2 10.8 a change to quiet hours is not used"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "...wordsToSend(row, amounts),",
+    "replace": "...wordsToSend(row, true),",
+    "why": "[a39] 10.10 the lock screen gets the amounts whatever the setting"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "due: dueWords(zone, row.dueAt, now) }));",
+    "replace": "due: null }));",
+    "why": "[b185] 10.8 an alert sent late does not say when it was due"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "quietUntil: row.sentAt === null && quiet !== null ? local(quiet.toISOString()) : null,",
+    "replace": "quietUntil: null,",
+    "why": "[a35] 10.8 the list does not say an alert waits for quiet hours"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/sending.ts",
+    "find": "const inThem = across ? time >= from || time < to : time >= from && time < to;",
+    "replace": "const inThem = across ? time >= from || time <= to : time >= from && time < to;",
+    "why": "[a35] 10.8 7:00 AM itself is still quiet"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/sending.ts",
+    "find": "const inThem = across ? time >= from || time < to",
+    "replace": "const inThem = across ? time > from || time < to",
+    "why": "[a35] 10.8 10:00 PM itself is not quiet yet"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/sending.ts",
+    "find": "return instantIn(zone, across && time >= from ? addDays(date, 1) : date, to);",
+    "replace": "return instantIn(zone, date, to);",
+    "why": "[a35] 10.8 quiet hours that start at 10:00 PM end that morning, already past"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/sending.ts",
+    "find": "if (due.slice(0, 16) === sent.slice(0, 16)) return null;",
+    "replace": "if (due.slice(0, 13) === sent.slice(0, 13)) return null;",
+    "why": "[b185] an alert 15 minutes late does not say when it was due"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/sending.ts",
+    "find": "const day = due.slice(0, 10) === sent.slice(0, 10) ? '' :",
+    "replace": "const day = true ? '' :",
+    "why": "[b185] an alert from another day says the time only"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/sending.ts",
+    "find": "if (amounts || kept.facts === null) return { title: kept.title, body: kept.body };",
+    "replace": "if (!amounts || kept.facts === null) return { title: kept.title, body: kept.body };",
+    "why": "[a39] 10.10 the setting works the wrong way round"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/outbox.ts",
+    "find": "    JSON.stringify(alert.facts),\n",
+    "replace": "    null,\n",
+    "why": "[a39] 10.10 the outbox keeps no facts, so the lock screen gets the amounts"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "if (!isRecord(v) || Object.keys(v).length !== 2 || !onlyKeys(v, ['from', 'to'])) return undefined;",
+    "replace": "if (!isRecord(v)) return undefined;",
+    "why": "[a35] section 2 quiet hours with something more in them are taken"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "amountsOnLockScreen: (v) => (typeof v === 'boolean' ? v : undefined),",
+    "replace": "amountsOnLockScreen: (v) => v as boolean,",
+    "why": "[a39] section 2 \"on\" as text is taken for amounts on the lock screen"
   }
 ]

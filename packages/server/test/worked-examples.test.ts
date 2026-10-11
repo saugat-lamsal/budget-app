@@ -448,11 +448,11 @@ describe('worked examples: the alerts (Phase 5)', () => {
   const syncNow = (life: Life): Promise<unknown> => life.keeper.sync({ plaid: life.h.plaid, box: life.h.box, log: memoryLog([]), pageSize: 3 });
 
   // The real server on a clock the test moves, sending to a made-up phone.
-  function served(life: Life): { clock: FakeClock; phone: FakePhone; alerts: AlertTimer } {
+  function served(life: Life): { clock: FakeClock; phone: FakePhone; alerts: AlertTimer; timer: SyncTimer } {
     const clock = new FakeClock(life);
     const phone = new FakePhone(() => life.now);
-    const { alerts } = serveBooks({ keeper: life.keeper, bank: { plaid: life.h.plaid, box: life.h.box, log: memoryLog([]), pageSize: 3 }, clock, webRoot: 'C:/made-up/no-screens/', origin: () => '', sender: phone });
-    return { clock, phone, alerts };
+    const { alerts, timer } = serveBooks({ keeper: life.keeper, bank: { plaid: life.h.plaid, box: life.h.box, log: memoryLog([]), pageSize: 3 }, clock, webRoot: 'C:/made-up/no-screens/', origin: () => '', sender: phone });
+    return { clock, phone, alerts, timer };
   }
 
   const kept = (life: Life): Map<string, { readonly due: string; readonly sent: string | null; readonly body: string }> =>
@@ -517,20 +517,28 @@ describe('worked examples: the alerts (Phase 5)', () => {
     life.h.fake.addPosted({ id: 'shop', account: E, amount: checksOf(12).get('shop') ?? 0, date: '2026-10-30', description: 'MADE UP SHOP' });
     life.now = new Date('2026-10-31T16:00:00Z');
     let s = served(life);
+    // Both timers: the bank is read every 12 hours (the setting), so it is never a day old (10.7).
+    expect(life.keeper.changeSyncEvery(720)).toEqual({ ok: true });
+    const idle = async (): Promise<void> => {
+      await s.timer.idle();
+      await s.alerts.idle();
+    };
     try {
       s.alerts.start();
-      await syncNow(life);
-      await s.alerts.idle();
+      s.timer.start();
+      await idle();
       // To Mon Nov 2, 7:59 PM EST; down until 9:30 PM.
-      await s.clock.advance(Date.parse('2026-11-03T00:59:00Z') - life.now.getTime(), () => s.alerts.idle());
+      await s.clock.advance(Date.parse('2026-11-03T00:59:00Z') - life.now.getTime(), idle);
+      await s.timer.stop();
       await s.alerts.stop();
       const shownBefore = s.phone.ids();
       life.now = new Date('2026-11-03T02:30:00Z');
       life.restart();
       s = served(life);
       s.alerts.start();
-      await s.alerts.idle();
-      await s.clock.advance(2 * H, () => s.alerts.idle());
+      s.timer.start();
+      await idle();
+      await s.clock.advance(2 * H, idle);
       const k = kept(life);
       const oct31 = k.get('daily-review 2026-10-31');
       const nov1 = k.get('daily-review 2026-11-01');
@@ -544,6 +552,119 @@ describe('worked examples: the alerts (Phase 5)', () => {
       expect(shownBefore).toEqual(['daily-review 2026-10-31', 'daily-review 2026-11-01']);
       expect(s.phone.ids()).toEqual(['daily-review 2026-11-02']);
       expect(s.phone.repeats).toBe(0);
+    } finally {
+      await s.timer.stop();
+      await s.alerts.stop();
+      life.done();
+    }
+  });
+
+  it('example 13, quiet hours: a take-back at 9:55 PM the phone could not get, and a login wanted at 3:10 AM, both at 7:00 AM, each saying when it was due, with no amount on the lock screen', async () => {
+    const checks = checksOf(13);
+    const times = timesOf(13);
+    const life = await lifeInAFile();
+    setUpThroughTheDesk(life);
+    // Fri Oct 2, 9:54 PM EDT.
+    life.now = new Date('2026-10-03T01:54:00Z');
+    const s = served(life);
+    const settle = (): Promise<void> => s.alerts.idle();
+    const to = (iso: string): Promise<void> => s.clock.advance(Date.parse(iso) - life.now.getTime(), settle);
+    try {
+      s.alerts.start();
+      life.h.fake.addPosted({ id: 'cafe', account: E, amount: checks.get('cafe') ?? 0, date: '2026-10-02', description: 'MADE UP CAFE' });
+      await syncNow(life);
+      await settle();
+      await to('2026-10-03T01:55:00Z');
+      s.phone.failing = 'the phone cannot be reached';
+      life.h.fake.removePosted('cafe', { keepBalance: false });
+      await syncNow(life);
+      await settle();
+      await to('2026-10-03T03:00:00Z');
+      expect(s.phone.tries * 100).toBe(checks.get('tries before quiet hours'));
+      s.phone.failing = null;
+      // Sat Oct 3, 3:10 AM.
+      await to('2026-10-03T07:10:00Z');
+      life.h.fake.needsLogin = true;
+      await syncNow(life);
+      await settle();
+      await to('2026-10-03T10:59:59.999Z');
+      expect(s.phone.shown).toEqual([]);
+      await to('2026-10-03T11:00:00Z');
+      const k = kept(life);
+      const cafe = k.get('bank-took-back cafe');
+      const login = k.get('bank-login 1');
+      expect([cafe?.due, cafe?.sent, login?.due, login?.sent]).toEqual(['cafe due', 'cafe sent', 'login due', 'login sent'].map((name) => times.get(name)));
+      expect(s.phone.shown.map((a) => [a.id, a.title, a.body, a.due])).toEqual([
+        ['bank-took-back cafe', 'The bank took something back', 'MADE UP CAFE, taken back Fri, Oct 2. It is undone in your buckets too.', 'Due Fri, Oct 2, 9:55 PM.'],
+        ['bank-login 1', 'Log in to your bank again', 'The bank wants you to log in again before the app can read it.', 'Due 3:10 AM.'],
+      ]);
+      expect(cafe?.body).toBe('MADE UP CAFE, $11.50, taken back Fri, Oct 2. It is undone in your buckets too.');
+      expect(s.phone.tries * 100).toBe(checks.get('tries in all'));
+      expect(s.phone.repeats).toBe(0);
+    } finally {
+      await s.alerts.stop();
+      life.done();
+    }
+  });
+
+  it('example 14, back after three evenings down: one daily review (the newest), one reminder for the card, and the bank not read for 24 hours, each saying when it was due', async () => {
+    const checks = checksOf(14);
+    const times = timesOf(14);
+    const life = await lifeInAFile();
+    setUpThroughTheDesk(life);
+    life.h.fake.setStatement(E, {
+      is_overdue: false,
+      last_payment_amount: null,
+      last_payment_date: null,
+      last_statement_issue_date: '2026-10-03',
+      last_statement_balance: (checks.get('statement balance') ?? 0) / 100,
+      minimum_payment_amount: (checks.get('minimum') ?? 0) / 100,
+      next_payment_due_date: '2026-10-10',
+    });
+    // Sat Oct 3, noon EDT.
+    life.now = new Date('2026-10-03T16:00:00Z');
+    let s = served(life);
+    try {
+      s.alerts.start();
+      await syncNow(life);
+      await s.alerts.idle();
+      // 6:00 PM: the last good read.
+      await s.clock.advance(6 * H, () => s.alerts.idle());
+      life.h.fake.addPosted({ id: 'shop', account: E, amount: checks.get('shop') ?? 0, date: '2026-10-03', description: 'MADE UP SHOP' });
+      await syncNow(life);
+      await s.alerts.idle();
+      // 7:30 PM: it stops, until Tue Oct 6, 7:30 AM.
+      await s.clock.advance(H + 30 * 60_000, () => s.alerts.idle());
+      await s.alerts.stop();
+      expect(s.phone.shown).toEqual([]);
+      life.now = new Date('2026-10-06T11:30:00Z');
+      life.restart();
+      s = served(life);
+      s.alerts.start();
+      await s.alerts.idle();
+      const k = kept(life);
+      expect([...k.keys()].toSorted()).toEqual(['bank-not-read 1', 'card-reminder everyday-card due 2026-10-10 7 days before', 'daily-review 2026-10-05']);
+      expect(k.size * 100).toBe(checks.get('alerts sent'));
+      const review = k.get('daily-review 2026-10-05');
+      const reminder = k.get('card-reminder everyday-card due 2026-10-10 7 days before');
+      const notRead = k.get('bank-not-read 1');
+      expect([review?.due, review?.sent, reminder?.due, reminder?.sent, notRead?.due, notRead?.sent]).toEqual(
+        ['review due', 'review sent', 'reminder due', 'reminder sent', 'not read due', 'not read sent'].map((name) => times.get(name)),
+      );
+      expect(s.phone.shown.map((a) => [a.title, a.body, a.due]).toSorted()).toEqual(
+        [
+          ['Time to review', '1 thing is waiting for you to sort.', 'Due Mon, Oct 5, 8:00 PM.'],
+          ['Everyday card payment due in 7 days', 'Due Sat, Oct 10.', 'Due Sat, Oct 3, 8:00 PM.'],
+          ['The bank has not been read for 24 hours', 'Last read Sat, Oct 3 at 6:00 PM. Your numbers may be out of date until it is read again.', 'Due Sun, Oct 4, 6:00 PM.'],
+        ].toSorted(),
+      );
+      expect(reminder?.body).toBe('Statement balance $450.00, minimum $35.00. Due Sat, Oct 10.');
+      // 8:00 AM: read again; the not-read alert is cleared.
+      await s.clock.advance(30 * 60_000, () => s.alerts.idle());
+      await syncNow(life);
+      await s.alerts.idle();
+      const last = readHistory(life.h.db).flatMap((e) => (e.event.kind === 'alerts' ? [e.event.alerts] : [])).at(-1);
+      expect(last?.cleared).toEqual(['bank-not-read']);
     } finally {
       await s.alerts.stop();
       life.done();

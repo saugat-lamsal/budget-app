@@ -1,6 +1,6 @@
 import type { RecheckedItem } from '@budget-app/money';
 import { describe, expect, it } from 'vitest';
-import { ZONE_CHOICES, daysText, leftoverText, recheckedText, reminderText, ruleDoneText, ruleText, settingValueText, settingsDoneText, splitText, textRuleText, timeText, zoneText } from '../src/screens/settings-text.js';
+import { SETTING_NAMES, ZONE_CHOICES, daysText, leftoverText, lockAmountsText, notReadText, quietHoursText, recheckedText, reminderText, ruleDoneText, ruleText, settingValueText, settingsDoneText, splitText, textRuleText, timeText, zoneText } from '../src/screens/settings-text.js';
 
 // The words on the Settings screen. Every value comes from the money math;
 // these only write it, and must write it right.
@@ -51,6 +51,23 @@ describe('section 2 how each setting is written', () => {
     expect(ZONE_CHOICES[0]).toBe('America/New_York');
     expect(zoneText('Asia/Kathmandu')).toBe('Asia/Kathmandu');
     expect(settingValueText('homeTimeZone', 'America/Chicago')).toBe('Central time (Chicago)');
+  });
+
+  it('section 2 10.7 10.8 10.10 quiet hours, the bank-not-read alert and amounts on the lock screen, in words', () => {
+    expect(quietHoursText({ from: '22:00', to: '07:00' })).toBe('10:00 PM to 7:00 AM');
+    expect(quietHoursText({ from: '00:00', to: '12:00' })).toBe('12:00 AM to 12:00 PM');
+    expect(quietHoursText({ from: '22:00', to: '22:00' })).toBe('None');
+    expect(notReadText(24)).toBe('After 24 hours');
+    expect(notReadText(1)).toBe('After 1 hour');
+    expect(notReadText(168)).toBe('After 168 hours');
+    expect(lockAmountsText(false)).toBe('Off, words only');
+    expect(lockAmountsText(true)).toBe('On');
+    expect(settingValueText('quietHours', { from: '23:00', to: '06:30' })).toBe('11:00 PM to 6:30 AM');
+    expect(settingValueText('bankNotReadAlertHours', 12)).toBe('After 12 hours');
+    expect(settingValueText('amountsOnLockScreen', true)).toBe('On');
+    expect(SETTING_NAMES.quietHours).toBe('Quiet hours');
+    expect(SETTING_NAMES.bankNotReadAlertHours).toBe('Bank not read');
+    expect(SETTING_NAMES.amountsOnLockScreen).toBe('Amounts on the lock screen');
   });
 
   it('13.5 every setting, written for the change log', () => {

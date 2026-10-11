@@ -149,6 +149,21 @@ describe('the database', () => {
     db.close();
   });
 
+  it('step 6 (10.10, the lock screen) keeps the outbox as it was, and each alert from then on keeps its facts, so its words can leave the amounts out when it is sent', () => {
+    const path = tempFile();
+    const old = openDatabase(path, { upTo: 5 });
+    expect(old.pragma('user_version', { simple: true })).toBe(5);
+    const seq = Number(old.prepare("INSERT INTO book_events (sync, kind, date, payload, totals) VALUES (NULL, 'alerts', '2026-10-04', '{}', 'null')").run().lastInsertRowid);
+    old.prepare("INSERT INTO outbox (key, seq, kind, title, body, due_at, created_at, tries, next_try_at) VALUES ('daily-review 2026-10-04', ?, 'daily-review', 'Time to review', '1 thing', '2026-10-05T00:00:00.000Z', '2026-10-05T00:00:00.000Z', 0, '2026-10-05T00:00:00.000Z')").run(seq);
+    old.close();
+    const db = openDatabase(path);
+    expect(db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION);
+    expect(db.prepare('SELECT key, title, facts FROM outbox').all()).toEqual([{ key: 'daily-review 2026-10-04', title: 'Time to review', facts: null }]);
+    db.prepare("INSERT INTO outbox (key, seq, kind, title, body, facts, due_at, created_at, tries, next_try_at) VALUES ('daily-review 2026-10-05', ?, 'daily-review', 'Time to review', '2 things', '{\"kind\":\"daily-review\"}', '2026-10-06T00:00:00.000Z', '2026-10-06T00:00:00.000Z', 0, '2026-10-06T00:00:00.000Z')").run(seq);
+    expect(db.prepare("SELECT facts FROM outbox WHERE key = 'daily-review 2026-10-05'").get()).toEqual({ facts: '{"kind":"daily-review"}' });
+    db.close();
+  });
+
   it('the history takes only what the bank sent, setup day, and his answers, each with its day; a decision number is used once and names its event', () => {
     const db = openDatabase(':memory:');
     const add = db.prepare('INSERT INTO book_events (sync, kind, date, payload, totals) VALUES (NULL, ?, ?, ?, ?)');

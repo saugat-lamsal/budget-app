@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { START_DATE, appSide, openTestBook, purchase, refund, takenBack } from '../../../money/test/helpers.js';
 import { demoScenario } from '../../../server/src/demo/scenarios.js';
 import { activityOf, amountAt, numbersOf, pathOfPot, readActivity, rowOf } from './activity-screens.js';
-import { ENGINES, close, openScenario, phone, textAt, useEngine, launch } from './harness.js';
+import { ENGINES, close, openScenario, phone, textAt, untilQuiet, useEngine, launch } from './harness.js';
 import { openLive, startLive } from './live.js';
 import { sheetGapsAfterAnAnswer, watchChoices, watchSheetsAfterAnAnswer } from './screens.js';
 
@@ -251,6 +251,41 @@ describe.each(ENGINES)('sorting something again from a list, in %s', (_name, eng
     await page.getByTestId(`row-${id}`).click();
     await page.getByTestId('activity-sheet').getByTestId('choice-wants').dblclick();
     await page.getByTestId(`row-${id}`).waitFor({ state: 'detached' });
+    expect(watch.posts.length).toBe(1);
+    twin.book.sort(id, { to: 'wants' }, twin.today);
+    await expect.poll(async () => numbersOf(await readActivity(page))).toEqual(numbersOf(activityOf(twin.book, 'needs')));
+    await page.context().close();
+  });
+
+  // The same moment as Review's (B92): the answer is back, and the list still
+  // shows the numbers from before it, with the row still there. Opened again
+  // then, its sheet's choices stay off until the numbers asked for after the
+  // answer are shown.
+  it('4.7 B92 a choice already sent cannot be sent again while the list still shows the numbers from before it', async () => {
+    const twin = life('activity-busy');
+    const id = groceryOct1(twin.book);
+    const page = await openScenario(await browser().newContext(phone()), base(), 'activity-busy', '/buckets/needs');
+    const watch = watchChoices(page);
+    let release = (): void => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    let asked = false;
+    await page.route('**/api/activity/needs', async (route) => {
+      asked = true;
+      await held;
+      await route.continue();
+    });
+    await page.getByTestId(`row-${id}`).click();
+    await page.getByTestId('activity-sheet').getByTestId('choice-wants').click();
+    await expect.poll(() => asked).toBe(true);
+    await page.getByTestId('activity-sheet').waitFor({ state: 'hidden' });
+    await page.getByTestId(`row-${id}`).click();
+    // The sheet's rows take no tap while it is busy (they are rows, not buttons).
+    await page.getByTestId('activity-sheet').getByTestId('choice-wants').click();
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 0)))));
+    release();
+    await page.getByTestId(`row-${id}`).waitFor({ state: 'detached' });
+    await page.unrouteAll({ behavior: 'wait' });
+    await untilQuiet(page);
     expect(watch.posts.length).toBe(1);
     twin.book.sort(id, { to: 'wants' }, twin.today);
     await expect.poll(async () => numbersOf(await readActivity(page))).toEqual(numbersOf(activityOf(twin.book, 'needs')));

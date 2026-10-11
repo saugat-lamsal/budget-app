@@ -62,6 +62,9 @@ describe('section 2 reading what the phone sent: a settings change', () => {
       momRule: null,
       earlyPaycheckDays: 5,
       homeTimeZone: 'America/Chicago',
+      quietHours: { from: '23:00', to: '06:00' },
+      bankNotReadAlertHours: 36,
+      amountsOnLockScreen: true,
     };
     expect(Object.keys(patch).sort()).toEqual(Object.keys(DEFAULT_SETTINGS).sort());
     const request = { id: 'abcdefgh', settings: patch, confirmed: true, seen: '0123456789abcdef'.repeat(2) };
@@ -94,6 +97,13 @@ describe('section 2 reading what the phone sent: a settings change', () => {
     ['a time that is too long', { id: 'abcdefgh', settings: { dailyReviewTime: '20:00:00:00' } }],
     ['a time zone name that is too long', { id: 'abcdefgh', settings: { homeTimeZone: `America/${'x'.repeat(60)}` } }],
     ['a time zone that is not text', { id: 'abcdefgh', settings: { homeTimeZone: -5 } }],
+    ['quiet hours with one time', { id: 'abcdefgh', settings: { quietHours: { from: '22:00' } } }],
+    ['quiet hours with something more', { id: 'abcdefgh', settings: { quietHours: { from: '22:00', to: '07:00', every: 'day' } } }],
+    ['quiet hours as one text', { id: 'abcdefgh', settings: { quietHours: '22:00-07:00' } }],
+    ['a quiet hours time that is too long', { id: 'abcdefgh', settings: { quietHours: { from: '22:00:00', to: '07:00' } } }],
+    ['bank-not-read hours as text', { id: 'abcdefgh', settings: { bankNotReadAlertHours: '24' } }],
+    ['bank-not-read hours that are not whole', { id: 'abcdefgh', settings: { bankNotReadAlertHours: 1.5 } }],
+    ['amounts on the lock screen as text', { id: 'abcdefgh', settings: { amountsOnLockScreen: 'on' } }],
     ['a bad decision number', { id: 'short', settings: { payScheduleDays: 7 } }],
     ['a yes that is not true or false', { id: 'abcdefgh', settings: { payScheduleDays: 7 }, confirmed: 'yes' }],
     ['a preview key that is not text', { id: 'abcdefgh', settings: { payScheduleDays: 7 }, seen: 5 }],
@@ -194,6 +204,9 @@ describe('0.2 every setting in section 2 can be changed from Settings', () => {
     payScheduleDays: 1,
     momRule: null,
     earlyPaycheckDays: 0,
+    quietHours: { from: '00:00', to: '00:00' },
+    bankNotReadAlertHours: 168,
+    amountsOnLockScreen: true,
   };
   it.each(Object.entries(NEW))('0.2 %s', (key, value) => {
     const { book, desk } = setup();
@@ -217,6 +230,8 @@ describe('0.2 a setting the money math refuses changes nothing and says why', ()
     [{ oldCardPromoEndDate: '2027-02-30' }, 'Old card promo end date must be a real date. Nothing was changed.'],
     [{ payScheduleDays: 0 }, 'Pay schedule must be a whole number of days, at least 1. Nothing was changed.'],
     [{ homeTimeZone: 'Mars/Olympus_Mons' }, 'Home time zone must be the name of a time zone, such as America/New_York. Nothing was changed.'],
+    [{ quietHours: { from: '22:00', to: '7:00' } }, 'Quiet hours must be two times, HH:MM. Nothing was changed.'],
+    [{ bankNotReadAlertHours: 0 }, 'The bank-not-read alert must be a whole number of hours from 1 to 168. Nothing was changed.'],
   ] satisfies [Partial<Settings>, string][])('0.2 %o', (patch, why) => {
     const { book, desk } = setup();
     const before = snapshot(book);

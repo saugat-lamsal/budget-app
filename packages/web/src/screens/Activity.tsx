@@ -115,7 +115,7 @@ export function rowTitle(row: ActivityRow): string {
 function ActivityReady({ view, reload, onChanged }: { readonly view: Tracking; readonly reload: Reload; readonly onChanged: Reload }) {
   const { activity, pot, balances } = view;
   const name = POT_NAMES[pot];
-  const flow = useChoiceFlow({ resort: true, reload, onChanged, keys: new Map(Object.entries(view.keys)) });
+  const flow = useChoiceFlow({ resort: true, reload, onChanged, keys: new Map(Object.entries(view.keys)), view });
   const [moving, setMoving] = useState(false);
   const [moved, setMoved] = useState<Said | null>(null);
   const { sheet, said, sending, setSaid, submit, openSheet } = flow;

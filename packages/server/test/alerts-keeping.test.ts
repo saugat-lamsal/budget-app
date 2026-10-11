@@ -64,7 +64,7 @@ describe('B181 the outbox tries again the one due first', () => {
       expect(life.keeper.nextTryIn()).toBe(60_000);
       expect(life.keeper.toSend()).toEqual([]);
       life.now = new Date(life.now.getTime() + 60_000);
-      expect(life.keeper.toSend().map((r) => r.key)).toEqual(['bank-took-back copy-1']);
+      expect(life.keeper.toSend().map((r) => r.id)).toEqual(['bank-took-back copy-1']);
     } finally {
       life.done();
     }

@@ -50,6 +50,9 @@ export const SETTING_NAMES: Readonly<Record<keyof Settings, string>> = {
   momRule: 'Mom rule',
   earlyPaycheckDays: 'Early paycheck check',
   homeTimeZone: 'Home time zone',
+  quietHours: 'Quiet hours',
+  bankNotReadAlertHours: 'Bank not read',
+  amountsOnLockScreen: 'Amounts on the lock screen',
 };
 
 // Section 2: the home time zones offered on Settings, his first, and how each
@@ -98,6 +101,21 @@ export function minutesText(minutes: number): string {
   return `${minutes.toLocaleString('en-US')} ${minutes === 1 ? 'minute' : 'minutes'}`;
 }
 
+// 10.8: "10:00 PM to 7:00 AM"; the same time twice is none.
+export function quietHoursText(quiet: Settings['quietHours']): string {
+  return quiet.from === quiet.to ? 'None' : `${timeText(quiet.from)} to ${timeText(quiet.to)}`;
+}
+
+// 10.7: "After 24 hours".
+export function notReadText(hours: number): string {
+  return `After ${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+}
+
+// 10.10: off, the lock screen shows words only.
+export function lockAmountsText(on: boolean): string {
+  return on ? 'On' : 'Off, words only';
+}
+
 export function textRuleText(rule: Settings['paycheckRule']): string {
   return rule === null ? 'Not set' : `“${rule.contains}”`;
 }
@@ -143,6 +161,12 @@ export function settingValueText<K extends keyof Settings>(key: K, value: Settin
       return daysText(v as number);
     case 'homeTimeZone':
       return zoneText(v as string);
+    case 'quietHours':
+      return quietHoursText(v as Settings['quietHours']);
+    case 'bankNotReadAlertHours':
+      return notReadText(v as number);
+    case 'amountsOnLockScreen':
+      return lockAmountsText(v as boolean);
     default:
       return String(v);
   }

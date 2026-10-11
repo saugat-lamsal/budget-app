@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { memoryLog, type LogLine } from '../src/log.js';
-import { retryAfterMs, type OutboxRow } from '../src/alerts/outbox.js';
-import { AlertTimer, type Alerter } from '../src/serve/alert-timer.js';
+import { retryAfterMs } from '../src/alerts/outbox.js';
+import { AlertTimer, type Alerter, type OutgoingAlert } from '../src/serve/alert-timer.js';
 import { LONGEST_SLEEP_MS } from '../src/serve/sync-timer.js';
 import { FakeClock } from './fake-clock.js';
 import { FakePhone } from './fake-phone.js';
@@ -37,15 +37,13 @@ class MadeUpOutbox implements Alerter {
     }
   }
 
-  nextEveningIn(): number | null {
+  nextDueIn(): number | null {
     return this.evening === null ? null : this.evening - this.#now().getTime();
   }
 
-  toSend(): readonly OutboxRow[] {
+  toSend(): readonly OutgoingAlert[] {
     const now = this.#now().toISOString();
-    return this.rows
-      .filter((r) => r.sentAt === null && r.nextTryAt <= now)
-      .map((r) => ({ key: r.key, seq: 1, kind: 'daily-review', title: `title ${r.key}`, body: 'body', dueAt: r.dueAt, createdAt: r.dueAt, sentAt: null, tries: r.tries, lastTryAt: null, nextTryAt: r.nextTryAt, lastError: r.lastError }));
+    return this.rows.filter((r) => r.sentAt === null && r.nextTryAt <= now).map((r) => ({ id: r.key, title: `title ${r.key}`, body: 'body', dueAt: r.dueAt, due: null }));
   }
 
   nextTryIn(): number | null {

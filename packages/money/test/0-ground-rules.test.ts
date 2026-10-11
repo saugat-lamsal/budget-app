@@ -134,6 +134,9 @@ describe('0.2 every number and rule is a setting', () => {
       momRule: null,
       earlyPaycheckDays: 10,
       homeTimeZone: 'America/New_York',
+      quietHours: { from: '22:00', to: '07:00' },
+      bankNotReadAlertHours: 24,
+      amountsOnLockScreen: false,
     } satisfies Settings);
   });
 
@@ -141,6 +144,7 @@ describe('0.2 every number and rule is a setting', () => {
     expect(Object.isFrozen(DEFAULT_SETTINGS)).toBe(true);
     expect(Object.isFrozen(DEFAULT_SETTINGS.split)).toBe(true);
     expect(Object.isFrozen(DEFAULT_SETTINGS.cardReminderDaysBefore)).toBe(true);
+    expect(Object.isFrozen(DEFAULT_SETTINGS.quietHours)).toBe(true);
   });
 
   it('0.2 any setting can be changed, and the result is checked', () => {
@@ -159,8 +163,14 @@ describe('0.2 every number and rule is a setting', () => {
       lowBucketAlertPercent: 25,
       momMonthlyTarget: { low: 100_000, high: 200_000 },
       homeTimeZone: 'America/Chicago',
+      quietHours: { from: '23:00', to: '06:30' },
+      bankNotReadAlertHours: 12,
+      amountsOnLockScreen: true,
     });
     expect(changed.split).toEqual({ savings: 60, needs: 25, wants: 15 });
+    expect(changed.quietHours).toEqual({ from: '23:00', to: '06:30' });
+    expect(changed.bankNotReadAlertHours).toBe(12);
+    expect(changed.amountsOnLockScreen).toBe(true);
     expect(changed.homeTimeZone).toBe('America/Chicago');
     expect(changed.payScheduleDays).toBe(7);
     expect(changed.oldCardPromoEndDate).toBe('2027-06-30');
@@ -199,6 +209,14 @@ describe('0.2 every number and rule is a setting', () => {
       { homeTimeZone: '' },
       { homeTimeZone: 'Mars/Olympus_Mons' },
       { homeTimeZone: 'EST5EDT; DROP' },
+      { quietHours: { from: '22:00', to: '7:00' } },
+      { quietHours: { from: '24:00', to: '07:00' } },
+      { quietHours: { from: '10pm', to: '07:00' } },
+      { bankNotReadAlertHours: 0 },
+      { bankNotReadAlertHours: -1 },
+      { bankNotReadAlertHours: 1.5 },
+      { bankNotReadAlertHours: 169 },
+      { amountsOnLockScreen: 'yes' as unknown as boolean },
     ];
     for (const patch of bad) {
       expect(codeOf(() => changeSettings(DEFAULT_SETTINGS, patch)), JSON.stringify(patch)).toBe('bad-setting');
@@ -214,6 +232,27 @@ describe('0.2 every number and rule is a setting', () => {
     expect(() => changeSettings(DEFAULT_SETTINGS, { dailyReviewTime: '00:00' })).not.toThrow();
     expect(() => changeSettings(DEFAULT_SETTINGS, { dailyReviewTime: '23:59' })).not.toThrow();
     expect(() => changeSettings(DEFAULT_SETTINGS, { earlyPaycheckDays: 0 })).not.toThrow();
+    expect(() => changeSettings(DEFAULT_SETTINGS, { quietHours: { from: '00:00', to: '23:59' } })).not.toThrow();
+    expect(() => changeSettings(DEFAULT_SETTINGS, { bankNotReadAlertHours: 1 })).not.toThrow();
+    expect(() => changeSettings(DEFAULT_SETTINGS, { bankNotReadAlertHours: 168 })).not.toThrow();
+  });
+
+  it('section 2 10.7 10.8 10.10 quiet hours, the bank-not-read alert and amounts on the lock screen are settings; the money math only keeps them', () => {
+    // 10.8: two times on the clock, 10:00 PM to 7:00 AM to start. The same time twice is no quiet hours at all (B188).
+    expect(changeSettings(DEFAULT_SETTINGS, { quietHours: { from: '01:00', to: '05:00' } }).quietHours).toEqual({ from: '01:00', to: '05:00' });
+    expect(changeSettings(DEFAULT_SETTINGS, { quietHours: { from: '22:00', to: '22:00' } }).quietHours).toEqual({ from: '22:00', to: '22:00' });
+    // 10.7: whole hours, 1 to 168 (a week), 24 to start.
+    expect(changeSettings(DEFAULT_SETTINGS, { bankNotReadAlertHours: 48 }).bankNotReadAlertHours).toBe(48);
+    // 10.10: off to start.
+    expect(changeSettings(DEFAULT_SETTINGS, { amountsOnLockScreen: true }).amountsOnLockScreen).toBe(true);
+    const given = { from: '21:00', to: '08:00' };
+    const changed = changeSettings(DEFAULT_SETTINGS, { quietHours: given });
+    expect(Object.isFrozen(changed.quietHours)).toBe(true);
+    expect(DEFAULT_SETTINGS.quietHours).toEqual({ from: '22:00', to: '07:00' });
+    // What is kept is a copy: the object handed in stays the caller's, and changing it changes nothing kept.
+    expect(Object.isFrozen(given)).toBe(false);
+    given.from = '20:00';
+    expect(changed.quietHours.from).toBe('21:00');
   });
 
   it('section 2 the home time zone is a setting: any time zone by its name, America/New_York to start; the money math only keeps it', () => {

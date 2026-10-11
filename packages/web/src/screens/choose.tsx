@@ -139,17 +139,26 @@ export const CHANGED_HOLD_MS = 1_000;
 
 // The state of choosing and sending, for a screen. One request at a time: a
 // second tap before the screen has redrawn must not send a second request.
+// Nor one after an answer went through, while the screen still shows the
+// numbers from before it (B92, as on Setup day; his PC under full load, Oct
+// 11, WebKit: the second tap of a double tap came in that moment): view is the
+// screen's numbers as shown, and the buttons stay off until the numbers asked
+// for after the answer are shown.
 //
 // keys: each item's key as the screen shows it now, by its id (Step 3). When
 // the screen reads its numbers again and an item's key is not the one it
 // showed (a sync changed it), the item is marked changed for as long as the
 // screen shows it, and takes no tap for CHANGED_HOLD_MS (A32). An item he
 // answered himself is not marked: its change is his own.
-export function useChoiceFlow(options: { readonly resort: boolean; readonly reload: Reload; readonly onChanged: Reload; readonly keys: ReadonlyMap<string, string> }) {
+export function useChoiceFlow(options: { readonly resort: boolean; readonly reload: Reload; readonly onChanged: Reload; readonly keys: ReadonlyMap<string, string>; readonly view: object }) {
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [said, setSaid] = useState<Said | null>(null);
   const [sending, setSending] = useState(false);
   const lock = useRef(false);
+  // The numbers shown when the last answer that asks for them again came back.
+  const shownView = useRef(options.view);
+  shownView.current = options.view;
+  const [answeredOn, setAnsweredOn] = useState<object | null>(null);
   const fresh = useFresh(options.keys);
 
   // Closing the sheet by hand drops a refusal he has read. The sheet also
@@ -201,6 +210,7 @@ export function useChoiceFlow(options: { readonly resort: boolean; readonly relo
           setSaid({ tone: 'danger', text: answer.why });
           return;
         }
+        setAnsweredOn(shownView.current);
         options.reload('after');
         options.onChanged('after');
       },
@@ -231,7 +241,7 @@ export function useChoiceFlow(options: { readonly resort: boolean; readonly relo
     } else submit(pending);
   };
 
-  return { sheet, said, sending, setSaid, setSheet, openSheet, closeSheet, submit, choose, changed: fresh.changed, holding: fresh.holding };
+  return { sheet, said, sending: sending || answeredOn === options.view, setSaid, setSheet, openSheet, closeSheet, submit, choose, changed: fresh.changed, holding: fresh.holding };
 }
 
 // A32: which items changed when the screen last read its numbers, and which

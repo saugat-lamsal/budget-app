@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { outboxCounts, outboxKeys } from '../src/alerts/outbox.js';
+import { addDays, DEFAULT_SETTINGS } from '@budget-app/money';
+import { outboxCounts, outboxKeys, readOutbox } from '../src/alerts/outbox.js';
+import { quietUntil } from '../src/alerts/sending.js';
+import { instantIn, todayIn } from '../src/history/today.js';
 import { openDatabase } from '../src/db/database.js';
 import { Keeper } from '../src/history/keeper.js';
 import { memoryLog } from '../src/log.js';
@@ -19,11 +22,14 @@ import { choose, decisions, lifeInAFile, noonInNewYork, setUpThroughTheDesk, typ
 // sent (the database closed right then), and with a save stopped halfway.
 // After every step both phones have shown the same alerts, each once (a send
 // tried again after a stop reaches the phone as a repeat of the same id, which
-// it does not show again), and a fresh copy of each from its database replays.
+// it does not show again), none of them in quiet hours (10.8), and a fresh
+// copy of each from its database replays. In quiet hours the one restarted can
+// be behind: what it had not sent when it stopped waits until they end, kept.
 // ALERT_SCENARIOS=n runs more; SEED=n replays one. Every name and number is
 // made up.
 
 const E = ACCOUNT_IDS.everyday;
+const ZONE = DEFAULT_SETTINGS.homeTimeZone;
 const MINUTE = 60_000;
 const SCENARIOS = Number(process.env['ALERT_SCENARIOS'] ?? 12);
 const FIRST = process.env['SEED'] === undefined ? 1 : Number(process.env['SEED']);
@@ -191,18 +197,29 @@ async function scenario(seed: number): Promise<{ readonly shown: number; readonl
         await restart(b);
       }
       // After every step: both phones have shown the same alerts, each once.
-      expect(b.phone.ids().toSorted(), `${where}: the same alerts shown on both phones`).toEqual(a.phone.ids().toSorted());
+      if (quietUntil(ZONE, DEFAULT_SETTINGS.quietHours, a.life.now) === null) {
+        expect(b.phone.ids().toSorted(), `${where}: the same alerts shown on both phones`).toEqual(a.phone.ids().toSorted());
+      } else {
+        const unsent = readOutbox(b.life.h.db, 1_000).rows.filter((row) => row.sentAt === null).map((row) => row.key);
+        expect(b.phone.ids().filter((id) => !a.phone.ids().includes(id)), `${where}: nothing shown only by the one restarted`).toEqual([]);
+        expect(a.phone.ids().filter((id) => !b.phone.ids().includes(id) && !unsent.includes(id)), `${where}: what the one restarted has not shown waits, kept and not sent`).toEqual([]);
+      }
       expect(a.phone.repeats, `${where}: nothing sent twice by the server that ran throughout`).toBe(0);
       expect(b.phone.repeats, `${where}: a repeat only for a send stopped in the middle`).toBeLessThanOrEqual(crashes);
       expect(outboxKeys(b.life.h.db), `${where}: the same alerts kept`).toEqual(outboxKeys(a.life.h.db));
+      for (const s of both) for (const shown of s.phone.shown) expect(quietUntil(ZONE, DEFAULT_SETTINGS.quietHours, new Date(shown.at)), `${where}: ${shown.id} shown at ${shown.at}, in quiet hours`).toBeNull();
       // A fresh copy of each from its database replays, alerts and all.
       for (const s of both) s.life.reopen().close();
     }
-    // In the end, with the phone answering, everything is sent, once.
+    // In the end, with the phone answering, everything is sent, once: by 9:00
+    // AM after the next two hours, past any quiet hours.
     for (const s of both) {
       s.phone.failing = null;
       s.phone.afterShowing = null;
-      await s.clock.advance(2 * 60 * MINUTE, () => s.alerts.idle());
+      const later = new Date(s.life.now.getTime() + 2 * 60 * MINUTE);
+      let nine = instantIn(ZONE, todayIn(ZONE, later), '09:00');
+      if (nine.getTime() < later.getTime()) nine = instantIn(ZONE, addDays(todayIn(ZONE, later), 1), '09:00');
+      await s.clock.advance(nine.getTime() - s.life.now.getTime(), () => s.alerts.idle());
       expect(outboxCounts(s.life.h.db).notSent, `seed ${seed}: everything sent`).toBe(0);
       expect(s.phone.ids().toSorted(), `seed ${seed}: every alert kept is shown, once`).toEqual(outboxKeys(s.life.h.db).toSorted());
     }
@@ -217,7 +234,7 @@ async function scenario(seed: number): Promise<{ readonly shown: number; readonl
 }
 
 describe('Phase 5 random scenarios: restarts at any moment never repeat or lose an alert', () => {
-  it('0.6 10.1 10.2 10.3 10.6 two servers given the same random activity, one stopped and started again at random moments', async () => {
+  it('0.6 10.1 10.2 10.3 10.6 10.8 two servers given the same random activity, one stopped and started again at random moments', async () => {
     let shown = 0;
     let crashes = 0;
     let restarts = 0;

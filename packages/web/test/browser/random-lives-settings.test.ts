@@ -32,7 +32,7 @@ interface Change {
 }
 
 function randomChange(random: Random, settings: Settings, descriptions: readonly string[]): Change {
-  const pick = random.int(0, 11);
+  const pick = random.int(0, 14);
   switch (pick) {
     case 0: {
       const savings = random.int(0, 100);
@@ -86,6 +86,19 @@ function randomChange(random: Random, settings: Settings, descriptions: readonly
       // The paycheck rule, set to text from something waiting or from the old rule: it asks first (A9).
       const text = random.int(0, 1) === 0 && descriptions.length > 0 ? random.pick(descriptions).slice(0, 12).trim() : (settings.paycheckRule?.contains ?? 'PAYROLL');
       return { what: `paycheck rule "${text}"`, row: 'row-paycheck-rule', fields: { 'field-paycheck-rule': text }, patch: text === '' ? null : { paycheckRule: { contains: text } }, asksFirst: true };
+    }
+    case 11: {
+      const time = (): string => `${String(random.int(0, 23)).padStart(2, '0')}:${String(random.int(0, 59)).padStart(2, '0')}`;
+      const quietHours = { from: time(), to: time() };
+      return { what: `quiet hours ${quietHours.from} to ${quietHours.to}`, row: 'row-quiet-hours', fields: { 'field-quiet-from': quietHours.from, 'field-quiet-to': quietHours.to }, patch: { quietHours } };
+    }
+    case 12: {
+      const hours = random.int(0, 200);
+      return { what: `bank not read ${hours}`, row: 'row-not-read', fields: { 'field-not-read': String(hours) }, patch: hours >= 1 && hours <= 168 ? { bankNotReadAlertHours: hours } : null };
+    }
+    case 13: {
+      const on = random.int(0, 1) === 1;
+      return { what: `amounts on the lock screen ${on ? 'on' : 'off'}`, row: 'row-lock-amounts', fields: { 'field-lock-amounts': on ? 'on' : 'off' }, patch: { amountsOnLockScreen: on } };
     }
     default: {
       const kind = random.pick(['purchase', 'deposit', 'person'] as const);

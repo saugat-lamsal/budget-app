@@ -114,6 +114,39 @@ describe.each(ENGINES)('Payday in %s', (_name, engine) => {
     await page.context().close();
   });
 
+  // The same moment as Review's (B92): the answer is back, and Payday still
+  // shows the numbers from before it, with the question's card still there.
+  // Its buttons stay off until the numbers asked for after it are shown.
+  it('3.4 B92 an answer already given cannot be sent again while Payday still shows the numbers from before it', async () => {
+    const twin = life('payday-paid');
+    const page = await openScenario(await browser().newContext(phone()), base(), 'payday-paid', '/payday');
+    const watch = watchChoices(page);
+    const [needsId] = twin.book.paydayReport().leftovers.map((l) => l.question!);
+    const button = page.getByTestId(`item-${needsId}`).getByTestId('answer-roll-over');
+    let release = (): void => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    let asked = false;
+    await page.route('**/api/payday', async (route) => {
+      asked = true;
+      await held;
+      await route.continue();
+    });
+    await button.click();
+    await page.getByTestId('confirm-yes').click();
+    await expect.poll(() => asked).toBe(true);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 0)))));
+    expect(await button.isDisabled()).toBe(true);
+    await button.click({ force: true });
+    expect(await page.getByTestId('confirm-yes').count()).toBe(0);
+    release();
+    await page.getByTestId('leftover-needs').waitFor();
+    await page.unrouteAll({ behavior: 'wait' });
+    expect(watch.posts.length).toBe(1);
+    twin.book.answerLeftover(needsId!, 'roll-over', twin.today);
+    expect(await page.getByTestId(`item-${needsId}`).count()).toBe(0);
+    await page.context().close();
+  });
+
   it('3.4 B106 the two questions waiting are answered here: each asks first, then does what the money math does, and is no longer asked', async () => {
     const twin = life('payday-paid');
     const page = await openScenario(await browser().newContext(phone()), base(), 'payday-paid', '/payday');

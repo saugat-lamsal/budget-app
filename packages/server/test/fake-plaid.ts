@@ -154,6 +154,15 @@ export class FakePlaid {
     this.#change({ type: 'removed', id, account: old.account_id });
   }
 
+  // The account's balance moves by this much with no transaction to show
+  // for it (a mistake at the bank, or something the app cannot see), until
+  // it is moved back: the totals no longer match the bank (10.4).
+  drift(accountId: string, cents: Cents): void {
+    const account = this.accounts.get(accountId);
+    if (account === undefined) throw new Error(`no account ${accountId}`);
+    account.posted += cents;
+  }
+
   setStatement(accountId: string, statement: Omit<PlaidCreditCard, 'account_id'>): void {
     this.cards.set(accountId, { ...statement, account_id: accountId });
   }

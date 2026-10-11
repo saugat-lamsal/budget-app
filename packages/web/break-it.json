@@ -1437,8 +1437,8 @@
   {
     "section": "home",
     "file": "packages/web/test/browser/harness.ts",
-    "find": "      await settle(page);\n      return goto(url, options);",
-    "replace": "      return goto(url, options);",
+    "find": "      await settle(page);\n      try {\n        return await goto(url, options);",
+    "replace": "      try {\n        return await goto(url, options);",
     "why": "[ci] going to another address does not wait for the page's requests"
   },
   {
@@ -1916,5 +1916,96 @@
     "find": "{view.alerts !== undefined && <ListRow icon=\"tray\" title=\"Alerts sent\"",
     "replace": "{view.alerts === undefined && <ListRow icon=\"tray\" title=\"Alerts sent\"",
     "why": "[alerts] 10.3 Settings has no way to the list of alerts"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "return quiet.from === quiet.to ? 'None' :",
+    "replace": "return false ? 'None' :",
+    "why": "[a35] the same time twice is not written as no quiet hours"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "return `After ${hours} ${hours === 1 ? 'hour' : 'hours'}`;",
+    "replace": "return `After ${hours} hours`;",
+    "why": "[a38] \"After 1 hours\""
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "return on ? 'On' : 'Off, words only';",
+    "replace": "return on ? 'Off, words only' : 'On';",
+    "why": "[a39] amounts on the lock screen written the wrong way round"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "    case 'quietHours':\n      return quietHoursText(v as Settings['quietHours']);",
+    "replace": "    case 'quietHours':\n      return String(v);",
+    "why": "[a35] 13.5 a change to quiet hours is logged as [object Object]"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/alerts-text.ts",
+    "find": "if (line.quietUntil !== null) return",
+    "replace": "if (line.quietUntil === 'never') return",
+    "why": "[a35] 10.8 the list does not say an alert waits for quiet hours"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "sending: sending || answeredOn === options.view,",
+    "replace": "sending,",
+    "why": "[b192] B92 Review, the lists and Payday take a second tap while the numbers from before an answer are shown"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "        setAnsweredOn(shownView.current);\n",
+    "replace": "",
+    "why": "[b192] B92 an answer that went through does not hold the buttons off"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "{ value: { quietHours: { from: get('from'), to: get('to') } } }",
+    "replace": "{ value: { quietHours: { from: get('to'), to: get('from') } } }",
+    "why": "[a35] Settings sends quiet hours the wrong way round"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "return { value: { amountsOnLockScreen: get('on') === 'on' } };",
+    "replace": "return { value: { amountsOnLockScreen: get('on') === 'off' } };",
+    "why": "[a39] Settings sends amounts on the lock screen the wrong way round"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "bankNotReadAlertHours: r.value[0] ?? 0",
+    "replace": "bankNotReadAlertHours: (r.value[0] ?? 0) * 2",
+    "why": "[a38] Settings sends twice the hours typed"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/test/browser/harness.ts",
+    "find": "        throw await withReport(page, error, url);",
+    "replace": "        throw error;",
+    "why": "[ci] a page that cannot open says nothing of what it was doing"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/test/browser/harness.ts",
+    "find": "  for (const address of [page.url(), opening ?? '']) {",
+    "replace": "  for (const address of [page.url()]) {",
+    "why": "[ci] the report of a page still blank names no server"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/test/browser/harness.ts",
+    "find": "if (port !== undefined && !local.endsWith(`:${port}`) && peer?.endsWith(`:${port}`) !== true) continue;",
+    "replace": "if (port !== undefined) continue;",
+    "why": "[ci] the report counts no connection to the stuck page's server"
   }
 ]

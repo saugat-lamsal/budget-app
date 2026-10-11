@@ -251,6 +251,13 @@ const STEPS: readonly string[] = [
   -- What is not sent yet, by when it is to be tried: the alert timer looks every minute.
   CREATE INDEX outbox_unsent ON outbox (next_try_at) WHERE sent_at IS NULL;
   `,
+  `
+  -- 10.10 (QUESTIONS.md A39): what each alert is about (its facts, as JSON),
+  -- so the words sent to the lock screen can leave its amounts out, as the
+  -- setting says when it is sent. NULL for an alert kept before this step:
+  -- it is sent with the words it was kept with.
+  ALTER TABLE outbox ADD COLUMN facts TEXT;
+  `,
 ];
 
 // Steps that make a table again, which SQLite does with foreign keys off
