@@ -49,7 +49,13 @@ export function SetupScreen({ step, load, onRetry, onStarted }: { readonly step:
         </StateMessage>
       )}
       {load.status === 'ready' && load.value.state === 'not-set-up' && !load.value.ready && (
-        <StateMessage icon="bank" title="Setup day can't start yet" detail={`${capitalize(load.value.why)}.`} testId="setup-not-ready" />
+        <StateMessage icon="bank" title="Setup day can't start yet" detail={`${capitalize(load.value.why)}.`} testId="setup-not-ready">
+          {!load.value.madeUpData && (
+            <LinkButton href="/bank" testId="setup-bank-connection">
+              Bank connection
+            </LinkButton>
+          )}
+        </StateMessage>
       )}
       {load.status === 'ready' && load.value.state === 'not-set-up' && load.value.ready && <SetupReady key={step} step={step} view={load.value} reload={onRetry} onStarted={onStarted} />}
     </main>

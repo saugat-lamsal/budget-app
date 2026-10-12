@@ -45,6 +45,6 @@ export function serveBooks(input: ServeInput): Serving {
   });
   const alerts = new AlertTimer({ alerter: keeper, sender: input.sender, clock: input.clock, log: bank.log });
   keeper.whenChanged(() => alerts.poke());
-  const server = keeper.server(input.webRoot, input.origin, input.onError, input.backups);
+  const server = keeper.server(input.webRoot, input.origin, input.onError, { ...(input.backups === undefined ? {} : { backups: input.backups }), bank });
   return { server, timer, alerts };
 }

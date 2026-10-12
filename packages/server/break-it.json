@@ -856,8 +856,8 @@
   {
     "section": "review",
     "file": "packages/server/src/http/server.ts",
-    "find": "export const SCREEN_PATHS: readonly string[] = ['/payday', '/alerts', ...",
-    "replace": "export const SCREEN_PATHS: readonly string[] = ['/alerts', ...",
+    "find": "export const SCREEN_PATHS: readonly string[] = ['/payday', '/alerts', '/bank', ...",
+    "replace": "export const SCREEN_PATHS: readonly string[] = ['/alerts', '/bank', ...",
     "why": "[activity] B104 Payday has no address of its own"
   },
   {
@@ -2095,8 +2095,8 @@
   {
     "section": "sync",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "    if (this.#syncing !== null) return this.#syncing;\n    this.#lastTry = this.#now().getTime();",
-    "replace": "    if (this.#syncing !== null) return this.#syncing;",
+    "find": "    this.#lastTry = this.#now().getTime();\n    const running = syncBank({",
+    "replace": "    const running = syncBank({",
     "why": "[sync] B168 the next sync is counted from the last read, so a failed one is tried again at once"
   },
   {
@@ -2123,8 +2123,8 @@
   {
     "section": "sync",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "    if (readConnection(this.#db) === null) return null;\n",
-    "replace": "",
+    "find": "    if (readConnection(this.#db) === null || !rolesComplete(readAccounts(this.#db))) return null;\n",
+    "replace": "    if (readConnection(this.#db) !== null && !rolesComplete(readAccounts(this.#db))) return null;\n",
     "why": "[sync] B168 with no bank connection it tries to sync anyway"
   },
   {
@@ -2368,8 +2368,8 @@
   {
     "section": "sync",
     "file": "packages/server/src/serve/serving.ts",
-    "find": "const server = keeper.server(input.webRoot, input.origin, input.onError, input.backups);",
-    "replace": "const server = keeper.server(input.webRoot, () => 'http://localhost:1', input.onError, input.backups);",
+    "find": "const server = keeper.server(input.webRoot, input.origin, input.onError, { ...(input.backups === undefined ? {} : { backups: input.backups }), bank });",
+    "replace": "const server = keeper.server(input.webRoot, () => 'http://localhost:1', input.onError, { ...(input.backups === undefined ? {} : { backups: input.backups }), bank });",
     "why": "[pay-period] Step 2 the server npm run serve starts checks requests against the wrong address"
   },
   {
@@ -3834,5 +3834,166 @@
     "find": "    if (options.connect) throw new Error('--connect is for the test bank",
     "replace": "    if (false) throw new Error('--connect is for the test bank",
     "why": "[switch] 1.1 --connect taken on the real bank"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "      if (connection !== null) return refuse('connected-already', 'The bank is connected already. The app never makes a second connection.');\n      if (!request.yes)",
+    "replace": "      if (!request.yes)",
+    "why": "[bank-connect] 1.1 a link key for a second connection"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "      if (!request.yes) return refuse('needs-yes',",
+    "replace": "      if (false) return refuse('needs-yes',",
+    "why": "[bank-connect] 1.1 connecting does not ask first"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (this.#connecting !== null) return Promise.resolve(refuse('busy',",
+    "replace": "    if (false) return Promise.resolve(refuse('busy',",
+    "why": "[bank-connect] 1.1 two answers from Link at once both exchanged"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (readConnection(db) !== null) return refuse('connected-already', 'The bank is connected already. The app never makes a second connection.');\n    let exchanged",
+    "replace": "    let exchanged",
+    "why": "[bank-connect] 1.1 a second answer from Link exchanged"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "      saveServerLine(db, { date: today(), action: 'bank-connected', bank: this.#bank, afterBookLines: this.#input.bookLines() });\n",
+    "replace": "",
+    "why": "[bank-connect] 1.1 13.5 connecting not in the change log"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (this.#input.tracking()) return refuse('roles-fixed',",
+    "replace": "    if (false) return refuse('roles-fixed',",
+    "why": "[bank-connect] 1.2 the picks changed after tracking started"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (named.join() !== [...ROLES].sort().join()) return refuse(",
+    "replace": "    if (named.length < 2) return refuse(",
+    "why": "[bank-connect] 1.2 a pick that leaves one out taken"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (new Set(picked).size !== ROLES.length) return refuse(",
+    "replace": "    if (new Set(picked).size < 2) return refuse(",
+    "why": "[bank-connect] 1.2 one account picked for two of the four"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (picked.some((a) => a === undefined)) return refuse(",
+    "replace": "    if (picked.every((a) => a === undefined)) return refuse(",
+    "why": "[bank-connect] 1.2 an account the bank did not send taken"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (!request.yes) return refuse('needs-yes', 'Once tracking starts",
+    "replace": "    if (false) return refuse('needs-yes', 'Once tracking starts",
+    "why": "[bank-connect] 1.2 the picks do not ask first"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "  return ROLES.every((role) => roles.includes(role));",
+    "replace": "  return ROLES.some((role) => roles.includes(role));",
+    "why": "[bank-connect] 1.2 the bank read with one account picked"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (options.loggedInAgain === true) saveServerLine(",
+    "replace": "    if (false) saveServerLine(",
+    "why": "[bank-connect] 1.3 13.5 logging in again not in the change log"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (rolesComplete(readAccounts(db))) {\n      try {\n        await this.#input.sync();",
+    "replace": "    if (false) {\n      try {\n        await this.#input.sync();",
+    "why": "[bank-connect] 1.2 1.3 the bank not read after the picks or a new login"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "  return a.raw.mask === null || a.raw.mask === undefined ? a.raw.name : `${a.raw.name} ••${a.raw.mask}`;",
+    "replace": "  return a.raw.name;",
+    "why": "[bank-connect] 1.2 13.5 the change log names an account without its last digits"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    if (readConnection(this.#db) !== null && !rolesComplete(readAccounts(this.#db))) return Promise.reject(",
+    "replace": "    if (false) return Promise.reject(",
+    "why": "[bank-connect] 1.2 a sync before the four are picked"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    if (readConnection(this.#db) === null || !rolesComplete(readAccounts(this.#db))) return null;\n",
+    "replace": "    if (readConnection(this.#db) === null) return null;\n",
+    "why": "[bank-connect] 1.2 a sync due before the four are picked"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/http/server.ts",
+    "find": "    if (path === BANK_SCREEN_PATH && options.bank !== undefined) {",
+    "replace": "    if (false) {",
+    "why": "[bank-connect] 1.1 the Bank page served with the strict rules: Link cannot load"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      `script-src 'self' 'nonce-${nonce}' ${PLAID_LINK_SCRIPT}`,",
+    "replace": "      `script-src 'self' 'unsafe-inline' https://cdn.plaid.com`,",
+    "why": "[bank-connect] 1.1 the Bank page lets in any inline script and any of Plaid's"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/http/server.ts",
+    "find": "    'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',",
+    "replace": "    'Cross-Origin-Opener-Policy': 'same-origin',",
+    "why": "[bank-connect] 1.1 the bank's own login window cannot keep in touch with the page"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      `connect-src 'self' ${bankAddress}`,",
+    "replace": "      \"connect-src 'self'\",",
+    "why": "[bank-connect] 1.1 the Bank page cannot talk to the bank in use"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      if (exactly(sent, ['mode', 'yes']) && sent['mode'] === 'connect' && typeof sent['yes'] === 'boolean') return",
+    "replace": "      if (exactly(sent, ['mode', 'yes']) && sent['mode'] === 'connect') return",
+    "why": "[bank-connect] 1.1 a yes that is not a yes taken"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      return typeof token === 'string' && /^public-[a-z]+-[A-Za-z0-9-]{1,200}$/.test(token) ? bank.connected(",
+    "replace": "      return typeof token === 'string' ? bank.connected(",
+    "why": "[bank-connect] 1.1 something that is not a link key sent to the bank"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/http/server.ts",
+    "find": "  { method: 'GET', path: BANK_PATHS.view, login: true },",
+    "replace": "  { method: 'GET', path: BANK_PATHS.view, login: false },",
+    "why": "[bank-connect] 1.1 the bank connection's numbers open without a login"
   }
 ]

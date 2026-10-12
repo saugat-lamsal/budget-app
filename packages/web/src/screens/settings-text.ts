@@ -250,3 +250,8 @@ export const NOTIFICATION_LINES: Readonly<Record<'notifications-on' | 'notificat
   'notifications-off': 'Notifications turned off',
   'notifications-stopped': 'Notifications stopped',
 };
+
+// 1.2: the four accounts picked, as the change log shows them (13.5).
+export function bankAccountsText(accounts: Readonly<Record<'checking' | 'savings' | 'everyday-card' | 'old-card', string>>): string {
+  return `Checking: ${accounts.checking}; savings: ${accounts.savings}; everyday card: ${accounts['everyday-card']}; old card: ${accounts['old-card']}`;
+}

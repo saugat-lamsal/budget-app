@@ -382,6 +382,8 @@ describe('the demo is made-up data only', () => {
       'views/activity.ts',
       'views/alerts.ts',
       'views/bank-rules.ts',
+      // The Bank connection screen's types (1.1 to 1.3): types only; the demo has no bank.
+      'views/bank.ts',
       'views/buckets.ts',
       'views/choice.ts',
       'views/home.ts',

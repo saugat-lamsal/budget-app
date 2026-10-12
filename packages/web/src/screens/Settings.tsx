@@ -39,6 +39,7 @@ import {
   timeText,
   ZONE_CHOICES,
   zoneText,
+  bankAccountsText,
 } from './settings-text.js';
 
 // Settings: every number and rule in rulebook section 2, the sorting rules,
@@ -450,6 +451,12 @@ function LogLine({ line }: { readonly line: LogRow }) {
       return <ListRow icon="bell" title={NOTIFICATION_LINES[line.kind]} detail={`${line.device} · ${when}`} testId={testId} />;
     case 'notifications-stopped':
       return <ListRow icon="bell" title={NOTIFICATION_LINES[line.kind]} detail={`${line.device}: its push service would not take them any more · ${when}`} testId={testId} />;
+    case 'bank-connected':
+      return <ListRow icon="bank" title="Bank connected" detail={`${line.bank === 'test' ? "Plaid's test bank" : 'Bank of America, through Plaid'} · ${when}`} testId={testId} />;
+    case 'bank-accounts':
+      return <ListRow icon="bank" title="Which account is which" detail={`${bankAccountsText(line.accounts)} · ${when}`} testId={testId} />;
+    case 'bank-logged-in-again':
+      return <ListRow icon="bank" title="Logged in to the bank again" detail={when} testId={testId} />;
   }
 }
 

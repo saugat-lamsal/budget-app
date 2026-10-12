@@ -58,15 +58,16 @@ describe('safety: nothing points at a real bank', () => {
     expect(found).toEqual([]);
   });
 
-  it('safety: every Plaid address in the server code is the test bank, or the real one in the lock alone', () => {
+  it('safety: every Plaid address in the server code is the test bank, the real one in the lock alone, or Plaid Link\'s own script and frame on the Bank page (1.1)', () => {
     const where = new Map<string, Set<string>>();
     for (const path of projectFiles().filter((p) => p.startsWith('packages/server/src/'))) {
       for (const m of readFileSync(new URL(path, repoRoot), 'utf8').matchAll(/https?:\/\/[a-z0-9.-]*plaid\.com/gi)) {
         where.set(m[0], (where.get(m[0]) ?? new Set()).add(path));
       }
     }
-    expect(new Set(where.keys())).toEqual(new Set(['https://sandbox.plaid.com', join('https://', 'production', '.plaid.com')]));
+    expect(new Set(where.keys())).toEqual(new Set(['https://sandbox.plaid.com', join('https://', 'production', '.plaid.com'), 'https://cdn.plaid.com']));
     expect([...(where.get(join('https://', 'production', '.plaid.com')) ?? [])]).toEqual([LOCK]);
+    expect([...(where.get('https://cdn.plaid.com') ?? [])]).toEqual(['packages/server/src/http/server.ts']);
   });
 
   it('safety: .env.example says sandbox', () => {

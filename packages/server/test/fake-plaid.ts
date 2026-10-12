@@ -195,6 +195,12 @@ export class FakePlaid {
     if (!url.startsWith('https://sandbox.plaid.com/')) return error(400, 'INVALID_REQUEST', 'NOT_THE_TEST_BANK');
     if (headers['PLAID-CLIENT-ID'] !== this.clientId || headers['PLAID-SECRET'] !== this.secret) return error(400, 'INVALID_INPUT', 'INVALID_API_KEYS');
     if (endpoint === '/sandbox/public_token/create') return { status: 200, body: { public_token: this.publicToken, request_id: requestId } };
+    // 1.1 and 1.3: a link key for Plaid Link; with the bank key, to log in
+    // again on that connection (a key that is not this connection's is refused).
+    if (endpoint === '/link/token/create') {
+      if (body['access_token'] !== undefined && body['access_token'] !== this.accessToken) return error(400, 'INVALID_INPUT', 'INVALID_ACCESS_TOKEN');
+      return { status: 200, body: { link_token: `link-sandbox-made-up-${this.#requestCount}`, expiration: '2026-10-13T01:00:00Z', request_id: requestId } };
+    }
     if (endpoint === '/item/public_token/exchange') {
       if (body['public_token'] !== this.publicToken) return error(400, 'INVALID_INPUT', 'INVALID_PUBLIC_TOKEN');
       return { status: 200, body: { access_token: this.accessToken, item_id: this.itemId, request_id: requestId } };

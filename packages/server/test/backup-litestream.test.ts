@@ -108,8 +108,8 @@ describe('Phase 6 Litestream copies the books to the bucket', { timeout: 60_000 
 // the heartbeat comes to the server's beat address on this computer while
 // every copy goes through, also while nothing in the books changes (a quiet
 // night), and stops once a change cannot be copied. Litestream beats at most
-// once a minute, so this takes two or three minutes of real time.
-describe('A43 Litestream\'s heartbeat', { timeout: 300_000 }, () => {
+// once a minute, so this takes four or five minutes of real time.
+describe('A43 Litestream\'s heartbeat', { timeout: 420_000 }, () => {
   it('A43 reaches the server while every copy goes through, also while nothing changes, and stops once a change cannot be copied', async () => {
     const r2 = await standIn();
     const beats = new BackupWatch(Date.now);
@@ -129,9 +129,12 @@ describe('A43 Litestream\'s heartbeat', { timeout: 300_000 }, () => {
     const tried = r2.requests.length;
     await until('Litestream to try', () => r2.requests.slice(tried).some((req) => req.status === 503));
     const failedAt = Date.now();
-    await new Promise((resolve) => setTimeout(resolve, 100_000));
-    // A beat already on its way may land just after; none after that.
-    expect(beats.lastBeat ?? 0).toBeLessThan(failedAt + 30_000);
+    // Litestream beats while its last good copy is less than a minute old, and
+    // looks every 15 s, so one more beat can come up to about 75 s after the
+    // copies stop (seen at 59 s on a busy PC). None after that: two more
+    // minutes would have had two beats.
+    await new Promise((resolve) => setTimeout(resolve, 150_000));
+    expect(beats.lastBeat ?? 0).toBeLessThan(failedAt + 90_000);
     // So that stopping Litestream can copy what it has.
     r2.failing = null;
   });

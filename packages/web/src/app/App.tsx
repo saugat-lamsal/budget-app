@@ -2,6 +2,7 @@ import type { Pot } from '@budget-app/money';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityScreen, type Back } from '../screens/Activity.js';
 import { AlertsScreen } from '../screens/Alerts.js';
+import { BankScreen } from '../screens/Bank.js';
 import { BucketsScreen } from '../screens/Buckets.js';
 import { HomeScreen } from '../screens/Home.js';
 import { PaydayScreen } from '../screens/Payday.js';
@@ -9,7 +10,7 @@ import { ReviewScreen } from '../screens/Review.js';
 import { SettingsScreen } from '../screens/Settings.js';
 import { SetupScreen } from '../screens/Setup.js';
 import { TabBar } from '../ui/TabBar.js';
-import { useActivity, useAlerts, useBuckets, useHome, usePayday, useReview, useSettings, useSetup, type Reload } from './api.js';
+import { useActivity, useAlerts, useBank, useBuckets, useHome, usePayday, useReview, useSettings, useSetup, type Reload } from './api.js';
 import { backTarget, pathOfRoute, routeLabel, routeOf, routeTitle, tabOfRoute, type Route, type SetupStepName, type Tab } from './routes.js';
 
 // Each of these loads its numbers when its screen opens, so it is always fresh.
@@ -44,6 +45,12 @@ function PaydayTab({ onChanged, back }: { readonly onChanged: Reload; readonly b
 function AlertsTab({ back }: { readonly back: Back }) {
   const [load, reload] = useAlerts();
   return <AlertsScreen load={load} onRetry={reload} back={back} />;
+}
+
+// 1.1 to 1.3: the Bank connection screen, opened from Settings and Setup day.
+function BankTab({ back }: { readonly back: Back }) {
+  const [load, reload] = useBank();
+  return <BankScreen load={load} onRetry={reload} back={back} />;
 }
 
 // Setup day (section 14). Once tracking starts, Home shows.
@@ -82,6 +89,13 @@ export function App() {
     (next: Route) => {
       if (pathOfRoute(next) === pathOfRoute(route)) {
         window.scrollTo({ top: 0 });
+        return;
+      }
+      // 1.1: the Bank screen is always a page of its own, so its page rules
+      // (the only ones that let Plaid's login in) apply; leaving it, the
+      // strict rules come back with the next page.
+      if (next.screen === 'bank' || route.screen === 'bank') {
+        window.location.assign(pathOfRoute(next));
         return;
       }
       // The address he left is kept with the new one, so a screen opened from
@@ -127,6 +141,8 @@ export function App() {
         <PaydayTab onChanged={retryHome} back={back} />
       ) : route.screen === 'alerts' ? (
         <AlertsTab back={back} />
+      ) : route.screen === 'bank' ? (
+        <BankTab back={back} />
       ) : route.screen === 'setup' ? (
         <SetupTab
           step={route.step}

@@ -19,6 +19,7 @@ export function SyncCard({ sync, onSaid, reload }: { readonly sync: SyncView; re
     <>
       <Card title="Bank" testId="sync-card">
         <ListRow icon="clock" title="Sync with the bank" detail={`Every ${minutesText(sync.everyMinutes)} · ${checked}`} onClick={() => setOpen((n) => n + 1)} testId="row-sync-every" />
+        <ListRow icon="bank" title="Bank connection" detail="Connect, log in again, which account is which" href="/bank" testId="row-bank-connection" />
       </Card>
       {open > 0 && (
         <SyncSheet

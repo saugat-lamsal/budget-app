@@ -124,6 +124,11 @@ export class PlaidClient {
     this.#timeoutMs = options.timeoutMs ?? 30_000;
   }
 
+  // Which bank it sends to: Plaid's test bank, or the real one (Phase 7).
+  get environment(): PlaidEnvironment {
+    return this.#keys.environment;
+  }
+
   toJSON(): string {
     return '[PlaidClient]';
   }

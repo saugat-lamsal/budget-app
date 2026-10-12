@@ -44,7 +44,7 @@ export async function servedAt(origin: string = HOSTED, setUp = true, backups?: 
   writeFileSync(join(webRoot, 'index.html'), '<!doctype html><title>app</title>');
   writeFileSync(join(webRoot, 'assets', 'index-abc123.js'), 'console.log(1)');
   let own = origin;
-  const server = life.keeper.server(webRoot, () => own, undefined, backups);
+  const server = life.keeper.server(webRoot, () => own, undefined, backups === undefined ? {} : { backups });
   await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
   const address = server.address();
   const port = typeof address === 'object' && address !== null ? address.port : 0;

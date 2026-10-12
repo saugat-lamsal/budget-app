@@ -2,6 +2,7 @@ import {
   FROM_NEXT_PAYCHECK,
   RULE_CHOICES,
   payoffCountdown,
+  type AccountId,
   type BankBalances,
   type Book,
   type Cents,
@@ -113,7 +114,11 @@ export type LogRow =
   | { readonly key: string; readonly date: IsoDate; readonly kind: 'sync-every-changed'; readonly before: number; readonly after: number }
   // Phase 5: notifications turned on or off on a device, or stopped by its push service.
   | { readonly key: string; readonly date: IsoDate; readonly kind: 'notifications-on' | 'notifications-off'; readonly device: string }
-  | { readonly key: string; readonly date: IsoDate; readonly kind: 'notifications-stopped'; readonly device: string; readonly why: string };
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'notifications-stopped'; readonly device: string; readonly why: string }
+  // 1.1 to 1.3: the bank connected, which account is which, a new login to the bank.
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'bank-connected'; readonly bank: 'test' | 'real' }
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'bank-accounts'; readonly accounts: Readonly<Record<AccountId, string>> }
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'bank-logged-in-again' };
 
 export type SettingsView =
   // Before setup day there are no settings yet, but he can still log out.
@@ -298,6 +303,12 @@ function serverRow(line: ServerLogLine, key: string): LogRow {
       return { key, date: line.date, kind: line.action, before: line.before, after: line.after };
     case 'notifications-stopped':
       return { key, date: line.date, kind: line.action, device: line.device, why: line.why };
+    case 'bank-connected':
+      return { key, date: line.date, kind: line.action, bank: line.bank };
+    case 'bank-accounts':
+      return { key, date: line.date, kind: line.action, accounts: line.accounts };
+    case 'bank-logged-in-again':
+      return { key, date: line.date, kind: line.action };
     default:
       return { key, date: line.date, kind: line.action, device: line.device };
   }
