@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { cardCharge, openTestBook, paycheck, purchase, takenBack, transfer } from '../../money/test/helpers.js';
 import { ReplayFailed } from '../src/history/history.js';
 import { alertWords, type AlertFacts } from '../src/alerts/alerts.js';
-import { NO_ALERTS, applyAlerts, nextAlertsEvent, nextDueIn, type AlertLedger, type AlertWorld, type AlertsEvent } from '../src/alerts/plan.js';
+import { NO_ALERTS, applyAlerts, nextAlertsEvent, nextDueIn, stillTrueNow, type AlertLedger, type AlertWorld, type AlertsEvent } from '../src/alerts/plan.js';
 
 // Phase 5, part one: which alerts are due, and when, worked out from the book
 // and what is known of the bank at one moment (alerts/plan.ts). Every name
@@ -670,5 +670,60 @@ describe('Phase 5 0.6 the history of alerts replays only as it was', () => {
     const before = JSON.stringify({ pots: b.pots(), review: b.reviewItems(), log: b.changeLog() });
     look(world(b, '2026-10-02T00:00:00Z'), NO_ALERTS);
     expect(JSON.stringify({ pots: b.pots(), review: b.reviewItems(), log: b.changeLog() })).toBe(before);
+  });
+});
+
+// 10.9 (QUESTIONS.md A40): an alert that waited for the phone goes only if it
+// is still true when the phone can be given it.
+describe('10.9 A40 still true, when the phone can be given it', () => {
+  it('10.9 A40 low and empty: the bucket is at that level now, in that same pay period', () => {
+    const b = book({ date: '2026-10-01' });
+    const period = b.period().number;
+    const low = { kind: 'low-bucket', bucket: 'wants', period, amount: 0, startedWith: 30_000 } as const;
+    const empty = { kind: 'empty-bucket', bucket: 'wants', period, amount: 0 } as const;
+    const now = (): AlertWorld => world(b, '2026-10-02T16:00:00Z');
+    expect([stillTrueNow(now(), NO_ALERTS, low), stillTrueNow(now(), NO_ALERTS, empty)]).toEqual([false, false]);
+    // 25,000 of 30,000 spent: 5,000 left, under the level of 6,000 (20%).
+    b.receive(purchase('p1', '2026-10-02', 25_000, 'MADE UP SHOP'));
+    b.sort('p1', { to: 'wants' }, '2026-10-02');
+    expect([stillTrueNow(now(), NO_ALERTS, low), stillTrueNow(now(), NO_ALERTS, empty)]).toEqual([true, false]);
+    // A pay period that ended is no longer true, whatever the bucket holds now.
+    expect(stillTrueNow(now(), NO_ALERTS, { ...low, period: period - 1 })).toBe(false);
+    // All of it spent: empty, and no longer low.
+    b.receive(purchase('p2', '2026-10-02', 5_000, 'MADE UP SHOP'));
+    b.sort('p2', { to: 'wants' }, '2026-10-02');
+    expect([stillTrueNow(now(), NO_ALERTS, low), stillTrueNow(now(), NO_ALERTS, empty)]).toEqual([false, true]);
+    expect(stillTrueNow(now(), NO_ALERTS, { ...empty, bucket: 'needs' })).toBe(false);
+  });
+
+  it('10.9 A40 a lasting alert: still on, the same time it started', () => {
+    const b = book({ date: '2026-10-01' });
+    const on = (times: number): AlertLedger => ({ ...NO_ALERTS, lasting: { ...NO_ALERTS.lasting, 'totals-mismatch': { on: true, times, lastDay: null, about: null }, 'bank-not-read': { on: true, times, lastDay: null, about: null } } });
+    const w = world(b, '2026-10-02T16:00:00Z');
+    const mismatch = (time: number) => ({ kind: 'totals-mismatch', time, difference: 100, day: '2026-10-02', again: false }) as const;
+    const notRead = (time: number) => ({ kind: 'bank-not-read', time, hours: 24, lastRead: '2026-10-01T16:00:00.000Z', lastReadLocal: '2026-10-01T12:00:00-04:00' }) as const;
+    expect([stillTrueNow(w, on(2), mismatch(2)), stillTrueNow(w, on(2), mismatch(1)), stillTrueNow(w, NO_ALERTS, mismatch(1))]).toEqual([true, false, false]);
+    expect([stillTrueNow(w, on(1), notRead(1)), stillTrueNow(w, on(2), notRead(1)), stillTrueNow(w, NO_ALERTS, { kind: 'bank-login', time: 1, day: '2026-10-02', again: true })]).toEqual([true, false, false]);
+    // A take-back happened: always true.
+    expect(stillTrueNow(w, NO_ALERTS, { kind: 'bank-took-back', id: 'x', date: '2026-10-02', description: 'MADE UP CAFE', amount: 100 })).toBe(true);
+  });
+
+  it('10.9 A40 a card: a reminder while it is due and not paid enough, the overdue alert while it is overdue', () => {
+    const statement: CardStatement = { card: 'everyday-card', closingDate: '2026-09-28', dueDate: '2026-10-23', statementBalance: 45_025, minimumPayment: 3_500 };
+    const reminder = { kind: 'card-reminder', card: 'everyday-card', dueDate: '2026-10-23', daysBefore: 7, minimumPayment: 3_500, statementBalance: 45_025 } as const;
+    const overdue = { kind: 'card-overdue', card: 'everyday-card', dueDate: '2026-10-23', minimumPayment: 3_500, date: '2026-10-24' } as const;
+    const b = book({ date: '2026-10-14' });
+    // Oct 16 at noon: due (the first reminder day), not overdue.
+    const due = world(b, '2026-10-16T16:00:00Z', { statements: [statement] });
+    expect([stillTrueNow(due, NO_ALERTS, reminder), stillTrueNow(due, NO_ALERTS, overdue)]).toEqual([true, false]);
+    // Without the statement, nothing about the card is true.
+    expect(stillTrueNow(world(b, '2026-10-16T16:00:00Z'), NO_ALERTS, reminder)).toBe(false);
+    // Oct 24: overdue, and the reminder no longer.
+    const late = world(b, '2026-10-24T16:00:00Z', { statements: [statement] });
+    expect([stillTrueNow(late, NO_ALERTS, reminder), stillTrueNow(late, NO_ALERTS, overdue)]).toEqual([false, true]);
+    // The full statement balance paid on Oct 17: neither.
+    b.receive(transfer('pay', '2026-10-17', 45_025, 'checking', 'everyday-card'));
+    const paid = world(b, '2026-10-18T16:00:00Z', { statements: [statement] });
+    expect([stillTrueNow(paid, NO_ALERTS, reminder), stillTrueNow(world(b, '2026-10-24T16:00:00Z', { statements: [statement] }), NO_ALERTS, overdue)]).toEqual([false, false]);
   });
 });

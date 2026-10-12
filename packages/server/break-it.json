@@ -3134,5 +3134,180 @@
     "find": "return `/buckets/${f.bucket}`;",
     "replace": "return '/buckets';",
     "why": "[push] B201 a tap on a low bucket opens Buckets, not the bucket's list"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/sending.ts",
+    "find": "return `card ${f.card}`;",
+    "replace": "return f.kind;",
+    "why": "[a40] 10.9 the two cards are one kind"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/sending.ts",
+    "find": "return `${f.kind} ${f.bucket}`;",
+    "replace": "return f.kind;",
+    "why": "[a40] 10.9 needs and wants are one kind"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/sending.ts",
+    "find": "return `bank-took-back ${f.id}`;",
+    "replace": "return f.kind;",
+    "why": "[a40] 10.9 only the newest take-back goes"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/sending.ts",
+    "find": "if (row.tries > 0 && row.facts !== null && !stillTrue(row.facts)) dropped.add(kind);",
+    "replace": "if (row.facts !== null && !stillTrue(row.facts)) dropped.add(kind);",
+    "why": "[a40] B188 one only quiet hours held is dropped when no longer true"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/sending.ts",
+    "find": "else if (newest.get(kind) === row || row.tries === 0) go.push(row.key);",
+    "replace": "else if (newest.get(kind) === row) go.push(row.key);",
+    "why": "[a40] B188 an older one only quiet hours held waits behind a newer one"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/sending.ts",
+    "find": "else if (newest.get(kind) === row || row.tries === 0) go.push(row.key);",
+    "replace": "else if (newest.has(kind)) go.push(row.key);",
+    "why": "[a40] 10.9 every one that waited for the phone goes"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/sending.ts",
+    "find": "const rows = unsent.toSorted(inOrder);",
+    "replace": "const rows = [...unsent];",
+    "why": "[a40] 10.9 the newest is the last handed in, not the last due"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/sending.ts",
+    "find": ".filter((row) => row.key !== sent.key && row.tries > 0 && inOrder(row, sent) < 0",
+    "replace": ".filter((row) => row.key !== sent.key && inOrder(row, sent) < 0",
+    "why": "[a40] B188 one only quiet hours held is replaced too"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/sending.ts",
+    "find": ".filter((row) => row.key !== sent.key && row.tries > 0 && inOrder(row, sent) < 0",
+    "replace": ".filter((row) => row.key !== sent.key && row.tries > 0 && inOrder(row, sent) !== 0",
+    "why": "[a40] 10.9 a newer one is replaced by an older one"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    if (plan.notTrue.length > 0) markNotSent(this.#db, plan.notTrue, 'not-true', now.toISOString());\n",
+    "replace": "",
+    "why": "[a40] 10.9 what is no longer true is never marked"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": ".filter((row) => go.has(row.key) && row.nextTryAt <= now.toISOString())",
+    "replace": ".filter((row) => row.nextTryAt <= now.toISOString())",
+    "why": "[a40] 10.9 what waits behind a newer one is tried too"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      if (row !== undefined) markNotSent(this.#db, replacedBy(rows, row), 'newer', at);\n",
+    "replace": "",
+    "why": "[a40] 10.9 the ones a newer one replaced stay waiting"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "const tries = rows.filter((row) => go.has(row.key)).map(",
+    "replace": "const tries = rows.map(",
+    "why": "[a40] 10.9 the timer wakes for what waits behind a newer one"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "notSent: row.notSent ?? (held.has(row.key) ? 'held' : null),",
+    "replace": "notSent: row.notSent,",
+    "why": "[a40] B183 the list does not say one waits behind a newer one"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/outbox.ts",
+    "find": "COUNT(*) - COUNT(sent_at) - COUNT(not_sent) AS notSent",
+    "replace": "COUNT(*) - COUNT(sent_at) AS notSent",
+    "why": "[a40] Settings counts alerts never sent as not sent yet"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/outbox.ts",
+    "find": "FROM outbox WHERE sent_at IS NULL AND not_sent IS NULL ORDER BY due_at, created_at, key",
+    "replace": "FROM outbox WHERE sent_at IS NULL ORDER BY due_at, created_at, key",
+    "why": "[a40] 10.9 one never sent is tried again"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/outbox.ts",
+    "find": "for (const key of keys) mark.run(why, at, key);",
+    "replace": "for (const key of keys) mark.run('newer', at, key);",
+    "why": "[a40] every one never sent says a newer one went"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "      return book.reviewItems().length > 0;\n",
+    "replace": "      return true;\n",
+    "why": "[a40] 10.9 the daily review is still true with nothing waiting"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "      if (f.period !== book.period().number) return false;\n",
+    "replace": "",
+    "why": "[a40] 10.9 a low or empty alert of a pay period that ended is still true"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "      return level === (f.kind === 'low-bucket' ? 'low' : 'empty');",
+    "replace": "      return true;",
+    "why": "[a40] 10.9 a bucket no longer low or empty is still true"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "      return state.on && state.times === f.time;",
+    "replace": "      return state.on;",
+    "why": "[a40] 10.9 an older time of a lasting alert is still true"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "      return stillTrue(world, todayIn(world.zone, world.now), f);",
+    "replace": "      return true;",
+    "why": "[a40] 10.9 a card paid meanwhile is still true"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/auth.ts",
+    "find": "    this.#loggedIn?.(token, device, pushAddressOf(push));\n",
+    "replace": "",
+    "why": "[a41] 10.11 a new login takes nothing over"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/http.ts",
+    "find": "auth.login(field(body, 'response'), device, field(body, 'push'))",
+    "replace": "auth.login(field(body, 'response'), device)",
+    "why": "[a41] 10.11 the passkey login drops the push address"
+  },
+  {
+    "section": "login",
+    "file": "packages/server/src/auth/http.ts",
+    "find": "auth.codePasskey(field(body, 'code'), field(body, 'response'), device, field(body, 'push'))",
+    "replace": "auth.codePasskey(field(body, 'code'), field(body, 'response'), device)",
+    "why": "[a41] 10.11 a login with a code drops the push address"
   }
 ]

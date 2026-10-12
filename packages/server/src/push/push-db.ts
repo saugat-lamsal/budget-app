@@ -53,11 +53,7 @@ export function saveSubscription(db: Db, token: string, s: Omit<StoredSubscripti
 // login has that address (turned off there, logged out there, or not known).
 export function moveSubscription(db: Db, token: string, endpoint: string, device: string): boolean {
   const sessionHash = hashOf(token);
-  return db.transaction(() => {
-    const moved = statement(db, 'UPDATE push_subscriptions SET session_hash = ?, device = ? WHERE endpoint = ? AND session_hash <> ?').run(sessionHash, device, endpoint, sessionHash).changes > 0;
-    if (moved) statement(db, 'DELETE FROM push_stopped WHERE session_hash = ?').run(sessionHash);
-    return moved;
-  })();
+  return statement(db, 'UPDATE push_subscriptions SET session_hash = ?, device = ? WHERE endpoint = ? AND session_hash <> ?').run(sessionHash, device, endpoint, sessionHash).changes > 0;
 }
 
 export function subscriptionOf(db: Db, token: string): StoredSubscription | null {

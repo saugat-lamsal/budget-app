@@ -306,6 +306,15 @@ describe('10.11 A41 notifications after a phone\'s login ends', () => {
     expect(await pushView(r, await logInWith(r, key, { not: 'an address' } as never))).toMatchObject({ thisDevice: { on: false } });
   });
 
+  it('10.11 A41 a new passkey made with a one-time code on that phone (the old one lost) takes them over too', async () => {
+    const r = await realServer();
+    const phone = r.service.newPhone();
+    const first = await logInWith(r, new SoftPasskey(), null, true);
+    await turnOn(r, first, phone);
+    const again = await logInWith(r, new SoftPasskey(), phone.endpoint, true);
+    expect(await pushView(r, again)).toMatchObject({ thisDevice: { on: true, endpoint: phone.endpoint }, devices: 1 });
+  });
+
   it('10.11 A41 a phone logged in twice (the login still good) moves them to the newest login, once', async () => {
     const r = await realServer();
     const phone = r.service.newPhone();
