@@ -495,10 +495,27 @@ export function useEngine(engine: BrowserType): { browser: () => Browser; base: 
   };
 }
 
+// What a phone() context sets for its pages that a page can set for itself:
+// the colour scheme and reduced motion. A test that moves one page from screen
+// to screen (showLive in live.ts says why) sets them before each move; the next
+// address, loaded afresh, then shows as a new page with those options would
+// (the screens read both from CSS only).
+export async function emulatePhone(page: Page, options: Pick<PhoneOptions, 'colorScheme' | 'reducedMotion'> = {}): Promise<void> {
+  await page.emulateMedia({ colorScheme: options.colorScheme ?? 'light', reducedMotion: options.reducedMotion ?? 'no-preference' });
+}
+
 // Opens Home with one of the demo's made-up lives.
 export async function openScenario(context: BrowserContext, base: string, scenario: string, path = '/home'): Promise<Page> {
   const page = await context.newPage();
   await watchPage(page);
+  await showScenario(page, base, scenario, path);
+  return page;
+}
+
+// The same in a page already open, moved there instead of a new page opened
+// (showLive in live.ts says why): the life starts over, and the address is a
+// whole new document, as in a new page.
+export async function showScenario(page: Page, base: string, scenario: string, path = '/home'): Promise<void> {
   await page.goto(`${base}/demo/${scenario}`);
   if (path !== '/home') {
     // Home loads its numbers first. Leave only once they are in: WebKit on
@@ -512,7 +529,6 @@ export async function openScenario(context: BrowserContext, base: string, scenar
   // Home's numbers are asked for on every screen: the page is handed over only
   // once that is answered too, so a test that closes it cancels nothing.
   await untilAnswered(page);
-  return page;
 }
 
 // Reads an amount off the screen as cents, the way a person reads it.

@@ -449,9 +449,9 @@ It waits too.
 
 7:00 AM. Quiet hours end. Both go, the oldest first:
   "The bank took something back: MADE UP CAFE, taken back Fri, Oct 2. It
-  is undone in your buckets too." It says "Due Fri, Oct 2, 9:55 PM.":
-  another day, so the day too.
-  "Log in to your bank again." It says "Due 3:10 AM.": the same day.
+  is undone in your buckets too." It says "Was due Fri, Oct 2, 9:55
+  PM.": another day, so the day too.
+  "Log in to your bank again." It says "Was due 3:10 AM.": the same day.
 On the lock screen the cafe has no amount. The list in the app says
 "MADE UP CAFE, $11.50, taken back Fri, Oct 2."
 The phone was tried 3 times for the cafe before 10:00 PM, and at 7:00 AM
@@ -487,19 +487,20 @@ What came due while it was down:
 
 Tue Oct 6, 7:30 AM. The server starts again. Of the three daily reviews,
 only the newest, Oct 5's. 1 thing still waits, so it is still true:
-"Time to review: 1 thing is waiting for you to sort." It says "Due Mon,
-Oct 5, 8:00 PM."
+"Time to review: 1 thing is waiting for you to sort." It says "Was due
+Mon, Oct 5, 8:00 PM."
 Of the card, its newest reminder, Oct 3's. Oct 10 is now 4 days away:
 after the first reminder day (7 days before) and before the due date,
-with nothing paid, so it is still true. "Everyday card payment due in 7
+with nothing paid, so it is still true. It counts the days from the day
+it is sent, Tue Oct 6, not from Oct 3: "Everyday card payment due in 4
 days. Due Sat, Oct 10." on the lock screen; the list in the app adds
-"Statement balance $450.00, minimum $35.00." It says "Due Sat, Oct 3,
-8:00 PM."
+"Statement balance $450.00, minimum $35.00." It says "Was due Sat, Oct
+3, 8:00 PM."
 The bank not read: "The bank has not been read for 24 hours. Last read
-Sat, Oct 3 at 6:00 PM." It says "Due Sun, Oct 4, 6:00 PM."
+Sat, Oct 3 at 6:00 PM." It says "Was due Sun, Oct 4, 6:00 PM."
 3 alerts go at 7:30 AM, not 5.
 8:00 AM. The bank is read again. The not-read alert is cleared: it comes
 again only if the bank goes 24 hours unread again.
 
 Times: review due 8:00 PM EDT | review sent 7:30 AM EDT | reminder due 8:00 PM EDT | reminder sent 7:30 AM EDT | not read due 6:00 PM EDT | not read sent 7:30 AM EDT
-Check: shop 12.00 | statement balance 450.00 | minimum 35.00 | alerts sent 3.00
+Check: shop 12.00 | statement balance 450.00 | minimum 35.00 | alerts sent 3.00 | reminder days left when sent 4.00

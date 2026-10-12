@@ -258,6 +258,30 @@ const STEPS: readonly string[] = [
   -- it is sent with the words it was kept with.
   ALTER TABLE outbox ADD COLUMN facts TEXT;
   `,
+  `
+  -- Step 7 (Phase 5, the phone): each device's push subscription, made when
+  -- he turns notifications on there, and tied to that device's login: logging
+  -- out there takes it away with the login. The endpoint is the address at
+  -- the device's push service; p256dh and auth are the device's public key
+  -- and secret, which each alert is encrypted for. Instants are ISO, UTC.
+  CREATE TABLE push_subscriptions (
+    session_hash TEXT PRIMARY KEY REFERENCES sessions (token_hash) ON DELETE CASCADE,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    device TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+
+  -- A device whose push service said its subscription is gone (it was
+  -- removed): when, and why, so that device's Notifications card can say so.
+  CREATE TABLE push_stopped (
+    session_hash TEXT PRIMARY KEY REFERENCES sessions (token_hash) ON DELETE CASCADE,
+    at TEXT NOT NULL,
+    device TEXT NOT NULL,
+    why TEXT NOT NULL
+  );
+  `,
 ];
 
 // Steps that make a table again, which SQLite does with foreign keys off

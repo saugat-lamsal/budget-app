@@ -9,5 +9,7 @@
     "moduleResolution": "Bundler",
     "jsx": "react-jsx"
   },
-  "include": ["src"]
+  "include": ["src"],
+  // The service worker has its own (src/sw/tsconfig.json).
+  "exclude": ["src/sw"]
 }

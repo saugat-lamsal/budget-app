@@ -1,0 +1,13 @@
+{
+  // The service worker (sw.ts): a worker, not a page, so the WebWorker lib
+  // and not the DOM's. What it imports (push/rules.ts, app/routes.ts) is
+  // checked here as worker code too.
+  "extends": "../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "WebWorker"],
+    "types": [],
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
+  },
+  "include": ["."]
+}

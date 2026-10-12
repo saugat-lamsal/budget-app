@@ -243,3 +243,10 @@ export const LOGIN_LINES: Readonly<Record<'logged-in' | 'logged-out' | 'passkey-
   'logged-out': 'Logged out',
   'passkey-added': 'Passkey added',
 };
+
+// Phase 5: the change log's lines for notifications on a device.
+export const NOTIFICATION_LINES: Readonly<Record<'notifications-on' | 'notifications-off' | 'notifications-stopped', string>> = {
+  'notifications-on': 'Notifications turned on',
+  'notifications-off': 'Notifications turned off',
+  'notifications-stopped': 'Notifications stopped',
+};

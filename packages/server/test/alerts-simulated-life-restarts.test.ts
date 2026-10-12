@@ -36,4 +36,27 @@ describe('Phase 5 the simulated you through the real server: every alert sent on
     },
     1_800_000,
   );
+
+  // Found by the long run (Oct 12, seeds 1033 and 1041): a setup day with
+  // little starting money leaves needs below zero and wants at zero, so both
+  // empty alerts are due the moment tracking starts. The simulated life
+  // expected them; this way of living it had left setup day's alerts out.
+  it('10.1 10.2 setup day leaves needs below zero and wants at zero: both empty alerts, once, the moment the server first looks: seed 1033', async () => {
+    const o = await throughTheServer(1033, 0.05, 'restarts');
+    expect(o.days).toBe(18);
+    expect(o.alerts).toBeGreaterThanOrEqual(2);
+  }, 600_000);
+
+  // Found by the long run too (seed 1034): the bank cannot be read on the day
+  // the clocks go forward (Mar 14, 2027, a 23-hour day), so the last good read,
+  // 9:00 PM the night before, is 24 hours old at 10:00 PM, in quiet hours. The
+  // server keeps it, stops for the night at 11:00 PM, and sends it the moment
+  // it is back at 7:30 AM (10.7, 10.8).
+  it('10.7 10.8 not read for 24 hours, due in quiet hours on the night the clocks go forward, with the server stopped when they end: sent the moment it is back: seed 1034', async () => {
+    const o = await throughTheServer(1034, 0.14, 'restarts');
+    expect(o.days).toBe(51);
+    expect(o.notRead).toBeGreaterThanOrEqual(1);
+    expect(o.quietHeld).toBeGreaterThanOrEqual(1);
+    expect([...o.offsets].toSorted()).toEqual(['-04:00', '-05:00']);
+  }, 600_000);
 });

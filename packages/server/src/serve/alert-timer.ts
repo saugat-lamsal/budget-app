@@ -27,20 +27,22 @@ export interface OutgoingAlert {
   // When it came due, as an instant (ISO, UTC).
   readonly dueAt: string;
   // Sent later than the minute it came due, when that was, on his clock
-  // ("Due 3:10 AM."; 10.8, B185); null otherwise.
+  // ("Was due 3:10 AM."; 10.8, B185); null otherwise.
   readonly due: string | null;
+  // The screen a tap on it opens (Phase 5, the phone).
+  readonly screen: string;
 }
 
-// The plug that sends an alert to the phone (web push comes later; tests use
-// a fake). It resolves once the alert is handed over, and rejects when it
+// The plug that sends an alert to the phone: web push (push/push-sender.ts)
+// when the server has push keys; tests use a fake or the made-up push service. It resolves once the alert is handed over, and rejects when it
 // could not be. It must show an id it has shown before only once: a repeat
 // is a try the server could not mark as done.
 export interface AlertSender {
   send(alert: OutgoingAlert): Promise<void>;
 }
 
-// npm run serve's plug until the phone's (web push) comes: each alert is
-// written to the server's own window, and that counts as sent.
+// npm run serve's plug without push keys: each alert is written to the
+// server's own window, and that counts as sent.
 export function logSender(log: Log): AlertSender {
   return {
     send: (alert) => {

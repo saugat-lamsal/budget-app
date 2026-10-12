@@ -2543,8 +2543,8 @@
   {
     "section": "alerts",
     "file": "packages/server/src/alerts/alerts.ts",
-    "find": ": `in ${f.daysBefore} days`;",
-    "replace": ": `in ${f.daysBefore + 1} days`;",
+    "find": "`in ${left} days`",
+    "replace": "`in ${left + 1} days`",
     "why": "[alerts] 9.1 a reminder says the wrong number of days"
   },
   {
@@ -2809,15 +2809,15 @@
   {
     "section": "outbox",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "...wordsToSend(row, amounts),",
-    "replace": "...wordsToSend(row, true),",
+    "find": "...wordsToSend(row, amounts, sentOn),",
+    "replace": "...wordsToSend(row, true, sentOn),",
     "why": "[a39] 10.10 the lock screen gets the amounts whatever the setting"
   },
   {
     "section": "outbox",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "due: dueWords(zone, row.dueAt, now) }));",
-    "replace": "due: null }));",
+    "find": "due: dueWords(zone, row.dueAt, now), screen:",
+    "replace": "due: null, screen:",
     "why": "[b185] 10.8 an alert sent late does not say when it was due"
   },
   {
@@ -2865,8 +2865,8 @@
   {
     "section": "outbox",
     "file": "packages/server/src/alerts/sending.ts",
-    "find": "if (amounts || kept.facts === null) return { title: kept.title, body: kept.body };",
-    "replace": "if (!amounts || kept.facts === null) return { title: kept.title, body: kept.body };",
+    "find": "return alertWords(kept.facts, { amounts, sentOn });",
+    "replace": "return alertWords(kept.facts, { amounts: !amounts, sentOn });",
     "why": "[a39] 10.10 the setting works the wrong way round"
   },
   {
@@ -2889,5 +2889,250 @@
     "find": "amountsOnLockScreen: (v) => (typeof v === 'boolean' ? v : undefined),",
     "replace": "amountsOnLockScreen: (v) => v as boolean,",
     "why": "[a39] section 2 \"on\" as text is taken for amounts on the lock screen"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "const left = options.sentOn === undefined ? f.daysBefore : daysBetween(options.sentOn, f.dueDate);",
+    "replace": "const left = f.daysBefore;",
+    "why": "[b186] 9.7 a reminder sent late counts the days from the day it was for"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "`was due ${left === -1 ? 'yesterday' : `${-left} days ago`}`",
+    "replace": "`was due ${left === -1 ? 'yesterday' : `${left} days ago`}`",
+    "why": "[b186] 9.7 a reminder sent days after the due date says a negative number of days"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "const when = left < 0 ?",
+    "replace": "const when = left <= 0 ?",
+    "why": "[b186] 9.7 a reminder sent on the due day says it was due"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "...wordsToSend(row, amounts, sentOn),",
+    "replace": "...wordsToSend(row, amounts, todayIn(zone, new Date(row.dueAt))),",
+    "why": "[b186] 9.7 the server counts a late reminder's days from the day it was due"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/sending.ts",
+    "find": "return `Was due ${day}${clockWords(due)}.`;",
+    "replace": "return `Due ${day}${clockWords(due)}.`;",
+    "why": "[b185] 10.8 an alert sent late says \"Due\" again"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-services.ts",
+    "find": "return env['VITEST'] === undefined ? 'push-services' : 'this-computer';",
+    "replace": "return 'push-services';",
+    "why": "[push] under the tests the server may send to a real push service"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-services.ts",
+    "find": "if (url.protocol !== 'https:' || url.username !== '' || url.password !== '')",
+    "replace": "if (url.username !== '' || url.password !== '')",
+    "why": "[push] a push service address on plain http is taken"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-services.ts",
+    "find": "/^([a-z0-9-]+\\.)*push\\.apple\\.com$/",
+    "replace": "/push\\.apple\\.com/",
+    "why": "[push] B195 a host that only has Apple's name in it is taken"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-services.ts",
+    "find": "const allowed = lock === 'this-computer' ? THIS_COMPUTER.test(host) :",
+    "replace": "const allowed = lock === 'this-computer' ? true :",
+    "why": "[push] under the tests any host is taken"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-sender.ts",
+    "find": "if (status === 404 || status === 410)",
+    "replace": "if (status === 410)",
+    "why": "[push] B198 a subscription its push service no longer knows (404) is tried for ever"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-sender.ts",
+    "find": "if (subscriptions.length === 0) throw new Error('notifications are off on every device');",
+    "replace": "if (subscriptions.length === 0) return;",
+    "why": "[push] B197 an alert with no phone to go to is marked sent"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-sender.ts",
+    "find": "if (outcome.failed.length > 0) throw",
+    "replace": "if (outcome.failed.length > 1) throw",
+    "why": "[push] B197 one phone failing while another took it is marked sent"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-sender.ts",
+    "find": "    if (outcome.delivered.length === 0) throw new Error('every device stopped taking notifications');\n",
+    "replace": "",
+    "why": "[push] an alert every phone's push service turned away is marked sent"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-sender.ts",
+    "find": "TTL: PUSH_TTL_SECONDS,",
+    "replace": "TTL: 0,",
+    "why": "[push] B196 the push service is told to keep nothing for a phone that is off"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-sender.ts",
+    "find": "topic: topicOf(payload.id),",
+    "replace": "topic: topicOf('alert'),",
+    "why": "[push] B196 every alert has the same topic, so one waiting replaces another"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-sender.ts",
+    "find": "const body = JSON.stringify(payload);",
+    "replace": "const body = JSON.stringify({ ...payload, due: null });",
+    "why": "[push] B185 a late alert reaches the phone without when it was due"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-sender.ts",
+    "find": "        const problem = endpointProblem(s.endpoint);\n        if (problem !== null) return { s, outcome: 'failed', why: problem };\n",
+    "replace": "",
+    "why": "[push] an address in the database is sent to without the check"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-db.ts",
+    "find": "DELETE FROM push_subscriptions WHERE session_hash = ? OR endpoint = ?').run(sessionHash, s.endpoint);",
+    "replace": "DELETE FROM push_subscriptions WHERE session_hash = ?').run(sessionHash);",
+    "why": "[push] A41 the same phone turned on under a new login is kept twice"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-db.ts",
+    "find": "run(s.sessionHash, s.endpoint).changes > 0;",
+    "replace": "run(s.sessionHash, s.endpoint).changes >= 0;",
+    "why": "[push] B198 a phone already taken off is noted as stopped again"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-desk.ts",
+    "find": "    const problem = endpointProblem(request.endpoint);\n    if (problem !== null) return { ok: false, why: problem };\n",
+    "replace": "",
+    "why": "[push] a made-up address a page sends is kept"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-desk.ts",
+    "find": "if (removeSubscription(db, asking.token) !== null) this.#line(",
+    "replace": "removeSubscription(db, asking.token); this.#line(",
+    "why": "[push] B199 turning off where they were off already logs a line"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-desk.ts",
+    "find": "devices: allSubscriptions(db).length,",
+    "replace": "devices: allSubscriptions(db).length + 1,",
+    "why": "[push] B199 the card is told of one device too many"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-desk.ts",
+    "find": "if (subscriptionGone(db, s, this.#input.now().toISOString(), why)) this.#line(",
+    "replace": "if (subscriptionGone(db, s, this.#input.now().toISOString(), why) && false) this.#line(",
+    "why": "[push] B198 a phone its push service stopped is not in the change log"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-desk.ts",
+    "find": "if (mine === null) return { ok: false, why: 'Notifications are off on this phone. Turn them on first.' };",
+    "replace": "if (mine === null) return { ok: true };",
+    "why": "[push] B200 a test alert to a phone with them off says it went"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-desk.ts",
+    "find": "due: null, screen: '/settings' });",
+    "replace": "due: null, screen: '/home' });",
+    "why": "[push] B200 a tap on the test alert opens Home"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-keys.ts",
+    "find": "privateKey: { value: keys.privateKey, enumerable: false },",
+    "replace": "privateKey: { value: keys.privateKey, enumerable: true },",
+    "why": "[push] the private key shows when the keys are printed"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-keys.ts",
+    "find": "toJSON: { value: () => ({ publicKey: keys.publicKey, subject: keys.subject }), enumerable: false },",
+    "replace": "toJSON: { value: () => ({ ...keys }), enumerable: false },",
+    "why": "[push] the private key is in the keys written as JSON"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/push/push-keys.ts",
+    "find": "if (bytesOf(privateKey) !== 32)",
+    "replace": "if (bytesOf(privateKey) < 0)",
+    "why": "[push] a private key of the wrong length is taken"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/db/database.ts",
+    "find": "CREATE TABLE push_subscriptions (\n    session_hash TEXT PRIMARY KEY REFERENCES sessions (token_hash) ON DELETE CASCADE,",
+    "replace": "CREATE TABLE push_subscriptions (\n    session_hash TEXT PRIMARY KEY,",
+    "why": "[push] B199 logging out on a phone leaves its notifications on"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/http/server.ts",
+    "find": "...Object.values(PUSH_PATHS).map((path): Route => ({ method: 'POST', path, login: true })),",
+    "replace": "...Object.values(PUSH_PATHS).map((path): Route => ({ method: 'POST', path, login: false })),",
+    "why": "[push] the Notifications card's addresses need no login"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/http/server.ts",
+    "find": "Object.keys(value).sort().join() !== 'endpoint,keys') return null;",
+    "replace": "Object.keys(value).length < 2) return null;",
+    "why": "[push] a subscription with more in it is taken"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/http/server.ts",
+    "find": "if (pushAction === 'on' ? subscription === null : !isEmptyObject(sent)) {",
+    "replace": "if (pushAction === 'on' && subscription === null) {",
+    "why": "[push] off and the test alert take a body with something in it"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "screen: alertScreen(row.facts) }));",
+    "replace": "screen: '/home' }));",
+    "why": "[push] B201 every alert opens Home"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "    case 'daily-review':\n      return '/review';",
+    "replace": "    case 'daily-review':\n      return '/home';",
+    "why": "[push] B201 a tap on the daily review opens Home"
+  },
+  {
+    "section": "push",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "return `/buckets/${f.bucket}`;",
+    "replace": "return '/buckets';",
+    "why": "[push] B201 a tap on a low bucket opens Buckets, not the bucket's list"
   }
 ]

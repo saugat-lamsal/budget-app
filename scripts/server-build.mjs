@@ -21,7 +21,8 @@ export async function buildServer() {
     configFile: false,
     root: path('packages/server'),
     logLevel: 'warn',
-    ssr: { noExternal: true, external: ['better-sqlite3'] },
+    // The database driver (compiled for this computer) and web push (loads its parts at run time) come from node_modules.
+    ssr: { noExternal: true, external: ['better-sqlite3', 'web-push'] },
     build: {
       ssr: true,
       outDir: path('packages/server/dist/serve'),

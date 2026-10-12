@@ -1,8 +1,8 @@
 import type { BrowserContext, Page } from 'playwright';
 import { describe, expect, it } from 'vitest';
 import { addStyle, axeViolations, tappable } from './design-helpers.js';
-import { ENGINES, IPHONE, IPHONE_INSETS, phone, untilAnswered, untilQuiet, useEngine, watchPage } from './harness.js';
-import { openSettings } from './settings-screens.js';
+import { ENGINES, IPHONE, IPHONE_INSETS, emulatePhone, phone, untilAnswered, untilQuiet, useEngine, watchPage } from './harness.js';
+import { openSettings, showSettings } from './settings-screens.js';
 
 // The design rules (CLAUDE.md) for Settings and its sheets, in the browser:
 // light and dark, readable contrast, 44-point tap targets, the notch and the
@@ -126,17 +126,18 @@ function sheetsIn(part: Part | undefined): typeof SHEETS {
   return SHEETS;
 }
 
+// One page, moved from state to state and sheet to sheet, the life started
+// over each time (showLive in live.ts says why).
 async function each(context: BrowserContext, base: string, check: (page: Page, where: string) => Promise<void>, part?: Part): Promise<void> {
+  const page = await context.newPage();
   for (const life of part === undefined || part === 'states' ? STATES : []) {
-    const page = await openSettings(context, base, life);
+    await showSettings(page, base, life);
     await check(page, life);
-    await page.close();
   }
   for (const [name, life, open] of sheetsIn(part)) {
-    const page = await openSettings(context, base, life);
+    await showSettings(page, base, life);
     await open(page);
     await check(page, `sheet: ${name}`);
-    await page.close();
   }
 }
 
@@ -179,8 +180,9 @@ describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
 
   it('nothing sits under the notch or the home bar, and the end of the screen scrolls clear of the tabs', async () => {
     const context = await browser().newContext(phone({ bypassCSP: true }));
+    const page = await context.newPage();
     for (const life of ['settings-busy', 'not-set-up', 'mismatch'] as const) {
-      const page = await openSettings(context, base(), life);
+      await showSettings(page, base(), life);
       await addStyle(page, `:root { --safe-top: ${IPHONE_INSETS.top}px !important; --safe-bottom: ${IPHONE_INSETS.bottom}px !important; }`);
       const first = await page.locator('main > :not(.sr-only):not(dialog)').first().boundingBox();
       expect(first!.y, life).toBeGreaterThanOrEqual(IPHONE_INSETS.top);
@@ -191,10 +193,9 @@ describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
       const bar = await page.locator('.tabbar').boundingBox();
       const last = await page.locator('main > :not(.sr-only):not(dialog)').last().boundingBox();
       expect(last!.y + last!.height, life).toBeLessThanOrEqual(bar!.y);
-      await page.close();
     }
     // A sheet leaves room for the home bar too: its last control ends above it.
-    const page = await openSettings(context, base(), 'settings-first-sync');
+    await showSettings(page, base(), 'settings-first-sync');
     await addStyle(page, `:root { --safe-top: ${IPHONE_INSETS.top}px !important; --safe-bottom: ${IPHONE_INSETS.bottom}px !important; }`);
     await page.getByTestId('row-paycheck-rule').click();
     await page.getByTestId('field-paycheck-rule').fill('MADE UP EMPLOYER PAYROLL');
@@ -211,8 +212,9 @@ describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
   it('every arrow stays on its row, at the right edge, never on a line of its own', async () => {
     const context = await browser().newContext(phone());
     const off: string[] = [];
+    const page = await context.newPage();
     for (const life of ['settings-busy', 'normal', 'settings-first-sync'] as const) {
-      const page = await openSettings(context, base(), life);
+      await showSettings(page, base(), life);
       const rows = await page.locator('main .row').evaluateAll((els) =>
         els.flatMap((row) => {
           const chevron = row.querySelector('.row__chevron');
@@ -224,29 +226,30 @@ describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
       );
       expect(rows.length, life).toBeGreaterThan(10);
       for (const r of rows) if (r.left < r.rowRight - 64) off.push(`${life} ${r.what}: the arrow is at ${Math.round(r.left)}, the row ends at ${Math.round(r.rowRight)}`);
-      await page.close();
     }
     await context.close();
     expect(off).toEqual([]);
   });
 
   it('with reduced motion on, the sheet does not slide', async () => {
-    const moving = await openSettings(await browser().newContext(phone()), base(), 'normal');
-    await moving.getByTestId('row-split').click();
-    expect(await moving.getByTestId('settings-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('sheet-in');
-    await moving.context().close();
-    const still = await openSettings(await browser().newContext(phone({ reducedMotion: 'reduce' })), base(), 'normal');
-    await still.getByTestId('row-split').click();
-    expect(await still.getByTestId('settings-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
-    const durations = await still.locator('.row, .button, .field__input').evaluateAll((els) => els.map((e) => getComputedStyle(e).transitionDuration));
+    const page = await openSettings(await browser().newContext(phone()), base(), 'normal');
+    await page.getByTestId('row-split').click();
+    expect(await page.getByTestId('settings-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('sheet-in');
+    // The same page with motion reduced, the life started over.
+    await emulatePhone(page, { reducedMotion: 'reduce' });
+    await showSettings(page, base(), 'normal');
+    await page.getByTestId('row-split').click();
+    expect(await page.getByTestId('settings-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
+    const durations = await page.locator('.row, .button, .field__input').evaluateAll((els) => els.map((e) => getComputedStyle(e).transitionDuration));
     expect(durations.every((d) => d.split(',').every((part) => Number.parseFloat(part) === 0))).toBe(true);
-    await still.context().close();
+    await page.context().close();
   });
 
   it("the text grows with the phone's text size, and Settings still fits, sheets too", async () => {
     const context = await browser().newContext(phone({ bypassCSP: true }));
+    const page = await context.newPage();
     for (const life of ['settings-busy', 'big', 'not-set-up'] as const) {
-      const page = await openSettings(context, base(), life);
+      await showSettings(page, base(), life);
       const before = await page.locator('.row__title, .state__title').first().evaluate((e) => Number.parseFloat(getComputedStyle(e).fontSize));
       await addStyle(page, 'html { font-size: 36px !important; }');
       const after = await page.locator('.row__title, .state__title').first().evaluate((e) => Number.parseFloat(getComputedStyle(e).fontSize));
@@ -257,9 +260,8 @@ describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
         expect(b.left, life).toBeGreaterThanOrEqual(0);
         expect(b.right, life).toBeLessThanOrEqual(IPHONE.width);
       }
-      await page.close();
     }
-    const page = await openSettings(context, base(), 'settings-first-sync');
+    await showSettings(page, base(), 'settings-first-sync');
     await addStyle(page, 'html { font-size: 36px !important; }');
     await page.getByTestId('row-paycheck-rule').click();
     await page.getByTestId('field-paycheck-rule').fill('MADE UP EMPLOYER PAYROLL');
@@ -272,8 +274,9 @@ describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
 
   it('money is written the same way everywhere on Settings, with digits that line up', async () => {
     const context = await browser().newContext(phone());
+    const page = await context.newPage();
     for (const life of ['settings-busy', 'big', 'normal'] as const) {
-      const page = await openSettings(context, base(), life);
+      await showSettings(page, base(), life);
       const amounts = await page.locator('[data-money]').evaluateAll((els) => els.map((e) => ({ text: e.textContent ?? '', numbers: getComputedStyle(e).fontVariantNumeric })));
       expect(amounts.length, life).toBeGreaterThan(5);
       for (const a of amounts) {
@@ -281,20 +284,22 @@ describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
         expect(a.numbers, life).toContain('tabular-nums');
       }
       expect(await page.getByTestId('split-table').evaluate((e) => getComputedStyle(e).fontVariantNumeric)).toContain('tabular-nums');
-      await page.close();
     }
     await context.close();
   });
 
   it('light and dark follow the phone on Settings', async () => {
+    const context = await browser().newContext(phone());
+    const page = await context.newPage();
     for (const [scheme, background] of [
       ['light', 'rgb(242, 242, 247)'],
       ['dark', 'rgb(0, 0, 0)'],
     ] as const) {
-      const page = await openSettings(await browser().newContext(phone({ colorScheme: scheme })), base(), 'normal');
+      await emulatePhone(page, { colorScheme: scheme });
+      await showSettings(page, base(), 'normal');
       expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), scheme).toBe(background);
-      await page.context().close();
     }
+    await context.close();
   });
 
   it('13.1 what changes at the next paycheck says so in words and with an icon, never by color alone; the mismatch banner cannot be missed', async () => {
@@ -303,9 +308,9 @@ describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
     expect(await label.innerText()).toBe('Changes');
     expect(await label.locator('[data-icon]').count()).toBe(1);
     expect(await page.getByTestId('split-wants-second').locator('[data-status]').count()).toBe(0);
-    const mismatch = await openSettings(page.context(), base(), 'mismatch');
-    expect(await mismatch.getByTestId('mismatch').getAttribute('role')).toBe('alert');
-    const box = await mismatch.getByTestId('mismatch').boundingBox();
+    await showSettings(page, base(), 'mismatch');
+    expect(await page.getByTestId('mismatch').getAttribute('role')).toBe('alert');
+    const box = await page.getByTestId('mismatch').boundingBox();
     expect(box!.y).toBeLessThan(IPHONE.height / 2);
     await page.context().close();
   });
@@ -324,10 +329,10 @@ describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
     expect(await slow.locator('main').getAttribute('aria-busy')).toBe('true');
     await slow.locator('main[aria-busy="false"]').waitFor({ timeout: 15_000 });
     await untilQuiet(slow);
-    await slow.close();
-    const broken = await openSettings(context, base(), 'error');
-    expect(await broken.getByTestId('settings-error').innerText()).toContain("Couldn't load your settings");
-    expect(await broken.getByTestId('retry').isVisible()).toBe(true);
+    // The same page, moved to the life that cannot load (showLive in live.ts says why).
+    await showSettings(slow, base(), 'error');
+    expect(await slow.getByTestId('settings-error').innerText()).toContain("Couldn't load your settings");
+    expect(await slow.getByTestId('retry').isVisible()).toBe(true);
     await context.close();
   });
 

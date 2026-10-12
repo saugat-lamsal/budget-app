@@ -100,6 +100,38 @@ export async function watchSheetsAfterAnAnswer(context: BrowserContext, sendButt
   }, sendButtons);
 }
 
+// The rest of a double tap (settings.test.ts "B92 a double tap on Save", CI
+// Oct 11, WebKit): the first tap's answer closed the sheet at once, and the
+// second tap landed on the screen under it. This taps the button, and the
+// moment its sheet has closed taps again where the button was, as the second
+// tap of a double tap would: inside the page, at the spot, whatever is there
+// then (the browser's own hit test), so how fast the machine is makes no
+// difference. Returns what of the screen that tap reached: 'nothing' while
+// the screen holds taps.
+export async function tapThenTapWhereItWas(page: Page, button: Locator, sheet: string): Promise<string> {
+  // Where it is once on the screen (a tap scrolls the sheet to it first).
+  await button.scrollIntoViewIfNeeded();
+  const box = await button.boundingBox();
+  if (box === null) throw new Error(`no ${sheet} button on the screen to tap`);
+  const at = [sheet, box.x + box.width / 2, box.y + box.height / 2] as const;
+  const second = page.waitForFunction(
+    ([id, x, y]) => {
+      if (document.querySelector(`dialog[data-testid="${id}"][open]`) !== null) return false;
+      const hit = document.elementFromPoint(x, y);
+      const screen = document.getElementById('root');
+      const reached = hit !== null && screen !== null && screen.contains(hit) ? (hit.closest('[data-testid]')?.getAttribute('data-testid') ?? hit.tagName) : 'nothing';
+      if (hit instanceof HTMLElement) hit.click();
+      return reached;
+    },
+    at,
+    { polling: 5, timeout: 15_000 },
+  );
+  await button.click();
+  const reached = await (await second).jsonValue();
+  if (typeof reached !== 'string') throw new Error(`the second tap on ${sheet} reached ${String(reached)}`);
+  return reached;
+}
+
 // What watchSheetsAfterAnAnswer saw: whether a choice went through at all, and the moments it found.
 export async function sheetGapsAfterAnAnswer(page: Page): Promise<{ readonly answered: boolean; readonly gaps: string[] }> {
   return page.evaluate(() => {

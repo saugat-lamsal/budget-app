@@ -1,11 +1,11 @@
 import type { BankBalances, Book, IsoDate } from '@budget-app/money';
 import type { Server } from 'node:http';
-import type { Browser } from 'playwright';
+import type { Browser, Page } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { MOM_NAME, START_DATE, appSide, openTestBook, payPerson, purchase, refund } from '../../../money/test/helpers.js';
 import { demoScenario } from '../../../server/src/demo/scenarios.js';
-import { ENGINES, launch, centsAt, close, openScenario, phone, textAt, useEngine } from './harness.js';
-import { openLive, startLive } from './live.js';
+import { ENGINES, launch, centsAt, close, openScenario, phone, showScenario, textAt, useEngine } from './harness.js';
+import { openLive, showLive, startLive } from './live.js';
 
 // Buckets, used in a browser like a person would, with every number it shows
 // compared to the money math for the same book. The expected numbers come
@@ -55,13 +55,14 @@ describe.each(ENGINES)('Buckets in %s', (_name, engine) => {
 
   it('10.1 10.2 a low bucket says Low and an overspent one says Empty, with a minus sign', async () => {
     const context = await browser().newContext(phone());
-    const low = await openScenario(context, base(), 'low', '/buckets');
-    expect(await low.getByTestId('bucket-wants').locator('[data-status="low"]').innerText()).toBe('Low');
-    expect(await centsAt(low, 'bucket-wants-left')).toBe(life('low').book.pots().wants);
-    const over = await openScenario(context, base(), 'overspent', '/buckets');
-    expect(await over.getByTestId('bucket-wants').locator('[data-status="empty"]').innerText()).toBe('Empty');
-    expect(await over.getByTestId('bucket-wants-left').innerText()).toMatch(/^−\$/);
-    expect(await centsAt(over, 'bucket-wants-left')).toBe(life('overspent').book.pots().wants);
+    const page = await openScenario(context, base(), 'low', '/buckets');
+    expect(await page.getByTestId('bucket-wants').locator('[data-status="low"]').innerText()).toBe('Low');
+    expect(await centsAt(page, 'bucket-wants-left')).toBe(life('low').book.pots().wants);
+    // The same page, moved to the other life (showLive in live.ts says why).
+    await showScenario(page, base(), 'overspent', '/buckets');
+    expect(await page.getByTestId('bucket-wants').locator('[data-status="empty"]').innerText()).toBe('Empty');
+    expect(await page.getByTestId('bucket-wants-left').innerText()).toMatch(/^−\$/);
+    expect(await centsAt(page, 'bucket-wants-left')).toBe(life('overspent').book.pots().wants);
     await context.close();
   });
 
@@ -114,12 +115,13 @@ describe.each(ENGINES)('Buckets in %s', (_name, engine) => {
 
   it('7.3 B22 held for others says what it means: settled, holding, or someone owes you', async () => {
     const context = await browser().newContext(phone());
-    const settled = await openScenario(context, base(), 'normal', '/buckets');
-    expect(await centsAt(settled, 'held-for-others')).toBe(0);
-    expect(await textAt(settled, 'row-held')).toBe('Held for others Settled: nothing held either way $0.00');
-    const holding = await openScenario(context, base(), 'buckets-busy', '/buckets');
-    expect(await centsAt(holding, 'held-for-others')).toBe(life('buckets-busy').book.othersMoney().heldForOthers);
-    expect(await textAt(holding, 'row-held')).toBe("Held for others Holding money that isn't yours $120.00");
+    const page = await openScenario(context, base(), 'normal', '/buckets');
+    expect(await centsAt(page, 'held-for-others')).toBe(0);
+    expect(await textAt(page, 'row-held')).toBe('Held for others Settled: nothing held either way $0.00');
+    // The same page, moved to the other life (showLive in live.ts says why).
+    await showScenario(page, base(), 'buckets-busy', '/buckets');
+    expect(await centsAt(page, 'held-for-others')).toBe(life('buckets-busy').book.othersMoney().heldForOthers);
+    expect(await textAt(page, 'row-held')).toBe("Held for others Holding money that isn't yours $120.00");
     await context.close();
   });
 
@@ -329,15 +331,14 @@ describe.each(ENGINES)('Buckets, the target bar, in %s', (_name, engine) => {
     for (const server of servers) await close(server);
   });
 
-  async function bar(book: Book) {
+  // Buckets of a book of its own, shown in the page the test moves from book
+  // to book (showLive in live.ts says why).
+  async function bar(page: Page, book: Book) {
     const bank: BankBalances = { checking: appSide(book.pots()) - book.inTransit().total, savings: 0, everydayCard: 0 };
     const live = await startLive({ book, bank, today: START_DATE });
     servers.push(live.server);
-    const context = await custom.newContext(phone());
-    const page = await openLive(context, live.base, '/buckets');
-    const style = await page.getByTestId('mom').locator('.bar__fill').evaluate((e) => (e as HTMLElement).style.width);
-    await context.close();
-    return style;
+    await showLive(page, live.base, '/buckets');
+    return page.getByTestId('mom').locator('.bar__fill').evaluate((e) => (e as HTMLElement).style.width);
   }
 
   it('8.2 the mom bar fills toward the high end of the target, with a tick at the low end', async () => {
@@ -355,16 +356,20 @@ describe.each(ENGINES)('Buckets, the target bar, in %s', (_name, engine) => {
   });
 
   it('8.2 the bar is empty when nothing was sent, half full at half the high end, and full at the high end or over it', async () => {
+    const context = await custom.newContext(phone());
+    const page = await context.newPage();
+    page.setDefaultTimeout(15_000);
     const sent = async (cents: number): Promise<string> => {
       const book = openTestBook({ pots: { momReserve: 3_000_000 } });
       if (cents > 0) book.receive(payPerson('m1', '2026-10-03', cents, MOM_NAME));
-      return bar(book);
+      return bar(page, book);
     };
     // (The browser writes 50.00% as 50%.)
     expect(await sent(0)).toBe('0%');
     expect(await sent(150_000)).toBe('50%');
     expect(await sent(300_000)).toBe('100%');
     expect(await sent(450_000)).toBe('100%');
+    await context.close();
   });
 });
 

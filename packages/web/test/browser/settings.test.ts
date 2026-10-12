@@ -5,7 +5,7 @@ import { demoScenario } from '../../../server/src/demo/scenarios.js';
 import { MOM_NAME, appSide, openTestBook, payPerson, refund } from '../../../money/test/helpers.js';
 import { ENGINES, centsAt, close, phone, readCents, textAt, untilQuiet, useEngine } from './harness.js';
 import { openLive, startLive } from './live.js';
-import { bucketsOf, readBuckets, watchChoices } from './screens.js';
+import { bucketsOf, readBuckets, tapThenTapWhereItWas, watchChoices } from './screens.js';
 import { openSettings, readSettings, settingsOf } from './settings-screens.js';
 
 // The Settings screen, used in a browser like a person would (rulebook
@@ -356,6 +356,20 @@ describe.each(ENGINES)('Settings in %s', (_name, engine) => {
     await saved(page);
     expect(new Set(watch.ids()).size).toBe(1);
     expect((await readSettings(page)).log).toHaveLength(1);
+    await page.context().close();
+  });
+
+  it('B92 B194 the rest of a double tap on Save does not land on the screen under the sheet: the saved message stays, and nothing else opens', async () => {
+    const page = await openSettings(await browser().newContext(phone()), base(), 'normal');
+    const watch = watchChoices(page);
+    await page.getByTestId('row-low-alert').click();
+    await page.getByTestId('field-low-alert').fill('30');
+    expect(await tapThenTapWhereItWas(page, page.getByTestId('sheet-save'), 'settings-sheet'), 'what of the screen the second tap reached').toBe('nothing');
+    await untilQuiet(page);
+    expect(await page.locator('dialog[open]').evaluateAll((open) => open.map((d) => d.getAttribute('data-testid'))), 'a sheet opened under the second tap').toEqual([]);
+    expect(await page.getByTestId('notice').count(), 'the saved message').toBe(1);
+    expect(new URL(page.url()).pathname).toBe('/settings');
+    expect(new Set(watch.ids()).size).toBe(1);
     await page.context().close();
   });
 

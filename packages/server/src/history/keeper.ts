@@ -1,5 +1,7 @@
 import type { IncomingMessage, Server } from 'node:http';
+import type { Agent } from 'node:https';
 import { DEFAULT_SETTINGS, type BankBalances, type Book, type CardStatement, type IsoDate, type Pot } from '@budget-app/money';
+import { alertScreen } from '../alerts/alerts.js';
 import { applyAlerts, nextAlertsEvent, nextDueIn, type AlertLedger, type AlertWorld } from '../alerts/plan.js';
 import { addToOutbox, markFailed, markSent, markTrying, nextOutboxTry, outboxCounts, outboxToSend, readOutbox } from '../alerts/outbox.js';
 import { dueWords, quietUntil, wordsToSend } from '../alerts/sending.js';
@@ -15,15 +17,17 @@ import type { TokenBox } from '../crypto/token-box.js';
 import { statement, type Db } from '../db/database.js';
 import { logChange, readAccounts, readBankRules, readConnection, readItems, readStatements, saveBankRules, saveItem } from '../db/store.js';
 import { createAppServer, type Seen } from '../http/server.js';
-import type { Log } from '../log.js';
+import { memoryLog, type Log } from '../log.js';
 import type { PlaidClient } from '../plaid/client.js';
+import { PushDesk } from '../push/push-desk.js';
+import type { PushKeys } from '../push/push-keys.js';
 import { saveServerLine, serverLinesIn } from '../server-log.js';
 import { SetupDesk } from '../setup-desk.js';
 import { NO_ANSWERS, SETUP_LOOK_BACK_DAYS, type SetupAnswers } from '../setup-view.js';
 import { FEWEST_MINUTES, MOST_MINUTES, readLastRead, saveSyncEveryMinutes, syncEveryMinutes } from '../sync/bank-reads.js';
 import type { Plan, PlanInput } from '../sync/plan.js';
 import { syncBank, type SyncResult } from '../sync/sync.js';
-import type { OutgoingAlert } from '../serve/alert-timer.js';
+import type { AlertSender, OutgoingAlert } from '../serve/alert-timer.js';
 import { ALERTS_SHOWN, type AlertsView } from '../views/alerts.js';
 import { activityView, type ActivityView } from '../views/activity.js';
 import type { BankRuleRequest, BankRuleResponse } from '../views/bank-rules.js';
@@ -66,6 +70,9 @@ export interface KeeperInput {
   // everything is written and before it is committed. A throw there stops the
   // save halfway.
   readonly beforeCommit?: () => void;
+  // Phase 5, the phone: the app's push keys (none: no phone gets the alerts),
+  // and for the tests only, the made-up push service's certificate.
+  readonly push?: { readonly keys: PushKeys | null; readonly agent?: Agent };
 }
 
 interface State {
@@ -92,6 +99,8 @@ export interface SyncBank {
   readonly plan?: (input: PlanInput) => Plan;
 }
 
+const NOT_LOGGED_IN = { ok: false, why: 'You are not logged in any more. Log in again.' } as const;
+
 const NOUNS: Readonly<Record<DeskName, string>> = { choice: 'choice', move: 'move', settings: 'change', rule: 'change', setup: 'answer', 'bank-rule': 'change' };
 
 export class Keeper {
@@ -100,6 +109,8 @@ export class Keeper {
   readonly #beforeCommit: (() => void) | undefined;
   // Step 2: his passkeys and logins.
   readonly #auth: Auth;
+  // Phase 5: the Notifications card, and the real sender.
+  readonly #push: PushDesk;
   #origin: () => string;
   #state!: State;
   // Step 3: the sync on its way, if any, and when the last one started (an
@@ -119,6 +130,15 @@ export class Keeper {
     this.#beforeCommit = input.beforeCommit;
     this.#origin = input.origin ?? (() => 'http://localhost:5190');
     this.#auth = new Auth({ db: input.db, now: input.now, origin: () => this.#origin(), today: () => this.today(), bookLines: () => this.book()?.changeLog().length ?? 0 });
+    this.#push = new PushDesk({
+      db: input.db,
+      keys: input.push?.keys ?? null,
+      now: input.now,
+      zone: () => this.timeZone(),
+      bookLines: () => this.book()?.changeLog().length ?? 0,
+      log: input.log ?? memoryLog([]),
+      ...(input.push?.agent === undefined ? {} : { agent: input.push.agent }),
+    });
     const lastRead = readLastRead(input.db);
     this.#lastTry = lastRead === null ? null : Date.parse(lastRead);
   }
@@ -273,7 +293,20 @@ export class Keeper {
       ...(session === null ? {} : { login: loginViewOf(this.#auth, session) }),
       sync: { everyMinutes: this.syncEveryMinutes(), checkedAt: this.#checkedAt(), today: this.today() },
       alerts: outboxCounts(this.#db),
+      ...(session === null ? {} : { push: this.#push.view(session) }),
     });
+  }
+
+  // ----- The phone (Phase 5) -----
+
+  // The real sender, or null when the server has no push keys.
+  pushSender(): AlertSender | null {
+    return this.#push.sender();
+  }
+
+  // The Notifications card's answers, for the device asking.
+  pushDesk(): PushDesk {
+    return this.#push;
   }
 
   // ----- Login (Step 2) -----
@@ -494,7 +527,8 @@ export class Keeper {
     if (this.#quietUntil(now) !== null) return [];
     const zone = this.timeZone();
     const amounts = (this.book()?.settings() ?? DEFAULT_SETTINGS).amountsOnLockScreen;
-    return outboxToSend(this.#db, now.toISOString()).map((row) => ({ id: row.key, ...wordsToSend(row, amounts), dueAt: row.dueAt, due: dueWords(zone, row.dueAt, now) }));
+    const sentOn = todayIn(zone, now);
+    return outboxToSend(this.#db, now.toISOString()).map((row) => ({ id: row.key, ...wordsToSend(row, amounts, sentOn), dueAt: row.dueAt, due: dueWords(zone, row.dueAt, now), screen: alertScreen(row.facts) }));
   }
 
   nextTryIn(): number | null {
@@ -574,7 +608,21 @@ export class Keeper {
       seen: (_request, what) => this.seen(what),
       syncEvery: (_request, minutes) => this.changeSyncEvery(minutes),
       alerts: () => this.alertsView(),
+      push: {
+        on: (request, subscription) => this.#asking(request, (asking) => this.#push.on(asking, subscription)),
+        off: (request) => this.#asking(request, (asking) => this.#push.off(asking)),
+        test: async (request) => {
+          const session = auth.session(request.headers.cookie);
+          return session === null ? NOT_LOGGED_IN : this.#push.test(session);
+        },
+      },
     });
+  }
+
+  // The device asking, by its login (the gate let it through only logged in).
+  #asking<T>(request: IncomingMessage, run: (asking: { readonly token: string; readonly device: string }) => T): T | typeof NOT_LOGGED_IN {
+    const session = this.#auth.session(request.headers.cookie);
+    return session === null ? NOT_LOGGED_IN : run(session);
   }
 
   // ----- Keeping it -----

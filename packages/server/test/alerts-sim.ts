@@ -21,7 +21,9 @@ import type { AlertTimer } from '../src/serve/alert-timer.js';
 import { serveBooks } from '../src/serve/serving.js';
 import { planSync, type Plan, type PlanInput } from '../src/sync/plan.js';
 import { FakeClock } from './fake-clock.js';
-import { FakePhone } from './fake-phone.js';
+import { newPushKeys } from '../src/push/push-keys.js';
+import { FakePushService } from './fake-push-service.js';
+import { loginForTests } from './login-for-tests.js';
 import { connected, type Harness } from './harness.js';
 import { ACCOUNT, SIM_BANK_RULES, inPlaidFormat } from './sim-bank.js';
 
@@ -32,7 +34,8 @@ import { ACCOUNT, SIM_BANK_RULES, inPlaidFormat } from './sim-bank.js';
 // lives the same days on a clock the test moves: the bank's activity reaches
 // it only by syncs with the made-up bank (what the bank shows, its balances and
 // its card statements), each answer is saved in its history, and its own
-// alert timer works the alerts out, keeps them, and sends them to a fake phone.
+// alert timer works the alerts out, keeps them, and sends them through the
+// real sender (web push) to a test phone at the made-up push service.
 // What its book is given is the simulator's own (the sync's test seam), so the
 // two books are the same.
 //
@@ -223,7 +226,14 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
   const path = join(dir, 'books.sqlite');
   const clock = { now: at(input.date, '07:00') };
   const fakeClock = new FakeClock(clock);
-  const phone = new FakePhone(() => clock.now);
+  // Phase 5, the phone: the alerts go through the real sender (web push) to
+  // the made-up push service on this computer, which checks the app's
+  // signature, opens each one with the phone's own keys, and shows it as the
+  // phone's service worker would (fake-push-service.ts).
+  const keys = newPushKeys('mailto:made-up@example.com');
+  const service = await FakePushService.start({ now: () => clock.now, serverKey: keys.publicKey });
+  const phone = service.newPhone();
+  let subscribed = false;
   let h: Harness | undefined;
   let db: Db | undefined;
   let keeper: Keeper | undefined;
@@ -263,7 +273,9 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
     }
     return hm >= from && hm < to ? instantIn(zone, date, to) : null;
   };
-  // B185: "Due 2:30 AM.", with the day when it was another day; nothing when sent in the minute it came due.
+  // B201: a tap opens the screen an alert is about: Review for the daily review, the bucket's own list for low and empty, Home for the rest.
+  const screenOf = (f: AlertFacts): string => (f.kind === 'daily-review' ? '/review' : f.kind === 'low-bucket' || f.kind === 'empty-bucket' ? `/buckets/${f.bucket}` : '/home');
+  // B185: "Was due 2:30 AM." (his answer, Oct 11: not "Due" again), with the day when it was another day; nothing when sent in the minute it came due.
   const dueWordsOf = (dueAt: string, shownAt: string): string | null => {
     const due = timeIn(zone, new Date(dueAt));
     const shown = timeIn(zone, new Date(shownAt));
@@ -271,7 +283,14 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
     const hour = Number(due.slice(11, 13));
     const time = `${hour % 12 === 0 ? 12 : hour % 12}:${due.slice(14, 16)} ${hour < 12 ? 'AM' : 'PM'}`;
     const day = new Date(`${due.slice(0, 10)}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
-    return `Due ${due.slice(0, 10) === shown.slice(0, 10) ? '' : `${day}, `}${time}.`;
+    return `Was due ${due.slice(0, 10) === shown.slice(0, 10) ? '' : `${day}, `}${time}.`;
+  };
+  // 9.7, B185 (his answer, Oct 11): a card reminder counts the days to the due date from the day it is shown on.
+  const reminderTitleOf = (f: Extract<AlertFacts, { kind: 'card-reminder' }>, shownAt: string): string => {
+    const left = daysBetween(timeIn(zone, new Date(shownAt)).slice(0, 10), f.dueDate);
+    const card = f.card === 'everyday-card' ? 'Everyday card' : 'Old card';
+    if (left < 0) return `${card} payment was due ${left === -1 ? 'yesterday' : `${-left} days ago`}`;
+    return `${card} payment due ${left === 0 ? 'today' : left === 1 ? 'tomorrow' : `in ${left} days`}`;
   };
   // 9.3, B28, B47: what is paid toward a statement by a day: payments that
   // reached the card after its closing date (one landing on it counts toward
@@ -308,6 +327,8 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
   // ----- What the server knows, as this test follows it -----
 
   let running = false;
+  // When the server last stopped (restarts), for what it kept and could not send while stopped.
+  let stoppedAt: Date | null = null;
   // The next evening the server has not handled (from its first look on).
   let nextEvening: IsoDate = input.date;
   // The last good read of the bank.
@@ -508,11 +529,28 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
     };
     const start = async (): Promise<void> => {
       if (db === undefined) db = openDatabase(path);
-      keeper = Keeper.open({ db, now: () => clock.now });
+      keeper = Keeper.open({ db, now: () => clock.now, push: { keys, agent: service.agent } });
+      if (!subscribed) {
+        // He turned notifications on, on his phone, logged in there.
+        const token = loginForTests(db, clock.now, 'Safari on iPhone').slice('budget-login='.length);
+        expect(keeper.pushDesk().on({ token, device: 'Safari on iPhone' }, phone.subscription())).toEqual({ ok: true });
+        subscribed = true;
+      }
+      const sender = keeper.pushSender();
+      if (sender === null) throw new Error('no push sender');
       running = true;
+      // Kept and held for the end of quiet hours that came while it was
+      // stopped (10.8): it goes the moment it is back (seed 1034: the bank not
+      // read since 9:00 PM the night before the clocks went forward, due at
+      // 10:00 PM, the server stopped at 11:00 PM and back at 7:30 AM).
+      if (stoppedAt !== null) {
+        for (const [key, e] of expected) {
+          if (!phone.ids().includes(key) && e.shownBy.to >= stoppedAt.getTime() && e.shownBy.to < clock.now.getTime()) expected.set(key, { ...e, shownBy: { from: e.shownBy.from, to: clock.now.getTime() } });
+        }
+      }
       catchUp(clock.now);
       tellNotRead(clock.now);
-      const serving = serveBooks({ keeper, bank, clock: fakeClock, webRoot: 'C:/made-up/no-screens/', origin: () => '', sender: phone });
+      const serving = serveBooks({ keeper, bank, clock: fakeClock, webRoot: 'C:/made-up/no-screens/', origin: () => '', sender });
       alerts = serving.alerts;
       alerts.start();
       await settle();
@@ -524,6 +562,7 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
       db?.close();
       db = undefined;
       running = false;
+      stoppedAt = new Date(clock.now);
       outcome.restarts += 1;
     };
     // A sync; true when it went through.
@@ -628,14 +667,22 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
         const time = Date.parse(shown.at);
         if (time < e.shownBy.from || time > e.shownBy.to) throw new Error(`${where}: ${key} was shown at ${shown.at}, due ${e.dueAt}, to be shown from ${new Date(e.shownBy.from).toISOString()} by ${new Date(e.shownBy.to).toISOString()}`);
         expect(shown.due, `${where}: ${key}, shown at ${shown.at}, says when it was due`).toBe(dueWordsOf(e.dueAt, shown.at));
+        if (e.facts.kind === 'card-reminder') expect(shown.title, `${where}: ${key}, shown at ${shown.at}, counts the days from then`).toBe(reminderTitleOf(e.facts, shown.at));
         expect(`${shown.title} ${shown.body}`, `${where}: ${key} has no amount on the lock screen (10.10)`).not.toContain('$');
+        expect(shown.notification.screen, `${where}: ${key}: a tap opens the screen it is about (B201)`).toBe(screenOf(e.facts));
       }
       for (const shown of phone.shown) if (!expected.has(shown.id)) throw new Error(`${where}: ${shown.id} was shown at ${shown.at}, and was not expected`);
       expect(phone.repeats, `${where}: nothing shown twice`).toBe(0);
+      expect(service.problems, `${where}: every push signed by the app and encrypted for the phone`).toEqual([]);
     };
 
     clock.now = at(input.date, '08:00');
     await start();
+    // Setup day can leave needs or wants at zero or below (a small starting
+    // money; 10.1, 10.2): those alerts are due the moment the server first
+    // looks at the books after it, here.
+    const setupStep = days[0]?.steps.find((step) => step.kind === 'setup');
+    for (const a of setupStep?.alerts ?? []) expectAlert(factsOf(a, input.date), clock.now, clock.now);
     let backAt: Date | null = null;
     let downEvenings = 0;
 
@@ -824,6 +871,7 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
   } finally {
     await alerts?.stop();
     db?.close();
+    await service.close();
     rmSync(dir, { recursive: true, force: true });
   }
 }

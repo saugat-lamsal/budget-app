@@ -1,0 +1,271 @@
+PHASE 5 REPORT: REMINDERS AND ALERTS (Oct 12, 2026)
+
+Testing bar point 7: every rule and its tests, the test count, the break-it
+results, and anything not tested and why. Branch phase-5-phone, PR #22.
+
+
+BOTTOM LINE
+
+Phase 5's finish line is "in simulation, every alert fires at the right
+time, once, and never when it should not". In simulation it is met:
+- Through the real server and the real sender, to a made-up push service
+  that opens each alert with the phone's own keys: 60 simulated lives with
+  the server stopped every night and started every morning (9,420 simulated
+  days), and one server for 2 years (730 days). Every day, every alert the
+  rulebook says is due was kept once, sent at its moment (or as soon as
+  quiet hours ended, or the server or the phone was back), shown once on the
+  phone with the right words and opening the screen it is about, and
+  nothing else was sent. Both clock changes, quiet hours, evenings and days
+  with the server down, a phone that could not be reached, syncs failing, a
+  login lasting days and the bank's balance drifting are all in them.
+- Three of those lives failed at first. Each time the server and the
+  simulator agreed with the rulebook, and the gap was in the test's own way
+  of living the life (setup day's alerts, and an alert held for quiet hours
+  while the server was stopped). Each is now a test of its own.
+- Every numbered rule has a test named after it (77 rules), and the full
+  run passes: 3,486 tests.
+
+What simulation cannot show is the iPhone itself: Apple's push service, the
+permission prompt, the lock screen and a tap. That is Phase 6, with hosting
+(see WHAT IS NOT TESTED).
+
+
+WHAT PHASE 5 IS MADE OF
+
+- Part one, PR #20 (Oct 10): the alerts worked out from the books and kept
+  (packages/server/src/alerts: alerts.ts, plan.ts, outbox.ts), the alert
+  timer on the server (serve/alert-timer.ts), the list of alerts in the app
+  (/alerts), and the simulated life through the real server.
+- His answers to A34 to A39, PR #21 (Oct 11): card reminders with the daily
+  review (9.7), quiet hours (10.8), back after being down (10.9), the
+  repeats of 10.4 and 10.5, the bank not read for 24 hours (10.7), and no
+  amounts on the lock screen (10.10).
+- This chunk, PR #22 (Oct 11 and 12):
+  - Step 0a: simulated life seed 1507 (the simulator's own mistake: it
+    changed a setting in the book, checked the alerts, and only then changed
+    its own record). B193.
+  - Step 0b: the browser tests that opened and closed pages one after
+    another now move one page from screen to screen (the WebKit stall).
+  - Step 0c: after a sheet closes, the screen takes no tap for half a
+    second (B194): the cause of the Settings double tap test failing in
+    WebKit was a real bug.
+  - Step 0d: his answer on late reminders (rulebook draft 19, section 31):
+    days counted from the day sent, and "Was due Sat, Oct 3, 8:00 PM.".
+  - Step 1: the phone. Web push through the web-push library (3.6.7): the
+    alert encrypted for each phone (RFC 8291) and the request signed with
+    the app's own key (VAPID, RFC 8292), which is what Apple's push service
+    asks of a home-screen app. The keys are only in environment variables;
+    the private key never leaves the server. Each phone's subscription is
+    tied to its login (database step 7). The real sender sits behind the
+    AlertSender plug; quiet hours, once, retries and catching up stay in the
+    outbox, unchanged. The service worker shows each alert with its id as
+    its tag, drops a repeat, opens the screen a tap is about, and has no
+    fetch handler (it never keeps or serves the app's numbers). Settings has
+    a Notifications card: on, off, blocked, open it from the home screen
+    first, and Send a test alert.
+
+
+THE TESTS
+
+npm test, the full run of Oct 12 at the end: 3,486 tests in 174 files, all
+passing, after the type check (Phase 4 ended with 3,221).
+  money 1,130, server 1,121, screens without a browser 125, screens in
+  Chromium and WebKit 1,045, repository checks 65.
+
+How the alerts are tested, from the inside out:
+- The rules one at a time (alerts-plan, alerts-sending, alert-timer,
+  outbox), with a fake clock, across both clock changes, at every boundary
+  (exactly at the low level, one cent below, quiet hours a minute either
+  side).
+- The real sender, to a made-up push service on this computer
+  (packages/server/test/fake-push-service.ts). It takes what the web-push
+  library sends over HTTPS, checks the VAPID signature against the app's
+  public key, opens each alert with the test phone's own private key, and
+  hands it to a phone that follows the service worker's own rules
+  (packages/web/src/push/rules.ts). It can be made to fail (500) or say a
+  subscription is gone (404, 410).
+- The simulated life through the real server (alerts-sim.ts): the Phase 2
+  simulator's life, its bank in Plaid's format, his answers saved as the
+  real server saves them, the server's own alert timer on a fake clock,
+  and every alert going through the real sender to the made-up push
+  service. Every simulated day: the outbox is exactly what the simulator
+  works out from the rulebook (keys and due moments), every alert is shown
+  once on the phone, between the moment it came due and the latest it may
+  go (quiet hours, the server down, the phone unreachable), with the right
+  words (no amounts on the lock screen, "Was due ..." when late, the days
+  to a card's due date counted from the day shown), opening the screen it
+  is about, and nothing else is shown.
+- The guard test (test/push-only-here.test.ts): under the tests the server
+  sends only to 127.0.0.1, and nothing else in the server sends a push.
+
+Simulations:
+- The alert simulations through the real server and the real sender: 60
+  lives stopped every night and started every morning (seeds 1000 to 1059,
+  157 days each, 9,420 days) and one server for 2 years (seed 188, 730
+  days), all passing. npm test lives one of each (seed 12 for 157 days, seed
+  188 for 146 days) and the two short lives the long run found (seeds 1033
+  and 1034).
+- Phase 2's simulator: npm test lives 6 lives of 2 years, and replays seed
+  1507 (Step 0a). The 2,000 lives of 5 years asked for in Step 0a were
+  started and then stopped, at his word, to cut scope (Oct 12), before they
+  printed anything: no result. The last long run is Phase 4's 1,000 lives of
+  5 years (Oct 10, every check passed); Step 0a changed only how the
+  simulator keeps its own record of the settings, not the money math.
+
+
+CI on PR #22 (Linux): checks, Chromium and WebKit all green on Step 1;
+the harness fix after it runs on its own. Windows runs only when started by
+hand (Actions, Tests, Run workflow, branch phase-5-phone): for the finish
+line, start it once you have read this.
+
+BREAK-IT (testing bar point 3)
+
+By his call (Oct 12) there is no full run at the end of Phase 5: only the
+breaks new in this chunk, and the older breaks on lines this chunk changed
+(a break whose text overlaps the branch's changes: 62 in all), plus the
+"[ci]" breaks of the test helpers that Step 0b reworked. Without a browser,
+judged by the whole suite (some first by the push tests alone, the
+survivors then by the whole suite); with a browser, in Chromium.
+- "[push]", the phone: 47 (40 without a browser, 7 with). All caught.
+- "[b185]" and "[b186]", late alerts, with the three older breaks pointed at
+  the code again ("[alerts] 9.1", two "[a39]"): 11. All caught.
+- "[b194]", the tap hold, with "[activity] 13.3" pointed again: 4. All caught.
+- "[ci]" in harness.ts: 10. All caught.
+- The last two on changed lines ("[sync] B160 the list of routes forgets
+  the sync setting", "[a39] 10.10 a card reminder shows the amounts on the
+  lock screen"): both caught.
+- Eleven survived at first and got tests: a push service answering 404
+  (B198), the screen each alert opens (B201, three breaks; the simulated
+  life now checks every tap's screen too), the card counting this phone
+  among the others, a tapped alert leaving the screen, a repeat of one he
+  swiped away, Turn off letting the browser's subscription go, a double tap
+  on Turn on, and a sheet its screen takes away holding taps (B194). Two of
+  them were not mistakes any test could see: a second guard in screenToOpen
+  (routeOf already knows only the app's own paths) and a check on "busy"
+  that read the value from before the tap (removed). Each break now makes a
+  real mistake, and is caught.
+- Not judged again: the older breaks on code this chunk did not touch (all
+  caught in Phase 4's full run, 1,101 breaks, and in the runs of PR #20 and
+  PR #21 for what they changed), and the older browser breaks against the
+  browser tests Step 0b rewrote to one page per test (the same checks).
+
+
+EVERY RULE AND ITS TESTS
+
+How many tests have the rule's number in their name, with one of them. From
+the full run's results (node scripts/rule-table.mjs).
+
+Rule  What it says                                  Tests  One of them
+0.1   All amounts are stored in whole cents.        63     0.1 dollars and cents with commas
+0.2   Every number and rule in this document is a s…104    0.2 split
+0.3   Changing a setting never rewrites a past pay …4      0.3 past paycheck split stays as it was
+0.4   The app is read-only. It never moves money.   15     0.4 the screens have source files to check
+0.5   If the app's totals do not match the bank, it…43     0.5 the day and the time, in the phone's time zone
+0.6   What the bank sent and every answer you give …17     0.6 10.6 the outbox and the history agree: every row has the event that gave it, and ever…
+3.1   A deposit that matches the paycheck rule is a…33     3.1 and 6.1 money into checking or savings is a deposit, unless it is a transfer
+3.2   The mom reserve comes off first. If the reser…57     3.2 a new paycheck adds to the reserve up to the cap
+3.3   The rest is split by the percentages. Needs a…45     3.3 3.4 the split, the leftover setting, and a text rule
+3.4   At each payday, unspent needs and unspent wan…90     3.4 the leftover answer: move to savings moves it, roll over keeps it
+3.5   An overspent bucket carries over as a negativ…18     3.5 an overspent bucket shows its negative amount
+3.6   A third paycheck in a month is handled exactl…2      3.6 three January paychecks each split and each start a period
+3.7   A paycheck-looking deposit that arrives less …21     3.7 11.2 days, one and many
+3.8   On payday the app tells you how much should b…53     3.8 shows what should be in the savings account and what is still to move
+4.1   A purchase on the debit card or the everyday …16     4.1 money out of checking or a card is a purchase, unless a rule says otherwise
+4.2   The bucket is picked by your rules. No matchi…57     4.2 6.2 7.4 takes adding, changing, and removing a rule
+4.3   Unsorted spending is held back from safe-to-s…22     4.3 a purchase no rule picks waits in review, held back from safe to spend
+4.4   A purchase can be split across buckets. The p…49     4.4 a purchase can be split from the list, with the rest worked out by the money math
+4.5   A refund goes back into the bucket the purcha…108    4.5 A18 a refund put into a bucket can be matched to its purchase, once he says yes
+4.6   A pending charge counts once. When it posts, …57     4.6 a pending charge counts once, and the posted one replaces it, even at a new amount (a…
+4.7   Re-sorting a purchase updates the buckets rig…96     4.7 sorting a purchase from needs to wants is what the book does, and the buckets change …
+4.8   Fees and interest on the everyday card go to …13     4.8 and 5.5 fees and interest on a card
+4.9   Money leaving savings that is not a transfer …22     4.9 13.6 money out of savings cannot get a rule
+4.10  If the bank takes back a transaction the app …36     4.10 the bank taking back a transaction the app counted: the app takes it back too, logs …
+5.1   Checking to everyday card: not spending. The …11     5.1 and 5.2 card payments are read as their two halves
+5.2   Checking to old card: spending. It comes out …39     5.2 a payment to the old card from savings comes out of savings once confirmed
+5.3   Checking to savings, or savings to checking: …11     5.3 a transfer between checking and savings is read as its two halves
+5.4   A new purchase on the old card is flagged and…19     5.4 a flag on the old card is cleared by seeing it, and no money moves
+5.5   Interest or fees on the old card raise the de…9      5.5 interest on the old card raises the debt, and no bucket
+5.6   Review also offers "transfer between my accou…80     5.6 A20 B110 a payment marked as going to the old card is sorted from the list as what th…
+6.1   They always go to review, with four choices:  109    6.1 money that came in can be put somewhere else
+6.2   A rule can make the choice automatic for a kn…31     6.2 7.4 a rule for money in and one for a person
+7.1   A deposit marked "not mine" adds to "held for…5      7.1 it is not income and not split
+7.2   A payment out marked "not mine" lowers "held …4      7.2 it is not spending
+7.3   "Held for others" is shown as its own number …26     7.3 B22 settled, holding money for others, or someone owes you
+7.4   Payments to people go to the daily review unl…39     7.4 and 8.1 a payment to a person comes out of checking
+7.5   A friend paying you back is a payback (6.1).  5      7.5 payback into needs
+7.6   In review, a payment to a person can go to ne…45     7.6 B73 a payment you marked for mom can be sorted to needs, and the reserve gets its mon…
+8.1   Any payment that matches the mom rule comes o…31     8.1 a payment that matches the mom rule comes out of the mom reserve
+8.2   The app shows how much you have sent this cal…47     8.2 7.3 "buckets-busy" holds a roommate's money and has sent mom 2,500.00 this month, wit…
+8.3   If a payment is bigger than the reserve, the …22     8.3 a payment bigger than the reserve counts in full toward the month
+8.4   The reserve carries over between months, up t…3      8.4 January reserve carries into February paychecks
+9.1   Everyday card: reminders show the statement b…36     9.1 days before the due date
+9.2   Old card: reminders show the minimum and the …10     9.2 the old card shows its minimum and due date only
+9.3   Everyday card: reminders continue until the p…38     9.3 the everyday card stops at the full statement balance, the old card at the minimum; t…
+9.4   If the due date passes and the payments the a…45     9.4 past the due date with less than the minimum paid is overdue, every day
+9.5   Old card payoff countdown: what the old card …36     9.5 off until the promo end date is entered
+9.6   Home shows a card payment as due every day fr…19     9.6 on the days between the reminders too, until it is paid (A17)
+9.7   Card reminders and the overdue alert come at …5      9.7 A34 card reminders and the overdue alert come at the daily review time, with the dail…
+10.1  Low bucket: needs or wants falls below the al…92     10.1 what is left over what the bucket started the pay period with
+10.2  Empty bucket: needs or wants reaches zero or …46     10.2 zero and below are an empty bar
+10.3  Daily review: sent at the review time, only i…70     10.3 a time today is the time only, on a 12-hour clock, at its edges
+10.4  Totals do not match the bank (section 12). To…15     10.4 A37 told when it starts, then once each evening it lasts, with the difference then; …
+10.5  Bank connection needs you to log in again. To…19     10.5 A37 the bank wanting a new login: told when it starts, then each evening it lasts; f…
+10.6  The bank took back a transaction the app had …29     10.6 take-backs already there when the alerts start get no alert; one after it does
+10.7  The bank has not been read for 24 hours (a se…14     10.7 A38 told once, due the moment the last good read became 24 hours old, saying when th…
+10.8  Quiet hours (section 2): no alert is sent fro…23     10.8 not sent yet because it is quiet hours: when they end, whether it was tried or not
+10.9  Alerts that came due while the app was not ru…15     10.9 A36 three evenings down: when it is back, one daily review, the newest, with how man…
+10.10 On the phone's lock screen an alert shows amo…11     10.10 A39 without amounts every alert is words only: no dollar amount in its title or its…
+11.1  Safe to spend = wants left, minus unsorted sp…35     11.1 safe to spend is wants left minus unsorted spending
+11.2  It is shown with the number of days until the…48     11.2 days before payday
+11.3  Savings, mom reserve, held for others, and un…7      11.3 savings, mom reserve, held for others, and unsorted money in are left out
+12.1  Bank side: checking + savings - everyday card…18     12.1 a charge pending on savings counts while pending, and its posting replaces it (4.6, …
+12.2  App side: savings + needs + wants + mom reser…46     12.2 the total is the app side of the self-check, with unsorted money counted
+12.3  The two must be equal. If not, the app shows …34     12.3 when the totals match the bank it says so
+12.4  The old card balance is tracked separately as…25     12.4 B44 one to the old card says it is not part of the check
+12.5  Money in transit: a transfer that has left on…71     12.5 each says where it is going
+13.1  A change to the split or the mom reserve appl…84     13.1 A9 what a settings change did
+13.2  A new or changed sorting rule applies to new …123    13.2 A19 what a rule change did
+13.3  You can move money between buckets by hand at…57     13.3 wants to needs: it moves, with no question asked
+13.4  Moving money out of savings or the mom reserv…33     13.4 out of savings: it asks, with the reason, and nothing moves
+13.5  Every change and every manual move is logged …57     13.5 every setting, written for the change log
+13.6  When you correct something and choose "always…70     13.6 A20 B110 "always do this" on a marked payment makes the rule and sorts it
+13.7  An answer about an item that changed since th…28     13.7 A31 through /api/choice too: an answer sent with what the screen showed is refused w…
+14.1  The app reads your current balances.          13     14.1 12.4 A10 "setup-day": the balances with pending charges, and the old card apart
+14.2  You assign the starting money (checking + sav…43     14.2 A10 a charge pending on Setup day, through the screens, that posts with a tip after …
+14.3  The self-check must pass before tracking star…38     14.3 what still stops tracking from starting
+
+Rules: 77. Rules without a test named after them: none.
+Tests in this run: 3486, passed: 3486, failed: 0, skipped: 0.
+
+
+WHAT IS NOT TESTED, AND WHY
+
+Only a real iPhone can show these (Phase 6, once the app is hosted on
+https, which web push needs):
+- Apple's push service taking the app's VAPID key and the alerts. The
+  tests' push service checks the same standards (RFC 8291, RFC 8292), but
+  it is not Apple's.
+- The permission prompt: iPhone asks only from a tap in an app opened from
+  the home screen. The card asks only from his tap; whether iPhone shows
+  the prompt is only seen on the phone.
+- What the lock screen shows, a second alert with the same tag replacing
+  the first, and a tap opening the screen. The service worker's code for
+  these runs in the tests in a stand-in for the phone (headless Chromium
+  refuses notifications, and WebKit cannot be handed a push).
+- Apple's rule about pushes that show nothing: iPhone can end a
+  subscription whose pushes show nothing. A push the service worker cannot
+  read still shows something plain; a repeat it drops shows nothing
+  (QUESTIONS.md A42).
+- The Notifications card in Safari from the home screen: the tests use a
+  stand-in for the browser's push parts (push-stub.ts), with the real
+  server and the real sender behind it.
+
+Not done, by his call (Oct 12), to cut scope:
+- The full break-it run at the end of the phase (see BREAK-IT).
+- The 2,000 lives of 5 years of Phase 2's simulator (see THE TESTS).
+
+Waiting on his answers (built as they are now):
+- A40: alerts the phone could not be given for days (each goes when it can
+  be reached; option 2 would send only the newest of each kind).
+- A41: notifications on a phone whose login has ended (they keep coming).
+- A42: keeping the ids of the alerts shown on the phone (in memory only).

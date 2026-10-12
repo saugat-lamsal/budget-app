@@ -6,7 +6,7 @@ import { START_DATE, appSide, openTestBook, paycheck, purchase, takenBack } from
 import { demoScenario } from '../../../server/src/demo/scenarios.js';
 import { moneyText } from '../../src/ui/money-format.js';
 import { amountAt } from './activity-screens.js';
-import { ENGINES, launch, close, openScenario, phone, textAt, useEngine } from './harness.js';
+import { ENGINES, launch, close, openScenario, phone, showScenario, textAt, useEngine } from './harness.js';
 import { openLive, startLive } from './live.js';
 import { sheetGapsAfterAnAnswer, watchChoices, watchSheetsAfterAnAnswer } from './screens.js';
 
@@ -72,10 +72,11 @@ describe.each(ENGINES)('Payday in %s', (_name, engine) => {
 
   it('11.2 B35 the days to the next payday are in words, and a late paycheck says so', async () => {
     const context = await browser().newContext(phone());
-    const normal = await openScenario(context, base(), 'payday-paid', '/payday');
-    expect(await textAt(normal, 'next-payday')).toBe('14 days to payday');
-    const late = await openScenario(context, base(), 'late', '/payday');
-    expect(await textAt(late, 'next-payday')).toBe('Paycheck is 2 days late');
+    const page = await openScenario(context, base(), 'payday-paid', '/payday');
+    expect(await textAt(page, 'next-payday')).toBe('14 days to payday');
+    // The same page, moved to the other life (showLive in live.ts says why).
+    await showScenario(page, base(), 'late', '/payday');
+    expect(await textAt(page, 'next-payday')).toBe('Paycheck is 2 days late');
     await context.close();
   });
 
@@ -290,31 +291,33 @@ describe.each(ENGINES)('Payday in %s', (_name, engine) => {
 
   it('B104 B107 Payday opens from Home and from Buckets, and back goes to the one it came from', async () => {
     const context = await browser().newContext(phone());
-    const fromHome = await openScenario(context, base(), 'payday-paid');
-    await fromHome.getByTestId('home-payday').click();
-    await fromHome.getByTestId('paycheck-amount').waitFor();
-    expect(new URL(fromHome.url()).pathname).toBe('/payday');
-    expect(await fromHome.title()).toBe('Payday · Budget');
-    expect(await fromHome.getByTestId('tab-buckets').getAttribute('aria-current')).toBe('page');
-    expect(await fromHome.getByTestId('back').innerText()).toBe('Home');
-    await fromHome.getByTestId('back').click();
-    await fromHome.getByTestId('safe-to-spend').waitFor();
-    expect(new URL(fromHome.url()).pathname).toBe('/home');
+    const page = await openScenario(context, base(), 'payday-paid');
+    await page.getByTestId('home-payday').click();
+    await page.getByTestId('paycheck-amount').waitFor();
+    expect(new URL(page.url()).pathname).toBe('/payday');
+    expect(await page.title()).toBe('Payday · Budget');
+    expect(await page.getByTestId('tab-buckets').getAttribute('aria-current')).toBe('page');
+    expect(await page.getByTestId('back').innerText()).toBe('Home');
+    await page.getByTestId('back').click();
+    await page.getByTestId('safe-to-spend').waitFor();
+    expect(new URL(page.url()).pathname).toBe('/home');
 
-    const fromBuckets = await openScenario(context, base(), 'payday-paid', '/buckets');
-    await fromBuckets.getByTestId('row-payday').click();
-    await fromBuckets.getByTestId('paycheck-amount').waitFor();
-    expect(await fromBuckets.getByTestId('back').innerText()).toBe('Buckets');
-    await fromBuckets.getByTestId('back').click();
-    await fromBuckets.getByTestId('buckets-total').waitFor();
-    expect(new URL(fromBuckets.url()).pathname).toBe('/buckets');
+    // The same page each time, the life started over and the address opened
+    // afresh, a new document as in a new page (showLive in live.ts says why).
+    await showScenario(page, base(), 'payday-paid', '/buckets');
+    await page.getByTestId('row-payday').click();
+    await page.getByTestId('paycheck-amount').waitFor();
+    expect(await page.getByTestId('back').innerText()).toBe('Buckets');
+    await page.getByTestId('back').click();
+    await page.getByTestId('buckets-total').waitFor();
+    expect(new URL(page.url()).pathname).toBe('/buckets');
 
     // Opened by its address, with nothing before it in the app: back goes to Buckets.
-    const direct = await openScenario(context, base(), 'payday-paid', '/payday');
-    expect(await direct.getByTestId('back').innerText()).toBe('Buckets');
-    await direct.getByTestId('back').click();
-    await direct.getByTestId('buckets-total').waitFor();
-    expect(new URL(direct.url()).pathname).toBe('/buckets');
+    await showScenario(page, base(), 'payday-paid', '/payday');
+    expect(await page.getByTestId('back').innerText()).toBe('Buckets');
+    await page.getByTestId('back').click();
+    await page.getByTestId('buckets-total').waitFor();
+    expect(new URL(page.url()).pathname).toBe('/buckets');
     await context.close();
   });
 });

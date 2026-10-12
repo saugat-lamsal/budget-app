@@ -10,6 +10,7 @@ import type { BankRuleRequest, BankRuleResponse } from '../views/bank-rules.js';
 import type { ChoiceRequest, ChoiceResponse, MoveRequest, MoveResponse, RuleRequest, RuleResponse, SettingsRequest, SettingsResponse, SetupRequest, SetupResponse } from '../views/choice.js';
 import type { HomeView } from '../views/home.js';
 import type { PaydayView } from '../views/payday.js';
+import type { PushAnswer, PushOnRequest } from '../views/push.js';
 import type { ReviewView } from '../views/review.js';
 import type { SettingsView } from '../views/settings.js';
 import type { SetupView } from '../views/setup.js';
@@ -39,6 +40,11 @@ export const LOGIN_PATH = '/login';
 
 // Step 3: how often the real server syncs with the bank (section 2), changed on Settings.
 export const SYNC_EVERY_PATH = '/api/sync/every';
+
+// Phase 5, the phone: Settings' Notifications card. Turn them on for this
+// device (its push subscription), off, and send it a test alert. They change
+// which devices get the alerts, never money (0.4).
+export const PUSH_PATHS = { on: '/api/push/on', off: '/api/push/off', test: '/api/push/test' } as const;
 
 export interface Route {
   readonly method: 'GET' | 'POST';
@@ -73,6 +79,7 @@ export const ROUTES: readonly Route[] = [
   { method: 'POST', path: '/api/choice', login: true },
   { method: 'POST', path: '/api/seen', login: true },
   { method: 'POST', path: SYNC_EVERY_PATH, login: true },
+  ...Object.values(PUSH_PATHS).map((path): Route => ({ method: 'POST', path, login: true })),
   ...AUTH_ROUTES,
 ];
 
@@ -133,6 +140,15 @@ export interface AppServerOptions {
   // Phase 5: the alerts the real server worked out and sent. Without it (the
   // demo, which sends none), /api/alerts is not there.
   readonly alerts?: (request: IncomingMessage) => AlertsView | Promise<AlertsView>;
+  // Phase 5, the phone: the Notifications card, for the device asking. Without
+  // it (the demo, which sends no alerts), the addresses are not there.
+  readonly push?: PushHandlers;
+}
+
+export interface PushHandlers {
+  readonly on: (request: IncomingMessage, subscription: PushOnRequest) => PushAnswer;
+  readonly off: (request: IncomingMessage) => PushAnswer;
+  readonly test: (request: IncomingMessage) => Promise<PushAnswer>;
 }
 
 export type Seen = { readonly kind: 'bank-took-back'; readonly id: string };
@@ -161,6 +177,8 @@ const AUTH_LIMIT = 16_384;
 // A choice is small too: even a three-way split is under 400 bytes, and a
 // change to every setting at once under 1,000.
 const CHOICE_LIMIT = 4096;
+// A push subscription: an address of a few hundred characters and two keys.
+const PUSH_LIMIT = 4096;
 
 // Reads what the app's own page sent: JSON (which another site cannot send
 // without the browser asking first), from this origin, and small. Answers
@@ -251,6 +269,23 @@ async function takeChoice(request: IncomingMessage, response: ServerResponse, ha
   send(response, answer.ok ? 200 : 422, 'application/json; charset=utf-8', JSON.stringify(answer), 'no-store');
 }
 
+// What a browser's PushSubscription.toJSON() gives, and nothing else: the
+// address, and the device's public key and secret (base64url).
+function pushOnOf(value: unknown): PushOnRequest | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value) || Object.keys(value).sort().join() !== 'endpoint,keys') return null;
+  const { endpoint, keys } = value as Record<string, unknown>;
+  if (typeof endpoint !== 'string' || endpoint.length === 0 || endpoint.length > 2048) return null;
+  if (typeof keys !== 'object' || keys === null || Array.isArray(keys) || Object.keys(keys).sort().join() !== 'auth,p256dh') return null;
+  const { p256dh, auth } = keys as Record<string, unknown>;
+  const key = (v: unknown, most: number): v is string => typeof v === 'string' && v.length > 0 && v.length <= most && /^[A-Za-z0-9_-]+=*$/.test(v);
+  if (!key(p256dh, 128) || !key(auth, 64)) return null;
+  return { endpoint, keys: { p256dh, auth } };
+}
+
+function isEmptyObject(value: unknown): boolean {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length === 0;
+}
+
 function isSeen(value: unknown): value is Seen {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
   const keys = Object.keys(value).sort();
@@ -327,6 +362,25 @@ export function createAppServer(options: AppServerOptions): Server {
         return;
       }
       const said = options.syncEvery(request, (sent as { minutes: unknown }).minutes);
+      send(response, said.ok ? 200 : 422, 'application/json; charset=utf-8', JSON.stringify(said), 'no-store');
+      return;
+    }
+    // The Notifications card: which devices get the alerts, never money (0.4).
+    const pushAction = (Object.entries(PUSH_PATHS) as [keyof typeof PUSH_PATHS, string][]).find(([, p]) => p === path)?.[0];
+    if (pushAction !== undefined && options.push !== undefined) {
+      if (request.method !== 'POST') {
+        response.setHeader('Allow', 'POST');
+        send(response, 405, 'text/plain; charset=utf-8', 'Only POST.', 'no-store');
+        return;
+      }
+      const sent = await readOwnJson(request, response, PUSH_LIMIT);
+      if (response.writableEnded || response.headersSent) return;
+      const subscription = pushAction === 'on' ? pushOnOf(sent) : null;
+      if (pushAction === 'on' ? subscription === null : !isEmptyObject(sent)) {
+        send(response, 400, 'text/plain; charset=utf-8', 'Not something the Notifications card sends.', 'no-store');
+        return;
+      }
+      const said = subscription !== null ? options.push.on(request, subscription) : pushAction === 'off' ? options.push.off(request) : await options.push.test(request);
       send(response, said.ok ? 200 : 422, 'application/json; charset=utf-8', JSON.stringify(said), 'no-store');
       return;
     }

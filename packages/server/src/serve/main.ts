@@ -8,8 +8,9 @@ import { Keeper } from '../history/keeper.js';
 import { consoleLog } from '../log.js';
 import { PlaidClient } from '../plaid/client.js';
 import { plaidKeysFromEnv, type PlaidKeys } from '../plaid/sandbox-lock.js';
+import { pushKeysFromEnv, type PushKeys } from '../push/push-keys.js';
 import { serveOptions, type ServeOptions } from './options.js';
-import { logSender } from './alert-timer.js';
+import { logSender, type AlertSender } from './alert-timer.js';
 import { serveBooks } from './serving.js';
 import { connectLikeHis } from './test-bank.js';
 
@@ -23,30 +24,33 @@ import { connectLikeHis } from './test-bank.js';
 // the database. Before it starts, it replays the
 // whole history and checks it against the totals saved with each event; if
 // they differ, it does not start, and says at which event (0.6, A28).
+// Phase 5: with push keys in .env (VAPID_*; npm run push-keys makes a pair),
+// each alert goes to the phones that turned notifications on, through web
+// push; without them, it is written in this window.
 
 // The repository's root, from packages/server/src/serve or packages/server/dist/serve.
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
 const envFile = `${root}.env`;
 if (existsSync(envFile)) process.loadEnvFile(envFile);
 
-let started: { options: ServeOptions; keys: PlaidKeys; box: TokenBox };
+let started: { options: ServeOptions; keys: PlaidKeys; box: TokenBox; push: PushKeys | null };
 try {
   // The sandbox lock: anything but Plaid's test bank stops it here.
-  started = { options: serveOptions(process.argv.slice(2), process.env, root), keys: plaidKeysFromEnv(process.env), box: tokenBoxFromEnv(process.env) };
+  started = { options: serveOptions(process.argv.slice(2), process.env, root), keys: plaidKeysFromEnv(process.env), box: tokenBoxFromEnv(process.env), push: pushKeysFromEnv(process.env) };
 } catch (error) {
   console.error(`The server did not start: ${error instanceof Error ? error.message : String(error)}`);
   process.exit(2);
 }
-const { options, keys, box } = started;
+const { options, keys, box, push } = started;
 // The app's own address: passkeys are made for its host name, localhost.
 let origin = `http://localhost:${options.port}`;
-const log = consoleLog([keys.clientId, keys.secret]);
+const log = consoleLog([keys.clientId, keys.secret, ...(push === null ? [] : [push.privateKey])]);
 
 mkdirSync(dirname(options.db), { recursive: true });
 const db = openDatabase(options.db);
 let keeper: Keeper;
 try {
-  keeper = Keeper.open({ db, now: () => new Date(), log, origin: () => origin });
+  keeper = Keeper.open({ db, now: () => new Date(), log, origin: () => origin, push: { keys: push } });
 } catch (error) {
   db.close();
   if (error instanceof HistoryDoesNotReplay) {
@@ -78,8 +82,8 @@ const { server, timer, alerts } = serveBooks({
   webRoot,
   origin: () => origin,
   onError: (error) => log.error('a request failed', { error: error instanceof Error ? error.message : String(error) }),
-  // Phase 5: no phone yet; each alert is written here, in this window.
-  sender: logSender(log),
+  // Phase 5: to the phones, through web push; without push keys, written here, in this window.
+  sender: phoneSender(keeper, log),
 });
 server.listen(options.port, '127.0.0.1', () => {
   const address = server.address();
@@ -95,7 +99,7 @@ server.listen(options.port, '127.0.0.1', () => {
     console.log('  Good once, for 15 minutes. npm run login-code prints a new one.');
   }
   console.log(`  It syncs with the test bank by itself every ${keeper.syncEveryMinutes()} minutes (a setting).`);
-  console.log('  Alerts are worked out and written here, in this window, until the phone gets them.');
+  console.log(push === null ? '  Alerts are worked out and written here, in this window (no push keys in .env: npm run push-keys).' : '  Alerts go to each phone that turned notifications on (Settings, Notifications).');
   console.log('Stop it with Ctrl+C.');
   alerts.start();
   timer.start();
@@ -110,4 +114,17 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
       process.exit(0);
     });
   });
+}
+
+// The real sender, each alert also noted in this window once it went; or,
+// without push keys, the window only.
+function phoneSender(books: Keeper, out: typeof log): AlertSender {
+  const real = books.pushSender();
+  if (real === null) return logSender(out);
+  return {
+    send: async (alert) => {
+      await real.send(alert);
+      out.info('alert sent', { title: alert.title, ...(alert.due === null ? {} : { late: alert.due }), due: alert.dueAt });
+    },
+  };
 }

@@ -1,4 +1,4 @@
-import { formatDollars, type Cents, type IsoDate } from '@budget-app/money';
+import { daysBetween, formatDollars, type Cents, type IsoDate } from '@budget-app/money';
 
 // Phase 5, part one: the alerts and card reminders of rulebook sections 9
 // and 10, as the real server works them out, keeps them, and sends them.
@@ -72,6 +72,22 @@ export function alertKey(f: AlertFacts): string {
   }
 }
 
+// Phase 5, the phone: the screen a tap on the alert opens. A bucket's
+// alert opens that bucket's list; the daily review, Review; everything else
+// Home, where Needs attention says what it is about.
+export function alertScreen(f: AlertFacts | null): string {
+  if (f === null) return '/alerts';
+  switch (f.kind) {
+    case 'low-bucket':
+    case 'empty-bucket':
+      return `/buckets/${f.bucket}`;
+    case 'daily-review':
+      return '/review';
+    default:
+      return '/home';
+  }
+}
+
 export function alertRecord(facts: AlertFacts, dueAt: string): AlertRecord {
   return { key: alertKey(facts), facts, dueAt, ...alertWords(facts) };
 }
@@ -94,8 +110,10 @@ export function clockWords(local: string): string {
 // What the phone shows: a title and a line. With amounts, as the rules say
 // (9.1, 9.2, 10.4): the alerts list in the app always has them. Without them,
 // words only, for the lock screen (10.10, A39): the same alert, its amounts
-// left out.
-export function alertWords(f: AlertFacts, options: { readonly amounts?: boolean } = {}): { readonly title: string; readonly body: string } {
+// left out. sentOn, the day it goes on his clock: a card reminder that goes
+// out later than its day counts the days to the due date from then (9.7, his
+// answer Oct 11, B185); left out, from the day it is for.
+export function alertWords(f: AlertFacts, options: { readonly amounts?: boolean; readonly sentOn?: IsoDate } = {}): { readonly title: string; readonly body: string } {
   const amounts = options.amounts ?? true;
   switch (f.kind) {
     case 'low-bucket':
@@ -108,9 +126,11 @@ export function alertWords(f: AlertFacts, options: { readonly amounts?: boolean 
     case 'daily-review':
       return { title: 'Time to review', body: f.waiting === 1 ? '1 thing is waiting for you to sort.' : `${f.waiting} things are waiting for you to sort.` };
     case 'card-reminder': {
-      const when = f.daysBefore === 0 ? 'today' : f.daysBefore === 1 ? 'tomorrow' : `in ${f.daysBefore} days`;
+      const left = options.sentOn === undefined ? f.daysBefore : daysBetween(options.sentOn, f.dueDate);
+      // Only one the phone could not be given until after the due date goes then (B181).
+      const when = left < 0 ? `was due ${left === -1 ? 'yesterday' : `${-left} days ago`}` : `due ${left === 0 ? 'today' : left === 1 ? 'tomorrow' : `in ${left} days`}`;
       const owed = f.statementBalance === null ? `Minimum ${formatDollars(f.minimumPayment)}.` : `Statement balance ${formatDollars(f.statementBalance)}, minimum ${formatDollars(f.minimumPayment)}.`;
-      return { title: `${CARDS[f.card]} payment due ${when}`, body: amounts ? `${owed} Due ${dayWords(f.dueDate)}.` : `Due ${dayWords(f.dueDate)}.` };
+      return { title: `${CARDS[f.card]} payment ${when}`, body: amounts ? `${owed} Due ${dayWords(f.dueDate)}.` : `Due ${dayWords(f.dueDate)}.` };
     }
     case 'card-overdue':
       return {

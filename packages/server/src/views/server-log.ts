@@ -3,7 +3,9 @@ import type { Totals } from '../history/history.js';
 
 // A line of the change log (13.5) that the server keeps, not the book: the
 // history taking new totals (QUESTIONS.md A28), logins, new passkeys, log
-// outs and the login setting, and how often it syncs with the bank (Step 3). afterBookLines and afterBankLines say how many
+// outs and the login setting, how often it syncs with the bank (Step 3), and
+// notifications turned on or off on a device, or stopped by its push service
+// (Phase 5). afterBookLines and afterBankLines say how many
 // of the book's lines and the bank rules' lines there were when it was
 // written, so all three read as one list, in the order things happened.
 export type ServerLogLine =
@@ -18,4 +20,7 @@ export type ServerLogLine =
       readonly afterBankLines: number;
     }
   | { readonly date: IsoDate; readonly action: 'logged-in' | 'logged-out' | 'passkey-added'; readonly device: string; readonly afterBookLines: number; readonly afterBankLines: number }
-  | { readonly date: IsoDate; readonly action: 'stay-logged-in-changed' | 'sync-every-changed'; readonly before: number; readonly after: number; readonly afterBookLines: number; readonly afterBankLines: number };
+  | { readonly date: IsoDate; readonly action: 'stay-logged-in-changed' | 'sync-every-changed'; readonly before: number; readonly after: number; readonly afterBookLines: number; readonly afterBankLines: number }
+  | { readonly date: IsoDate; readonly action: 'notifications-on' | 'notifications-off'; readonly device: string; readonly afterBookLines: number; readonly afterBankLines: number }
+  // The device's push service said its subscription is gone, and it was removed.
+  | { readonly date: IsoDate; readonly action: 'notifications-stopped'; readonly device: string; readonly why: string; readonly afterBookLines: number; readonly afterBankLines: number };

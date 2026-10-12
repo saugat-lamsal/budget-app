@@ -64,10 +64,11 @@ export class ShouldShow {
         await route.continue();
         return;
       }
-      // The login card is the browser's own (Step 2): the real server's.
+      // The login card and the Notifications card are the browser's own (Step
+      // 2, Phase 5: they say what this device has): the real server's.
       if (path === '/api/settings') {
-        const real = (await (await route.fetch()).json()) as { readonly login?: unknown };
-        await route.fulfill({ json: real.login === undefined ? view : { ...(view as object), login: real.login } });
+        const real = (await (await route.fetch()).json()) as { readonly login?: unknown; readonly push?: unknown };
+        await route.fulfill({ json: { ...(view as object), ...(real.login === undefined ? {} : { login: real.login }), ...(real.push === undefined ? {} : { push: real.push }) } });
         return;
       }
       await route.fulfill({ json: view });

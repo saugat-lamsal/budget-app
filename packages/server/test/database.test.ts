@@ -20,7 +20,7 @@ describe('the database', () => {
     const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[]).map(
       (t) => t.name,
     );
-    expect(tables).toEqual(['accounts', 'attention', 'bank_items', 'bank_reads', 'book_events', 'change_log', 'connection', 'decisions', 'last_checked', 'login_codes', 'outbox', 'passkeys', 'sessions', 'settings', 'statements', 'syncs']);
+    expect(tables).toEqual(['accounts', 'attention', 'bank_items', 'bank_reads', 'book_events', 'change_log', 'connection', 'decisions', 'last_checked', 'login_codes', 'outbox', 'passkeys', 'push_stopped', 'push_subscriptions', 'sessions', 'settings', 'statements', 'syncs']);
     expect(db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION);
     expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
     db.close();
@@ -161,6 +161,27 @@ describe('the database', () => {
     expect(db.prepare('SELECT key, title, facts FROM outbox').all()).toEqual([{ key: 'daily-review 2026-10-04', title: 'Time to review', facts: null }]);
     db.prepare("INSERT INTO outbox (key, seq, kind, title, body, facts, due_at, created_at, tries, next_try_at) VALUES ('daily-review 2026-10-05', ?, 'daily-review', 'Time to review', '2 things', '{\"kind\":\"daily-review\"}', '2026-10-06T00:00:00.000Z', '2026-10-06T00:00:00.000Z', 0, '2026-10-06T00:00:00.000Z')").run(seq);
     expect(db.prepare("SELECT facts FROM outbox WHERE key = 'daily-review 2026-10-05'").get()).toEqual({ facts: '{"kind":"daily-review"}' });
+    db.close();
+  });
+
+  it('step 7 (Phase 5, the phone) keeps everything as it was and adds the push subscriptions, empty, each tied to a device logged in', () => {
+    const path = tempFile();
+    const old = openDatabase(path, { upTo: 6 });
+    old.prepare("INSERT INTO sessions (token_hash, device, passkey_id, created_at) VALUES ('h1', 'Safari on iPhone', 'pk', '2026-10-01T16:00:00.000Z')").run();
+    old.close();
+    const db = openDatabase(path);
+    expect(db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION);
+    expect(db.prepare('SELECT device FROM sessions').all()).toEqual([{ device: 'Safari on iPhone' }]);
+    expect(db.prepare('SELECT * FROM push_subscriptions').all()).toEqual([]);
+    const add = db.prepare("INSERT INTO push_subscriptions (session_hash, endpoint, p256dh, auth, device, created_at) VALUES (?, ?, 'k', 'a', 'Safari on iPhone', '2026-10-12T16:00:00.000Z')");
+    add.run('h1', 'https://127.0.0.1:1/push/a');
+    // One per device, one device per address, and only for a device logged in.
+    expect(() => add.run('h1', 'https://127.0.0.1:1/push/b')).toThrow();
+    expect(() => add.run('no-such-login', 'https://127.0.0.1:1/push/c')).toThrow();
+    db.prepare("INSERT INTO push_stopped (session_hash, at, device, why) VALUES ('h1', '2026-10-13T00:00:00.000Z', 'Safari on iPhone', 'gone')").run();
+    // Logged out there: both go with the login.
+    db.prepare("DELETE FROM sessions WHERE token_hash = 'h1'").run();
+    expect([db.prepare('SELECT count(*) AS n FROM push_subscriptions').get(), db.prepare('SELECT count(*) AS n FROM push_stopped').get()]).toEqual([{ n: 0 }, { n: 0 }]);
     db.close();
   });
 

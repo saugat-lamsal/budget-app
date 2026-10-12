@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { demoScenario } from '../../../server/src/demo/scenarios.js';
 import { rowOf } from './activity-screens.js';
 import { addStyle, axeViolations, tappable } from './design-helpers.js';
-import { ENGINES, IPHONE, IPHONE_INSETS, openScenario, phone, useEngine } from './harness.js';
+import { ENGINES, IPHONE, IPHONE_INSETS, emulatePhone, openScenario, phone, showScenario, useEngine } from './harness.js';
 
 // The design rules (CLAUDE.md) for the bucket lists, hand moves, and Payday
 // and their sheets, in the browser: light and dark, readable contrast,
@@ -85,13 +85,15 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
   // machines, and one scheme went past it in WebKit when the whole suite ran
   // (Oct 9). Together they check exactly what the one test did.
   for (const scheme of ['light', 'dark'] as const) {
+    // Each test has one page, moved from screen to screen and the life started
+    // over each time (showLive in live.ts says why).
     it(`readable contrast and no accessibility problems, in ${scheme} mode, in every state`, async () => {
       const problems: string[] = [];
       const context = await browser().newContext(phone({ colorScheme: scheme, bypassCSP: true }));
+      const page = await context.newPage();
       for (const [life, path] of SCREENS) {
-        const page = await openScenario(context, base(), life, path);
+        await showScenario(page, base(), life, path);
         problems.push(...(await axeViolations(page)).map((p) => `${scheme} ${path} ${life}: ${p}`));
-        await page.close();
       }
       await context.close();
       expect(problems).toEqual([]);
@@ -103,22 +105,20 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
       const page = await openScenario(context, base(), 'activity-marked', '/buckets/needs');
       const names = await activitySheets(page);
       // The checks run on each sheet as it is open: redo them one by one.
-      await page.close();
       for (const name of names) {
-        const again = await openScenario(context, base(), 'activity-marked', '/buckets/needs');
-        const opened = await activitySheetsUpTo(again, name);
+        await showScenario(page, base(), 'activity-marked', '/buckets/needs');
+        const opened = await activitySheetsUpTo(page, name);
         expect(opened).toBe(name);
-        problems.push(...(await axeViolations(again)).map((p) => `${scheme} sheet ${name}: ${p}`));
-        await again.close();
+        problems.push(...(await axeViolations(page)).map((p) => `${scheme} sheet ${name}: ${p}`));
       }
       // Payday asking first, and the done message.
-      const payday = await openScenario(context, base(), 'payday-paid', '/payday');
-      await payday.locator('[data-testid^="item-leftover"]').first().getByTestId('answer-roll-over').click();
-      await payday.getByTestId('confirm-yes').waitFor();
-      problems.push(...(await axeViolations(payday)).map((p) => `${scheme} sheet payday confirm: ${p}`));
-      await payday.getByTestId('confirm-yes').click();
-      await payday.getByTestId('notice').waitFor();
-      problems.push(...(await axeViolations(payday)).map((p) => `${scheme} payday done message: ${p}`));
+      await showScenario(page, base(), 'payday-paid', '/payday');
+      await page.locator('[data-testid^="item-leftover"]').first().getByTestId('answer-roll-over').click();
+      await page.getByTestId('confirm-yes').waitFor();
+      problems.push(...(await axeViolations(page)).map((p) => `${scheme} sheet payday confirm: ${p}`));
+      await page.getByTestId('confirm-yes').click();
+      await page.getByTestId('notice').waitFor();
+      problems.push(...(await axeViolations(page)).map((p) => `${scheme} payday done message: ${p}`));
       await context.close();
       expect(problems).toEqual([]);
     });
@@ -127,35 +127,36 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
   it('every tap target is at least 44 by 44 points, in every state and every sheet', async () => {
     const small: string[] = [];
     const context = await browser().newContext(phone());
+    const page = await context.newPage();
     for (const [life, path] of SCREENS) {
-      const page = await openScenario(context, base(), life, path);
+      await showScenario(page, base(), life, path);
       for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`${path} ${life}: ${t.what} is ${t.width}x${t.height}`);
-      await page.close();
     }
-    const names = await activitySheets(await openScenario(context, base(), 'activity-marked', '/buckets/needs'));
+    await showScenario(page, base(), 'activity-marked', '/buckets/needs');
+    const names = await activitySheets(page);
     for (const name of names) {
-      const page = await openScenario(context, base(), 'activity-marked', '/buckets/needs');
+      await showScenario(page, base(), 'activity-marked', '/buckets/needs');
       await activitySheetsUpTo(page, name);
       for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`sheet ${name}: ${t.what} is ${t.width}x${t.height}`);
-      await page.close();
     }
-    const payday = await openScenario(context, base(), 'payday-paid', '/payday');
-    await payday.locator('[data-testid^="item-leftover"]').first().getByTestId('answer-roll-over').click();
-    await payday.getByTestId('confirm-yes').waitFor();
-    for (const t of await tappable(payday)) if (t.width < 44 || t.height < 44) small.push(`sheet payday confirm: ${t.what} is ${t.width}x${t.height}`);
+    await showScenario(page, base(), 'payday-paid', '/payday');
+    await page.locator('[data-testid^="item-leftover"]').first().getByTestId('answer-roll-over').click();
+    await page.getByTestId('confirm-yes').waitFor();
+    for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`sheet payday confirm: ${t.what} is ${t.width}x${t.height}`);
     await context.close();
     expect(small).toEqual([]);
   });
 
   it('nothing sits under the notch or the home bar, and the end of the screen scrolls clear of the tabs', async () => {
     const context = await browser().newContext(phone({ bypassCSP: true }));
+    const page = await context.newPage();
     for (const [life, path] of [
       ['activity-busy', '/buckets/needs'],
       ['activity-busy', '/buckets/held-for-others'],
       ['payday-paid', '/payday'],
       ['not-set-up', '/payday'],
     ] as const) {
-      const page = await openScenario(context, base(), life, path);
+      await showScenario(page, base(), life, path);
       await addStyle(page, `:root { --safe-top: ${IPHONE_INSETS.top}px !important; --safe-bottom: ${IPHONE_INSETS.bottom}px !important; }`);
       const first = await page.locator('main > :not(.sr-only):not(dialog)').first().boundingBox();
       expect(first!.y, `${path} ${life}`).toBeGreaterThanOrEqual(IPHONE_INSETS.top);
@@ -166,10 +167,9 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
       const bar = await page.locator('.tabbar').boundingBox();
       const last = await page.locator('main > :not(.sr-only):not(dialog)').last().boundingBox();
       expect(last!.y + last!.height, `${path} ${life}`).toBeLessThanOrEqual(bar!.y);
-      await page.close();
     }
     // A sheet leaves room for the home bar too: its last control ends above it.
-    const page = await openScenario(context, base(), 'activity-marked', '/buckets/needs');
+    await showScenario(page, base(), 'activity-marked', '/buckets/needs');
     await addStyle(page, `:root { --safe-top: ${IPHONE_INSETS.top}px !important; --safe-bottom: ${IPHONE_INSETS.bottom}px !important; }`);
     await page.getByTestId(`row-${GROCERY_OCT_1}`).click();
     const sheet = page.getByTestId('activity-sheet');
@@ -181,20 +181,22 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
   });
 
   it('with reduced motion on, the move sheet does not slide', async () => {
-    const moving = await openScenario(await browser().newContext(phone()), base(), 'activity-busy', '/buckets/needs');
-    await moving.getByTestId('move-open').click();
-    expect(await moving.getByTestId('move-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('sheet-in');
-    await moving.context().close();
-    const still = await openScenario(await browser().newContext(phone({ reducedMotion: 'reduce' })), base(), 'activity-busy', '/buckets/needs');
-    await still.getByTestId('move-open').click();
-    expect(await still.getByTestId('move-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
-    const durations = await still.locator('.row, .button, .field__input').evaluateAll((els) => els.map((e) => getComputedStyle(e).transitionDuration));
+    const page = await openScenario(await browser().newContext(phone()), base(), 'activity-busy', '/buckets/needs');
+    await page.getByTestId('move-open').click();
+    expect(await page.getByTestId('move-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('sheet-in');
+    // The same page with motion reduced, the life started over.
+    await emulatePhone(page, { reducedMotion: 'reduce' });
+    await showScenario(page, base(), 'activity-busy', '/buckets/needs');
+    await page.getByTestId('move-open').click();
+    expect(await page.getByTestId('move-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
+    const durations = await page.locator('.row, .button, .field__input').evaluateAll((els) => els.map((e) => getComputedStyle(e).transitionDuration));
     expect(durations.every((d) => d.split(',').every((part) => Number.parseFloat(part) === 0))).toBe(true);
-    await still.context().close();
+    await page.context().close();
   });
 
   it("the text grows with the phone's text size, and the new screens still fit", async () => {
     const context = await browser().newContext(phone({ bypassCSP: true }));
+    const page = await context.newPage();
     for (const [life, path] of [
       ['activity-busy', '/buckets/needs'],
       ['big', '/buckets/needs'],
@@ -203,7 +205,7 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
       ['big', '/payday'],
       ['bank-not-read', '/payday'],
     ] as const) {
-      const page = await openScenario(context, base(), life, path);
+      await showScenario(page, base(), life, path);
       const before = await page.locator('.row__title, .hero__label, .state__title, .decision__title').first().evaluate((e) => Number.parseFloat(getComputedStyle(e).fontSize));
       await addStyle(page, 'html { font-size: 36px !important; }');
       const after = await page.locator('.row__title, .hero__label, .state__title, .decision__title').first().evaluate((e) => Number.parseFloat(getComputedStyle(e).fontSize));
@@ -214,10 +216,9 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
         expect(b.left, `${path} ${life}`).toBeGreaterThanOrEqual(0);
         expect(b.right, `${path} ${life}`).toBeLessThanOrEqual(IPHONE.width);
       }
-      await page.close();
     }
     // And with the move sheet open at the largest size.
-    const page = await openScenario(context, base(), 'activity-marked', '/buckets/needs');
+    await showScenario(page, base(), 'activity-marked', '/buckets/needs');
     await addStyle(page, 'html { font-size: 36px !important; }');
     await page.getByTestId('move-open').click();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(IPHONE.width);
@@ -227,6 +228,7 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
 
   it('money is written the same way everywhere on the new screens, with digits that line up, and money that came in has a plus', async () => {
     const context = await browser().newContext(phone());
+    const page = await context.newPage();
     for (const [life, path] of [
       ['activity-busy', '/buckets/needs'],
       ['activity-busy', '/buckets/wants'],
@@ -234,17 +236,16 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
       ['payday-paid', '/payday'],
       ['big', '/payday'],
     ] as const) {
-      const page = await openScenario(context, base(), life, path);
+      await showScenario(page, base(), life, path);
       const amounts = await page.locator('[data-money]').evaluateAll((els) => els.map((e) => ({ text: e.textContent ?? '', numbers: getComputedStyle(e).fontVariantNumeric })));
       expect(amounts.length, `${path} ${life}`).toBeGreaterThan(0);
       for (const a of amounts) {
         expect(a.text, `${path} ${life}`).toMatch(/^[−+]?\$\d{1,3}(,\d{3})*\.\d{2}$/);
         expect(a.numbers, `${path} ${life}`).toContain('tabular-nums');
       }
-      await page.close();
     }
     // Money coming in is a plus and money going out is a minus: the direction is in the amount itself.
-    const page = await openScenario(context, base(), 'activity-marked', '/buckets/needs');
+    await showScenario(page, base(), 'activity-marked', '/buckets/needs');
     const rows = await page.locator('[data-testid="row-amount"]').evaluateAll((els) => els.map((e) => ({ text: e.textContent ?? '', label: e.getAttribute('aria-label') })));
     expect(rows.some((r) => r.text.startsWith('+') && r.label?.startsWith('plus '))).toBe(true);
     expect(rows.some((r) => r.text.startsWith('−') && r.label?.startsWith('minus '))).toBe(true);
@@ -252,16 +253,19 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
   });
 
   it('light and dark follow the phone on the new screens', async () => {
+    const context = await browser().newContext(phone());
+    const page = await context.newPage();
     for (const [scheme, background] of [
       ['light', 'rgb(242, 242, 247)'],
       ['dark', 'rgb(0, 0, 0)'],
     ] as const) {
+      await emulatePhone(page, { colorScheme: scheme });
       for (const path of ['/buckets/needs', '/payday']) {
-        const page = await openScenario(await browser().newContext(phone({ colorScheme: scheme })), base(), 'normal', path);
+        await showScenario(page, base(), 'normal', path);
         expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), `${scheme} ${path}`).toBe(background);
-        await page.context().close();
       }
     }
+    await context.close();
   });
 
   it('pending, refunded, and refused say so in words, never by color alone', async () => {
@@ -269,8 +273,8 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
     const pending = page.locator('[data-status="pending"]').first();
     expect((await pending.innerText()).length).toBeGreaterThan(2);
     expect(await pending.locator('[data-icon]').count()).toBe(1);
-    const needs = await openScenario(page.context(), base(), 'activity-busy', '/buckets/needs');
-    expect(await needs.getByTestId(`row-${rowOf(demoScenario('activity-busy')!.input!().book!, 'needs', (r) => r.refunded > 0).id}`).innerText()).toContain('Refunded');
+    await showScenario(page, base(), 'activity-busy', '/buckets/needs');
+    expect(await page.getByTestId(`row-${rowOf(demoScenario('activity-busy')!.input!().book!, 'needs', (r) => r.refunded > 0).id}`).innerText()).toContain('Refunded');
     await page.context().close();
   });
 

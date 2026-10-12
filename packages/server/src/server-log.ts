@@ -5,7 +5,8 @@ import type { ServerLogLine } from './views/server-log.js';
 
 // Lines of the change log (13.5) that the server keeps, not the book: the
 // history taking new totals (QUESTIONS.md A28), logins, new passkeys, log
-// outs and the login setting, and how often it syncs with the bank (Step 3). Kept in the change_log table like the bank
+// outs and the login setting, how often it syncs with the bank (Step 3), and
+// notifications on a device (Phase 5). Kept in the change_log table like the bank
 // rules' lines, and shown on Settings among the book's lines, in the order
 // things happened.
 
@@ -18,6 +19,9 @@ const WHAT: Readonly<Record<ServerLogLine['action'], string>> = {
   'passkey-added': 'passkey added',
   'stay-logged-in-changed': 'stay logged in changed',
   'sync-every-changed': 'sync with the bank changed',
+  'notifications-on': 'notifications on',
+  'notifications-off': 'notifications off',
+  'notifications-stopped': 'notifications stopped',
 };
 
 type WithoutBankLines<T> = T extends unknown ? Omit<T, 'afterBankLines'> : never;

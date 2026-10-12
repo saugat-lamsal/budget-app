@@ -200,6 +200,22 @@ describe('10.1 and 10.2 low and empty buckets', () => {
     expect(keys(look(world(b, '2026-10-02T15:01:00Z'), ledger))).toEqual(['low-bucket needs pay period 0']);
   });
 
+  it('10.1 13.1 raising the alert level above where a bucket stands sends the low alert at the next look, due then, once', () => {
+    const b = book();
+    const ledger = started(b);
+    // Needs 250.00 of 500.00: exactly 50%, not low at 20% nor at 50%.
+    b.moveMoney({ from: 'needs', to: 'savings', amount: 25_000, confirmed: true }, '2026-10-02');
+    b.changeSettings({ lowBucketAlertPercent: 50 }, '2026-10-02');
+    const atLevel = look(world(b, '2026-10-02T15:00:00Z'), ledger);
+    expect(keys(atLevel)).toEqual([]);
+    b.changeSettings({ lowBucketAlertPercent: 51 }, '2026-10-02');
+    const raised = look(world(b, '2026-10-02T15:01:00Z'), atLevel.ledger);
+    expect(given(raised).map((g) => [g.key, g.dueAt, g.body])).toEqual([['low-bucket needs pay period 0', '2026-10-02T15:01:00.000Z', '$250.00 left of $500.00 this pay period.']]);
+    b.changeSettings({ lowBucketAlertPercent: 20 }, '2026-10-02');
+    b.changeSettings({ lowBucketAlertPercent: 60 }, '2026-10-02');
+    expect(keys(look(world(b, '2026-10-02T15:02:00Z'), raised.ledger))).toEqual([]);
+  });
+
   it('10.2 at zero, the empty alert, once this pay period; still empty when a new pay period starts, again (B50)', () => {
     const b = book();
     let ledger = started(b);

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { addStyle, axeViolations, tappable } from './design-helpers.js';
-import { ENGINES, IPHONE, IPHONE_INSETS, openScenario, phone, useEngine } from './harness.js';
+import { ENGINES, IPHONE, IPHONE_INSETS, emulatePhone, openScenario, phone, showScenario, useEngine } from './harness.js';
 
 // The design rules (CLAUDE.md), checked in the browser: light and dark,
 // readable contrast, 44-point tap targets, the notch and the home bar, the
@@ -32,15 +32,20 @@ describe('design rules in the style sheets', () => {
 describe.each(ENGINES)('design rules in %s', (engineName, engine) => {
   const { browser, base } = useEngine(engine);
 
+  // Each test has one page, moved from state to state and the life started
+  // over each time (showLive in live.ts says why).
   it('light and dark mode follow the phone', async () => {
+    const context = await browser().newContext(phone());
+    const page = await context.newPage();
     for (const [scheme, background] of [
       ['light', 'rgb(242, 242, 247)'],
       ['dark', 'rgb(0, 0, 0)'],
     ] as const) {
-      const page = await openScenario(await browser().newContext(phone({ colorScheme: scheme })), base(), 'normal');
+      await emulatePhone(page, { colorScheme: scheme });
+      await showScenario(page, base(), 'normal');
       expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(background);
-      await page.context().close();
     }
+    await context.close();
   });
 
   // One test for each colour scheme: the pass over every state is long on a slow
@@ -50,18 +55,18 @@ describe.each(ENGINES)('design rules in %s', (engineName, engine) => {
     it(`readable contrast and no accessibility problems, in ${scheme} mode, in every state`, async () => {
       const problems: string[] = [];
       const context = await browser().newContext(phone({ colorScheme: scheme, bypassCSP: true }));
+      const page = await context.newPage();
       for (const state of STATES) {
-        const page = await openScenario(context, base(), state);
+        await showScenario(page, base(), state);
         problems.push(...(await axeViolations(page)).map((p) => `${scheme} ${state}: ${p}`));
-        await page.close();
       }
       // The sheets, open.
-      const page = await openScenario(context, base(), 'mismatch');
+      await showScenario(page, base(), 'mismatch');
       await page.getByTestId('see-check').click();
       await page.getByTestId('check-sheet').waitFor();
       problems.push(...(await axeViolations(page)).map((p) => `${scheme} check sheet: ${p}`));
-      const other = await openScenario(context, base(), 'normal', '/review');
-      problems.push(...(await axeViolations(other)).map((p) => `${scheme} review tab: ${p}`));
+      await showScenario(page, base(), 'normal', '/review');
+      problems.push(...(await axeViolations(page)).map((p) => `${scheme} review tab: ${p}`));
       await context.close();
       expect(problems).toEqual([]);
     }, 120_000);
@@ -70,12 +75,12 @@ describe.each(ENGINES)('design rules in %s', (engineName, engine) => {
   it('every tap target is at least 44 by 44 points, in every state', async () => {
     const small: string[] = [];
     const context = await browser().newContext(phone());
+    const page = await context.newPage();
     for (const state of STATES) {
-      const page = await openScenario(context, base(), state);
+      await showScenario(page, base(), state);
       for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`${state}: ${t.what} is ${t.width}x${t.height}`);
-      await page.close();
     }
-    const page = await openScenario(context, base(), 'normal');
+    await showScenario(page, base(), 'normal');
     await page.getByTestId('attention-move-to-savings').click();
     await page.getByTestId('savings-sheet').waitFor();
     for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`savings sheet: ${t.what} is ${t.width}x${t.height}`);
@@ -85,8 +90,9 @@ describe.each(ENGINES)('design rules in %s', (engineName, engine) => {
 
   it('nothing sits under the notch or the home bar', async () => {
     const context = await browser().newContext(phone({ bypassCSP: true }));
+    const page = await context.newPage();
     for (const state of ['normal', 'mismatch', 'not-set-up'] as const) {
-      const page = await openScenario(context, base(), state);
+      await showScenario(page, base(), state);
       // What the iPhone 15 reports for env(safe-area-inset-*).
       await addStyle(page, `:root { --safe-top: ${IPHONE_INSETS.top}px !important; --safe-bottom: ${IPHONE_INSETS.bottom}px !important; }`);
       const first = await page.locator('main > :not(.sr-only):not(dialog)').first().boundingBox();
@@ -114,7 +120,6 @@ describe.each(ENGINES)('design rules in %s', (engineName, engine) => {
       const bar = await page.locator('.tabbar').boundingBox();
       const last = await page.locator('main > :not(.sr-only):not(dialog)').last().boundingBox();
       expect(last!.y + last!.height, state).toBeLessThanOrEqual(bar!.y);
-      await page.close();
     }
     await context.close();
   });
@@ -125,25 +130,27 @@ describe.each(ENGINES)('design rules in %s', (engineName, engine) => {
   });
 
   it('with reduced motion on, nothing slides or fades', async () => {
-    const moving = await openScenario(await browser().newContext(phone()), base(), 'normal');
-    await moving.getByTestId('attention-move-to-savings').click();
-    await moving.getByTestId('savings-sheet').waitFor();
-    expect(await moving.getByTestId('savings-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('sheet-in');
-    await moving.context().close();
+    const page = await openScenario(await browser().newContext(phone()), base(), 'normal');
+    await page.getByTestId('attention-move-to-savings').click();
+    await page.getByTestId('savings-sheet').waitFor();
+    expect(await page.getByTestId('savings-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('sheet-in');
 
-    const still = await openScenario(await browser().newContext(phone({ reducedMotion: 'reduce' })), base(), 'normal');
-    await still.getByTestId('attention-move-to-savings').click();
-    await still.getByTestId('savings-sheet').waitFor();
-    expect(await still.getByTestId('savings-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
-    const durations = await still.locator('.bar__fill, .row, .button').evaluateAll((els) => els.map((e) => getComputedStyle(e).transitionDuration));
+    // The same page with motion reduced, the life started over.
+    await emulatePhone(page, { reducedMotion: 'reduce' });
+    await showScenario(page, base(), 'normal');
+    await page.getByTestId('attention-move-to-savings').click();
+    await page.getByTestId('savings-sheet').waitFor();
+    expect(await page.getByTestId('savings-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
+    const durations = await page.locator('.bar__fill, .row, .button').evaluateAll((els) => els.map((e) => getComputedStyle(e).transitionDuration));
     expect(durations.every((d) => d.split(',').every((part) => Number.parseFloat(part) === 0))).toBe(true);
-    await still.context().close();
+    await page.context().close();
   });
 
   it("the text grows with the phone's text size, and the screen still fits", async () => {
     const context = await browser().newContext(phone({ bypassCSP: true }));
+    const page = await context.newPage();
     for (const state of ['normal', 'mismatch', 'big', 'trouble'] as const) {
-      const page = await openScenario(context, base(), state);
+      await showScenario(page, base(), state);
       const before = await page.locator('.row__title, .hero__label, .state__title').first().evaluate((e) => Number.parseFloat(getComputedStyle(e).fontSize));
       // The largest accessibility text size on the iPhone is about twice the default.
       await addStyle(page, 'html { font-size: 36px !important; }');
@@ -156,7 +163,6 @@ describe.each(ENGINES)('design rules in %s', (engineName, engine) => {
         expect(b.left, state).toBeGreaterThanOrEqual(0);
         expect(b.right, state).toBeLessThanOrEqual(IPHONE.width);
       }
-      await page.close();
     }
     await context.close();
   });
@@ -181,15 +187,15 @@ describe.each(ENGINES)('design rules in %s', (engineName, engine) => {
 
   it('money is written the same way everywhere, with digits that line up', async () => {
     const context = await browser().newContext(phone());
+    const page = await context.newPage();
     for (const state of ['normal', 'overspent', 'mismatch', 'trouble', 'big'] as const) {
-      const page = await openScenario(context, base(), state);
+      await showScenario(page, base(), state);
       const amounts = await page.locator('[data-money]').evaluateAll((els) => els.map((e) => ({ text: e.textContent ?? '', numbers: getComputedStyle(e).fontVariantNumeric })));
       expect(amounts.length, state).toBeGreaterThan(0);
       for (const a of amounts) {
         expect(a.text, state).toMatch(/^−?\$\d{1,3}(,\d{3})*\.\d{2}$/);
         expect(a.numbers, state).toContain('tabular-nums');
       }
-      await page.close();
     }
     await context.close();
   });

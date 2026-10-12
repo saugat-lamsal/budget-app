@@ -1,5 +1,5 @@
 import { formatDollars, parseDollars, type Cents, type LeftoverChoice, type Settings } from '@budget-app/money';
-import type { BankRuleChange, LoginView, LogRow, RuleRequest, RuleRow, RuleSpec, SettingsPreviewView, SettingsRequest, SettingsView, SyncView } from '@budget-app/server/views';
+import type { BankRuleChange, LoginView, LogRow, PushView, RuleRequest, RuleRow, RuleSpec, SettingsPreviewView, SettingsRequest, SettingsView, SyncView } from '@budget-app/server/views';
 import { useRef, useState, type ReactNode } from 'react';
 import { newDecisionId, sendChoice, type Load, type Reload } from '../app/api.js';
 import { pathOf, pathOfRoute } from '../app/routes.js';
@@ -11,11 +11,13 @@ import { BankRuleRows, BankRuleSheet, type Editing as BankEditing } from './bank
 import { bankRuleDoneText } from './bank-rules-text.js';
 import { SaidNotice, type Said } from './choose.js';
 import { LoginCard } from './login-card.js';
+import { NotificationsCard } from './notifications-card.js';
 import { SyncCard } from './sync-card.js';
 import { bankRuleText } from './setup-text.js';
 import {
   LEFTOVER_NAMES,
   LOGIN_LINES,
+  NOTIFICATION_LINES,
   RULE_CHOICE_NAMES,
   RULE_KINDS,
   RULE_KIND_DETAIL,
@@ -67,7 +69,7 @@ export function SettingsScreen({ load, onRetry, onChanged }: { readonly load: Lo
         <>
           {load.value.madeUpData && <MadeUpPill />}
           <StateMessage icon="settings" title="No settings yet" detail="Setup day reads your bank and starts your buckets. Your settings and rules show here after that." testId="settings-not-set-up" />
-          {(load.value.login !== undefined || load.value.sync !== undefined) && <NotSetUpCards login={load.value.login} sync={load.value.sync} reload={onRetry} />}
+          {(load.value.login !== undefined || load.value.sync !== undefined || load.value.push !== undefined) && <NotSetUpCards login={load.value.login} sync={load.value.sync} push={load.value.push} reload={onRetry} />}
         </>
       )}
       {load.status === 'ready' && load.value.state === 'tracking' && <SettingsReady view={load.value} reload={onRetry} onChanged={onChanged} />}
@@ -76,12 +78,14 @@ export function SettingsScreen({ load, onRetry, onChanged }: { readonly load: Lo
 }
 
 // Before setup day there are no settings, but he can still log out (Step 2),
-// and the server already syncs with the bank (Step 3).
-function NotSetUpCards({ login, sync, reload }: { readonly login: LoginView | undefined; readonly sync: SyncView | undefined; readonly reload: Reload }) {
+// the server already syncs with the bank (Step 3), and notifications can be
+// turned on ahead of the first alert (Phase 5).
+function NotSetUpCards({ login, sync, push, reload }: { readonly login: LoginView | undefined; readonly sync: SyncView | undefined; readonly push: PushView | undefined; readonly reload: Reload }) {
   const [said, setSaid] = useState<Said | null>(null);
   return (
     <>
       {said !== null && <SaidNotice said={said} sending={false} onRetry={() => undefined} onDismiss={() => setSaid(null)} sticky />}
+      {push !== undefined && <NotificationsCard push={push} onSaid={setSaid} reload={reload} />}
       {sync !== undefined && <SyncCard sync={sync} onSaid={setSaid} reload={reload} />}
       {login !== undefined && <LoginCard login={login} onSaid={setSaid} reload={reload} />}
     </>
@@ -242,6 +246,17 @@ function SettingsReady({ view, reload, onChanged }: { readonly view: Tracking; r
         {textRow('lock-amounts', 'Amounts on the lock screen', lockAmountsText(s.amountsOnLockScreen), 'The amounts are always in the app')}
         {view.alerts !== undefined && <ListRow icon="tray" title="Alerts sent" detail={alertsRowText(view.alerts)} href={pathOfRoute({ screen: 'alerts' })} testId="row-alerts-sent" />}
       </Card>
+
+      {view.push !== undefined && (
+        <NotificationsCard
+          push={view.push}
+          onSaid={setSaid}
+          reload={(when) => {
+            reload(when);
+            onChanged(when);
+          }}
+        />
+      )}
 
       <Card title="Old card" testId="old-card-card">
         {row('promo', 'Promo end date', s.oldCardPromoEndDate === null ? 'Not entered' : dayWithYear(s.oldCardPromoEndDate))}
@@ -430,6 +445,11 @@ function LogLine({ line }: { readonly line: LogRow }) {
       return <ListRow icon="lock" title="Stay logged in" detail={`${daysText(line.before)} → ${daysText(line.after)} · ${when}`} testId={testId} />;
     case 'sync-every-changed':
       return <ListRow icon="clock" title="Sync with the bank" detail={`Every ${minutesText(line.before)} → every ${minutesText(line.after)} · ${when}`} testId={testId} />;
+    case 'notifications-on':
+    case 'notifications-off':
+      return <ListRow icon="bell" title={NOTIFICATION_LINES[line.kind]} detail={`${line.device} · ${when}`} testId={testId} />;
+    case 'notifications-stopped':
+      return <ListRow icon="bell" title={NOTIFICATION_LINES[line.kind]} detail={`${line.device}: its push service would not take them any more · ${when}`} testId={testId} />;
   }
 }
 
