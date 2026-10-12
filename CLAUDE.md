@@ -1517,8 +1517,21 @@ long). It replaces running everything before every commit:
     every break caught there was called INVALID. It reads them without the
     colours now (break-it-lib.mjs judge; test/break-it.test.ts, a test
     first). On this PC the output was never in colour.
-  - PR #24's CI green on Linux (checks, Chromium, WebKit, image). Windows
-    CI by hand is his call.
+  - PR #24's CI green on 87e6197: Linux (checks, Chromium, WebKit, image;
+    WebKit after one rerun: the known stall, PR #21, in
+    design-real-server.test.ts, not touched) and Windows by hand (run
+    38296142077; Chromium after one rerun: net::ERR_NO_BUFFER_SPACE in
+    setup.test.ts "14.1 12.4 A10 ... setup-owes-more", not touched, 2,655
+    connections waiting to close). The Windows run before (38294361300)
+    found the new logs.test.ts past vitest's 5 s (5.9 s there, 0.8 s on
+    Linux): it has 60 s now. Two untouched tests also ran past 5 s that
+    once (debit-card-refund A29, simulator "the same seed"), and passed on
+    the next run.
+  - ERR_NO_BUFFER_SPACE on Windows CI's Chromium: three runs in a row now
+    (Oct 12: PR #23's first, and both of PR #24's), each a different test,
+    each with 2,600 to 3,500 connections on 127.0.0.1 waiting to close.
+    Not the app (Step 0 above). If it keeps on, a choice for him: rerun as
+    now, or tune the Windows runner's network in the workflow.
   - docs/phase-6-checklist.txt (the checklist as tests, the secrets, the
     cost) and docs/phase-6-setup.txt (his steps and the iPhone checklist).
   - QUESTIONS.md A43 (how he hears the backups stopped), B205 to B214.
