@@ -27,7 +27,7 @@ export interface OutgoingAlert {
   // When it came due, as an instant (ISO, UTC).
   readonly dueAt: string;
   // Sent later than the minute it came due, when that was, on his clock
-  // ("Due 3:10 AM."; 10.8, B185); null otherwise.
+  // ("Was due 3:10 AM."; 10.8, B185); null otherwise.
   readonly due: string | null;
 }
 

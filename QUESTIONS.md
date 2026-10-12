@@ -610,6 +610,29 @@ A39. ANSWERED Oct 11, built. Your answer: option 3, amounts off by default.
      phone, later in Phase 5.
 
 
+## Part A, added with the phone (Phase 5, Oct 11). Waiting on your answer.
+
+A40. Alerts the phone could not be given for days. 10.9 says that when the
+     app was not running, only the newest of each kind goes when it is back,
+     if still true. It does not say what happens when the app was running
+     but the phone could not be given its alerts (the push service could not
+     be reached, B181: each is tried again, never given up on). Built now:
+     every one of them goes when the phone can be reached, oldest first. With
+     your answer on late reminders (B185), that can now read oddly: the
+     phone cut off from Oct 3 to Oct 8 gets both the 7-day and the 2-day
+     reminder for Oct 10 on Oct 8, both saying "due in 2 days", and the
+     daily reviews of each day missed.
+     Options:
+     1. As built: everything kept goes, each once, saying when it was due.
+     2. Like 10.9: when the phone can be reached again, of what waited, only
+        the newest of each kind goes, and only if still true; the rest stay
+        in the list in the app as not sent ("Not sent: a newer one went").
+     Recommendation: option 2. It is what you chose for the app being down
+     (A36), and the phone being cut off is the same to him. It changes what
+     "once" means for those alerts (one goes instead of each), so it is
+     yours to decide; nothing is built for it yet.
+
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 WAITING FOR YOU TO CHECK (Oct 10, 2026, the end of Phase 4). Each was
@@ -2054,12 +2077,22 @@ B184. The take-back alert (10.6) says the day the bank took it back
 
 ## Part B, added with your answers to A34 to A39 (Oct 11). Tell me if any is wrong.
 
-B185. An alert that goes out later than the minute it came due says when it
-      was due, on his clock: "Due 3:10 AM." on the same day, "Due Fri, Oct 2,
+B185. ANSWERED Oct 11, built, changed. Your answer: the line saying it is
+      late does not use "Due" again, and a late card reminder counts the
+      days from the day it is sent (rulebook 9.7, 10.8, 31a). An alert that
+      goes out later than the minute it came due says when it was due, on
+      his clock: "Was due 3:10 AM." on the same day, "Was due Fri, Oct 2,
       9:55 PM." on another. That is held for quiet hours (10.8), worked out
       when the server is back (10.9), and tried again after the phone could
       not be reached. One sent in the minute it came due says nothing more.
-      The list of alerts in the app already shows when each was due and sent.
+      A card reminder sent on a later day than its own says the days left
+      then: the 7-day reminder for Oct 10, sent Tue Oct 6, says "due in 4
+      days"; sent on the due date, "due today". Only one the phone could not
+      be given until after the due date goes then (B181: never given up on),
+      and it says "was due yesterday" or "was due 3 days ago". The list of
+      alerts in the app keeps the words as they were when the alert came
+      due, with when it was due and sent. Built before: "Due 3:10 AM.", and
+      the days counted from the reminder's own day.
 
 B186. "Still true" when the server is back (10.9, A36), for each kind:
       - the daily review: something waits in review now; it says how many
@@ -2074,10 +2107,11 @@ B186. "Still true" when the server is back (10.9, A36), for each kind:
         evening, if still true;
       - the bank not read for a day (10.7): it goes when the server is back,
         due when it came due.
-      Each keeps its own words and its own due moment ("Everyday card payment
-      due in 7 days", due Sat Oct 3 at 8:00 PM, says "Due Sat, Oct 3, 8:00
-      PM."). The same rule handles one evening missed and several: with one,
-      it is that evening's alerts, as before. Example 14.
+      Each keeps its own due moment, and a reminder counts its days from the
+      day it is sent (your answer, B185): Oct 3's 7-day reminder for Oct 10,
+      sent Tue Oct 6, says "Everyday card payment due in 4 days" and "Was
+      due Sat, Oct 3, 8:00 PM.". The same rule handles one evening missed and
+      several: with one, it is that evening's alerts, as before. Example 14.
 
 B187. "Once a day" for 10.4 and 10.5 (A37): told when it starts, at once;
       then at the daily review time on each later day it lasts. A day it

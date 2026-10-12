@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 18)
+# Budget App Rulebook (draft 19)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -267,7 +267,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
      due date, it shows overdue as in 9.4. The reminders on your phone still
      come only on the reminder days.
 9.7  Card reminders and the overdue alert come at the daily review time
-     (section 2), with the daily review (10.3).
+     (section 2), with the daily review (10.3). A reminder that goes out
+     later than its day counts the days to the due date from the day it
+     is sent ("due in 4 days", not "due in 7 days").
 
 
 ## 10. Alerts
@@ -294,7 +296,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
       failing, or the app was not running. Told once, when the last good
       read of the bank is that old, and again only after a good read.
 10.8  Quiet hours (section 2): no alert is sent from 10:00 PM to 7:00 AM.
-      What comes due then waits until they end, and says when it was due.
+      What comes due then waits until they end, and says when it was due:
+      "Was due Sat, Oct 3, 8:00 PM." Every alert that goes out late says
+      it that way.
 10.9  Alerts that came due while the app was not running (the daily review,
       a reminder day): when it is back, only the newest of each kind, and
       only if it is still true then. One daily review, one reminder per
@@ -635,3 +639,11 @@ d.  "Totals do not match the bank" and "log in to the bank again" repeat
 e.  A new alert when the bank has not been read for 24 hours, a setting;
     again only after a good read (10.7, A38).
 f.  Amounts on the lock screen are a setting, off to start (10.10, A39).
+
+
+## 31. Answers on late alerts (Oct 11, 2026)
+
+a.  A card reminder that goes out late counts the days to the due date
+    from the day it is sent, and the line saying an alert went out late
+    reads "Was due Sat, Oct 3, 8:00 PM.", not "Due" again (9.7, 10.8,
+    QUESTIONS.md B185, B186).

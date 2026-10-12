@@ -1,6 +1,7 @@
 import type { Settings } from '@budget-app/money';
 import { describe, expect, it, afterEach } from 'vitest';
-import { dueWords, quietUntil } from '../src/alerts/sending.js';
+import { alertWords } from '../src/alerts/alerts.js';
+import { dueWords, quietUntil, wordsToSend } from '../src/alerts/sending.js';
 import { readOutbox } from '../src/alerts/outbox.js';
 import { memoryLog, type LogLine } from '../src/log.js';
 import { AlertTimer } from '../src/serve/alert-timer.js';
@@ -61,14 +62,42 @@ describe('10.8 A35 quiet hours, worked out on his clock', () => {
 });
 
 describe('10.8 10.9 B185 an alert sent later than it came due says when it was due', () => {
-  it('B185 sent in the minute it came due: nothing more; later that day: the time; another day: the day too', () => {
+  // His answer (Oct 11, rulebook 31a): the line does not say "Due" again.
+  it('B185 sent in the minute it came due: nothing more; later that day: "Was due" and the time; another day: the day too', () => {
     expect(dueWords(ZONE, '2026-10-03T00:00:00.000Z', new Date('2026-10-03T00:00:59.999Z'))).toBeNull();
-    expect(dueWords(ZONE, '2026-10-03T07:10:00.000Z', new Date('2026-10-03T11:00:00Z'))).toBe('Due 3:10 AM.');
-    expect(dueWords(ZONE, '2026-10-03T00:00:00.000Z', new Date('2026-10-03T00:15:00Z'))).toBe('Due 8:00 PM.');
+    expect(dueWords(ZONE, '2026-10-03T07:10:00.000Z', new Date('2026-10-03T11:00:00Z'))).toBe('Was due 3:10 AM.');
+    expect(dueWords(ZONE, '2026-10-03T00:00:00.000Z', new Date('2026-10-03T00:15:00Z'))).toBe('Was due 8:00 PM.');
     // Due 9:55 PM on Oct 2, sent at 7:00 AM on Oct 3.
-    expect(dueWords(ZONE, '2026-10-03T01:55:00.000Z', new Date('2026-10-03T11:00:00Z'))).toBe('Due Fri, Oct 2, 9:55 PM.');
-    expect(dueWords(ZONE, '2026-10-03T16:05:00.000Z', new Date('2026-10-03T16:06:00Z'))).toBe('Due 12:05 PM.');
-    expect(dueWords(ZONE, '2026-10-03T04:05:00.000Z', new Date('2026-10-03T11:00:00Z'))).toBe('Due 12:05 AM.');
+    expect(dueWords(ZONE, '2026-10-03T01:55:00.000Z', new Date('2026-10-03T11:00:00Z'))).toBe('Was due Fri, Oct 2, 9:55 PM.');
+    expect(dueWords(ZONE, '2026-10-03T16:05:00.000Z', new Date('2026-10-03T16:06:00Z'))).toBe('Was due 12:05 PM.');
+    expect(dueWords(ZONE, '2026-10-03T04:05:00.000Z', new Date('2026-10-03T11:00:00Z'))).toBe('Was due 12:05 AM.');
+  });
+});
+
+describe('9.7 10.9 B185 B186 a card reminder that goes out late counts the days from the day it is sent', () => {
+  // His answer (Oct 11, rulebook 31a). The everyday card, due Sat Oct 10.
+  const reminder = { kind: 'card-reminder', card: 'everyday-card', dueDate: '2026-10-10', daysBefore: 7, minimumPayment: 3_500, statementBalance: 45_000 } as const;
+  const kept = { ...alertWords(reminder), facts: reminder };
+  it('B185 on its own day it says the days it was made for; sent later, the days left on the day it is sent', () => {
+    expect(wordsToSend(kept, true, '2026-10-03').title).toBe('Everyday card payment due in 7 days');
+    expect(wordsToSend(kept, true, '2026-10-06')).toEqual({ title: 'Everyday card payment due in 4 days', body: 'Statement balance $450.00, minimum $35.00. Due Sat, Oct 10.' });
+    // Words only on the lock screen (10.10): the same count.
+    expect(wordsToSend(kept, false, '2026-10-06')).toEqual({ title: 'Everyday card payment due in 4 days', body: 'Due Sat, Oct 10.' });
+  });
+
+  it('B185 the edges: the day before the due date, the due date itself, and after it', () => {
+    expect(wordsToSend(kept, true, '2026-10-08').title).toBe('Everyday card payment due in 2 days');
+    expect(wordsToSend(kept, true, '2026-10-09').title).toBe('Everyday card payment due tomorrow');
+    expect(wordsToSend(kept, true, '2026-10-10').title).toBe('Everyday card payment due today');
+    // Only an alert the phone could not be given for days goes after it (B181: never given up on).
+    expect(wordsToSend(kept, true, '2026-10-11').title).toBe('Everyday card payment was due yesterday');
+    expect(wordsToSend(kept, true, '2026-10-13').title).toBe('Everyday card payment was due 3 days ago');
+  });
+
+  it('B185 every other alert goes with the words it was kept with; one kept before its facts were, too', () => {
+    const cafe = { kind: 'bank-took-back', id: 'copy-1', date: '2026-10-02', description: 'MADE UP CAFE', amount: 1_150 } as const;
+    expect(wordsToSend({ ...alertWords(cafe), facts: cafe }, true, '2026-10-09')).toEqual(alertWords(cafe));
+    expect(wordsToSend({ title: 'Everyday card payment due in 7 days', body: 'Due Sat, Oct 10.', facts: null }, true, '2026-10-06')).toEqual({ title: 'Everyday card payment due in 7 days', body: 'Due Sat, Oct 10.' });
   });
 });
 
@@ -152,7 +181,7 @@ describe('10.8 A35 quiet hours, with the real books and the timer', () => {
     await s.until('2026-10-03T10:59:59.999Z');
     expect(s.phone.tries).toBe(0);
     await s.until('2026-10-03T11:00:00Z');
-    expect(shown(s.phone)).toEqual([['bank-took-back copy-1', '2026-10-03T11:00:00.000Z', 'Due 3:10 AM.']]);
+    expect(shown(s.phone)).toEqual([['bank-took-back copy-1', '2026-10-03T11:00:00.000Z', 'Was due 3:10 AM.']]);
     expect(readOutbox(s.life.h.db, 10).rows[0]?.sentAt).toBe('2026-10-03T11:00:00.000Z');
   });
 
@@ -162,7 +191,7 @@ describe('10.8 A35 quiet hours, with the real books and the timer', () => {
     await s.until('2026-10-03T07:09:30Z');
     await s.takeBack('copy-1', 1_150);
     await s.until('2026-10-03T11:00:00Z');
-    expect(shown(s.phone)).toEqual([['bank-took-back copy-1', '2026-10-03T11:00:00.000Z', 'Due 3:10 AM.']]);
+    expect(shown(s.phone)).toEqual([['bank-took-back copy-1', '2026-10-03T11:00:00.000Z', 'Was due 3:10 AM.']]);
   });
 
   it('10.8 an alert that came due before quiet hours and could not be sent is not tried during them either: it goes at 7:00 AM, once', async () => {
@@ -178,7 +207,7 @@ describe('10.8 A35 quiet hours, with the real books and the timer', () => {
     await s.until('2026-10-03T10:59:00Z');
     expect(s.phone.tries).toBe(3);
     await s.until('2026-10-03T11:00:00Z');
-    expect(shown(s.phone)).toEqual([['bank-took-back copy-1', '2026-10-03T11:00:00.000Z', 'Due Fri, Oct 2, 9:55 PM.']]);
+    expect(shown(s.phone)).toEqual([['bank-took-back copy-1', '2026-10-03T11:00:00.000Z', 'Was due Fri, Oct 2, 9:55 PM.']]);
     expect(s.phone.repeats).toBe(0);
   });
 
@@ -199,7 +228,7 @@ describe('10.8 A35 quiet hours, with the real books and the timer', () => {
     await s.until('2026-10-03T03:29:00Z');
     await s.takeBack('copy-2', 2_200);
     await s.until('2026-10-03T10:00:00Z');
-    expect(shown(s.phone).at(-1)).toEqual(['bank-took-back copy-2', '2026-10-03T10:00:00.000Z', 'Due Fri, Oct 2, 11:30 PM.']);
+    expect(shown(s.phone).at(-1)).toEqual(['bank-took-back copy-2', '2026-10-03T10:00:00.000Z', 'Was due Fri, Oct 2, 11:30 PM.']);
     // The same time twice: an alert at 3:10 AM goes at once.
     await s.change({ quietHours: { from: '23:00', to: '23:00' } });
     await s.until('2026-10-04T07:09:00Z');

@@ -2543,8 +2543,8 @@
   {
     "section": "alerts",
     "file": "packages/server/src/alerts/alerts.ts",
-    "find": ": `in ${f.daysBefore} days`;",
-    "replace": ": `in ${f.daysBefore + 1} days`;",
+    "find": "`in ${left} days`",
+    "replace": "`in ${left + 1} days`",
     "why": "[alerts] 9.1 a reminder says the wrong number of days"
   },
   {
@@ -2809,8 +2809,8 @@
   {
     "section": "outbox",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "...wordsToSend(row, amounts),",
-    "replace": "...wordsToSend(row, true),",
+    "find": "...wordsToSend(row, amounts, sentOn),",
+    "replace": "...wordsToSend(row, true, sentOn),",
     "why": "[a39] 10.10 the lock screen gets the amounts whatever the setting"
   },
   {
@@ -2865,8 +2865,8 @@
   {
     "section": "outbox",
     "file": "packages/server/src/alerts/sending.ts",
-    "find": "if (amounts || kept.facts === null) return { title: kept.title, body: kept.body };",
-    "replace": "if (!amounts || kept.facts === null) return { title: kept.title, body: kept.body };",
+    "find": "return alertWords(kept.facts, { amounts, sentOn });",
+    "replace": "return alertWords(kept.facts, { amounts: !amounts, sentOn });",
     "why": "[a39] 10.10 the setting works the wrong way round"
   },
   {
@@ -2889,5 +2889,40 @@
     "find": "amountsOnLockScreen: (v) => (typeof v === 'boolean' ? v : undefined),",
     "replace": "amountsOnLockScreen: (v) => v as boolean,",
     "why": "[a39] section 2 \"on\" as text is taken for amounts on the lock screen"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "const left = options.sentOn === undefined ? f.daysBefore : daysBetween(options.sentOn, f.dueDate);",
+    "replace": "const left = f.daysBefore;",
+    "why": "[b186] 9.7 a reminder sent late counts the days from the day it was for"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "`was due ${left === -1 ? 'yesterday' : `${-left} days ago`}`",
+    "replace": "`was due ${left === -1 ? 'yesterday' : `${left} days ago`}`",
+    "why": "[b186] 9.7 a reminder sent days after the due date says a negative number of days"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "const when = left < 0 ?",
+    "replace": "const when = left <= 0 ?",
+    "why": "[b186] 9.7 a reminder sent on the due day says it was due"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "...wordsToSend(row, amounts, sentOn),",
+    "replace": "...wordsToSend(row, amounts, todayIn(zone, new Date(row.dueAt))),",
+    "why": "[b186] 9.7 the server counts a late reminder's days from the day it was due"
+  },
+  {
+    "section": "outbox",
+    "file": "packages/server/src/alerts/sending.ts",
+    "find": "return `Was due ${day}${clockWords(due)}.`;",
+    "replace": "return `Due ${day}${clockWords(due)}.`;",
+    "why": "[b185] 10.8 an alert sent late says \"Due\" again"
   }
 ]

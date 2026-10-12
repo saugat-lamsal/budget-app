@@ -494,7 +494,8 @@ export class Keeper {
     if (this.#quietUntil(now) !== null) return [];
     const zone = this.timeZone();
     const amounts = (this.book()?.settings() ?? DEFAULT_SETTINGS).amountsOnLockScreen;
-    return outboxToSend(this.#db, now.toISOString()).map((row) => ({ id: row.key, ...wordsToSend(row, amounts), dueAt: row.dueAt, due: dueWords(zone, row.dueAt, now) }));
+    const sentOn = todayIn(zone, now);
+    return outboxToSend(this.#db, now.toISOString()).map((row) => ({ id: row.key, ...wordsToSend(row, amounts, sentOn), dueAt: row.dueAt, due: dueWords(zone, row.dueAt, now) }));
   }
 
   nextTryIn(): number | null {

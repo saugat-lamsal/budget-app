@@ -595,8 +595,8 @@ describe('worked examples: the alerts (Phase 5)', () => {
       const login = k.get('bank-login 1');
       expect([cafe?.due, cafe?.sent, login?.due, login?.sent]).toEqual(['cafe due', 'cafe sent', 'login due', 'login sent'].map((name) => times.get(name)));
       expect(s.phone.shown.map((a) => [a.id, a.title, a.body, a.due])).toEqual([
-        ['bank-took-back cafe', 'The bank took something back', 'MADE UP CAFE, taken back Fri, Oct 2. It is undone in your buckets too.', 'Due Fri, Oct 2, 9:55 PM.'],
-        ['bank-login 1', 'Log in to your bank again', 'The bank wants you to log in again before the app can read it.', 'Due 3:10 AM.'],
+        ['bank-took-back cafe', 'The bank took something back', 'MADE UP CAFE, taken back Fri, Oct 2. It is undone in your buckets too.', 'Was due Fri, Oct 2, 9:55 PM.'],
+        ['bank-login 1', 'Log in to your bank again', 'The bank wants you to log in again before the app can read it.', 'Was due 3:10 AM.'],
       ]);
       expect(cafe?.body).toBe('MADE UP CAFE, $11.50, taken back Fri, Oct 2. It is undone in your buckets too.');
       expect(s.phone.tries * 100).toBe(checks.get('tries in all'));
@@ -653,12 +653,15 @@ describe('worked examples: the alerts (Phase 5)', () => {
       );
       expect(s.phone.shown.map((a) => [a.title, a.body, a.due]).toSorted()).toEqual(
         [
-          ['Time to review', '1 thing is waiting for you to sort.', 'Due Mon, Oct 5, 8:00 PM.'],
-          ['Everyday card payment due in 7 days', 'Due Sat, Oct 10.', 'Due Sat, Oct 3, 8:00 PM.'],
-          ['The bank has not been read for 24 hours', 'Last read Sat, Oct 3 at 6:00 PM. Your numbers may be out of date until it is read again.', 'Due Sun, Oct 4, 6:00 PM.'],
+          ['Time to review', '1 thing is waiting for you to sort.', 'Was due Mon, Oct 5, 8:00 PM.'],
+          // Sent Tue Oct 6: 4 days to Oct 10, counted from the day it is sent (his answer, Oct 11).
+          ['Everyday card payment due in 4 days', 'Due Sat, Oct 10.', 'Was due Sat, Oct 3, 8:00 PM.'],
+          ['The bank has not been read for 24 hours', 'Last read Sat, Oct 3 at 6:00 PM. Your numbers may be out of date until it is read again.', 'Was due Sun, Oct 4, 6:00 PM.'],
         ].toSorted(),
       );
       expect(reminder?.body).toBe('Statement balance $450.00, minimum $35.00. Due Sat, Oct 10.');
+      const daysLeft = Number(/due in (\d+) days/.exec(s.phone.shown.find((a) => a.id === 'card-reminder everyday-card due 2026-10-10 7 days before')?.title ?? '')?.[1]);
+      expect(daysLeft * 100).toBe(checks.get('reminder days left when sent'));
       // 8:00 AM: read again; the not-read alert is cleared.
       await s.clock.advance(30 * 60_000, () => s.alerts.idle());
       await syncNow(life);

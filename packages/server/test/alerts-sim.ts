@@ -263,7 +263,7 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
     }
     return hm >= from && hm < to ? instantIn(zone, date, to) : null;
   };
-  // B185: "Due 2:30 AM.", with the day when it was another day; nothing when sent in the minute it came due.
+  // B185: "Was due 2:30 AM." (his answer, Oct 11: not "Due" again), with the day when it was another day; nothing when sent in the minute it came due.
   const dueWordsOf = (dueAt: string, shownAt: string): string | null => {
     const due = timeIn(zone, new Date(dueAt));
     const shown = timeIn(zone, new Date(shownAt));
@@ -271,7 +271,14 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
     const hour = Number(due.slice(11, 13));
     const time = `${hour % 12 === 0 ? 12 : hour % 12}:${due.slice(14, 16)} ${hour < 12 ? 'AM' : 'PM'}`;
     const day = new Date(`${due.slice(0, 10)}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
-    return `Due ${due.slice(0, 10) === shown.slice(0, 10) ? '' : `${day}, `}${time}.`;
+    return `Was due ${due.slice(0, 10) === shown.slice(0, 10) ? '' : `${day}, `}${time}.`;
+  };
+  // 9.7, B185 (his answer, Oct 11): a card reminder counts the days to the due date from the day it is shown on.
+  const reminderTitleOf = (f: Extract<AlertFacts, { kind: 'card-reminder' }>, shownAt: string): string => {
+    const left = daysBetween(timeIn(zone, new Date(shownAt)).slice(0, 10), f.dueDate);
+    const card = f.card === 'everyday-card' ? 'Everyday card' : 'Old card';
+    if (left < 0) return `${card} payment was due ${left === -1 ? 'yesterday' : `${-left} days ago`}`;
+    return `${card} payment due ${left === 0 ? 'today' : left === 1 ? 'tomorrow' : `in ${left} days`}`;
   };
   // 9.3, B28, B47: what is paid toward a statement by a day: payments that
   // reached the card after its closing date (one landing on it counts toward
@@ -628,6 +635,7 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
         const time = Date.parse(shown.at);
         if (time < e.shownBy.from || time > e.shownBy.to) throw new Error(`${where}: ${key} was shown at ${shown.at}, due ${e.dueAt}, to be shown from ${new Date(e.shownBy.from).toISOString()} by ${new Date(e.shownBy.to).toISOString()}`);
         expect(shown.due, `${where}: ${key}, shown at ${shown.at}, says when it was due`).toBe(dueWordsOf(e.dueAt, shown.at));
+        if (e.facts.kind === 'card-reminder') expect(shown.title, `${where}: ${key}, shown at ${shown.at}, counts the days from then`).toBe(reminderTitleOf(e.facts, shown.at));
         expect(`${shown.title} ${shown.body}`, `${where}: ${key} has no amount on the lock screen (10.10)`).not.toContain('$');
       }
       for (const shown of phone.shown) if (!expected.has(shown.id)) throw new Error(`${where}: ${shown.id} was shown at ${shown.at}, and was not expected`);
