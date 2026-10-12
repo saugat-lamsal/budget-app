@@ -2592,22 +2592,22 @@
   {
     "section": "outbox",
     "file": "packages/server/src/alerts/outbox.ts",
-    "find": "FROM outbox WHERE sent_at IS NULL AND next_try_at <= ? ORDER BY due_at, created_at, key",
-    "replace": "FROM outbox WHERE next_try_at <= ? ORDER BY due_at, created_at, key",
+    "find": "FROM outbox WHERE sent_at IS NULL AND not_sent IS NULL ORDER BY due_at, created_at, key",
+    "replace": "FROM outbox WHERE not_sent IS NULL ORDER BY due_at, created_at, key",
     "why": "[outbox] what was sent is sent again"
   },
   {
     "section": "outbox",
     "file": "packages/server/src/alerts/outbox.ts",
-    "find": "'UPDATE outbox SET sent_at = ?, last_error = NULL WHERE key = ? AND sent_at IS NULL'",
-    "replace": "'UPDATE outbox SET last_error = NULL WHERE ? IS NOT NULL AND key = ? AND sent_at IS NULL'",
+    "find": "'UPDATE outbox SET sent_at = ?, last_error = NULL WHERE key = ? AND sent_at IS NULL AND not_sent IS NULL'",
+    "replace": "'UPDATE outbox SET last_error = NULL WHERE ? IS NOT NULL AND key = ? AND sent_at IS NULL AND not_sent IS NULL'",
     "why": "[outbox] nothing is marked sent"
   },
   {
     "section": "outbox",
-    "file": "packages/server/src/alerts/outbox.ts",
-    "find": "'SELECT MIN(next_try_at) AS at FROM outbox WHERE sent_at IS NULL'",
-    "replace": "'SELECT MAX(next_try_at) AS at FROM outbox WHERE sent_at IS NULL'",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "return Math.max(Math.min(...tries), quiet?.getTime() ?? 0) - now.getTime();",
+    "replace": "return Math.max(Math.max(...tries), quiet?.getTime() ?? 0) - now.getTime();",
     "why": "[outbox] B181 the next try is the last one due, not the first"
   },
   {
@@ -2795,8 +2795,8 @@
   {
     "section": "outbox",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "return Math.max(Date.parse(at), quiet?.getTime() ?? 0) - now.getTime();",
-    "replace": "return Math.max(Date.parse(at), (quiet?.getTime() ?? 0) + 60_000) - now.getTime();",
+    "find": "return Math.max(Math.min(...tries), quiet?.getTime() ?? 0) - now.getTime();",
+    "replace": "return Math.max(Math.min(...tries), (quiet?.getTime() ?? 0) + 60_000) - now.getTime();",
     "why": "[a35] 10.8 what waited goes a minute after quiet hours end"
   },
   {
@@ -2823,7 +2823,7 @@
   {
     "section": "outbox",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "quietUntil: row.sentAt === null && quiet !== null ? local(quiet.toISOString()) : null,",
+    "find": "quietUntil: row.sentAt === null && row.notSent === null && quiet !== null ? local(quiet.toISOString()) : null,",
     "replace": "quietUntil: null,",
     "why": "[a35] 10.8 the list does not say an alert waits for quiet hours"
   },
