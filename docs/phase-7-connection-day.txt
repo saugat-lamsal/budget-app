@@ -22,6 +22,30 @@ ONCE, BEFORE THE DAY (yours, about 15 minutes; creates nothing)
       every connection made there counts against the 10, even if removed.
 2. Your Production secret is under Developers > Keys. Leave it there until
    step 3 of the day. Never paste it in a chat.
+3. The rehearsal, on this PC (about 10 minutes): the same Bank screen
+   against Plaid's test bank, through Plaid's real login window. Test-bank
+   connections do not count against the 10; its books are thrown away when
+   it stops.
+     npm run rehearsal
+   a. In Chrome open http://localhost:5393 and click "Log this browser in".
+   b. Bank connection > Connect the bank > Yes, connect. Plaid's window
+      opens, saying "Sandbox mode" at the bottom.
+   c. "Continue without phone number", pick a bank: "First Platypus Bank",
+      log in with Plaid's published test login, user_good / pass_good.
+      (Or "Platypus OAuth Bank", which logs in through the bank's own
+      window, the way Bank of America does.) Tick every account.
+   d. Back in the app: pick checking, savings, the everyday card and the
+      old card (the test bank has only one credit card, so pick any other
+      account for the old card), Save, Yes. If it says the history is still
+      coming, "Look again" in a minute.
+   e. "Log in to the bank again": Plaid's window opens on the same
+      connection; close it or go through it, and the accounts stay.
+   f. The control page (http://localhost:5393) shows what the books hold:
+      connected, the four picked, and items read. Stop it with Ctrl+C.
+   Already checked from here (Oct 12): it starts, logs in, "Connect the
+   bank" asks first, Plaid's window opens in Sandbox mode, and closing it
+   says "Nothing was connected." Steps c to e need you: the login is typed
+   into Plaid's window.
 
 
 ON THE DAY (together, in this order; anything odd, we stop)

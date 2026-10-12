@@ -1627,8 +1627,18 @@ long). It replaces running everything before every commit:
       once per end date, a tap opens /bank. Breaks "[a45]".
     - QUESTIONS.md B215 to B224 (the readings), docs/phase-7-connection-day.txt
       (the day's steps, and the way back).
-  - Still to do before connection day: the rehearsal on this PC (the real
-    Plaid Link against the test bank), his review, CI, and the full
+    - npm run rehearsal (scripts/rehearsal.mjs,
+      packages/web/test/browser/rehearsal/rehearsal-server.ts): the real
+      server's code with a throwaway database and bank key, the test bank only
+      (it sets PLAID_LOCK=sandbox itself), on http://localhost:5392, and a
+      control page on 5393 ("Log this browser in", what the books hold). Checked
+      from here (Oct 12): Connect asks first, Plaid Link opens in Sandbox mode
+      under the page rules, closing it connects nothing. Typing the test
+      bank's login into Plaid's window is his (docs/phase-7-connection-day.txt,
+      before the day, step 3). B225: the one style the page rules refuse is
+      Plaid's own probe; Link's style carries the nonce.
+  - Still to do before connection day: his rehearsal on this PC (the real
+    Plaid Link against the test bank, steps c to e), his review, CI, and the full
     break-it run (now on this branch's tip, so the new code is in it). The
     fresh start's new volume and backup folder are a connection-day commit
     (docs/phase-7-connection-day.txt step 2), so main stays deployable to

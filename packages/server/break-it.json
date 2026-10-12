@@ -4055,14 +4055,14 @@
   {
     "section": "sync",
     "file": "packages/server/src/sync/sync.ts",
-    "find": "  if (fetched.permissionEnds !== connection.permissionEnds) savePermissionEnds(db, fetched.permissionEnds);\n",
+    "find": "  if (fetched.permissionEnds !== undefined && fetched.permissionEnds !== connection.permissionEnds) savePermissionEnds(db, fetched.permissionEnds);\n",
     "replace": "",
     "why": "[a45] 10.13 the date the bank gave not kept"
   },
   {
     "section": "sync",
     "file": "packages/server/src/sync/sync.ts",
-    "find": "    fetched.permissionEnds !== connection.permissionEnds ||\n",
+    "find": "    (fetched.permissionEnds !== undefined && fetched.permissionEnds !== connection.permissionEnds) ||\n",
     "replace": "",
     "why": "[a45] 10.13 a new date alone counts as nothing new"
   },

@@ -2583,3 +2583,11 @@ B224. History at connection (A44): 90 days, Plaid's default, asked for once
       when connecting (days_requested 90). Logging in again asks for no
       products and no history: the same connection.
 
+
+B225. The rehearsal (npm run rehearsal, Oct 12): on the Bank page the
+      browser's console shows one style refused by the page rules. It is
+      Plaid's script testing whether a style with no nonce works (it does
+      not, on purpose); the style Link itself uses carries the page's
+      nonce, and Link opened and closed normally. The console also shows
+      the 422 of "Connect the bank" before the yes: the server refusing
+      until you say yes (1.1), which is what makes the screen ask.
