@@ -1508,7 +1508,17 @@ long). It replaces running everything before every commit:
   - CI: the checks job installs Litestream first (cached); a fourth job,
     image (Linux), builds the Dockerfile and runs test/image.test.ts.
   - Break-it: breaks tagged "[hosting]" (36, judged with --only by the tests
-    of what changed) and "[hosting-linux]" (5, need Linux to judge).
+    of what changed, all caught) and "[hosting-linux]" (5, all caught,
+    judged on Linux CI on a throwaway branch, deleted after: the four
+    restore breaks by backup-litestream, the one-time code by start.test;
+    run 38291820227).
+  - Found judging them: on GitHub Actions vitest writes in colour, and
+    break-it could not read "Tests 1 failed" through the colour codes, so
+    every break caught there was called INVALID. It reads them without the
+    colours now (break-it-lib.mjs judge; test/break-it.test.ts, a test
+    first). On this PC the output was never in colour.
+  - PR #24's CI green on Linux (checks, Chromium, WebKit, image). Windows
+    CI by hand is his call.
   - docs/phase-6-checklist.txt (the checklist as tests, the secrets, the
     cost) and docs/phase-6-setup.txt (his steps and the iPhone checklist).
   - QUESTIONS.md A43 (how he hears the backups stopped), B205 to B214.
