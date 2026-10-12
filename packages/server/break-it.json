@@ -2368,8 +2368,8 @@
   {
     "section": "sync",
     "file": "packages/server/src/serve/serving.ts",
-    "find": "const server = keeper.server(input.webRoot, input.origin, input.onError);",
-    "replace": "const server = keeper.server(input.webRoot, () => 'http://localhost:1', input.onError);",
+    "find": "const server = keeper.server(input.webRoot, input.origin, input.onError, input.backups);",
+    "replace": "const server = keeper.server(input.webRoot, () => 'http://localhost:1', input.onError, input.backups);",
     "why": "[pay-period] Step 2 the server npm run serve starts checks requests against the wrong address"
   },
   {
@@ -3341,8 +3341,8 @@
   {
     "section": "hosting",
     "file": "packages/server/src/http/server.ts",
-    "find": "      if (request.method !== 'GET' && request.method !== 'HEAD') {\n        response.setHeader('Allow', 'GET, HEAD');",
-    "replace": "      if (request.method === 'DELETE') {\n        response.setHeader('Allow', 'GET, HEAD');",
+    "find": "    if (path === HEALTH_PATH && options.health !== undefined) {\n      if (request.method !== 'GET' && request.method !== 'HEAD') {",
+    "replace": "    if (path === HEALTH_PATH && options.health !== undefined) {\n      if (request.method === 'DELETE') {",
     "why": "[hosting] health takes a POST"
   },
   {
@@ -3589,5 +3589,124 @@
     "find": "    if (options.hosted === null) {\n      console.log('  No passkey yet.",
     "replace": "    if (true) {\n      console.log('  No passkey yet.",
     "why": "[hosting-linux] hosted, the one-time code in the log"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-watch.ts",
+    "find": "    return this.#now() - (this.#last ?? this.#since) < BACKUP_SILENCE_MS;",
+    "replace": "    return this.#now() - (this.#last ?? this.#since) <= BACKUP_SILENCE_MS;",
+    "why": "[a43] the backups still ok at exactly 10 minutes"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-watch.ts",
+    "find": "    return this.#now() - (this.#last ?? this.#since) < BACKUP_SILENCE_MS;",
+    "replace": "    return this.#now() - this.#since < BACKUP_SILENCE_MS;",
+    "why": "[a43] a beat is never counted"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-watch.ts",
+    "find": "    return this.#now() - (this.#last ?? this.#since) < BACKUP_SILENCE_MS;",
+    "replace": "    return true;",
+    "why": "[a43] the backups always ok"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-watch.ts",
+    "find": "export const BACKUP_SILENCE_MS = 10 * 60_000;",
+    "replace": "export const BACKUP_SILENCE_MS = 60 * 60_000;",
+    "why": "[a43] an hour without a beat before the backups are not ok"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-watch.ts",
+    "find": "  if (remoteAddress === undefined || !LOOPBACK.has(remoteAddress)) return false;",
+    "replace": "  if (remoteAddress === undefined) return false;",
+    "why": "[a43] a beat taken from any address"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-watch.ts",
+    "find": "  return PROXY_HEADERS.every((name) => headers[name] === undefined);",
+    "replace": "  return true;",
+    "why": "[a43] a beat taken through Fly's proxy"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-watch.ts",
+    "find": "const PROXY_HEADERS = ['x-forwarded-for', 'x-forwarded-proto', 'fly-client-ip', 'fly-forwarded-port', 'via'];",
+    "replace": "const PROXY_HEADERS = ['x-forwarded-proto'];",
+    "why": "[a43] only one of the proxy's headers looked at"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup.ts",
+    "find": "  return `http://127.0.0.1:${Number(port)}${BACKUP_BEAT_PATH}`;",
+    "replace": "  return `http://0.0.0.0:${Number(port)}${BACKUP_BEAT_PATH}`;",
+    "why": "[a43] the heartbeat not to this machine"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup.ts",
+    "find": "  if (!/^\\d{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65_535) throw",
+    "replace": "  if (!/^\\d{1,5}/.test(port) || Number(port) < 1 || Number(port) > 65_535) throw",
+    "why": "[a43] a port with more after it taken"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup.ts",
+    "find": "  if (!/^\\d{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65_535) throw",
+    "replace": "  if (!/^\\d{1,5}$/.test(port) || Number(port) < 0 || Number(port) > 65_535) throw",
+    "why": "[a43] port 0 taken"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup.ts",
+    "find": "BUDGET_DB: db, BACKUP_HEARTBEAT_URL: heartbeatUrl(env), R2_ENDPOINT",
+    "replace": "BUDGET_DB: db, R2_ENDPOINT",
+    "why": "[a43] Litestream not told where its heartbeat goes"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      const ok = options.backups.healthy();",
+    "replace": "      const ok = options.health();",
+    "why": "[a43] /health/backups says the server's health"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      if (!fromThisMachine(request.socket.remoteAddress, request.headers)) {",
+    "replace": "      if (false) {",
+    "why": "[a43] a beat taken from anywhere"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      options.backups.beat();\n",
+    "replace": "\n",
+    "why": "[a43] the beat not counted"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      if (request.method !== 'GET') {\n        response.setHeader('Allow', 'GET');",
+    "replace": "      if (request.method === 'PUT') {\n        response.setHeader('Allow', 'GET');",
+    "why": "[a43] a beat taken by POST"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/main.ts",
+    "find": "  ...(options.hosted === null ? {} : { backups: new BackupWatch(Date.now) }),\n",
+    "replace": "\n",
+    "why": "[hosting-linux] A43 hosted, the server does not watch the backups"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "    if (path === BACKUP_HEALTH_PATH && options.backups !== undefined) {\n      if (request.method !== 'GET' && request.method !== 'HEAD') {",
+    "replace": "    if (path === BACKUP_HEALTH_PATH && options.backups !== undefined) {\n      if (request.method === 'DELETE') {",
+    "why": "[a43] /health/backups takes a POST"
   }
 ]

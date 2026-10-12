@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { backupLock, endpointProblem, type BackupLock } from './backup-lock.js';
+import { BACKUP_BEAT_PATH } from './backup-watch.js';
 
 // Phase 6, the backups: Litestream copies the books (one SQLite file) to a
 // Cloudflare R2 bucket as they change, and can rebuild them from it. The
@@ -41,10 +42,19 @@ function sealed(backup: Backup): Backup {
   return Object.freeze(backup);
 }
 
-// Litestream's whole environment: the database's path and the backup, and
-// what a program needs to run (its search path, and Windows' own folders).
-// Every run of Litestream goes through here, so the lock is checked again
-// right before each one, with the process's own environment.
+// A43: where Litestream's heartbeat goes: the server beside it, on this
+// machine, at its own port (PORT, 8080 as fly.toml says when none is set).
+// Never anywhere else.
+export function heartbeatUrl(env: Readonly<Record<string, string | undefined>>): string {
+  const port = (env['PORT'] ?? '8080').trim();
+  if (!/^\d{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65_535) throw new Error('PORT must be the server\'s port, a whole number from 1 to 65535');
+  return `http://127.0.0.1:${Number(port)}${BACKUP_BEAT_PATH}`;
+}
+
+// Litestream's whole environment: the database's path, the backup, where its
+// heartbeat goes (A43), and what a program needs to run (its search path, and
+// Windows' own folders). Every run of Litestream goes through here, so the
+// lock is checked again right before each one, with the process's own environment.
 export function litestreamEnv(db: string, backup: Backup, env: Readonly<Record<string, string | undefined>> = process.env): Record<string, string> {
   const problem = endpointProblem(backup.endpoint, backupLock());
   if (problem !== null) throw new Error(problem);
@@ -54,7 +64,7 @@ export function litestreamEnv(db: string, backup: Backup, env: Readonly<Record<s
     const value = env[name];
     if (value !== undefined) out[name] = value;
   }
-  return { ...out, BUDGET_DB: db, R2_ENDPOINT: backup.endpoint, R2_BUCKET: backup.bucket, R2_ACCESS_KEY_ID: backup.accessKeyId, R2_SECRET_ACCESS_KEY: backup.secretAccessKey };
+  return { ...out, BUDGET_DB: db, BACKUP_HEARTBEAT_URL: heartbeatUrl(env), R2_ENDPOINT: backup.endpoint, R2_BUCKET: backup.bucket, R2_ACCESS_KEY_ID: backup.accessKeyId, R2_SECRET_ACCESS_KEY: backup.secretAccessKey };
 }
 
 // The server's environment without the backup's key: it does not need it.

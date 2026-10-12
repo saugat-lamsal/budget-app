@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { BackupWatch } from '../backup/backup-watch.js';
 import { tokenBoxFromEnv, type TokenBox } from '../crypto/token-box.js';
 import { openDatabase } from '../db/database.js';
 import { readConnection } from '../db/store.js';
@@ -96,6 +97,8 @@ const { server, timer, alerts } = serveBooks({
   onError: (error) => log.error('a request failed', { error: error instanceof Error ? error.message : String(error) }),
   // Phase 5: to the phones, through web push; without push keys, written here, in this window.
   sender: phoneSender(keeper, log),
+  // A43: hosted, Litestream runs beside it (start.ts) and its heartbeat comes here.
+  ...(options.hosted === null ? {} : { backups: new BackupWatch(Date.now) }),
 });
 server.listen(options.port, options.host, () => {
   const address = server.address();

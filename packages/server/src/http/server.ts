@@ -2,6 +2,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';
 import type { Pot } from '@budget-app/money';
+import { BACKUP_BEAT_PATH, BACKUP_HEALTH_PATH, fromThisMachine } from '../backup/backup-watch.js';
 import { parseRequest } from '../choices.js';
 import { POT_SLUGS, potOfSlug, type ActivityView } from '../views/activity.js';
 import type { AlertsView } from '../views/alerts.js';
@@ -84,6 +85,9 @@ export const ROUTES: readonly Route[] = [
   ...[...APP_PATHS, ...SCREEN_PATHS, ...SETUP_PATHS].map((path): Route => ({ method: 'GET', path, login: true })),
   { method: 'GET', path: LOGIN_PATH, login: false },
   { method: 'GET', path: HEALTH_PATH, login: false },
+  // A43: the backups' health, for a second monitor, and Litestream's beat (from this machine only).
+  { method: 'GET', path: BACKUP_HEALTH_PATH, login: false },
+  { method: 'GET', path: BACKUP_BEAT_PATH, login: false },
   ...['home', 'buckets', 'review', 'settings', 'setup', 'payday', 'alerts', ...Object.keys(POT_SLUGS).map((slug) => `activity/${slug}`)].map((name): Route => ({ method: 'GET', path: `/api/${name}`, login: true })),
   { method: 'POST', path: '/api/choice', login: true },
   { method: 'POST', path: '/api/seen', login: true },
@@ -157,6 +161,9 @@ export interface AppServerOptions {
   // Phase 6: whether the server can read its books now, for /health. Without
   // it (the demo), the address is not there.
   readonly health?: () => boolean;
+  // A43: whether Litestream's heartbeat still comes, for /health/backups, and
+  // its beat. Only the hosted server has it: on a computer there is no backup.
+  readonly backups?: { readonly beat: () => void; readonly healthy: () => boolean };
 }
 
 export interface PushHandlers {
@@ -363,6 +370,36 @@ export function createAppServer(options: AppServerOptions): Server {
       }
       const ok = options.health();
       send(response, ok ? 200 : 503, 'text/plain; charset=utf-8', ok ? 'ok\n' : 'not ok\n', 'no-store');
+      return;
+    }
+    // A43, the same way: the backups, for the second monitor. /health stays
+    // the server's alone (Fly uses it: "not ok" there would take the app away).
+    if (path === BACKUP_HEALTH_PATH && options.backups !== undefined) {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        response.setHeader('Allow', 'GET, HEAD');
+        send(response, 405, 'text/plain; charset=utf-8', 'Only GET and HEAD.', 'no-store');
+        return;
+      }
+      const ok = options.backups.healthy();
+      send(response, ok ? 200 : 503, 'text/plain; charset=utf-8', ok ? 'ok\n' : 'not ok\n', 'no-store');
+      return;
+    }
+    // Litestream's beat: from this machine only, never through Fly's proxy.
+    if (path === BACKUP_BEAT_PATH && options.backups !== undefined) {
+      if (request.method !== 'GET') {
+        response.setHeader('Allow', 'GET');
+        send(response, 405, 'text/plain; charset=utf-8', 'Only GET.', 'no-store');
+        return;
+      }
+      if (!fromThisMachine(request.socket.remoteAddress, request.headers)) {
+        send(response, 403, 'text/plain; charset=utf-8', 'Only from this machine.', 'no-store');
+        return;
+      }
+      options.backups.beat();
+      for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.setHeader(name, value);
+      response.setHeader('Cache-Control', 'no-store');
+      response.statusCode = 204;
+      response.end();
       return;
     }
     if (options.gate !== undefined && (await atTheGate(options.gate, request, response, path))) return;

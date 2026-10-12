@@ -1,4 +1,5 @@
 import type { Server } from 'node:http';
+import type { BackupWatch } from '../backup/backup-watch.js';
 import type { Keeper, SyncBank } from '../history/keeper.js';
 import { AlertTimer, type AlertSender } from './alert-timer.js';
 import { SyncTimer, type TimerClock } from './sync-timer.js';
@@ -22,6 +23,8 @@ export interface ServeInput {
   readonly onError?: (error: unknown) => void;
   // Phase 5: the plug that sends the alerts.
   readonly sender: AlertSender;
+  // A43: hosted, the watch on Litestream's heartbeat (/health/backups).
+  readonly backups?: BackupWatch;
 }
 
 export interface Serving {
@@ -42,6 +45,6 @@ export function serveBooks(input: ServeInput): Serving {
   });
   const alerts = new AlertTimer({ alerter: keeper, sender: input.sender, clock: input.clock, log: bank.log });
   keeper.whenChanged(() => alerts.poke());
-  const server = keeper.server(input.webRoot, input.origin, input.onError);
+  const server = keeper.server(input.webRoot, input.origin, input.onError, input.backups);
   return { server, timer, alerts };
 }

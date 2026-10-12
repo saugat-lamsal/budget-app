@@ -21,6 +21,14 @@ dbs:
       # Each change is sent within a second of being saved.
       sync-interval: 1s
 
+# QUESTIONS.md A43: while every copy goes through, Litestream calls the
+# server beside it on this machine once a minute (BACKUP_HEARTBEAT_URL, made
+# by the server's own code: always 127.0.0.1, its port). The server's
+# /health/backups says "not ok" after 10 minutes without a call, for the
+# uptime monitor.
+heartbeat-url: ${BACKUP_HEARTBEAT_URL}
+heartbeat-interval: 1m
+
 # A full copy once a day, kept for 30 days, so the books can also be rebuilt
 # as they were on any of those days.
 snapshot:

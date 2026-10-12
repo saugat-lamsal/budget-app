@@ -64,11 +64,11 @@ describe('Phase 6 where the backups may go', () => {
     expect(String(backup)).not.toContain(BACKUP.R2_SECRET_ACCESS_KEY);
   });
 
-  it('Phase 6 Litestream is given the books\' path and the backup, and none of the server\'s other keys; the server is given none of the backup\'s', () => {
+  it('Phase 6 A43 Litestream is given the books\' path, the backup, and where its heartbeat goes (this machine), and none of the server\'s other keys; the server is given none of the backup\'s', () => {
     const env = { ...BACKUP, R2_ENDPOINT: 'http://127.0.0.1:9000', ...HOSTED, PATH: '/usr/bin', HOME: '/root', BANK_TOKEN_KEY: 'made-up-bank-key', PLAID_CLIENT_ID: 'made-up-id', PLAID_SECRET: 'made-up-secret', VAPID_PRIVATE_KEY: 'made-up-private', VAPID_PUBLIC_KEY: 'made-up-public', LITESTREAM_SECRET_ACCESS_KEY: 'another', LITESTREAM_ACCESS_KEY_ID: 'another-id' };
     const backup = backupFromEnv(env);
     if (backup === null) throw new Error('no backup');
-    expect(litestreamEnv('/data/budget.sqlite', backup, env)).toEqual({ PATH: '/usr/bin', HOME: '/root', BUDGET_DB: '/data/budget.sqlite', ...BACKUP, R2_ENDPOINT: 'http://127.0.0.1:9000' });
+    expect(litestreamEnv('/data/budget.sqlite', backup, env)).toEqual({ PATH: '/usr/bin', HOME: '/root', BUDGET_DB: '/data/budget.sqlite', BACKUP_HEARTBEAT_URL: 'http://127.0.0.1:8080/health/backups/beat', ...BACKUP, R2_ENDPOINT: 'http://127.0.0.1:9000' });
     // An R2 address is refused right before Litestream would run, even if it got this far.
     const r2 = backupFromEnv(BACKUP, 'r2');
     if (r2 === null) throw new Error('no backup');

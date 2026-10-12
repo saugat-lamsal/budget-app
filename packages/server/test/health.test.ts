@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createDemoServer } from '../src/demo/demo-server.js';
-import { HEALTH_PATH } from '../src/http/server.js';
+import { BACKUP_BEAT_PATH, BACKUP_HEALTH_PATH, BACKUP_SILENCE_MS, BackupWatch } from '../src/backup/backup-watch.js';
+import { HEALTH_PATH, ROUTES } from '../src/http/server.js';
 import { HOSTED_HOST, ask, firstLogin, servedAt, stop, type Running } from './hosted-harness.js';
 
 // Phase 6: the health address, for an outside uptime monitor (and Fly's own
@@ -83,5 +84,98 @@ describe('Phase 6 the health address', () => {
     expect(answer.status).toBe(404);
     expect(answer.body).not.toBe('ok\n');
     await new Promise<void>((done) => server.close(() => done()));
+  });
+});
+
+// QUESTIONS.md A43, option 5: /health/backups, for a second uptime monitor.
+// Litestream's heartbeat comes to the beat address on this machine about once
+// a minute while every copy goes through; ten minutes without one and the
+// backups are "not ok". /health is Fly's, and stays as it was.
+describe('A43 the backups health address', () => {
+  const MINUTE = 60_000;
+
+  async function watched(): Promise<{ readonly r: Running; readonly watch: BackupWatch; readonly at: (ms: number) => void }> {
+    const start = Date.UTC(2026, 9, 12, 21, 0);
+    let t = start;
+    const watch = new BackupWatch(() => t);
+    const r = await servedAt(undefined, true, watch);
+    running.push(r);
+    return { r, watch, at: (ms) => (t = start + ms) };
+  }
+
+  // What Litestream sends: from this machine, straight to the server's port, not through Fly's proxy.
+  function beat(r: Running, method = 'GET'): ReturnType<typeof ask> {
+    return ask(r, method, BACKUP_BEAT_PATH, { host: `127.0.0.1:${r.port}`, proto: null });
+  }
+
+  it('A43 /health/backups says "ok" and nothing else, with no login, under any host name, over https or not', async () => {
+    const { r, watch } = await watched();
+    expect((await beat(r)).status).toBe(204);
+    expect(watch.lastBeat).not.toBeNull();
+    for (const host of [`127.0.0.1:${r.port}`, '172.19.3.2:8080', 'elsewhere.example', r.origin.replace('https://', '')]) {
+      for (const proto of ['https', null, 'http']) {
+        const answer = await ask(r, 'GET', BACKUP_HEALTH_PATH, { host, proto });
+        expect(answer.status, `${host} ${String(proto)}`).toBe(200);
+        expect(answer.body).toBe('ok\n');
+        expect(answer.headers['cache-control']).toBe('no-store');
+        expect(answer.headers['set-cookie']).toBeUndefined();
+      }
+    }
+    expect((await ask(r, 'HEAD', BACKUP_HEALTH_PATH)).body).toBe('');
+    expect((await ask(r, 'POST', BACKUP_HEALTH_PATH)).status).toBe(405);
+  });
+
+  it('A43 /health/backups says "not ok" (503) 10 minutes after the last beat, and "ok" again after the next; /health stays "ok" all along (Fly uses it)', async () => {
+    const { r, at } = await watched();
+    at(MINUTE);
+    expect((await beat(r)).status).toBe(204);
+    at(MINUTE + BACKUP_SILENCE_MS - 1);
+    expect((await ask(r, 'GET', BACKUP_HEALTH_PATH)).status).toBe(200);
+    at(MINUTE + BACKUP_SILENCE_MS);
+    const stopped = await ask(r, 'GET', BACKUP_HEALTH_PATH);
+    expect(stopped.status).toBe(503);
+    expect(stopped.body).toBe('not ok\n');
+    expect((await ask(r, 'GET', HEALTH_PATH)).body).toBe('ok\n');
+    expect((await beat(r)).status).toBe(204);
+    expect((await ask(r, 'GET', BACKUP_HEALTH_PATH)).body).toBe('ok\n');
+  });
+
+  it('A43 a beat through Fly\'s proxy is refused and does not count; only GET; the beat says nothing back', async () => {
+    const { r, watch, at } = await watched();
+    for (const proto of ['https', 'http']) {
+      const answer = await ask(r, 'GET', BACKUP_BEAT_PATH, { proto });
+      expect(answer.status, proto).toBe(403);
+    }
+    expect(watch.lastBeat).toBeNull();
+    for (const method of ['POST', 'PUT', 'DELETE']) {
+      const answer = await beat(r, method);
+      expect(answer.status, method).toBe(405);
+      expect(answer.headers.allow).toBe('GET');
+    }
+    expect(watch.lastBeat).toBeNull();
+    at(BACKUP_SILENCE_MS);
+    expect((await ask(r, 'GET', BACKUP_HEALTH_PATH)).status).toBe(503);
+    const taken = await beat(r);
+    expect(taken.status).toBe(204);
+    expect(taken.body).toBe('');
+    expect(watch.lastBeat).toBe(Date.UTC(2026, 9, 12, 21, 0) + BACKUP_SILENCE_MS);
+  });
+
+  it('A43 both addresses are open (no login) in the list of routes, beside /health', () => {
+    expect(ROUTES.filter((route) => route.path.startsWith('/health'))).toEqual([
+      { method: 'GET', path: HEALTH_PATH, login: false },
+      { method: 'GET', path: BACKUP_HEALTH_PATH, login: false },
+      { method: 'GET', path: BACKUP_BEAT_PATH, login: false },
+    ]);
+  });
+
+  it('A43 without a backups watch (npm run serve on this computer, which has no backup) neither address is there', async () => {
+    const r = await hosted();
+    expect((await ask(r, 'GET', BACKUP_HEALTH_PATH, { host: 'elsewhere.example' })).status).toBe(421);
+    expect((await ask(r, 'GET', BACKUP_BEAT_PATH, { host: `127.0.0.1:${r.port}`, proto: null })).status).not.toBe(204);
+    const local = await servedAt('local');
+    running.push(local);
+    expect((await ask(local, 'GET', BACKUP_HEALTH_PATH)).status).toBe(404);
+    expect((await ask(local, 'GET', BACKUP_BEAT_PATH)).status).toBe(404);
   });
 });

@@ -147,10 +147,13 @@ function rows(db: string, table: string): number {
 }
 
 describe.runIf(CAN_RESTORE)('Phase 6 the image\'s program: the server and Litestream on the one machine (Linux and macOS)', { timeout: 120_000 }, () => {
-  it('Phase 6 the first start: no backup yet, empty books, https only at its own address; the books are copied; a stop stops the server, then Litestream', async () => {
+  it('Phase 6 A43 the first start: no backup yet, empty books, https only at its own address, the backups\' health address there; the books are copied; a stop stops the server, then Litestream', async () => {
     const m = await machine();
     const s = await start(m.env());
     await healthy(s);
+    // A43: hosted, the server watches Litestream's heartbeat.
+    expect((await get(s.port, '/health/backups', { Host: 'fdaa:0:1::2' })).body).toBe('ok\n');
+    expect((await get(s.port, '/health/backups/beat')).status).toBe(204);
     expect(s.output()).toContain('the volume had no books and there is no backup yet: starting with empty books');
     // Its first start tried to connect the test bank, which the test refused; it serves all the same.
     await until('the test bank to be tried', () => s.output().includes('the test bank could not be connected'));

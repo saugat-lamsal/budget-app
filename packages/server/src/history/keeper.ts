@@ -620,7 +620,8 @@ export class Keeper {
   // The web server for the screens, with these books behind it. Every
   // screen and every /api address needs a login (Step 2), checked against
   // the app's own address, `origin`.
-  server(webRoot: string, origin: () => string, onError?: (error: unknown) => void): Server {
+  // A43: hosted, `backups` watches Litestream's heartbeat for /health/backups.
+  server(webRoot: string, origin: () => string, onError?: (error: unknown) => void, backups?: { readonly beat: () => void; readonly healthy: () => boolean }): Server {
     this.#origin = origin;
     const auth = this.#auth;
     return createAppServer({
@@ -648,6 +649,7 @@ export class Keeper {
       syncEvery: (_request, minutes) => this.changeSyncEvery(minutes),
       alerts: () => this.alertsView(),
       health: () => this.healthy(),
+      ...(backups === undefined ? {} : { backups }),
       push: {
         on: (request, subscription) => this.#asking(request, (asking) => this.#push.on(asking, subscription)),
         off: (request) => this.#asking(request, (asking) => this.#push.off(asking)),
