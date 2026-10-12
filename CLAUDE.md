@@ -1436,5 +1436,21 @@ long). It replaces running everything before every commit:
     (4), all caught (judged with --only by the tests of what changed; the
     phone's in Chromium). Five older breaks on lines A40 changed were
     pointed at the code again.
+- PR #23 merged (Oct 12, 2026). Windows CI by hand: green (run 38277399217,
+  checks, Chromium and WebKit).
+- Phase 5: finish line crossed Oct 12, 2026 (docs/phase-5-report.txt, PRs
+  #20 to #23).
+- Found on the first Windows run for PR #23 (run 38275852933, Oct 12), three
+  failures, none in the app. setup.test.ts "14.3 refused one cent short"
+  (line 192) showed "Couldn't save that", and home.test.ts "10.6 if marking
+  it seen does not save" failed the same minute: both Chromium,
+  net::ERR_NO_BUFFER_SPACE. The failure report shows the app sent the POST
+  (so B194's half-second hold had let the tap through: the Save was in an
+  open sheet), the browser could not open a connection for it, the test
+  server never saw it, and the app said what it should when a request
+  fails. 3,088 and 3,454 connections on 127.0.0.1 were waiting to close
+  (TIME_WAIT); the most seen before was about 3,000 (Oct 10). Worked example
+  15 ran 11 s against vitest's 5 s limit (commit 8e56c9f gave it 60 s). The
+  rerun passed. Left as is: the Windows runner's connections, not the app.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
   rule 9.5, depends on it), and his check of part B (the list at its top).
