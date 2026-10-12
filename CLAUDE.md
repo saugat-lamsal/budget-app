@@ -47,18 +47,32 @@ This applies to every phase and every session, cloud or local.
 3. Break-it check. After a section passes, break the code on purpose in
    several ways (flip a sign, change a rounding, shift a boundary by one
    cent). Some test must fail each time. If none does, add the missing test.
-   Restore the code afterward. Run break-it only for the sections you
-   changed. Do one full run at the end of each phase.
+   Restore the code afterward. Run break-it only for the functions you
+   changed (see "Test only what changed" below).
 4. Random-scenario tests as soon as a section exists, for things that must
    always be true: paycheck parts add up exactly, no cent is created or
    lost, own-account transfers never change a bucket, the self-check holds.
 5. Worked examples. Keep a plain-text file of examples with made-up numbers,
    calculated step by step, that Saugat can check by hand
    (packages/money/worked-examples.txt). Each one is also a test.
-6. Type-check and run the full test suite (`npm test`) before every commit.
+6. Type-check and run the tests as "Test only what changed" says below.
    Never skip, weaken, or delete a failing test.
 7. End-of-phase report: a table of every rule and its tests, the test
    count, the break-it results, and anything not tested and why.
+
+Test only what changed (his rule, Oct 12, 2026: testing was taking too
+long). It replaces running everything before every commit:
+
+- While working, run only the test files for the code you changed
+  (`npx vitest related <files>` is fine), plus the type check.
+- Before each push, run one full `SKIP_BROWSER_TESTS=1 npm test`. Run
+  browser tests locally only for the screens you touched; CI runs the rest.
+- Never rerun a suite that already passed on the same code.
+- Break-it runs only for the functions you changed.
+- Long simulations only when the money math or the simulator changes.
+- A commit with only docs or notes gets [skip ci].
+- The full break-it run and the 2,000 lives are skipped for Phase 5 (his
+  call). Do one full break-it run before Phase 7, when real money starts.
 
 
 ## Technical decisions already made
