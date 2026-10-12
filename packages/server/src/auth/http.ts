@@ -36,11 +36,11 @@ export async function answerAuth(auth: Auth, path: string, request: IncomingMess
     case '/api/auth/login/options':
       return { status: 200, body: { ok: true, options: await auth.loginOptions() } };
     case '/api/auth/login':
-      return login(await auth.login(field(body, 'response'), device));
+      return login(await auth.login(field(body, 'response'), device, field(body, 'push')));
     case '/api/auth/code/options':
       return answered(await auth.codeOptions(field(body, 'code')));
     case '/api/auth/code':
-      return login(await auth.codePasskey(field(body, 'code'), field(body, 'response'), device));
+      return login(await auth.codePasskey(field(body, 'code'), field(body, 'response'), device, field(body, 'push')));
   }
   // The rest need him logged in; the web server has checked.
   if (session === null) return { status: 401, body: { error: 'login-needed' } };

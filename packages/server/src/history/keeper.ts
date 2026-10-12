@@ -129,7 +129,7 @@ export class Keeper {
     this.#now = input.now;
     this.#beforeCommit = input.beforeCommit;
     this.#origin = input.origin ?? (() => 'http://localhost:5190');
-    this.#auth = new Auth({ db: input.db, now: input.now, origin: () => this.#origin(), today: () => this.today(), bookLines: () => this.book()?.changeLog().length ?? 0 });
+    this.#auth = new Auth({ db: input.db, now: input.now, origin: () => this.#origin(), today: () => this.today(), bookLines: () => this.book()?.changeLog().length ?? 0, loggedIn: (token, device, push) => this.#push.loggedIn(token, device, push) });
     this.#push = new PushDesk({
       db: input.db,
       keys: input.push?.keys ?? null,
