@@ -1,0 +1,168 @@
+PHASE 6 CHECKLIST: SECURITY CHECK AND HOSTING (Oct 12, 2026)
+
+Branch phase-6-hosting. The roadmap's finish line for Phase 6: "the
+checklist passes and the app works on your iPhone against the test bank".
+The first half is below, as tests. The second half is yours, on the phone
+(docs/phase-6-setup.txt, at the end).
+
+
+BOTTOM LINE
+
+Everything the hosted app needs is built and tested on this PC and in CI,
+with no account made anywhere: Fly.io (fly.toml, the Dockerfile), backups
+with Litestream to Cloudflare R2 (litestream.yml), the restore check, the
+health address, https only. Every item of the checklist is a test, and all
+of them pass. What no test here can show is the real thing: Fly's own proxy,
+a real R2 bucket, and the iPhone. Those are your steps.
+
+Cost: about $3.84 a month, all on Fly.io. R2 and the uptime monitor are free
+at this size.
+
+
+THE CHECKLIST, AS TESTS
+
+1. The bank key is encrypted on disk.
+   packages/server/test/bank-key-on-disk.test.ts. The bank connection's key
+   (Plaid's access token) is searched for, byte by byte, as text and as
+   UTF-16, in the books' file and its write-ahead log, and in every copy
+   Litestream puts in the bucket: never there. What is there is its sealed
+   form (AES-256-GCM, v1.<iv>.<data>.<tag>), which only BANK_TOKEN_KEY
+   opens, and only for its own connection. BANK_TOKEN_KEY itself is a Fly
+   secret, never on the volume (also checked).
+
+2. The built phone app holds no secret.
+   packages/web/test/build-has-no-secrets.test.ts. The screens and the
+   service worker are built exactly as for the server, with made-up secrets
+   of every kind in the environment while they build. Every file built is
+   searched for those values, for every value in this computer's .env (a
+   failure names the setting, never the value), for the secrets' names, for
+   anything shaped like a bank key or a private key, and for Plaid's and the
+   backup's addresses. None is there.
+
+3. Every screen and every /api address needs a login, except the login page
+   (and what it needs) and the health address.
+   packages/server/test/login-guard.test.ts (the list of open addresses is
+   exactly the login page, its own requests, and /health) and
+   packages/server/test/hosted.test.ts (the same on the hosted address: each
+   one refused with no login, answered with one).
+
+4. Nothing sensitive in the logs.
+   packages/server/test/logs.test.ts: a hosted server is run through a
+   login, notifications on two phones, syncs, alerts, a phone that cannot be
+   reached and one whose subscription is gone, and everything it writes is
+   searched for a key, the bank's key, a login, a one-time code, a phone's
+   push address or keys, an amount, or a name from the bank. None is there.
+   Found and fixed while writing it: without push keys, the server wrote each
+   alert's words in its log, and the words can hold amounts (10.10). Hosted,
+   it now writes the title only. The hosted server also never writes a
+   one-time code in its log (fly ssh console makes one, in your window).
+   The whole program's output (server, supervisor and Litestream) is searched
+   for the keys too: start.test.ts and image.test.ts (Linux).
+
+5. Backups are on, and the restore works.
+   packages/server/test/backup-litestream.test.ts, with the real Litestream
+   (0.5.17, the image's) and the project's litestream.yml, against a stand-in
+   for R2 on this computer that checks every request's signature:
+   - the books are copied, and each change within seconds;
+   - with the wrong key, nothing is taken, and Litestream says so;
+   - while the bucket cannot be reached nothing is lost: the changes are
+     copied once it can be;
+   - (Linux) the restore check rebuilds the books into a new file, the same
+     to the last row, and checks them: whole, and every event replaying to
+     its totals (0.6); it refuses a file that is there, and says why for an
+     empty bucket, a bucket that cannot be reached, a spoiled backup, and
+     books that no longer replay;
+   - (Linux) on starting, books missing from the volume are rebuilt from the
+     backup; with no backup they start empty; a backup that cannot be read
+     stops it (it never starts empty over a backup).
+   packages/server/test/start.test.ts (Linux): the image's program, built and
+   run as it runs on Fly: first start, a stop that copies the last change, a
+   lost volume rebuilt, settings missing, history that does not replay.
+   packages/server/test/image.test.ts (CI's image job): the Docker image
+   itself, started as Fly starts it, with the restore check run inside it.
+   The hosted server does not start without a backup set.
+
+6. https only, one address (asked for in Step 1).
+   packages/server/test/hosted.test.ts: the login cookie is Secure,
+   HttpOnly, SameSite=Strict (and so is the one that logs out); every answer
+   has HSTS (two years) and the security headers; anything that did not come
+   over https is sent to the https address (GET) or refused (POST); any other
+   host name is refused, this computer's own included; a POST is taken only
+   from the app's own page at its https address; passkeys are made for the
+   fly.dev name. fly.toml has force_https (test/hosting-config.test.ts).
+
+7. Only ever one machine (asked for in Step 1).
+   test/hosting-config.test.ts (fly.toml: one machine, one volume, never
+   stopped for being idle, no autoscaling, a deploy replaces it in place),
+   packages/server/test/backup.test.ts (before anything starts, the server
+   asks Fly which machines the app has; with two, nothing starts and it says
+   how to put it right), packages/server/test/supervisor.test.ts.
+
+8. The health address (asked for in Step 1).
+   packages/server/test/health.test.ts: /health says "ok" (or "not ok", 503,
+   when the books cannot be read), with no login, under any host name, and
+   never a number.
+
+9. Plaid's test bank only. test/sandbox-only.test.ts, unchanged, and
+   PLAID_ENV=sandbox in fly.toml.
+
+10. No test can reach a real bucket (asked for in Step 1).
+    test/backup-only-here.test.ts, like the push one: every run of Litestream
+    gets its environment from one place, which checks the lock right before;
+    under the tests it allows this computer only, whatever a test hands it;
+    R2's address is written in the lock and its tests only.
+
+
+THE SECRETS (Fly secrets only, never in git or the image)
+
+  PLAID_CLIENT_ID        Plaid's id for the app (sandbox).
+  PLAID_SECRET           Plaid's sandbox secret: the test bank only.
+  BANK_TOKEN_KEY         Seals the bank connection's key in the books (32
+                         random bytes). A new one for the hosted books.
+  VAPID_PUBLIC_KEY       The app's push key pair (npm run push-keys): the
+  VAPID_PRIVATE_KEY      public half goes to the phone, the private half
+                         signs each alert and never leaves the server.
+  VAPID_SUBJECT          How Apple's push service can reach you: mailto:you.
+  R2_ENDPOINT            The bucket's S3 address at Cloudflare
+                         (https://<account id>.r2.cloudflarestorage.com).
+  R2_BUCKET              The bucket's name.
+  R2_ACCESS_KEY_ID       The R2 API token's key, for that one bucket only,
+  R2_SECRET_ACCESS_KEY   read and write. Litestream is the only program given
+                         these; the server is not.
+Not secret, in fly.toml: APP_ORIGIN, BUDGET_DB, PORT, PLAID_ENV=sandbox.
+
+
+WHAT IT COSTS (Fly.io's prices page, Oct 2026; ewr is one of the cheapest regions)
+
+  One shared-cpu-1x machine, 512 MB, always on         $3.69 a month
+  One 1 GB volume                                       $0.15 a month
+  Daily volume snapshots (first 10 GB a month free)     $0
+  Traffic out (2 cents a GB; a few MB a month)          under $0.01
+  Shared IPv4 and IPv6, the fly.dev https certificate   $0
+  About $3.84 a month. Fly has no free allowance for new accounts.
+  Cloudflare R2: free up to 10 GB stored and a million writes a month; the
+  books are a few MB, and Litestream writes only when they change.
+  UptimeRobot's free plan: $0.
+  256 MB would be $2.34 a month. 512 MB because the server replays the whole
+  history when it starts, and Litestream runs beside it.
+
+
+WHAT IS NOT TESTED HERE, AND WHY
+
+- Fly.io itself: its proxy, force_https, its health check, its volumes and
+  snapshots, a deploy replacing the machine in place. No account (your call),
+  and no Docker on this PC. The image is built and started in CI's image job
+  on Linux, as Fly starts it, which is as close as it gets without Fly.
+- A real R2 bucket. The stand-in speaks the same S3 calls and checks the same
+  signatures; R2's own quirks are handled by Litestream (it knows R2's
+  address). Your first restore check on the machine is the real test.
+- The restore on Windows: Litestream cannot rebuild a database on Windows
+  (not a system it supports: "Access is denied" flushing a folder). Those
+  tests run on Linux, in CI's checks job and in the image job; on this PC
+  they are skipped, and say why. Copying to the stand-in works here, and is
+  tested here.
+- The iPhone: Apple's push service, the permission prompt, the lock screen,
+  a tap, a passkey with Face ID. Your checklist (docs/phase-6-setup.txt).
+- The uptime monitor itself: an outside service.
+- The full break-it run and the 2,000 lives: his call, not until before Phase
+  7. Break-it ran for the functions this chunk changed (CLAUDE.md).

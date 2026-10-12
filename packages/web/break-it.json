@@ -2182,5 +2182,12 @@
     "find": "  try {\n    if (await keptBefore(id)) return false;\n  } catch {\n    // Its storage could not be used: the screen still counts.\n  }\n",
     "replace": "  if (await keptBefore(id)) return false;\n",
     "why": "[a42] 10.12 storage that cannot be used stops the alert from showing"
+  },
+  {
+    "section": "build",
+    "file": "packages/web/vite.config.ts",
+    "find": "      outDir = config.build.outDir;\n",
+    "replace": "",
+    "why": "[hosting] the service worker built apart from the screens"
   }
 ]

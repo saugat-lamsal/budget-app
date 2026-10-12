@@ -683,6 +683,32 @@ A42. ANSWERED Oct 12, built. Your answer: option 2. Rulebook 10.12 and
      shows nothing. That can only be seen on a real iPhone (Phase 6).
 
 
+## Part A, added with Phase 6, hosting (Oct 12). Waiting on your answer.
+
+A43. How you hear that the backups have stopped. The uptime monitor watches
+     /health, which says "ok" when the server is running and can read its
+     books (B206). It says nothing about the backups: if Litestream cannot
+     reach R2 (a wrong or expired key, R2 down, a full bucket), the books are
+     no longer copied, and nothing tells you. Litestream says so in Fly's log,
+     and the monthly restore check (docs/phase-6-setup.txt, step 6) would
+     find it, up to a month late.
+     Option 1: as built. The monthly restore check, and Fly's log.
+     Option 2: Litestream's own heartbeat. Litestream can call an address
+     only while every copy has gone through within a set time (5 minutes, at
+     least 1). Point it at a free Healthchecks.io check: if the calls stop,
+     Healthchecks.io emails you (and its phone app tells you). One more free
+     account, and the check's address as one more Fly secret. One line in
+     litestream.yml. To check when built: that Litestream calls it while
+     nothing changes in the books (a quiet night).
+     Option 3: /health says "not ok" while Litestream is not running (the
+     supervisor knows), so the one uptime monitor covers both. It does not
+     catch a wrong key or R2 down: Litestream keeps running then.
+     Option 4: option 2 and option 3.
+     Recommendation: option 2. It catches every way the copies stop, from
+     Litestream's own point of view, within minutes. Option 3 adds little to
+     it. Built: option 1.
+
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 WAITING FOR YOU TO CHECK (Oct 10, 2026, the end of Phase 4). Each was
@@ -785,7 +811,7 @@ so if you want them here too. B4, B20, B82 and B84 are answered.
   B174. Money on its way between your accounts is listed on Buckets (12.5, B44).
   B175. Payday and Home show what is on its way to the savings account (3.8, B46).
   B176. A purchase made on payday itself is not "made before payday" (3.4, B4).
-  B177 to B184 (Phase 5, part one), B185 to B192 (your answers to A34 to A39, Oct 11) and B193 to B201 (the phone, Oct 11 and 12) and B202 to B204 (your answers to A40 to A42, Oct 12): in their own sections at the end of part B.
+  B177 to B184 (Phase 5, part one), B185 to B192 (your answers to A34 to A39, Oct 11) and B193 to B201 (the phone, Oct 11 and 12) and B202 to B204 (your answers to A40 to A42, Oct 12) and B205 to B214 (hosting, Phase 6, Oct 12): in their own sections at the end of part B.
 
 B1. Paycheck smaller than the mom reserve (3.2).
     A $1,200 paycheck can only give the reserve $1,200, not $1,500. The
@@ -2356,3 +2382,79 @@ B204. What the phone keeps (10.12, A42): in the service worker's own storage
       Tested in Chromium and WebKit by running the built worker twice in a
       page (Playwright cannot hand a real worker a push); only a real iPhone
       can show it on the phone itself (Phase 6).
+
+
+## Part B, added with hosting (Phase 6, Oct 12). Tell me if any is wrong.
+
+B205. The hosted address is https://budget-app-x7q2.fly.dev (fly.toml: the
+      app's name and APP_ORIGIN, which a test keeps the same). It is the only
+      host name the server answers to and the only Origin it takes a POST
+      from; localhost and 127.0.0.1 are refused there too. A request Fly's
+      proxy did not take over https is sent to the https address (GET and
+      HEAD, 308) or refused (anything else, 403). Every answer says "https
+      only, for two years" (HSTS, max-age 63072000, includeSubDomains; not
+      preload, which a fly.dev name cannot have). The login cookie is Secure,
+      HttpOnly, SameSite=Strict. The headers the screens already had stay, and
+      Cross-Origin-Resource-Policy: same-origin is added.
+
+B206. /health answers GET and HEAD with no login, under any host name (Fly's
+      own check comes from inside, under the machine's address), over https
+      or not. "ok" (200) when the server can read its books, "not ok" (503)
+      when it cannot; nothing else, ever. It does not look at the bank (the
+      app's own alerts do, 10.5, 10.7) or the backups (A43).
+
+B207. Hosted, the server never writes a one-time code in its log (Fly keeps
+      the log). With no passkey yet it says how to get one: fly ssh console
+      -C "node /app/serve/login-code.mjs", which shows it in your own window.
+      The code is the same as npm run login-code's: 12 digits, once, for 15
+      minutes (B161).
+
+B208. The first start connects Plaid's test bank with made-up accounts like
+      yours, by itself (--connect-once), after the server is up and before
+      its first sync. If that fails it is in the log, and the next start
+      tries again. It never connects a second time. In Phase 7 the real
+      connection replaces this.
+
+B209. When the volume has no books (the first start, a new machine, a lost
+      volume), they are rebuilt from the backup before anything starts. With
+      no backup yet, they start empty. If the backup cannot be read (R2 down,
+      a wrong key), nothing starts, so empty books never cover the backup:
+      Fly starts it again (up to 10 times, fly.toml).
+
+B210. The backups: Litestream copies each change to R2 within a second, and
+      a full copy once a day, kept for 30 days. The hosted server does not
+      start without a backup set. The bucket's key is given to Litestream
+      only, not to the server; the bank key, Plaid's keys and the push keys
+      are given to the server only, not to Litestream.
+
+B211. Only one machine. Before anything starts, the server asks Fly's private
+      DNS which machines the app has started (vms.<app>.internal). With two
+      or more, nothing starts on any of them (all are down until you remove
+      the extra one; the uptime monitor tells you), and the log says how. If
+      Fly's DNS cannot be asked, it starts, and says so in the log.
+
+B212. On the machine, the supervisor (start.ts) keeps Litestream running: if
+      it stops, it is started again after 5 s, then 10, 20, 40, and every
+      minute after (from 5 s again after 10 minutes running well), each time
+      in the log. The server is not started again if it stops by itself: it
+      stopped for a reason (the history does not replay, 0.6; a wrong
+      secret), the log says what to do, Litestream keeps copying, and the
+      uptime monitor sees the app down. A stop from Fly stops the server first
+      (up to 20 s), then Litestream (up to 35 s), so the last answer is saved
+      and then copied; fly.toml gives it 60 s.
+
+B213. What is in Fly's log: what the server always wrote (syncs by counts,
+      Plaid's answers by status, phones by their kind, such as "Safari on
+      iPhone"), Litestream's own lines (they name the bucket and its address,
+      which holds your Cloudflare account's id, never its key), and, without
+      push keys, each alert's title only, never its words (they can hold
+      amounts: 10.10). Every key the server is given is hidden if it ever
+      turned up.
+
+B214. The restore check rebuilds into a new file, in the machine's temporary
+      folder unless told another (fly ssh console -C "node
+      /app/serve/restore-check.mjs"); that folder is emptied when the machine
+      restarts. It never touches the live books, refuses a file that is
+      there, and checks the copy with SQLite's integrity check and the replay
+      check (0.6). It cannot run on Windows (Litestream cannot restore
+      there), so on your PC it says to run it on the server.

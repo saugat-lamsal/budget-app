@@ -1,0 +1,125 @@
+PHASE 6: WHAT ONLY YOU CAN DO (plain steps)
+
+About an hour. Plaid's test bank only: nothing here touches a real account.
+Commands go in PowerShell, in the project folder (C:\Users\sauga\dev\budget-app),
+on the branch phase-6-hosting (or main, once it is merged).
+The app's address is https://budget-app-x7q2.fly.dev. If that name is taken in
+step 2, pick another and change it in fly.toml in two places (app, and
+APP_ORIGIN); use your name wherever this says budget-app-x7q2.
+
+
+1. FLY.IO ACCOUNT
+   a. Sign up at https://fly.io (a card is needed: there is no free allowance).
+   b. Install its command: in PowerShell,
+        iwr https://fly.io/install.ps1 -useb | iex
+      Close PowerShell and open it again.
+   c. fly auth login   (it opens the browser)
+
+2. THE APP AND ITS VOLUME (not deployed yet)
+        fly apps create budget-app-x7q2
+        fly volumes create budget_data --app budget-app-x7q2 --region ewr --size 1 --yes
+   One volume, on purpose: Fly warns that one is less safe than two. The
+   backups to R2 cover that.
+
+3. CLOUDFLARE R2 (the backups)
+   a. Sign up at https://dash.cloudflare.com. Open R2 Object Storage and
+      subscribe to it (it asks for a card; this size stays in the free tier).
+   b. Create bucket: name budget-backups, location Automatic.
+   c. R2 > Manage API tokens > Create API token:
+        Permissions: Object Read & Write
+        Specify bucket: Apply to specific buckets only > budget-backups
+        TTL: Forever
+      Create it. Copy, before closing the page (shown once):
+        Access Key ID, Secret Access Key, and the S3 endpoint
+        (https://<account id>.r2.cloudflarestorage.com, without the bucket
+        name after it).
+
+4. THE SECRETS
+   a. Two new keys, on this PC:
+        node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
+      (the BANK_TOKEN_KEY for the hosted books), and
+        npm run push-keys
+      (VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY).
+   b. In the project folder make a file named .env.fly (git never takes it:
+      .gitignore has .env.*) with these lines, filled in:
+        PLAID_CLIENT_ID=      (the same as in .env)
+        PLAID_SECRET=         (the same as in .env: the sandbox secret)
+        BANK_TOKEN_KEY=       (from 4a)
+        VAPID_PUBLIC_KEY=     (from 4a)
+        VAPID_PRIVATE_KEY=    (from 4a)
+        VAPID_SUBJECT=mailto:(your email)
+        R2_ENDPOINT=          (from 3c)
+        R2_BUCKET=budget-backups
+        R2_ACCESS_KEY_ID=     (from 3c)
+        R2_SECRET_ACCESS_KEY= (from 3c)
+   c. Send them to Fly (this keeps them out of PowerShell's history):
+        Get-Content .env.fly | fly secrets import --app budget-app-x7q2
+   d. Delete .env.fly. Keep the R2 keys and BANK_TOKEN_KEY in your password
+      manager: without BANK_TOKEN_KEY a rebuilt copy cannot open the bank
+      connection.
+   e. fly secrets list --app budget-app-x7q2 shows the ten names (never the
+      values).
+
+5. THE FIRST DEPLOY
+        fly deploy
+   Fly builds the image on its own machines (a few minutes), then starts one
+   machine. Then:
+        fly status          one machine, started
+        fly machine list    exactly one
+        fly logs            look for: "starting with empty books",
+                            "Budget app: Plaid's test bank only, hosted",
+                            and "the test bank is connected"
+   Open https://budget-app-x7q2.fly.dev/health in a browser: it says ok.
+   In Cloudflare, the bucket now has files under budget/.
+
+6. THE FIRST RESTORE TEST
+        fly ssh console -C "node /app/serve/restore-check.mjs"
+   It rebuilds the books from R2 into a new file on the machine and checks
+   them. The last line must be: The backup works.
+   Do it again once a month, and after anything odd.
+
+7. THE UPTIME MONITOR (if the server is down, the app cannot tell you itself)
+   Recommended: UptimeRobot, free (50 monitors, every 5 minutes, email and
+   its iPhone app's alerts).
+   a. Sign up at https://uptimerobot.com.
+   b. New monitor: HTTP(s), URL https://budget-app-x7q2.fly.dev/health,
+      every 5 minutes. Alert: your email.
+   c. Install the UptimeRobot app on the iPhone and turn on its notifications.
+   d. Try it: edit the monitor's URL to end in /health-not-there. Within
+      about 10 minutes you get "down". Put it back to /health. (Stopping the
+      machine would not show it: Fly starts a stopped machine again when a
+      request comes.)
+
+8. ON THE IPHONE
+   a. In Safari open https://budget-app-x7q2.fly.dev. Share > Add to Home
+      Screen > Add. From now on open it from the home screen only.
+   b. The login page: tap "Use a one-time code". On the PC:
+        fly ssh console -C "node /app/serve/login-code.mjs"
+      Type the 12 digits (good once, for 15 minutes). Face ID makes the
+      passkey. Home opens.
+   c. Setup day: Home says Start setup day. Go through it with the test
+      bank's made-up accounts.
+   d. Settings > Notifications > Turn on. Allow when iOS asks.
+   e. Settings > Notifications > Send a test alert. Lock the phone first if
+      you want to see it on the lock screen (it comes in a few seconds).
+
+
+THE IPHONE CHECKLIST (tick each)
+
+[ ] The permission prompt came when you tapped Turn on (not before), and the
+    card then says "On for this phone".
+[ ] The test alert came, on the lock screen, in words with no amount.
+[ ] A real alert (the 8:00 PM daily review, with something waiting in Review)
+    came with no amount on the lock screen (amounts are off: 10.10).
+[ ] Tapping the test alert opened Settings; tapping the daily review opened
+    Review.
+[ ] It works against the test bank: Home shows safe to spend; Settings > Bank
+    shows "Checked at" a time in the last hour; Review lists the test bank's
+    items; one answer in Review goes through.
+[ ] Logging out and back in with Face ID works (no code needed the second
+    time), and Settings > Notifications still says On.
+[ ] The app opens full screen from the home screen (no Safari bar), and the
+    notch and home bar cover nothing.
+[ ] UptimeRobot shows the monitor up.
+
+Tell me which boxes are not ticked, and what you saw.
