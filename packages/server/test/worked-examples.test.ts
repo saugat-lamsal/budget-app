@@ -674,6 +674,8 @@ describe('worked examples: the alerts (Phase 5)', () => {
     }
   });
 
+  // Five days of the timer's once-a-minute looks: 1.7 s on his PC, 11 s on
+  // CI's Windows runner (2 cores), past the 5-second default.
   it('example 15, the phone cut off for five days: of what waited, only the newest daily review and the newest reminder go when it is back; the rest "Not sent: a newer one went." (10.9, A40)', async () => {
     const checks = checksOf(15);
     const times = timesOf(15);
@@ -734,5 +736,5 @@ describe('worked examples: the alerts (Phase 5)', () => {
       await s.alerts.stop();
       life.done();
     }
-  });
+  }, 60_000);
 });
