@@ -785,7 +785,7 @@ so if you want them here too. B4, B20, B82 and B84 are answered.
   B174. Money on its way between your accounts is listed on Buckets (12.5, B44).
   B175. Payday and Home show what is on its way to the savings account (3.8, B46).
   B176. A purchase made on payday itself is not "made before payday" (3.4, B4).
-  B177 to B184 (Phase 5, part one), B185 to B192 (your answers to A34 to A39, Oct 11) and B193 to B201 (the phone, Oct 11 and 12): in their own sections at the end of part B.
+  B177 to B184 (Phase 5, part one), B185 to B192 (your answers to A34 to A39, Oct 11) and B193 to B201 (the phone, Oct 11 and 12) and B202 to B204 (your answers to A40 to A42, Oct 12): in their own sections at the end of part B.
 
 B1. Paycheck smaller than the mom reserve (3.2).
     A $1,200 paycheck can only give the reserve $1,200, not $1,500. The
@@ -2266,7 +2266,8 @@ B196. What one push carries: the alert's id, its title and line, when it
 
 B197. With no phone that has notifications on, an alert is not sent: it
       waits in the outbox and is tried again like any failed send (B181),
-      and goes once a phone turns them on (A40 asks what should go then).
+      and goes once a phone turns them on: of what waited, the newest of
+      each kind, if still true (A40, B202).
       With two phones, each alert goes to both; if one fails it is tried
       again for both, and the one that had it already shows it once (A42).
 
@@ -2303,3 +2304,55 @@ B201. A tap on an alert opens the screen it is about: Review for the daily
       totals, the bank and a take-back; one kept before the outbox kept
       each alert's facts (database step 6) opens the list of alerts. An
       address that is not one of the app's own screens opens Home.
+
+
+## Part B, added with your answers to A40 to A42 (Oct 12). Tell me if any is wrong.
+
+B202. Alerts the phone could not be given (10.9, A40). "Waited for the
+      phone" means tried at least once and not sent: the push service could
+      not be reached, or no phone had notifications on (B197). The kinds, of
+      which only the newest goes: one daily review; one per card (a reminder
+      and the overdue alert are one kind, as in B186); each bucket's low
+      alert and its empty alert, each a kind of its own; one of each lasting
+      alert (totals not matching, the bank wanting a login, the bank not
+      read). Each take-back is its own kind, as each is something the bank
+      did, so every one goes. "Still true" is checked at each look while it
+      waits, with the books as they are then: the daily review, something
+      waits in review now; a card, as B186 says; low or empty, the bucket is
+      at that level now in that same pay period; a lasting alert, it is still
+      on, the same time it started; a take-back, always. The newest of a kind
+      that is no longer true is dropped at once, with the older ones of its
+      kind that waited: "Not sent: no longer true." Older ones wait behind
+      the newest ("Not sent yet: only the newest of its kind goes.") and are
+      marked "Not sent: a newer one went." the moment it reaches the phone.
+      What only quiet hours held (never tried) still all goes at 7:00 AM, as
+      B188 says. The daily review that goes keeps the count it was made with,
+      and says when it was due. Tries are an hour apart after a while (B181),
+      so the newest goes at its next try, not the moment the phone is back.
+      Settings' row: "12 alerts, 10 sent" when some never went.
+
+B203. A phone's notifications after its login ends (10.11, A41). The login
+      page sends the address of the phone's own push subscription with the
+      login, asked after the passkey step so nothing comes between his tap
+      and Face ID. If another login has notifications on at that address
+      (the same phone, logged in before), they move to the new login in the
+      same step as the login is saved, and keep the day they were turned on
+      ("On for this phone. Since Oct 3."). An address no other login has
+      moves nothing: one turned off there, or logged out there, stays off
+      (logging out takes them away, B199). There is no line in the change log
+      for the move; the login has its own line. A phone whose browser cannot
+      say its address logs in as before, and its card says "Off on this
+      phone. 1 other device gets them." until he taps Turn on.
+
+B204. What the phone keeps (10.12, A42): in the service worker's own storage
+      (IndexedDB, database "budget-alerts-shown"), the id of each alert it
+      showed, the newest 500, and nothing else: no words, no amounts. Looking
+      an id up, adding it and dropping the oldest past 500 is one step, so
+      two at once cannot both count as new. If that storage cannot be used
+      (a private window, the phone short of space), the alert still shows,
+      and a repeat is caught only while the worker runs or while the first
+      one is still on the screen, as before. Rule 0.4's test allows that one
+      database in the service worker only; every screen still keeps nothing.
+      Tested in Chromium and WebKit by running the built worker twice in a
+      page (Playwright cannot hand a real worker a push); only a real iPhone
+      can show it on the phone itself (Phase 6).
