@@ -4,8 +4,8 @@ import { demoScenario } from '../../../server/src/demo/scenarios.js';
 import { moneyText } from '../../src/ui/money-format.js';
 import { POT_NAMES } from '../../src/ui/names.js';
 import { activityOf, amountAt, numbersOf, readActivity } from './activity-screens.js';
-import { ENGINES, openScenario, phone, textAt, useEngine } from './harness.js';
-import { bucketsOf, readBuckets, sheetGapsAfterAnAnswer, watchChoices, watchSheetsAfterAnAnswer } from './screens.js';
+import { ENGINES, openScenario, phone, textAt, untilQuiet, useEngine } from './harness.js';
+import { bucketsOf, readBuckets, sheetGapsAfterAnAnswer, tapThenTapWhereItWas, watchChoices, watchSheetsAfterAnAnswer } from './screens.js';
 
 // Moving money between buckets by hand, used in a browser like a person
 // would (rules 13.3, 13.4, 13.5; QUESTIONS.md B103). A move is compared with
@@ -194,6 +194,23 @@ describe.each(ENGINES)('moving money by hand, in %s', (_name, engine) => {
     expect(watch.posts.length).toBe(1);
     twin.book.moveMoney({ from: 'wants', to: 'needs', amount: 2_500 }, twin.today);
     await expect.poll(async () => (await readBuckets(page)).needs).toBe(twin.book.pots().needs);
+    expect(await readBuckets(page)).toEqual(bucketsOf(twin.book));
+    await page.context().close();
+  });
+
+  it('13.3 B194 the rest of a double tap on Move does not land on Buckets under the sheet', async () => {
+    const twin = life('normal');
+    const page = await openScenario(await browser().newContext(phone()), base(), 'normal', '/buckets');
+    const watch = watchChoices(page);
+    await page.getByTestId('move-open').click();
+    await page.getByTestId('move-amount').fill('25.00');
+    expect(await tapThenTapWhereItWas(page, page.getByTestId('move-submit'), 'move-sheet'), 'what of the screen the second tap reached').toBe('nothing');
+    await untilQuiet(page);
+    expect(watch.posts.length).toBe(1);
+    expect(await page.locator('dialog[open]').evaluateAll((open) => open.map((d) => d.getAttribute('data-testid'))), 'a sheet opened under the second tap').toEqual([]);
+    expect(await page.getByTestId('notice').count(), 'the moved message').toBe(1);
+    expect(new URL(page.url()).pathname).toBe('/buckets');
+    twin.book.moveMoney({ from: 'wants', to: 'needs', amount: 2_500 }, twin.today);
     expect(await readBuckets(page)).toEqual(bucketsOf(twin.book));
     await page.context().close();
   });

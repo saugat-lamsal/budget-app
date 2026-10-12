@@ -217,6 +217,21 @@ export function Banner({ tone, icon, title, children, testId }: { readonly tone:
 // Slides up from the bottom, over the screen. Closes with its button, a tap
 // outside it, or Escape. Built on the browser's own dialog, so focus stays
 // inside it while it is open.
+// After a sheet closes, the screen takes no tap for TAP_HOLD_MS. A sheet
+// closes the moment its answer comes back, and the rest of a double tap on its
+// button then landed on whatever was under it: a Settings row, which opened
+// another sheet and took the saved message away, or the Review tab (CI Oct 11,
+// WebKit; B194). An invisible cover over the whole screen takes those taps.
+export const TAP_HOLD_MS = 500;
+
+function holdTaps(): void {
+  const cover = document.createElement('div');
+  cover.className = 'tap-hold';
+  cover.setAttribute('aria-hidden', 'true');
+  document.body.append(cover);
+  window.setTimeout(() => cover.remove(), TAP_HOLD_MS);
+}
+
 export function BottomSheet({ open, title, onClose, children, testId }: { readonly open: boolean; readonly title: string; readonly onClose: () => void; readonly children: ReactNode; readonly testId?: string | undefined }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
@@ -233,8 +248,19 @@ export function BottomSheet({ open, title, onClose, children, testId }: { readon
       // and the close button does not start out highlighted.
       dialog.querySelector<HTMLElement>('.sheet__title')?.focus();
     }
-    if (!open && dialog.open) dialog.close();
+    if (!open && dialog.open) {
+      dialog.close();
+      holdTaps();
+    }
   }, [open]);
+  // Taken off the screen while open (its screen let it go when the answer
+  // came): the same hold.
+  useLayoutEffect(() => {
+    const dialog = ref.current;
+    return () => {
+      if (dialog?.open === true) holdTaps();
+    };
+  }, []);
   return (
     <dialog
       ref={ref}

@@ -1094,8 +1094,8 @@
   {
     "section": "home",
     "file": "packages/web/src/ui/blocks.tsx",
-    "find": "    if (!open && dialog.open) dialog.close();\n  }, [open]);",
-    "replace": "    if (!open && dialog.open) setTimeout(() => dialog.close(), 0);\n  }, [open]);",
+    "find": "    if (!open && dialog.open) {\n      dialog.close();\n      holdTaps();\n    }\n  }, [open]);",
+    "replace": "    if (!open && dialog.open) {\n      setTimeout(() => dialog.close(), 0);\n      holdTaps();\n    }\n  }, [open]);",
     "why": "[activity] 13.3 the sheet closes a moment after the screen is redrawn, with its button enabled in between"
   },
   {
@@ -2007,5 +2007,26 @@
     "find": "if (port !== undefined && !local.endsWith(`:${port}`) && peer?.endsWith(`:${port}`) !== true) continue;",
     "replace": "if (port !== undefined) continue;",
     "why": "[ci] the report counts no connection to the stuck page's server"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "      dialog.close();\n      holdTaps();\n",
+    "replace": "      dialog.close();\n",
+    "why": "[b194] the rest of a double tap lands on the screen under a sheet that just closed"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "if (dialog?.open === true) holdTaps();",
+    "replace": "if (dialog?.open === true) void dialog;",
+    "why": "[b194] a sheet its screen let go of while open holds no taps"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": ".tap-hold {\n  position: fixed;\n  inset: 0;",
+    "replace": ".tap-hold {\n  position: fixed;\n  inset: 100%;",
+    "why": "[b194] the tap hold covers nothing"
   }
 ]

@@ -5,9 +5,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { START_DATE, appSide, deposit, openTestBook, payPerson, purchase, refund } from '../../../money/test/helpers.js';
 import { demoScenario } from '../../../server/src/demo/scenarios.js';
 import { itemKey } from '../../../server/src/item-key.js';
-import { ENGINES, launch, centsAt, close, openScenario, phone, readCents, textAt, useEngine } from './harness.js';
+import { ENGINES, launch, centsAt, close, openScenario, phone, readCents, textAt, untilQuiet, useEngine } from './harness.js';
 import { openLive, startLive } from './live.js';
-import { bucketsOf, bucketsOnScreen, item, listed, watchChoices } from './screens.js';
+import { bucketsOf, bucketsOnScreen, item, listed, tapThenTapWhereItWas, watchChoices } from './screens.js';
 
 // Review, used in a browser like a person would. Every item and every choice
 // on the screen is compared to the money math for the same made-up life; a
@@ -308,6 +308,24 @@ describe.each(ENGINES)('Review in %s', (_name, engine) => {
     await page.waitForLoadState('networkidle');
     twin.book.sort(id, { to: 'wants' }, twin.today);
     expect(watch.posts).toHaveLength(1);
+    expect(await bucketsOnScreen(page)).toEqual(bucketsOf(twin.book));
+    await page.context().close();
+  });
+
+  it('B194 the rest of a double tap on a choice in its sheet does not land on the list under it: one decision, nothing else sorted or opened', async () => {
+    const mine = life('review-busy');
+    const twin = life('review-busy');
+    const id = idOf(mine.book, 'CORNER STORE');
+    const page = await openReview(await browser().newContext(phone()), base(), 'review-busy');
+    const watch = watchChoices(page);
+    await item(page, id).getByTestId('more').click();
+    await page.getByTestId('review-sheet').waitFor();
+    expect(await tapThenTapWhereItWas(page, page.getByTestId('review-sheet').getByTestId('choice-wants'), 'review-sheet'), 'what of the screen the second tap reached').toBe('nothing');
+    await untilQuiet(page);
+    twin.book.sort(id, { to: 'wants' }, twin.today);
+    expect(watch.posts).toHaveLength(1);
+    expect(await page.locator('dialog[open]').evaluateAll((open) => open.map((d) => d.getAttribute('data-testid'))), 'a sheet opened under the second tap').toEqual([]);
+    expect(new URL(page.url()).pathname).toBe('/review');
     expect(await bucketsOnScreen(page)).toEqual(bucketsOf(twin.book));
     await page.context().close();
   });

@@ -17,11 +17,15 @@ interface AxeViolation {
 // a size measured halfway through that is not what he sees (a size can come
 // out a rounding error short of 44 while a sheet is still sliding). So a frame
 // or two pass, for a transition that was just started to begin, and then every
-// animation and transition that is running finishes.
+// animation and transition that is running finishes. And for a moment after a
+// sheet closes the screen takes no tap (blocks.tsx holdTaps): its invisible
+// cover is over everything, which axe would take for something overlapping
+// the text; the screen is at rest once it takes taps again.
 export async function atRest(page: Page): Promise<void> {
   await page.evaluate(async () => {
     await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
     await Promise.all(document.getAnimations().map((animation) => animation.finished.catch(() => undefined)));
+    while (document.querySelector('.tap-hold') !== null) await new Promise((done) => setTimeout(done, 20));
   });
 }
 

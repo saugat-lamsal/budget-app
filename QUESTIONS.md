@@ -2145,3 +2145,16 @@ B193. Raising the low alert level (10.1) above where a bucket stands sends
       money math and the server already did this; the simulator itself
       checked the alerts after the change with the old level, and now changes
       its own record with the book's.
+
+B194. After a sheet closes, the screen takes no tap for half a second (found
+      by the Settings test "B92 a double tap on Save sends one decision",
+      WebKit, CI Oct 11; a real bug, not the test). A sheet closes the moment
+      its answer comes back, and the second tap of a double tap then landed
+      on whatever was under it: a Settings row, which opened another sheet
+      and took the "saved" message away, or the Review tab; on Review and a
+      bucket's list it could land on another item's card. An invisible cover
+      over the whole screen now takes those taps, on every sheet (the
+      sheets are one shared block). It is shorter than 13.7's "about a
+      second" because a double tap is quicker than reading a change. A tap
+      a person means for the screen within that half second does nothing,
+      and he taps again.

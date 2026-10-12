@@ -7,7 +7,7 @@ import { demoScenario } from '../../../server/src/demo/scenarios.js';
 import { activityOf, amountAt, numbersOf, pathOfPot, readActivity, rowOf } from './activity-screens.js';
 import { ENGINES, close, openScenario, phone, showScenario, textAt, untilQuiet, useEngine, launch } from './harness.js';
 import { openLive, startLive } from './live.js';
-import { sheetGapsAfterAnAnswer, watchChoices, watchSheetsAfterAnAnswer } from './screens.js';
+import { sheetGapsAfterAnAnswer, tapThenTapWhereItWas, watchChoices, watchSheetsAfterAnAnswer } from './screens.js';
 
 // What went in and out of each bucket, used in a browser like a person would
 // (QUESTIONS.md B97 to B102). Every number and row on the screen is compared
@@ -257,6 +257,22 @@ describe.each(ENGINES)('sorting something again from a list, in %s', (_name, eng
     expect(watch.posts.length).toBe(1);
     twin.book.sort(id, { to: 'wants' }, twin.today);
     await expect.poll(async () => numbersOf(await readActivity(page))).toEqual(numbersOf(activityOf(twin.book, 'needs')));
+    await page.context().close();
+  });
+
+  it('4.7 B194 the rest of a double tap on a choice in a row\'s sheet does not land on the list under it', async () => {
+    const twin = life('activity-busy');
+    const id = groceryOct1(twin.book);
+    const page = await openScenario(await browser().newContext(phone()), base(), 'activity-busy', '/buckets/needs');
+    const watch = watchChoices(page);
+    await page.getByTestId(`row-${id}`).click();
+    expect(await tapThenTapWhereItWas(page, page.getByTestId('activity-sheet').getByTestId('choice-wants'), 'activity-sheet'), 'what of the screen the second tap reached').toBe('nothing');
+    await untilQuiet(page);
+    expect(watch.posts.length).toBe(1);
+    expect(await page.locator('dialog[open]').evaluateAll((open) => open.map((d) => d.getAttribute('data-testid'))), 'a sheet opened under the second tap').toEqual([]);
+    expect(new URL(page.url()).pathname).toBe('/buckets/needs');
+    twin.book.sort(id, { to: 'wants' }, twin.today);
+    expect(numbersOf(await readActivity(page))).toEqual(numbersOf(activityOf(twin.book, 'needs')));
     await page.context().close();
   });
 
