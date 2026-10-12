@@ -152,7 +152,7 @@ long). It replaces running everything before every commit:
 
 ## Status
 
-- Rulebook: draft 20. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 21. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
@@ -172,7 +172,8 @@ long). It replaces running everything before every commit:
   A33: rule 4.5), section 30 his answers after the alerts were kept (A34 to
   A39: rules 9.7, 10.4, 10.5, 10.7 to 10.10, and section 2), section 31
   his answers on late alerts (B185, B186: rules 9.7, 10.8), section 32 his
-  answers on the phone (A40 to A42: rules 10.9, 10.11, 10.12).
+  answers on the phone (A40 to A42: rules 10.9, 10.11, 10.12), section 33
+  his answers before Phase 7 (A44: section 2; A45: rule 10.13).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -1565,5 +1566,44 @@ long). It replaces running everything before every commit:
   - docs/phase-6-checklist.txt (the checklist as tests, the secrets, the
     cost) and docs/phase-6-setup.txt (his steps and the iPhone checklist).
   - QUESTIONS.md A43 (how he hears the backups stopped), B205 to B214.
+- The plan before Phase 7, his calls (Oct 12, 2026), branch before-phase-7.
+  Nothing real is connected until he says so on connection day.
+  - Found planning it: the app cannot connect a real bank yet. It connects
+    only through the test bank's shortcut (no screens), cannot log in to the
+    bank again (10.5 is told, but the only fix would be a new connection, one
+    of the 10), and has no screen to say which account is which (the test
+    bank's are picked by made-up account numbers, serve/test-bank.ts).
+  - Plaid: the free Trial plan (teams made after Apr 15, 2026): 10 real
+    connections, removed ones never come back, Bank of America included
+    since May 2026, transactions and liabilities included. He checks his
+    dashboard says Trial, 0 of 10. Never submit a Production application
+    (one-way, ends the Trial). Connect from the PC's browser (Plaid's pop-up
+    flow), not the home-screen app. Bank of America's own screen picks the
+    accounts: all four. Its permission runs out after 12 months.
+  - His answers: A43 option 5 (/health/backups and Litestream's heartbeat,
+    a second UptimeRobot monitor); A44 90 days of history; A45 rule 10.13
+    (the bank's permission end date, told 7 days before). A46 (the wording of
+    rules 1.1 connecting, 1.2 which account is which, 1.3 logging in again)
+    waits on his OK; build them only after it.
+  - The repo stays public for now: he will not pay for CI. So nothing from
+    his real accounts may go in the repo, including Phase 7's real history
+    with names removed; where that test lives is decided in Phase 7.
+  - The hosted books start fresh (option A): the same app and address, the
+    machine replaced with a new volume and a new backup folder in R2, the
+    test bank's volume and backup kept untouched as a way back (he deletes
+    them later). A new BANK_TOKEN_KEY; the push keys stay. He then redoes the
+    one-time code, a passkey (and deletes the old one on the iPhone),
+    notifications, and setup day.
+  - The code to build on this branch, test bank only: A43; rule 10.13; and,
+    after his OK to A46, the Connect screen (Plaid Link), logging in again
+    (update mode, the same connection), which account is which, the
+    production switch (tests can never reach Plaid's production; only the
+    hosted server with PLAID_ENV=production; no test bank connected by
+    itself there), and the fresh start's new volume and backup folder.
+    Tried on this PC with Plaid's test bank through the real Link first.
+  - The full break-it run: on main as it was (309bb4c), one night on his PC;
+    the new code gets break-it for what it changes. The five
+    "[hosting-linux]" breaks only judge on Linux; they were caught on CI
+    run 38291820227 (Oct 12) on the same server code.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
   rule 9.5, depends on it), and his check of part B (the list at its top).

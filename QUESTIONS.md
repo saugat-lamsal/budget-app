@@ -683,9 +683,22 @@ A42. ANSWERED Oct 12, built. Your answer: option 2. Rulebook 10.12 and
      shows nothing. That can only be seen on a real iPhone (Phase 6).
 
 
-## Part A, added with Phase 6, hosting (Oct 12). Waiting on your answer.
+## Part A, added with Phase 6, hosting (Oct 12). All answered.
 
-A43. How you hear that the backups have stopped. The uptime monitor watches
+A43. ANSWERED Oct 12, to be built. Your answer: option 5, found while
+     planning Phase 7 and recommended. Litestream's own heartbeat goes to the
+     app's server on the machine (it never leaves it); a new address,
+     /health/backups, says "not ok" when none has come for 10 minutes; a
+     second UptimeRobot monitor watches it, so you hear on the iPhone app you
+     already have. No new account, no new secret. /health stays as it is:
+     Fly uses it, and if it said "not ok" for the backups Fly would stop
+     sending you to the app. Tried on this PC with Litestream 0.5.17 (the
+     image's): with heartbeat-url and heartbeat-interval 1m it called about
+     once a minute while nothing in the books changed, and not once while
+     the backup could not be reached. Also found: Healthchecks.io (option 2)
+     has no iPhone app that I could confirm; it alerts by email and the like.
+     The question as it was:
+     How you hear that the backups have stopped. The uptime monitor watches
      /health, which says "ok" when the server is running and can read its
      books (B206). It says nothing about the backups: if Litestream cannot
      reach R2 (a wrong or expired key, R2 down, a full bucket), the books are
@@ -707,6 +720,51 @@ A43. How you hear that the backups have stopped. The uptime monitor watches
      Recommendation: option 2. It catches every way the copies stop, from
      Litestream's own point of view, within minutes. Option 3 adds little to
      it. Built: option 1.
+
+
+## Part A, added while planning Phase 7 (Oct 12).
+
+What the app still needs before a real bank: today it connects only through
+the test bank's shortcut (no screens), so it has no way to connect Bank of
+America, to log in to the bank again, or to say which account is which (the
+test bank's are picked by made-up account numbers).
+
+A44. ANSWERED Oct 12. How much history to ask the bank for when it is
+     connected. It cannot change afterwards. Your answer, the
+     recommendation: 90 days, Plaid's default, which covers everything the
+     app looks back at (setup day's 10 days, a refund's 90 days). Up to 2
+     years was possible, with more of your real data kept. Rulebook section
+     2 and 33a.
+
+A45. ANSWERED Oct 12, to be built. Bank of America's permission to read
+     your accounts now runs out a year after you connect or log in again
+     (Plaid, 2026). Your answer, the recommendation: Settings shows the date
+     when the bank gives it, and you are told 7 days before (a setting),
+     once, at the daily review time. Rulebook 10.13, section 2 and 33b.
+
+A46. Waiting on your OK: the wording of three new rules, for section 1.
+     Nothing is built until you say yes or change it.
+
+     1.1  Connecting the bank. "Connect the bank" is offered only while
+          there is no connection. It asks first: it uses 1 of the 10
+          connections Plaid allows, and one that is removed never comes
+          back. The bank's own login opens (through Plaid). The app keeps
+          the connection the moment it gets it, sealed, on the server only.
+          There is only ever one connection: the app never makes a second,
+          and never removes one.
+     1.2  Which account is which. After connecting, before setup day, you
+          say which of the bank's accounts is checking, savings, the
+          everyday card, and the old card, each once. Nothing is read from
+          the bank until all four are picked. If one is missing, log in to
+          the bank again to add it (1.3). Once tracking starts they cannot
+          change. An account that is none of the four is never read.
+     1.3  Logging in to the bank again. When the bank needs it (10.5), when
+          its permission is running out (10.13), or to add an account that
+          is missing, Settings offers "Log in to the bank again". It keeps
+          the same connection: it never uses another of the 10, and nothing
+          already read changes.
+
+     Recommendation: as written.
 
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
