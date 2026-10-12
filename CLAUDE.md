@@ -1365,5 +1365,28 @@ This applies to every phase and every session, cloud or local.
       opening the screen, and Apple's rule about pushes that show nothing.
     - QUESTIONS.md A41 (notifications after a login ends), A42 (keeping the
       ids shown on the phone), B195 to B201.
+  - Step 2, toward Phase 5's finish line (Oct 12). PR #22's CI was green
+    (Linux: checks, Chromium, WebKit).
+    - The alert simulations through the real server and the real sender, to
+      the made-up push service: 60 lives stopped every night and started
+      every morning (seeds 1000 to 1059, 157 days each: 9,420 simulated days)
+      and one server for 2 years (seed 188, 730 days). Every alert at its
+      moment, once, opening its screen, and nothing else.
+    - What the long run found was in the test's own way of living the life
+      (alerts-sim.ts), not in the app; the server and the simulator agreed
+      with the rulebook both times. Setup day can leave needs below zero and
+      wants at zero (seeds 1033, 1041), and its empty alerts were never
+      expected (they are due the moment the server first looks). An alert
+      held for quiet hours whose end came while the server was stopped (seed
+      1034: the bank not read on the day the clocks go forward, so 24 hours
+      old at 10:00 PM) goes the moment the server is back (7:30 AM), not at
+      7:00. Each is a test of its own now (alerts-simulated-life-restarts),
+      and each failed without the fix.
+    - His calls (Oct 12), to cut scope: no full break-it run for Phase 5,
+      only the breaks new in this chunk and the older ones on lines it
+      changed; and the 2,000 lives of 5 years (Step 0a) stopped before they
+      finished, so they gave no result. The simulator's lives in npm test,
+      seed 1507's replay, and Phase 4's 1,000 lives of 5 years stand.
+    - docs/phase-5-report.txt. Then stop, for his feedback.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
   rule 9.5, depends on it), and his check of part B (the list at its top).

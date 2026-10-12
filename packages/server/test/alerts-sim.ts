@@ -327,6 +327,8 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
   // ----- What the server knows, as this test follows it -----
 
   let running = false;
+  // When the server last stopped (restarts), for what it kept and could not send while stopped.
+  let stoppedAt: Date | null = null;
   // The next evening the server has not handled (from its first look on).
   let nextEvening: IsoDate = input.date;
   // The last good read of the bank.
@@ -537,6 +539,15 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
       const sender = keeper.pushSender();
       if (sender === null) throw new Error('no push sender');
       running = true;
+      // Kept and held for the end of quiet hours that came while it was
+      // stopped (10.8): it goes the moment it is back (seed 1034: the bank not
+      // read since 9:00 PM the night before the clocks went forward, due at
+      // 10:00 PM, the server stopped at 11:00 PM and back at 7:30 AM).
+      if (stoppedAt !== null) {
+        for (const [key, e] of expected) {
+          if (!phone.ids().includes(key) && e.shownBy.to >= stoppedAt.getTime() && e.shownBy.to < clock.now.getTime()) expected.set(key, { ...e, shownBy: { from: e.shownBy.from, to: clock.now.getTime() } });
+        }
+      }
       catchUp(clock.now);
       tellNotRead(clock.now);
       const serving = serveBooks({ keeper, bank, clock: fakeClock, webRoot: 'C:/made-up/no-screens/', origin: () => '', sender });
@@ -551,6 +562,7 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
       db?.close();
       db = undefined;
       running = false;
+      stoppedAt = new Date(clock.now);
       outcome.restarts += 1;
     };
     // A sync; true when it went through.
@@ -666,6 +678,11 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
 
     clock.now = at(input.date, '08:00');
     await start();
+    // Setup day can leave needs or wants at zero or below (a small starting
+    // money; 10.1, 10.2): those alerts are due the moment the server first
+    // looks at the books after it, here.
+    const setupStep = days[0]?.steps.find((step) => step.kind === 'setup');
+    for (const a of setupStep?.alerts ?? []) expectAlert(factsOf(a, input.date), clock.now, clock.now);
     let backAt: Date | null = null;
     let downEvenings = 0;
 
