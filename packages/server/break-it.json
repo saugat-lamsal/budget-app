@@ -2060,8 +2060,8 @@
   {
     "section": "login",
     "file": "packages/server/src/http/server.ts",
-    "find": "      response.setHeader('Location', `${own.origin}${request.url ?? '/'}`);",
-    "replace": "      response.setHeader('Location', request.url ?? '/');",
+    "find": "      response.setHeader('Location', `${own.origin}${request.url ?? '/'}`);\n      response.setHeader('Cache-Control', 'no-store');\n      response.statusCode = 307;",
+    "replace": "      response.setHeader('Location', request.url ?? '/');\n      response.setHeader('Cache-Control', 'no-store');\n      response.statusCode = 307;",
     "why": "[login] B162 127.0.0.1 is not sent to localhost"
   },
   {
@@ -3309,5 +3309,285 @@
     "find": "auth.codePasskey(field(body, 'code'), field(body, 'response'), device, field(body, 'push'))",
     "replace": "auth.codePasskey(field(body, 'code'), field(body, 'response'), device)",
     "why": "[a41] 10.11 a login with a code drops the push address"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "if (options.gate !== undefined && options.gate.origin().startsWith('https:')) response.setHeader('Strict-Transport-Security', HSTS);",
+    "replace": "if (options.gate !== undefined && options.gate.origin().startsWith('http:')) response.setHeader('Strict-Transport-Security', HSTS);",
+    "why": "[hosting] HSTS on this computer instead of hosted"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "export const HSTS = 'max-age=63072000; includeSubDomains';",
+    "replace": "export const HSTS = 'max-age=0';",
+    "why": "[hosting] HSTS that lasts no time"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "if (path === HEALTH_PATH && options.health !== undefined) {",
+    "replace": "if (path === HEALTH_PATH && options.health !== undefined && options.gate === undefined) {",
+    "why": "[hosting] health behind the login"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      const ok = options.health();",
+    "replace": "      const ok = true;",
+    "why": "[hosting] health says ok when the books cannot be read"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      if (request.method !== 'GET' && request.method !== 'HEAD') {\n        response.setHeader('Allow', 'GET, HEAD');",
+    "replace": "      if (request.method === 'DELETE') {\n        response.setHeader('Allow', 'GET, HEAD');",
+    "why": "[hosting] health takes a POST"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "if (own.protocol === 'https:' && request.headers['x-forwarded-proto'] !== 'https') {",
+    "replace": "if (own.protocol === 'https:' && request.headers['x-forwarded-proto'] === 'http') {",
+    "why": "[hosting] a request with no word of https goes through"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "    send(response, 403, 'text/plain; charset=utf-8', 'Only over https.', 'no-store');\n    return true;",
+    "replace": "    return false;",
+    "why": "[hosting] a POST over http goes through"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      response.setHeader('Location', `${own.origin}${request.url ?? '/'}`);\n      response.setHeader('Cache-Control', 'no-store');\n      response.statusCode = 308;",
+    "replace": "      response.setHeader('Location', request.url ?? '/');\n      response.setHeader('Cache-Control', 'no-store');\n      response.statusCode = 308;",
+    "why": "[hosting] http sent to the same address, not the https one"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "const ownIsLoopback = own.hostname === 'localhost' || own.hostname === '127.0.0.1';",
+    "replace": "const ownIsLoopback = true;",
+    "why": "[hosting] hosted, localhost is sent on to the app"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "  'Cross-Origin-Resource-Policy': 'same-origin',\n",
+    "replace": "",
+    "why": "[hosting] no Cross-Origin-Resource-Policy"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "return statement(this.#db, 'SELECT 1 AS ok').get() !== undefined;",
+    "replace": "return true;",
+    "why": "[hosting] the books are never asked whether they can be read"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      health: () => this.healthy(),\n",
+    "replace": "",
+    "why": "[hosting] the real server has no health address"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/options.ts",
+    "find": "host: hosted === null ? '127.0.0.1' : '0.0.0.0'",
+    "replace": "host: '127.0.0.1'",
+    "why": "[hosting] hosted, it listens on this computer only and Fly cannot reach it"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/options.ts",
+    "find": "if (url.protocol !== 'https:' ||",
+    "replace": "if (url.protocol === 'ftp:' ||",
+    "why": "[hosting] APP_ORIGIN over http"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/options.ts",
+    "find": " || url.origin !== value.trim()) throw new Error(why);",
+    "replace": ") throw new Error(why);",
+    "why": "[hosting] APP_ORIGIN with a path"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/options.ts",
+    "find": "portOf(env['PORT'] ?? '8080', 'PORT')",
+    "replace": "portOf(env['PORT'] ?? '5190', 'PORT')",
+    "why": "[hosting] hosted on the wrong port"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/main.ts",
+    "find": "server.listen(options.port, options.host,",
+    "replace": "server.listen(options.port, '0.0.0.0',",
+    "why": "[hosting] on this computer it listens on every address"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-lock.ts",
+    "find": "return tight(env) || tight(process.env) ? 'this-computer' : 'r2';",
+    "replace": "return tight(env) ? 'this-computer' : 'r2';",
+    "why": "[hosting] a test loosens the lock with an environment of its own"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-lock.ts",
+    "find": "const R2_HOST = /^[0-9a-f]{32}\\.(eu\\.)?r2\\.cloudflarestorage\\.com$/;",
+    "replace": "const R2_HOST = /r2\\.cloudflarestorage\\.com$/;",
+    "why": "[hosting] any address ending in R2's name"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-lock.ts",
+    "find": "return url.protocol === 'http:' && THIS_COMPUTER.test(url.hostname) ? null",
+    "replace": "return url.protocol === 'http:' ? null",
+    "why": "[hosting] under the tests any http address"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-lock.ts",
+    "find": "(url.pathname !== '/' && url.pathname !== '')",
+    "replace": "false",
+    "why": "[hosting] the bucket name after the address"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup.ts",
+    "find": "  if (problem !== null) throw new Error(problem);\n  const keep",
+    "replace": "  const keep",
+    "why": "[hosting] the lock not checked before Litestream runs"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup.ts",
+    "find": "  return { ...out, BUDGET_DB: db,",
+    "replace": "  return { ...env, ...out, BUDGET_DB: db,",
+    "why": "[hosting] Litestream given the server's keys"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup.ts",
+    "find": "!NAMES.includes(name as (typeof NAMES)[number]) && ",
+    "replace": "",
+    "why": "[hosting] the server given the backup's key"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup.ts",
+    "find": "if (missing.length > 0) throw",
+    "replace": "if (missing.length > 2) throw",
+    "why": "[hosting] a backup partly set is taken"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup.ts",
+    "find": "  Object.defineProperty(backup, 'toJSON',",
+    "replace": "  if (false) Object.defineProperty(backup, 'toJSON',",
+    "why": "[hosting] a backup logged shows its key"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/one-machine.ts",
+    "find": "if (machines.length <= 1) return",
+    "replace": "if (machines.length <= 2) return",
+    "why": "[hosting] two machines start"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/one-machine.ts",
+    "find": "    return { problem: null, note: `could not ask Fly",
+    "replace": "    return { problem: 'Fly could not be asked', note: `could not ask Fly",
+    "why": "[hosting] Fly's DNS slow and the one machine stays down"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/start.ts",
+    "find": "  if (backup === null) throw new Error('no backup is set: the hosted server does not run without one.",
+    "replace": "  if (backup === undefined) throw new Error('no backup is set: the hosted server does not run without one.",
+    "why": "[hosting] hosted without a backup"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/supervisor.ts",
+    "find": "    this.#startLitestream();\n    this.#server = run(this.#input.startServer());",
+    "replace": "    this.#server = run(this.#input.startServer());\n    this.#startLitestream();",
+    "why": "[hosting] the server before Litestream"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/supervisor.ts",
+    "find": "    if (this.#server !== null && this.#serverEnded === null) await this.#stopOne(this.#server, within.server);\n    if (this.#litestream !== null) await this.#stopOne(this.#litestream, within.litestream);",
+    "replace": "    if (this.#litestream !== null) await this.#stopOne(this.#litestream, within.litestream);\n    if (this.#server !== null && this.#serverEnded === null) await this.#stopOne(this.#server, within.server);",
+    "why": "[hosting] Litestream stopped before the server's last answer"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/supervisor.ts",
+    "find": "if (!this.#stopping) this.#startLitestream();",
+    "replace": "if (this.#stopping) this.#startLitestream();",
+    "why": "[hosting] Litestream not started again"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/supervisor.ts",
+    "find": "Math.min(this.#retryMs * 2, LITESTREAM_RETRY_MS.most)",
+    "replace": "Math.min(this.#retryMs, LITESTREAM_RETRY_MS.most)",
+    "why": "[hosting] Litestream started again every 5 s for ever"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/supervisor.ts",
+    "find": "      running.child.kill('SIGKILL');",
+    "replace": "      running.child.kill('SIGTERM');",
+    "why": "[hosting] one that hangs is never made to stop"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/alert-timer.ts",
+    "find": "...(words === 'all' ? { body: alert.body } : {})",
+    "replace": "...{ body: alert.body }",
+    "why": "[hosting] hosted, the alert's words in the log"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/start.ts",
+    "find": "  if (existsSync(db)) return { kind: 'there' };",
+    "replace": "",
+    "why": "[hosting-linux] the books there are rebuilt over"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/start.ts",
+    "find": "['restore', '-config', config, '-if-replica-exists', '-integrity-check', 'full', db]",
+    "replace": "['restore', '-config', config, '-integrity-check', 'full', db]",
+    "why": "[hosting-linux] the first start fails for want of a backup"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/restore-check.ts",
+    "find": "    if (found.state === 'changed') {",
+    "replace": "    if (found.state === 'never') {",
+    "why": "[hosting-linux] the restore check skips the totals"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/restore-check.ts",
+    "find": "  if (['', '-wal', '-shm', '-journal'].some((end) => existsSync(`${out}${end}`))) {",
+    "replace": "  if (false) {",
+    "why": "[hosting-linux] the restore check over a file that is there"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/main.ts",
+    "find": "    if (options.hosted === null) {\n      console.log('  No passkey yet.",
+    "replace": "    if (true) {\n      console.log('  No passkey yet.",
+    "why": "[hosting-linux] hosted, the one-time code in the log"
   }
 ]

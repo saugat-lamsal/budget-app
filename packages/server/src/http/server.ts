@@ -19,7 +19,8 @@ import type { SetupView } from '../views/setup.js';
 // and its numbers as JSON. It changes the app's books only with his answers,
 // never the bank. On the real server every screen and every /api address
 // needs him logged in with a passkey (Step 2, the gate below); the demo has
-// no login. Hosting comes in Phase 6.
+// no login. Phase 6: hosted on Fly.io, behind its proxy, at one https
+// address (the gate's origin); a health address for an outside monitor.
 
 // The screens' own addresses, one per tab, so a refresh or a notification
 // link opens the right one. Must match packages/web/src/app/routes.ts (a
@@ -37,6 +38,13 @@ export const SETUP_PATHS: readonly string[] = ['bank', 'rules', 'transfers', 'pa
 
 // The login page (Step 2): on the real server, the one screen shown without a login.
 export const LOGIN_PATH = '/login';
+
+// Phase 6: for an outside uptime monitor. No login, any host name, and it
+// says only "ok" (or "not ok"): never a number, never anything of his.
+export const HEALTH_PATH = '/health';
+
+// Phase 6: https only, for two years, on the hosted address (fly.dev).
+export const HSTS = 'max-age=63072000; includeSubDomains';
 
 // Step 3: how often the real server syncs with the bank (section 2), changed on Settings.
 export const SYNC_EVERY_PATH = '/api/sync/every';
@@ -75,6 +83,7 @@ export const AUTH_ROUTES: readonly Route[] = [
 export const ROUTES: readonly Route[] = [
   ...[...APP_PATHS, ...SCREEN_PATHS, ...SETUP_PATHS].map((path): Route => ({ method: 'GET', path, login: true })),
   { method: 'GET', path: LOGIN_PATH, login: false },
+  { method: 'GET', path: HEALTH_PATH, login: false },
   ...['home', 'buckets', 'review', 'settings', 'setup', 'payday', 'alerts', ...Object.keys(POT_SLUGS).map((slug) => `activity/${slug}`)].map((name): Route => ({ method: 'GET', path: `/api/${name}`, login: true })),
   { method: 'POST', path: '/api/choice', login: true },
   { method: 'POST', path: '/api/seen', login: true },
@@ -86,8 +95,10 @@ export const ROUTES: readonly Route[] = [
 // The real server's gate (Step 2): who is logged in, and the login's own
 // addresses. Without it (the demo) there is no login.
 export interface Gate {
-  // The app's own address, as the browser shows it (http://localhost:5190):
-  // every POST must come from it, and every request be addressed to it.
+  // The app's own address, as the browser shows it (http://localhost:5190, or
+  // hosted https://budget-app-x7q2.fly.dev): every POST must come from it, and
+  // every request be addressed to it. Hosted (https), every request must also
+  // have reached the proxy over https.
   readonly origin: () => string;
   readonly loggedIn: (request: IncomingMessage) => boolean;
   // Answers one of AUTH_ROUTES: a status, a JSON body, and maybe a cookie.
@@ -143,6 +154,9 @@ export interface AppServerOptions {
   // Phase 5, the phone: the Notifications card, for the device asking. Without
   // it (the demo, which sends no alerts), the addresses are not there.
   readonly push?: PushHandlers;
+  // Phase 6: whether the server can read its books now, for /health. Without
+  // it (the demo), the address is not there.
+  readonly health?: () => boolean;
 }
 
 export interface PushHandlers {
@@ -315,6 +329,7 @@ export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
   'Referrer-Policy': 'no-referrer',
   'X-Frame-Options': 'DENY',
   'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Resource-Policy': 'same-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
 };
 
@@ -334,6 +349,20 @@ export function createAppServer(options: AppServerOptions): Server {
       path = decodeURIComponent(new URL(request.url ?? '/', 'http://localhost').pathname);
     } catch {
       send(response, 400, 'text/plain; charset=utf-8', 'Bad address.', 'no-store');
+      return;
+    }
+    // Hosted, every answer tells the browser: this address over https only.
+    if (options.gate !== undefined && options.gate.origin().startsWith('https:')) response.setHeader('Strict-Transport-Security', HSTS);
+    // Before the gate: the monitor needs no login, and Fly's own check comes
+    // from inside, under the machine's own address.
+    if (path === HEALTH_PATH && options.health !== undefined) {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        response.setHeader('Allow', 'GET, HEAD');
+        send(response, 405, 'text/plain; charset=utf-8', 'Only GET and HEAD.', 'no-store');
+        return;
+      }
+      const ok = options.health();
+      send(response, ok ? 200 : 503, 'text/plain; charset=utf-8', ok ? 'ok\n' : 'not ok\n', 'no-store');
       return;
     }
     if (options.gate !== undefined && (await atTheGate(options.gate, request, response, path))) return;
@@ -496,11 +525,27 @@ export function createAppServer(options: AppServerOptions): Server {
 async function atTheGate(gate: Gate, request: IncomingMessage, response: ServerResponse, path: string): Promise<boolean> {
   const own = new URL(gate.origin());
   const host = request.headers.host ?? '';
+  // Hosted: Fly's proxy takes the request over https and says so. Anything
+  // that did not come that way is sent to the https address, or refused.
+  if (own.protocol === 'https:' && request.headers['x-forwarded-proto'] !== 'https') {
+    if (request.method === 'GET' || request.method === 'HEAD') {
+      for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.setHeader(name, value);
+      response.setHeader('Location', `${own.origin}${request.url ?? '/'}`);
+      response.setHeader('Cache-Control', 'no-store');
+      response.statusCode = 308;
+      response.end();
+      return true;
+    }
+    send(response, 403, 'text/plain; charset=utf-8', 'Only over https.', 'no-store');
+    return true;
+  }
   if (host !== own.host) {
-    // The same server under its other loopback name: sent to the app's own
-    // address, where the login and the passkeys are. Anything else is not for us.
+    // On this computer, the same server under its other loopback name: sent to
+    // the app's own address, where the login and the passkeys are. Anything
+    // else is not for us (hosted, only the one address is).
     const loopback = /^(localhost|127\.0\.0\.1)(:\d+)?$/.exec(host);
-    if (loopback !== null && (loopback[2] ?? '') === (own.port === '' ? '' : `:${own.port}`) && (request.method === 'GET' || request.method === 'HEAD')) {
+    const ownIsLoopback = own.hostname === 'localhost' || own.hostname === '127.0.0.1';
+    if (ownIsLoopback && loopback !== null && (loopback[2] ?? '') === (own.port === '' ? '' : `:${own.port}`) && (request.method === 'GET' || request.method === 'HEAD')) {
       for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.setHeader(name, value);
       response.setHeader('Location', `${own.origin}${request.url ?? '/'}`);
       response.setHeader('Cache-Control', 'no-store');

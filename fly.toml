@@ -1,0 +1,69 @@
+# Fly.io (Phase 6): the app online, at https://budget-app-x7q2.fly.dev.
+#
+# One small machine with one volume, in Secaucus, New Jersey (ewr), the
+# region nearest New York. Only ever one machine: the books are one SQLite
+# file on the volume, which two machines cannot share. Nothing here adds a
+# second: no autoscaling, the machine is never stopped for being idle (the
+# sync and alert timers must keep running), and a deploy replaces the one
+# machine in place. If one were made anyway (fly scale count 2), it would not
+# start: the server asks Fly which machines the app has before anything else
+# (packages/server/src/serve/one-machine.ts).
+#
+# If the name is taken when you create the app, pick another and change it in
+# two places here: app, and APP_ORIGIN (test/hosting-config.test.ts checks
+# they agree).
+#
+# Secrets (keys) are never in this file: fly secrets set (docs/phase-6-checklist.txt).
+
+app = "budget-app-x7q2"
+primary_region = "ewr"
+# Fly sends this to stop the machine; the server and Litestream get up to a
+# minute to save the last answer and copy it to the backup.
+kill_signal = "SIGTERM"
+kill_timeout = "60s"
+swap_size_mb = 512
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  # The app's own address: the only one it answers to, and the one passkeys are made for.
+  APP_ORIGIN = "https://budget-app-x7q2.fly.dev"
+  BUDGET_DB = "/data/budget.sqlite"
+  PORT = "8080"
+  # Plaid's test bank only, until Phase 7 (the sandbox lock refuses anything else).
+  PLAID_ENV = "sandbox"
+
+# The volume: the books, and Litestream's own notes beside them.
+[mounts]
+  source = "budget_data"
+  destination = "/data"
+  initial_size = "1gb"
+
+[http_service]
+  internal_port = 8080
+  # http is sent to https by Fly's proxy; the server also refuses anything
+  # that did not come over https, and tells browsers to use https only (HSTS).
+  force_https = true
+  # Always on, never stopped for being idle, never more than this one.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "60s"
+    interval = "30s"
+    method = "GET"
+    path = "/health"
+    timeout = "5s"
+
+[deploy]
+  strategy = "rolling"
+
+[[restart]]
+  policy = "on-failure"
+  retries = 10
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

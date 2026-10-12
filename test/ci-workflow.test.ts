@@ -21,8 +21,10 @@ interface Step {
 }
 
 // The job's steps, each with its name, condition, command, and environment.
-function steps(): Step[] {
-  const body = workflow.split(/\n    steps:\n/)[1] ?? '';
+// A job's steps (the test job's unless told another), up to the next job.
+function steps(job = 'test'): Step[] {
+  const jobText = workflow.split(new RegExp(`\\n  ${job}:\\n`))[1] ?? '';
+  const body = (jobText.split(/\n    steps:\n/)[1] ?? '').split(/\n  [a-z-]+:\n/)[0] ?? '';
   return body
     .split(/\n      - /)
     .map((chunk) => chunk.replace(/^\s*- /, ''))
@@ -58,8 +60,10 @@ describe('CI: the three jobs together are exactly npm test', () => {
 
   it('the checks job runs the type check and every test, with only the browser tests left out', () => {
     const checks = steps().filter((s) => s.if === "matrix.part == 'checks'");
-    expect(checks.map((s) => s.run)).toEqual(['npm run typecheck', 'npx vitest run']);
-    expect(checks[1]?.env).toEqual({ SKIP_BROWSER_TESTS: '1' });
+    // Phase 6: Litestream first (kept between runs, then the script that puts it on the runner).
+    expect(checks.map((s) => s.run)).toEqual([null, 'node scripts/litestream.mjs', 'npm run typecheck', 'npx vitest run']);
+    expect(checks[0]?.name).toBe('Keep Litestream between runs');
+    expect(checks.filter((s) => s.run?.startsWith('npx vitest') === true).map((s) => s.env)).toEqual([{ SKIP_BROWSER_TESTS: '1' }]);
     // SKIP_BROWSER_TESTS leaves out the web-browser project and nothing else.
     const skipped = /const browserTests = process\.env\['SKIP_BROWSER_TESTS'\] === '1'\s*\? \[\]\s*: \[([\s\S]*?)\n {4}\];/.exec(config)?.[1] ?? '';
     expect([...skipped.matchAll(/name: '([\w-]+)'/g)].map((m) => m[1])).toEqual(['web-browser']);
@@ -75,5 +79,15 @@ describe('CI: the three jobs together are exactly npm test', () => {
     for (const step of steps()) {
       expect([null, "matrix.part == 'checks'", "matrix.part != 'checks'"], `${step.name ?? step.run ?? 'a step'}`).toContain(step.if?.split(' && ')[0] ?? null);
     }
+  });
+
+  it('Phase 6 the image job builds the image and runs its one test, which npm test skips (no IMAGE there)', () => {
+    const image = steps('image');
+    expect(image.map((s) => s.run)).toEqual([null, null, 'npm ci', 'docker build --tag budget-app:test .', 'npx vitest run --project server test/image.test.ts']);
+    expect(image.at(-1)?.env).toEqual({ IMAGE: 'budget-app:test' });
+    expect(workflow).toMatch(/\n  image:\n    name: image \(ubuntu-latest\)\n    runs-on: ubuntu-latest\n/);
+    const test = read('packages/server/test/image.test.ts');
+    expect(test).toContain("const IMAGE = process.env['IMAGE'];");
+    expect(test).toContain('describe.runIf(IMAGE !== undefined)(');
   });
 });

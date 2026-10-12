@@ -1436,5 +1436,104 @@ long). It replaces running everything before every commit:
     (4), all caught (judged with --only by the tests of what changed; the
     phone's in Chromium). Five older breaks on lines A40 changed were
     pointed at the code again.
+- PR #23 merged (Oct 12, 2026). Windows CI by hand: green (run 38277399217,
+  checks, Chromium and WebKit).
+- Phase 5: finish line crossed Oct 12, 2026 (docs/phase-5-report.txt, PRs
+  #20 to #23).
+- Found on the first Windows run for PR #23 (run 38275852933, Oct 12), three
+  failures, none in the app. setup.test.ts "14.3 refused one cent short"
+  (line 192) showed "Couldn't save that", and home.test.ts "10.6 if marking
+  it seen does not save" failed the same minute: both Chromium,
+  net::ERR_NO_BUFFER_SPACE. The failure report shows the app sent the POST
+  (so B194's half-second hold had let the tap through: the Save was in an
+  open sheet), the browser could not open a connection for it, the test
+  server never saw it, and the app said what it should when a request
+  fails. 3,088 and 3,454 connections on 127.0.0.1 were waiting to close
+  (TIME_WAIT); the most seen before was about 3,000 (Oct 10). Worked example
+  15 ran 11 s against vitest's 5 s limit (commit 8e56c9f gave it 60 s). The
+  rerun passed. Left as is: the Windows runner's connections, not the app.
+- Phase 6 (security check and hosting), branch phase-6-hosting (Oct 12, 2026),
+  PR #24. Built and tested on this PC and in CI; no account made anywhere (his
+  call). Then stop, for his steps (docs/phase-6-setup.txt).
+  - Hosting: Fly.io. fly.toml: app budget-app-x7q2 (https://budget-app-x7q2.fly.dev,
+    APP_ORIGIN; a test keeps them the same), one shared-cpu-1x 512 MB machine
+    in ewr, one 1 GB volume at /data (BUDGET_DB=/data/budget.sqlite), always
+    on (auto_stop off), force_https, /health checked, SIGTERM with 60 s. About
+    $3.84 a month (Fly's prices, Oct 2026); R2 and UptimeRobot free.
+  - Dockerfile: node:22.23.2-bookworm-slim pinned by digest, Litestream 0.5.17
+    by SHA-256 (the same pin as scripts/litestream.mjs; a test checks). Runs
+    /app/serve/start.mjs. .dockerignore keeps .env, data and node_modules out.
+  - The hosted server (APP_ORIGIN set; serve/options.ts): only its one https
+    address (any other host 421, localhost too), anything Fly's proxy did not
+    take over https sent to https (GET 308) or refused (403), HSTS, CORP added,
+    Secure cookie (as before for https), listens on 0.0.0.0:8080, the one-time
+    code never in the log (fly ssh console -C "node /app/serve/login-code.mjs"),
+    --connect-once (the first start connects the test bank), exit codes
+    (serve/exit-codes.ts: 3 when the history does not replay).
+  - /health (http/server.ts HEALTH_PATH, before the gate): no login, any host,
+    "ok" or "not ok" (503, Keeper.healthy). In ROUTES with login false.
+  - Backups: Litestream to Cloudflare R2 (litestream.yml, everything from the
+    environment: R2_ENDPOINT, R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY;
+    sync every 1 s, a daily snapshot kept 30 days). packages/server/src/backup:
+    backup-lock.ts (R2's own address only; this computer only under the tests,
+    whatever environment a test passes; BACKUP_LOCK=this-computer tightens it),
+    backup.ts (backupFromEnv, litestreamEnv: checks the lock before every run
+    and gives Litestream only its own settings; withoutBackup for the server),
+    restore-check.ts. The hosted server does not start without a backup.
+  - start.ts (the image's program): hosted settings, only one machine
+    (serve/one-machine.ts, Fly's vms.<app>.internal TXT), the books rebuilt
+    from the backup when the volume has none (restoreIfMissing; never starts
+    empty over a backup it cannot read), then serve/supervisor.ts: Litestream
+    first, kept running (5 s doubling to a minute); the server not restarted
+    when it stops by itself (the log says what to do); a stop stops the server,
+    then Litestream.
+  - npm run restore-check (not on Windows) and, on the machine, node
+    /app/serve/restore-check.mjs: rebuilds into a new file and checks it
+    (integrity, replay 0.6). npm run litestream puts the pinned Litestream in
+    ~/.cache/budget-app (outside the project, so break-it copies find it).
+    npm run build builds what the image runs.
+  - Litestream cannot restore on Windows ("Access is denied" flushing a
+    folder; Windows is not a system it supports). Copying works here. The
+    restore tests (backup-litestream's second half, start.test.ts) run on
+    Linux only: CI's checks job and the image job.
+  - Tests: server hosted, health, backup, supervisor, backup-litestream (real
+    Litestream against test/fake-r2.ts, which checks every SigV4 signature),
+    start (Linux; the built start.mjs with test/no-network.mjs so nothing
+    leaves the computer), image (CI only, IMAGE=<tag>), logs, bank-key-on-disk;
+    web build-has-no-secrets; repo backup-only-here, hosting-config,
+    ci-workflow (the image job), login-guard (/health the one new open address).
+  - Found while doing it: without push keys the server wrote each alert's
+    words in its log, and they can hold amounts (10.10). Hosted, the title
+    only (logSender 'title only').
+  - CI: the checks job installs Litestream first (cached); a fourth job,
+    image (Linux), builds the Dockerfile and runs test/image.test.ts.
+  - Break-it: breaks tagged "[hosting]" (36, judged with --only by the tests
+    of what changed, all caught) and "[hosting-linux]" (5, all caught,
+    judged on Linux CI on a throwaway branch, deleted after: the four
+    restore breaks by backup-litestream, the one-time code by start.test;
+    run 38291820227).
+  - Found judging them: on GitHub Actions vitest writes in colour, and
+    break-it could not read "Tests 1 failed" through the colour codes, so
+    every break caught there was called INVALID. It reads them without the
+    colours now (break-it-lib.mjs judge; test/break-it.test.ts, a test
+    first). On this PC the output was never in colour.
+  - PR #24's CI green on 87e6197: Linux (checks, Chromium, WebKit, image;
+    WebKit after one rerun: the known stall, PR #21, in
+    design-real-server.test.ts, not touched) and Windows by hand (run
+    38296142077; Chromium after one rerun: net::ERR_NO_BUFFER_SPACE in
+    setup.test.ts "14.1 12.4 A10 ... setup-owes-more", not touched, 2,655
+    connections waiting to close). The Windows run before (38294361300)
+    found the new logs.test.ts past vitest's 5 s (5.9 s there, 0.8 s on
+    Linux): it has 60 s now. Two untouched tests also ran past 5 s that
+    once (debit-card-refund A29, simulator "the same seed"), and passed on
+    the next run.
+  - ERR_NO_BUFFER_SPACE on Windows CI's Chromium: three runs in a row now
+    (Oct 12: PR #23's first, and both of PR #24's), each a different test,
+    each with 2,600 to 3,500 connections on 127.0.0.1 waiting to close.
+    Not the app (Step 0 above). If it keeps on, a choice for him: rerun as
+    now, or tune the Windows runner's network in the workflow.
+  - docs/phase-6-checklist.txt (the checklist as tests, the secrets, the
+    cost) and docs/phase-6-setup.txt (his steps and the iPhone checklist).
+  - QUESTIONS.md A43 (how he hears the backups stopped), B205 to B214.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
   rule 9.5, depends on it), and his check of part B (the list at its top).

@@ -1,0 +1,32 @@
+# Litestream (Phase 6): copies the books to Cloudflare R2 as they change, so
+# they can be rebuilt if the machine or its volume is lost (npm run
+# restore-check rebuilds them into a new file and checks them).
+#
+# Every value comes from the environment: the database's path (BUDGET_DB, set
+# in fly.toml), and the bucket, its address and its key (Fly secrets, never in
+# git). The tests point the same file at a stand-in for R2 on this computer.
+# The server checks the address before Litestream runs: R2's own, or under
+# the tests this computer only (packages/server/src/backup/backup-lock.ts).
+
+dbs:
+  - path: ${BUDGET_DB}
+    replica:
+      type: s3
+      endpoint: ${R2_ENDPOINT}
+      bucket: ${R2_BUCKET}
+      path: budget
+      region: auto
+      access-key-id: ${R2_ACCESS_KEY_ID}
+      secret-access-key: ${R2_SECRET_ACCESS_KEY}
+      # Each change is sent within a second of being saved.
+      sync-interval: 1s
+
+# A full copy once a day, kept for 30 days, so the books can also be rebuilt
+# as they were on any of those days.
+snapshot:
+  interval: 24h
+  retention: 720h
+
+logging:
+  level: info
+  type: json

@@ -608,6 +608,15 @@ export class Keeper {
     };
   }
 
+  // Phase 6, /health: the books can be read now. Says nothing of what is in them.
+  healthy(): boolean {
+    try {
+      return statement(this.#db, 'SELECT 1 AS ok').get() !== undefined;
+    } catch {
+      return false;
+    }
+  }
+
   // The web server for the screens, with these books behind it. Every
   // screen and every /api address needs a login (Step 2), checked against
   // the app's own address, `origin`.
@@ -638,6 +647,7 @@ export class Keeper {
       seen: (_request, what) => this.seen(what),
       syncEvery: (_request, minutes) => this.changeSyncEvery(minutes),
       alerts: () => this.alertsView(),
+      health: () => this.healthy(),
       push: {
         on: (request, subscription) => this.#asking(request, (asking) => this.#push.on(asking, subscription)),
         off: (request) => this.#asking(request, (asking) => this.#push.off(asking)),

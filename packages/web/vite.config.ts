@@ -12,17 +12,22 @@ const TARGET = 'safari16.4';
 // covers the whole app, built after the screens as one classic script that
 // shares nothing with them (a service worker that imports other files needs
 // support Safari 16.4 may not have).
+// It goes where the screens went (Phase 6: the build scan builds them apart).
 function serviceWorker(): Plugin {
+  let outDir = 'dist';
   return {
     name: 'budget-service-worker',
     apply: 'build',
+    configResolved(config) {
+      outDir = config.build.outDir;
+    },
     async closeBundle() {
       await build({
         configFile: false,
         root: fileURLToPath(new URL('.', import.meta.url)),
         logLevel: 'error',
         build: {
-          outDir: 'dist',
+          outDir,
           emptyOutDir: false,
           target: TARGET,
           copyPublicDir: false,

@@ -10,13 +10,18 @@ const root = new URL('../', import.meta.url);
 export const path = (p) => fileURLToPath(new URL(p, root));
 
 // The commands, by name: the file each is built from.
-const COMMANDS = {
+// Phase 6: start (what the image runs on Fly.io: the server and Litestream)
+// and restore-check (the backup rebuilt into a new file, and checked).
+export const COMMANDS = {
   serve: 'packages/server/src/serve/main.ts',
   'replay-check': 'packages/server/src/serve/replay-check.ts',
   'login-code': 'packages/server/src/serve/login-code.ts',
+  start: 'packages/server/src/serve/start.ts',
+  'restore-check': 'packages/server/src/serve/restore-check.ts',
 };
 
-export async function buildServer() {
+// outDir: packages/server/dist/serve unless a test builds them somewhere of its own.
+export async function buildServer(outDir = path('packages/server/dist/serve')) {
   await build({
     configFile: false,
     root: path('packages/server'),
@@ -25,7 +30,7 @@ export async function buildServer() {
     ssr: { noExternal: true, external: ['better-sqlite3', 'web-push'] },
     build: {
       ssr: true,
-      outDir: path('packages/server/dist/serve'),
+      outDir,
       emptyOutDir: true,
       target: 'node22',
       rollupOptions: { input: Object.fromEntries(Object.entries(COMMANDS).map(([name, file]) => [name, path(file)])), output: { entryFileNames: '[name].mjs' } },

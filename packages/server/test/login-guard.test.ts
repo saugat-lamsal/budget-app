@@ -110,10 +110,12 @@ describe('login: every route on the real server needs a login', () => {
   });
 
   // A new address (the Notifications card's, Phase 5) left open by mistake
-  // would never be in NEEDS_LOGIN, so nothing below would try it.
-  it('login the only addresses open without a login are the login page and its own requests', () => {
+  // would never be in NEEDS_LOGIN, so nothing below would try it. Phase 6
+  // adds one: /health, for the uptime monitor, which says only "ok".
+  it('login Phase 6 the only addresses open without a login are the login page and its own requests, and the health address', () => {
     expect(ROUTES.filter((r) => !r.login).map((r) => `${r.method} ${r.path}`)).toEqual([
       'GET /login',
+      'GET /health',
       'GET /api/auth',
       'POST /api/auth/login/options',
       'POST /api/auth/login',
