@@ -347,7 +347,8 @@ async function judge(workspace, b, runTests, threads) {
   writeFileSync(path, original.replace(b.find, () => b.replace));
   try {
     const run = await runTests({ workspace, withBrowsers: needsBrowsers(b), threads });
-    const failed = /Tests\s+(\d+) failed/.exec(`${run.stdout}${run.stderr}`)?.[1];
+    // Without colours: GitHub Actions turns vitest's on, and they sit between "Tests" and the count.
+    const failed = /Tests\s+(\d+) failed/.exec(`${run.stdout}${run.stderr}`.replace(/\x1b\[[0-9;]*m/g, ''))?.[1];
     // A break that stops the tests from loading proves nothing, so it counts
     // as a bad break to fix, not as caught.
     // One that never ends in good time is a test to make fail sooner, not caught.

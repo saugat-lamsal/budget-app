@@ -328,6 +328,15 @@ describe.skipIf(insideBreakIt)('break-it: running the breaks', () => {
     expect(existsSync(workDir) ? readdirSync(workDir) : []).toEqual([]);
   });
 
+  // Found judging the hosting breaks on Linux CI (Oct 12): GitHub Actions
+  // turns vitest's colours on, and every break caught was called INVALID.
+  it('reads how many tests failed when vitest writes in colour, as on GitHub Actions', { timeout: 120_000 }, async () => {
+    const { root, workDir } = makeProject();
+    const inColour = (run: TestRun): TestRun => ({ ...run, stdout: run.stdout.replace(/^Tests\s+(\d+) (failed|passed)/, '\x1b[2m      Tests \x1b[22m \x1b[1m\x1b[31m$1 $2\x1b[39m\x1b[22m') });
+    const outcome = await runBreakIt({ root, breaks: [caughtBreak(2), MIXED[2]!], workers: 1, workDir, runTests: ({ workspace }) => Promise.resolve(inColour(runOfValue(workspace.dir))) });
+    expect(outcome.results?.map((r) => r.outcome)).toEqual(['caught (2 tests failed)', 'INVALID (tests did not run)']);
+  });
+
   it('every copy is removed afterward, and the project node_modules and packages are as they were', { timeout: 120_000 }, async () => {
     const { root, workDir } = makeProject();
     const before = fingerprint(root);
