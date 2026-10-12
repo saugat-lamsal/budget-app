@@ -2,6 +2,7 @@ import type { AuthState } from '@budget-app/server/views';
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
 import { useEffect, useState } from 'react';
 import { authSend, authState, type AuthReply } from '../app/api.js';
+import { browserEndpoint } from '../app/push.js';
 import { pathOf } from '../app/routes.js';
 import { Button, ButtonRow, Card, Notice, Skeleton, StateMessage, TextField } from '../ui/blocks.js';
 
@@ -55,12 +56,24 @@ export function LoginScreen() {
     }
   };
 
+  // 10.11 (QUESTIONS.md A41): this phone's own push address, sent with the
+  // login, so notifications it already gets move to the new login by
+  // themselves. Asked after the passkey step, so nothing comes between his tap
+  // and Face ID; none if the browser cannot say.
+  const pushAddress = async (): Promise<string | null> => {
+    try {
+      return await browserEndpoint();
+    } catch {
+      return null;
+    }
+  };
+
   const logIn = (): Promise<void> =>
     attempt(async () => {
       const asked = await authSend('/api/auth/login/options', {});
       if (!asked.ok || asked.options === undefined) return asked;
       const response = await startAuthentication({ optionsJSON: asked.options as Parameters<typeof startAuthentication>[0]['optionsJSON'] });
-      return authSend('/api/auth/login', { response });
+      return authSend('/api/auth/login', { response, push: await pushAddress() });
     });
 
   const makePasskey = (): Promise<void> =>
@@ -68,7 +81,7 @@ export function LoginScreen() {
       const asked = await authSend('/api/auth/code/options', { code });
       if (!asked.ok || asked.options === undefined) return asked;
       const response = await startRegistration({ optionsJSON: asked.options as Parameters<typeof startRegistration>[0]['optionsJSON'] });
-      return authSend('/api/auth/code', { code, response });
+      return authSend('/api/auth/code', { code, response, push: await pushAddress() });
     });
 
   const first = page.status === 'ready' && !page.state.passkeys;

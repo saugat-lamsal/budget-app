@@ -64,6 +64,15 @@ export interface AuthInput {
   // has, for the change log (13.5).
   readonly today: () => IsoDate;
   readonly bookLines: () => number;
+  // 10.11 (QUESTIONS.md A41): a device just logged in, with the address of its
+  // own push subscription if it sent one; called in the same step as the
+  // login is saved, so notifications that device gets move to the new login.
+  readonly loggedIn?: (token: string, device: string, push: string | null) => void;
+}
+
+// The push address a login page sent (10.11), or null for anything else.
+export function pushAddressOf(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 && value.length <= 2048 ? value : null;
 }
 
 export interface Session {
@@ -86,6 +95,7 @@ export class Auth {
   readonly #origin: () => string;
   readonly #today: () => IsoDate;
   readonly #bookLines: () => number;
+  readonly #loggedIn: AuthInput['loggedIn'];
   // Questions asked and not answered yet, each answered once.
   readonly #challenges = new Map<string, { readonly what: Challenge; readonly until: number }>();
   #wrongCodes = 0;
@@ -97,6 +107,7 @@ export class Auth {
     this.#origin = typeof origin === 'string' ? () => origin : origin;
     this.#today = input.today;
     this.#bookLines = input.bookLines;
+    this.#loggedIn = input.loggedIn;
   }
 
   origin(): string {
@@ -145,7 +156,7 @@ export class Auth {
 
   // The passkey made with a good code: kept, the code used up, and he is
   // logged in on this device.
-  async codePasskey(typed: unknown, response: unknown, device: string): Promise<LoginResult> {
+  async codePasskey(typed: unknown, response: unknown, device: string, push: unknown = null): Promise<LoginResult> {
     const code = this.#goodCode(typed);
     if (code === null) return { ok: false, why: BAD_CODE };
     const made = await this.#made(response, (what) => what.kind === 'code' && what.code === code);
@@ -157,7 +168,7 @@ export class Auth {
       savePasskey(this.#db, { ...made.passkey, device, createdAt: now });
       useCode(this.#db, code, now);
       this.#line({ action: 'passkey-added', device });
-      this.#startSession(token, device, made.passkey.id, now);
+      this.#startSession(token, device, made.passkey.id, now, push);
     })();
     return { ok: true, setCookie: this.#cookie(token) };
   }
@@ -170,7 +181,7 @@ export class Auth {
     return options;
   }
 
-  async login(response: unknown, device: string): Promise<LoginResult> {
+  async login(response: unknown, device: string, push: unknown = null): Promise<LoginResult> {
     const answer = response as AuthenticationResponseJSON;
     const passkey = readPasskeys(this.#db).find((p) => typeof answer === 'object' && answer !== null && p.id === answer.id);
     const challenge = this.#challengeOf(answer, 'clientDataJSON');
@@ -195,7 +206,7 @@ export class Auth {
     const now = this.#now().toISOString();
     this.#db.transaction(() => {
       savePasskeyCounter(this.#db, passkey.id, verified.authenticationInfo.newCounter);
-      this.#startSession(token, device, passkey.id, now);
+      this.#startSession(token, device, passkey.id, now, push);
     })();
     return { ok: true, setCookie: this.#cookie(token) };
   }
@@ -329,9 +340,10 @@ export class Auth {
     }
   }
 
-  #startSession(token: string, device: string, passkeyId: string, now: string): void {
+  #startSession(token: string, device: string, passkeyId: string, now: string, push: unknown): void {
     saveSession(this.#db, token, { device, passkeyId, createdAt: now });
     this.#line({ action: 'logged-in', device });
+    this.#loggedIn?.(token, device, pushAddressOf(push));
   }
 
   #line(line: { readonly action: 'logged-in' | 'logged-out' | 'passkey-added'; readonly device: string } | { readonly action: 'stay-logged-in-changed'; readonly before: number; readonly after: number }): void {

@@ -282,6 +282,16 @@ const STEPS: readonly string[] = [
     why TEXT NOT NULL
   );
   `,
+  `
+  -- Step 8 (10.9, QUESTIONS.md A40): an alert the phone could not be given,
+  -- replaced by a newer one of its kind when the phone could be given it
+  -- ('newer'), or no longer true by then ('not-true'): never sent, and when
+  -- that was decided. NULL for one sent or still to send.
+  ALTER TABLE outbox ADD COLUMN not_sent TEXT CHECK (not_sent IN ('newer', 'not-true'));
+  ALTER TABLE outbox ADD COLUMN not_sent_at TEXT;
+  DROP INDEX outbox_unsent;
+  CREATE INDEX outbox_unsent ON outbox (next_try_at) WHERE sent_at IS NULL AND not_sent IS NULL;
+  `,
 ];
 
 // Steps that make a table again, which SQLite does with foreign keys off

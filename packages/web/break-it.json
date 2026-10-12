@@ -2147,5 +2147,40 @@
     "find": "<Button wide disabled={busy} onClick={() => void run(() => turnOn(push.publicKey), NOTIFICATION_DONE.on)} testId=\"notifications-on\">",
     "replace": "<Button wide onClick={() => void run(() => turnOn(push.publicKey), NOTIFICATION_DONE.on)} testId=\"notifications-on\">",
     "why": "[push] a double tap on Turn on sends two"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Login.tsx",
+    "find": "return authSend('/api/auth/login', { response, push: await pushAddress() });",
+    "replace": "return authSend('/api/auth/login', { response, push: null });",
+    "why": "[a41] 10.11 the login page does not send the push address"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/sw.ts",
+    "find": "    if (await keptBefore(id)) return false;\n",
+    "replace": "",
+    "why": "[a42] 10.12 a repeat after a restart shows again"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/sw.ts",
+    "find": "let extra = count.result - SHOWN_KEPT;",
+    "replace": "let extra = count.result - SHOWN_KEPT - 1;",
+    "why": "[a42] 10.12 the newest 501 are kept"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/sw.ts",
+    "find": "const cursor = store.openCursor();",
+    "replace": "const cursor = store.openCursor(null, 'prev');",
+    "why": "[a42] 10.12 the newest is dropped past 500, not the oldest"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/sw.ts",
+    "find": "  try {\n    if (await keptBefore(id)) return false;\n  } catch {\n    // Its storage could not be used: the screen still counts.\n  }\n",
+    "replace": "  if (await keptBefore(id)) return false;\n",
+    "why": "[a42] 10.12 storage that cannot be used stops the alert from showing"
   }
 ]

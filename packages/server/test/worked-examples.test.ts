@@ -673,4 +673,68 @@ describe('worked examples: the alerts (Phase 5)', () => {
       life.done();
     }
   });
+
+  // Five days of the timer's once-a-minute looks: 1.7 s on his PC, 11 s on
+  // CI's Windows runner (2 cores), past the 5-second default.
+  it('example 15, the phone cut off for five days: of what waited, only the newest daily review and the newest reminder go when it is back; the rest "Not sent: a newer one went." (10.9, A40)', async () => {
+    const checks = checksOf(15);
+    const times = timesOf(15);
+    const life = await lifeInAFile();
+    setUpThroughTheDesk(life);
+    life.h.fake.setStatement(E, {
+      is_overdue: false,
+      last_payment_amount: null,
+      last_payment_date: null,
+      last_statement_issue_date: '2026-10-01',
+      last_statement_balance: (checks.get('statement balance') ?? 0) / 100,
+      minimum_payment_amount: (checks.get('minimum') ?? 0) / 100,
+      next_payment_due_date: '2026-10-10',
+    });
+    // Sat Oct 3, noon EDT.
+    life.now = new Date('2026-10-03T16:00:00Z');
+    const s = served(life);
+    try {
+      s.alerts.start();
+      life.h.fake.addPosted({ id: 'shop', account: E, amount: checks.get('shop') ?? 0, date: '2026-10-03', description: 'MADE UP SHOP' });
+      await syncNow(life);
+      await s.alerts.idle();
+      // 7:00 PM: the phone cannot be reached, until Thu Oct 8 at 9:00 PM. The bank is read at 7:30 AM and 6:00 PM each day.
+      await s.clock.advance(7 * H, () => s.alerts.idle());
+      s.phone.failing = 'the phone cannot be reached';
+      for (const day of ['2026-10-04', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08']) {
+        for (const at of [`${day}T11:30:00Z`, `${day}T22:00:00Z`]) {
+          await s.clock.advance(Date.parse(at) - life.now.getTime(), () => s.alerts.idle());
+          await syncNow(life);
+          await s.alerts.idle();
+        }
+      }
+      await s.clock.advance(Date.parse('2026-10-09T01:00:00Z') - life.now.getTime(), () => s.alerts.idle());
+      expect(s.phone.shown).toEqual([]);
+      s.phone.failing = null;
+      await s.clock.advance(H, () => s.alerts.idle());
+      const k = kept(life);
+      expect(k.size * 100).toBe(checks.get('alerts kept'));
+      expect(s.phone.shown.length * 100).toBe(checks.get('alerts sent'));
+      const review = k.get('daily-review 2026-10-08');
+      const reminder = k.get('card-reminder everyday-card due 2026-10-10 2 days before');
+      expect([review?.due, review?.sent, reminder?.due, reminder?.sent]).toEqual(['review due', 'review sent', 'reminder due', 'reminder sent'].map((name) => times.get(name)));
+      expect(s.phone.shown.map((a) => [a.title, a.body, a.due]).toSorted()).toEqual(
+        [
+          ['Time to review', '1 thing is waiting for you to sort.', 'Was due 8:00 PM.'],
+          ['Everyday card payment due in 2 days', 'Due Sat, Oct 10.', 'Was due 8:00 PM.'],
+        ].toSorted(),
+      );
+      const daysLeft = Number(/due in (\d+) days/.exec(s.phone.shown.find((a) => a.id === 'card-reminder everyday-card due 2026-10-10 2 days before')?.title ?? '')?.[1]);
+      expect(daysLeft * 100).toBe(checks.get('reminder days left when sent'));
+      const view = life.keeper.alertsView();
+      const notSent = view.state === 'tracking' ? view.alerts.filter((a) => a.notSent !== null).map((a) => [a.key, a.notSent]) : [];
+      expect(notSent.toSorted()).toEqual(
+        ['daily-review 2026-10-03', 'daily-review 2026-10-04', 'daily-review 2026-10-05', 'daily-review 2026-10-06', 'daily-review 2026-10-07', 'card-reminder everyday-card due 2026-10-10 7 days before'].map((key) => [key, 'newer']).toSorted(),
+      );
+      expect(life.keeper.settings().alerts).toEqual({ total: 8, sent: 2, notSent: 0 });
+    } finally {
+      await s.alerts.stop();
+      life.done();
+    }
+  }, 60_000);
 });

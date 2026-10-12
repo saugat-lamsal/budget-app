@@ -13,6 +13,7 @@ import { FakeClock } from './fake-clock.js';
 import { FakePushService, type TestPhone } from './fake-push-service.js';
 import { lifeInAFile, noonInNewYork, setUpThroughTheDesk, type Life } from './keeper-harness.js';
 import { loginForTests } from './login-for-tests.js';
+import { SoftPasskey } from './soft-passkey.js';
 
 // Phase 5, the phone, on the real server: Settings' Notifications card for the
 // device asking (POST /api/push/on, /off, /test, logged in, from the app's own
@@ -228,3 +229,107 @@ describe('Phase 5 the alerts the books work out, through the real sender', () =>
     expect(await pushView(r, cookie)).toMatchObject({ thisDevice: { on: true } });
   });
 });
+
+// 10.11 (QUESTIONS.md A41, his answer Oct 12: option 3): notifications keep
+// coming after a phone's login ends (section 2: 30 days). Logging in again on
+// that phone moves them to the new login by itself: the login page sends the
+// address of the phone's own push subscription with the login, and the card
+// says "On".
+describe('10.11 A41 notifications after a phone\'s login ends', () => {
+  // A login through the real server's login addresses, as the login page sends
+  // it, with this phone's push address (or none); the login cookie it gets.
+  async function logInWith(r: Running, key: SoftPasskey, push: string | null, first = false): Promise<string> {
+    const send = (path: string, body: unknown): Promise<{ readonly status: number; readonly body: string; readonly cookie: string | null }> => {
+      const text = JSON.stringify(body);
+      return new Promise((resolve, reject) => {
+        const req = httpRequest(
+          { host: '127.0.0.1', port: r.port, method: 'POST', path, headers: { Host: `localhost:${r.port}`, 'Content-Type': 'application/json', 'Content-Length': String(Buffer.byteLength(text)), Origin: r.origin, 'Sec-Fetch-Site': 'same-origin' } },
+          (res) => {
+            let out = '';
+            res.on('data', (chunk) => (out += String(chunk)));
+            res.on('end', () => resolve({ status: res.statusCode ?? 0, body: out, cookie: res.headers['set-cookie']?.[0]?.split(';')[0] ?? null }));
+          },
+        );
+        req.on('error', reject);
+        req.end(text);
+      });
+    };
+    let answer;
+    if (first) {
+      const code = r.life.keeper.loginCode();
+      const asked = JSON.parse((await send('/api/auth/code/options', { code })).body) as { options: Parameters<SoftPasskey['register']>[0] };
+      answer = await send('/api/auth/code', { code, response: key.register(asked.options, r.origin), push });
+    } else {
+      const asked = JSON.parse((await send('/api/auth/login/options', {})).body) as { options: Parameters<SoftPasskey['answer']>[0] };
+      answer = await send('/api/auth/login', { response: key.answer(asked.options, r.origin), push });
+    }
+    if (answer.status !== 200 || answer.cookie === null) throw new Error(`the login was refused: ${answer.body}`);
+    return answer.cookie;
+  }
+  const DAY = 24 * 60 * 60_000;
+
+  it('10.11 A41 alerts keep coming after the login ends; logging in again on that phone moves them to the new login by itself, and the card says "On"', async () => {
+    const r = await realServer();
+    const phone = r.service.newPhone();
+    const key = new SoftPasskey();
+    const first = await logInWith(r, key, null, true);
+    await turnOn(r, first, phone);
+    // 31 days later the login has ended (section 2: 30 days).
+    r.life.now = new Date(r.life.now.getTime() + 31 * DAY);
+    expect((await ask(r, 'GET', '/api/settings', first)).status).toBe(401);
+    await takeBack(r);
+    await sendAll(r);
+    expect(phone.shown.map((s) => s.id)).toEqual(['bank-took-back copy-1']);
+    // He logs in again on that phone: it sends its push address with the login.
+    const again = await logInWith(r, key, phone.endpoint);
+    expect(await pushView(r, again)).toMatchObject({ thisDevice: { on: true, endpoint: phone.endpoint, since: '2026-10-03' }, devices: 1 });
+    // Still one device: the old login does not have them any more.
+    expect(allSubscriptionsIn(r)).toBe(1);
+    // Logged out there now: they stop, as they do on any phone logged out.
+    expect((await ask(r, 'POST', '/api/auth/logout', again)).status).toBe(200);
+    expect(allSubscriptionsIn(r)).toBe(0);
+  });
+
+  it('10.11 A41 a login that sends no push address, or one the server does not know (turned off there, or another phone), moves nothing', async () => {
+    const r = await realServer();
+    const phone = r.service.newPhone();
+    const key = new SoftPasskey();
+    const first = await logInWith(r, key, null, true);
+    await turnOn(r, first, phone);
+    const other = await logInWith(r, key, null);
+    expect(await pushView(r, other)).toMatchObject({ thisDevice: { on: false, stopped: null }, devices: 1 });
+    const third = await logInWith(r, key, 'https://127.0.0.1:1/push/not-one-of-them');
+    expect(await pushView(r, third)).toMatchObject({ thisDevice: { on: false, stopped: null }, devices: 1 });
+    // The first login still has them.
+    expect(await pushView(r, first)).toMatchObject({ thisDevice: { on: true }, devices: 1 });
+    // Something that is not an address is ignored, and the login still works.
+    expect(await pushView(r, await logInWith(r, key, { not: 'an address' } as never))).toMatchObject({ thisDevice: { on: false } });
+  });
+
+  it('10.11 A41 a new passkey made with a one-time code on that phone (the old one lost) takes them over too', async () => {
+    const r = await realServer();
+    const phone = r.service.newPhone();
+    const first = await logInWith(r, new SoftPasskey(), null, true);
+    await turnOn(r, first, phone);
+    const again = await logInWith(r, new SoftPasskey(), phone.endpoint, true);
+    expect(await pushView(r, again)).toMatchObject({ thisDevice: { on: true, endpoint: phone.endpoint }, devices: 1 });
+  });
+
+  it('10.11 A41 a phone logged in twice (the login still good) moves them to the newest login, once', async () => {
+    const r = await realServer();
+    const phone = r.service.newPhone();
+    const key = new SoftPasskey();
+    const first = await logInWith(r, key, null, true);
+    await turnOn(r, first, phone);
+    const second = await logInWith(r, key, phone.endpoint);
+    expect(await pushView(r, second)).toMatchObject({ thisDevice: { on: true }, devices: 1 });
+    expect(await pushView(r, first)).toMatchObject({ thisDevice: { on: false }, devices: 1 });
+    await takeBack(r);
+    await sendAll(r);
+    expect(phone.shown.map((s) => s.id)).toEqual(['bank-took-back copy-1']);
+  });
+});
+
+function allSubscriptionsIn(r: Running): number {
+  return (r.life.h.db.prepare('SELECT count(*) AS n FROM push_subscriptions').get() as { n: number }).n;
+}

@@ -52,9 +52,11 @@ export interface SettingsInput {
   readonly push?: PushView;
 }
 
-// Phase 5: how many alerts the app worked out, and how many are not sent yet.
+// Phase 5: how many alerts the app worked out, how many were sent, and how
+// many are not sent yet. The rest will never be sent (10.9, A40).
 export interface AlertsCount {
   readonly total: number;
+  readonly sent: number;
   readonly notSent: number;
 }
 

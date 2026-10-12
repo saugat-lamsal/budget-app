@@ -47,6 +47,15 @@ export function saveSubscription(db: Db, token: string, s: Omit<StoredSubscripti
   })();
 }
 
+// 10.11 (QUESTIONS.md A41): the device of this login, just logged in again,
+// already gets notifications under another login (the phone's old one): they
+// move to this login, kept since they were turned on. False when no other
+// login has that address (turned off there, logged out there, or not known).
+export function moveSubscription(db: Db, token: string, endpoint: string, device: string): boolean {
+  const sessionHash = hashOf(token);
+  return statement(db, 'UPDATE push_subscriptions SET session_hash = ?, device = ? WHERE endpoint = ? AND session_hash <> ?').run(sessionHash, device, endpoint, sessionHash).changes > 0;
+}
+
 export function subscriptionOf(db: Db, token: string): StoredSubscription | null {
   const row = statement(db, 'SELECT session_hash, endpoint, p256dh, auth, device, created_at FROM push_subscriptions WHERE session_hash = ?').get(hashOf(token)) as Row | undefined;
   return row === undefined ? null : rowOf(row);

@@ -20,10 +20,18 @@ export function alertMomentText(at: string, today: IsoDate): string {
   return date === today ? time : `${shortDate(date)}, ${time}`;
 }
 
-// When it came due, and when it went out or why not yet.
-export function alertWhenText(line: { readonly dueAt: string; readonly sentAt: string | null; readonly tries: number; readonly nextTryAt: string | null; readonly quietUntil: string | null }, today: IsoDate): string {
+// When it came due, and when it went out or why not yet. 10.9 (A40): one the
+// phone could not be given was never sent when a newer one of its kind went or
+// it was no longer true, and waits behind a newer one of its kind until then.
+export function alertWhenText(
+  line: { readonly dueAt: string; readonly sentAt: string | null; readonly tries: number; readonly nextTryAt: string | null; readonly quietUntil: string | null; readonly notSent?: 'newer' | 'not-true' | 'held' | null },
+  today: IsoDate,
+): string {
   const due = `Due ${alertMomentText(line.dueAt, today)}`;
   if (line.sentAt !== null) return `${due}, sent ${alertMomentText(line.sentAt, today)}`;
+  if (line.notSent === 'newer') return `${due}. Not sent: a newer one went.`;
+  if (line.notSent === 'not-true') return `${due}. Not sent: no longer true.`;
+  if (line.notSent === 'held') return `${due}. Not sent yet: only the newest of its kind goes.`;
   // 10.8: nothing goes in quiet hours.
   if (line.quietUntil !== null) return `${due}. Waits for quiet hours to end at ${alertMomentText(line.quietUntil, today)}.`;
   if (line.tries === 0 || line.nextTryAt === null) return `${due}. Not sent yet.`;
@@ -38,9 +46,12 @@ export function alertCountText(shown: number, total: number): string {
   return total === 1 ? '1 alert' : `${total.toLocaleString('en-US')} alerts`;
 }
 
-// The row on Settings that opens the list.
-export function alertsRowText(count: { readonly total: number; readonly notSent: number }): string {
+// The row on Settings that opens the list. Some were never sent (10.9, A40):
+// then it says how many were.
+export function alertsRowText(count: { readonly total: number; readonly sent: number; readonly notSent: number }): string {
   if (count.total === 0) return 'None yet';
   const all = count.total === 1 ? '1 alert' : `${count.total.toLocaleString('en-US')} alerts`;
-  return count.notSent === 0 ? `${all}, all sent` : `${all}, ${count.notSent.toLocaleString('en-US')} not sent yet`;
+  const notYet = `${count.notSent.toLocaleString('en-US')} not sent yet`;
+  if (count.sent + count.notSent < count.total) return count.notSent === 0 ? `${all}, ${count.sent.toLocaleString('en-US')} sent` : `${all}, ${count.sent.toLocaleString('en-US')} sent, ${notYet}`;
+  return count.notSent === 0 ? `${all}, all sent` : `${all}, ${notYet}`;
 }

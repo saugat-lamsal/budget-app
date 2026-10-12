@@ -2,9 +2,9 @@ import type { IncomingMessage, Server } from 'node:http';
 import type { Agent } from 'node:https';
 import { DEFAULT_SETTINGS, type BankBalances, type Book, type CardStatement, type IsoDate, type Pot } from '@budget-app/money';
 import { alertScreen } from '../alerts/alerts.js';
-import { applyAlerts, nextAlertsEvent, nextDueIn, type AlertLedger, type AlertWorld } from '../alerts/plan.js';
-import { addToOutbox, markFailed, markSent, markTrying, nextOutboxTry, outboxCounts, outboxToSend, readOutbox } from '../alerts/outbox.js';
-import { dueWords, quietUntil, wordsToSend } from '../alerts/sending.js';
+import { applyAlerts, nextAlertsEvent, nextDueIn, stillTrueNow, type AlertLedger, type AlertWorld } from '../alerts/plan.js';
+import { addToOutbox, markFailed, markNotSent, markSent, markTrying, outboxCounts, outboxUnsent, readOutbox, type OutboxRow } from '../alerts/outbox.js';
+import { dueWords, planSends, quietUntil, replacedBy, wordsToSend, type SendPlan } from '../alerts/sending.js';
 import { Auth } from '../auth/auth.js';
 import { answerAuth, loginViewOf } from '../auth/http.js';
 import { BankRulesDesk } from '../bank-rules-desk.js';
@@ -129,7 +129,7 @@ export class Keeper {
     this.#now = input.now;
     this.#beforeCommit = input.beforeCommit;
     this.#origin = input.origin ?? (() => 'http://localhost:5190');
-    this.#auth = new Auth({ db: input.db, now: input.now, origin: () => this.#origin(), today: () => this.today(), bookLines: () => this.book()?.changeLog().length ?? 0 });
+    this.#auth = new Auth({ db: input.db, now: input.now, origin: () => this.#origin(), today: () => this.today(), bookLines: () => this.book()?.changeLog().length ?? 0, loggedIn: (token, device, push) => this.#push.loggedIn(token, device, push) });
     this.#push = new PushDesk({
       db: input.db,
       keys: input.push?.keys ?? null,
@@ -519,32 +519,60 @@ export class Keeper {
     return quietUntil(this.timeZone(), (this.book()?.settings() ?? DEFAULT_SETTINGS).quietHours, now);
   }
 
+  // What is not sent yet, and what happens to each at this look (10.9, A40):
+  // of what waited for the phone, only the newest of each kind is tried, and
+  // only while it is still true.
+  #sendPlan(): { readonly rows: readonly OutboxRow[]; readonly plan: SendPlan } {
+    const rows = outboxUnsent(this.#db);
+    if (rows.length === 0) return { rows, plan: { go: [], held: [], notTrue: [] } };
+    const world = this.#alertWorld();
+    const ledger = this.#state.alerts;
+    return { rows, plan: planSends(rows, (f) => world === null || stillTrueNow(world, ledger, f)) };
+  }
+
   // What is not sent yet and due to be tried now, oldest first, as the phone
-  // is to get it: nothing in quiet hours (10.8); words only on the lock screen
-  // unless the setting says amounts (10.10); and, sent late, when it was due.
+  // is to get it: nothing in quiet hours (10.8); of what waited for the phone,
+  // the newest of each kind if still true, the rest never (10.9, A40); words
+  // only on the lock screen unless the setting says amounts (10.10); and, sent
+  // late, when it was due.
   toSend(): readonly OutgoingAlert[] {
     const now = this.#now();
     if (this.#quietUntil(now) !== null) return [];
+    const { rows, plan } = this.#sendPlan();
+    if (plan.notTrue.length > 0) markNotSent(this.#db, plan.notTrue, 'not-true', now.toISOString());
     const zone = this.timeZone();
     const amounts = (this.book()?.settings() ?? DEFAULT_SETTINGS).amountsOnLockScreen;
     const sentOn = todayIn(zone, now);
-    return outboxToSend(this.#db, now.toISOString()).map((row) => ({ id: row.key, ...wordsToSend(row, amounts, sentOn), dueAt: row.dueAt, due: dueWords(zone, row.dueAt, now), screen: alertScreen(row.facts) }));
+    const go = new Set(plan.go);
+    return rows
+      .filter((row) => go.has(row.key) && row.nextTryAt <= now.toISOString())
+      .map((row) => ({ id: row.key, ...wordsToSend(row, amounts, sentOn), dueAt: row.dueAt, due: dueWords(zone, row.dueAt, now), screen: alertScreen(row.facts) }));
   }
 
   nextTryIn(): number | null {
-    const at = nextOutboxTry(this.#db);
-    if (at === null) return null;
+    const { rows, plan } = this.#sendPlan();
+    const go = new Set(plan.go);
+    const tries = rows.filter((row) => go.has(row.key)).map((row) => Date.parse(row.nextTryAt));
+    if (tries.length === 0) return null;
     const now = this.#now();
     const quiet = this.#quietUntil(now);
-    return Math.max(Date.parse(at), quiet?.getTime() ?? 0) - now.getTime();
+    return Math.max(Math.min(...tries), quiet?.getTime() ?? 0) - now.getTime();
   }
 
   trying(key: string): void {
     markTrying(this.#db, key, this.#now().toISOString());
   }
 
+  // Sent: and the older ones of its kind that waited for the phone are
+  // replaced by it, in the same step (10.9, A40: "Not sent: a newer one went.").
   sent(key: string): void {
-    markSent(this.#db, key, this.#now().toISOString());
+    const at = this.#now().toISOString();
+    this.#db.transaction(() => {
+      const rows = outboxUnsent(this.#db);
+      const row = rows.find((r) => r.key === key);
+      markSent(this.#db, key, at);
+      if (row !== undefined) markNotSent(this.#db, replacedBy(rows, row), 'newer', at);
+    })();
   }
 
   failed(key: string, why: string): void {
@@ -558,6 +586,7 @@ export class Keeper {
     const local = (at: string): string => timeIn(zone, new Date(at));
     const { rows, total } = readOutbox(this.#db, ALERTS_SHOWN);
     const quiet = this.#quietUntil(this.#now());
+    const held = new Set(this.#sendPlan().plan.held);
     return {
       state: 'tracking',
       today: this.today(),
@@ -571,9 +600,10 @@ export class Keeper {
         dueAt: local(row.dueAt),
         sentAt: row.sentAt === null ? null : local(row.sentAt),
         tries: row.tries,
-        lastError: row.sentAt === null ? row.lastError : null,
-        nextTryAt: row.sentAt === null && row.tries > 0 ? local(row.nextTryAt) : null,
-        quietUntil: row.sentAt === null && quiet !== null ? local(quiet.toISOString()) : null,
+        lastError: row.sentAt === null && row.notSent === null ? row.lastError : null,
+        nextTryAt: row.sentAt === null && row.notSent === null && row.tries > 0 && !held.has(row.key) ? local(row.nextTryAt) : null,
+        quietUntil: row.sentAt === null && row.notSent === null && quiet !== null ? local(quiet.toISOString()) : null,
+        notSent: row.notSent ?? (held.has(row.key) ? 'held' : null),
       })),
     };
   }

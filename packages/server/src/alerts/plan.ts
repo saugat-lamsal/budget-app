@@ -260,6 +260,36 @@ function stillTrue(world: AlertWorld, today: IsoDate, f: AlertFacts): boolean {
   return due !== null && due.dueDate === f.dueDate && due.kind === (f.kind === 'card-reminder' ? 'due' : 'overdue');
 }
 
+// 10.9 (A40): an alert kept earlier and not sent yet is still true now, when
+// the phone can be given it. The daily review: something waits in review. A
+// card: as above. Low and empty: the bucket is at that level now, in that pay
+// period. A lasting alert (10.4, 10.5, 10.7): it is still on, the same time
+// it started. A take-back: always (it happened).
+export function stillTrueNow(world: AlertWorld, ledger: AlertLedger, f: AlertFacts): boolean {
+  const { book } = world;
+  switch (f.kind) {
+    case 'daily-review':
+      return book.reviewItems().length > 0;
+    case 'card-reminder':
+    case 'card-overdue':
+      return stillTrue(world, todayIn(world.zone, world.now), f);
+    case 'low-bucket':
+    case 'empty-bucket': {
+      if (f.period !== book.period().number) return false;
+      const level = bucketLevel(book.pots()[f.bucket], book.startedPeriodWith()[f.bucket], book.settings().lowBucketAlertPercent);
+      return level === (f.kind === 'low-bucket' ? 'low' : 'empty');
+    }
+    case 'totals-mismatch':
+    case 'bank-login':
+    case 'bank-not-read': {
+      const state = ledger.lasting[f.kind];
+      return state.on && state.times === f.time;
+    }
+    case 'bank-took-back':
+      return true;
+  }
+}
+
 function changeEvent(world: AlertWorld, ledger: AlertLedger, at: string): AlertsEvent | null {
   const { book } = world;
   const given: AlertRecord[] = [];

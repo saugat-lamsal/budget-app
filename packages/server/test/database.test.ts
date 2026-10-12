@@ -185,6 +185,23 @@ describe('the database', () => {
     db.close();
   });
 
+  it('step 8 (10.9, A40) keeps the outbox as it was, and notes for each alert never sent why: a newer one went, or it was no longer true', () => {
+    const path = tempFile();
+    const old = openDatabase(path, { upTo: 7 });
+    const seq = Number(old.prepare("INSERT INTO book_events (sync, kind, date, payload, totals) VALUES (NULL, 'alerts', '2026-10-04', '{}', 'null')").run().lastInsertRowid);
+    old.prepare("INSERT INTO outbox (key, seq, kind, title, body, due_at, created_at, tries, next_try_at) VALUES ('daily-review 2026-10-04', ?, 'daily-review', 'Time to review', '1 thing', '2026-10-05T00:00:00.000Z', '2026-10-05T00:00:00.000Z', 3, '2026-10-05T00:04:00.000Z')").run(seq);
+    old.close();
+    const db = openDatabase(path);
+    expect(db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION);
+    expect(db.prepare('SELECT key, tries, not_sent, not_sent_at FROM outbox').all()).toEqual([{ key: 'daily-review 2026-10-04', tries: 3, not_sent: null, not_sent_at: null }]);
+    const why = db.prepare("UPDATE outbox SET not_sent = ?, not_sent_at = '2026-10-06T13:00:00.000Z' WHERE key = 'daily-review 2026-10-04'");
+    expect(() => why.run('guess')).toThrow();
+    why.run('newer');
+    why.run('not-true');
+    expect(db.prepare('SELECT not_sent FROM outbox').all()).toEqual([{ not_sent: 'not-true' }]);
+    db.close();
+  });
+
   it('the history takes only what the bank sent, setup day, and his answers, each with its day; a decision number is used once and names its event', () => {
     const db = openDatabase(':memory:');
     const add = db.prepare('INSERT INTO book_events (sync, kind, date, payload, totals) VALUES (NULL, ?, ?, ?, ?)');

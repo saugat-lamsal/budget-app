@@ -4,6 +4,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { serverLinesIn } from '../../../server/src/server-log.js';
 import { lifeInAFile, setUpThroughTheDesk, type Life } from '../../../server/test/keeper-harness.js';
 import { loginCookieForTests } from '../../../server/test/login-for-tests.js';
+import { newPushKeys } from '../../../server/src/push/push-keys.js';
+import { FakePushService } from '../../../server/test/fake-push-service.js';
+import { stubPush } from './push-stub.js';
 import { ENGINES, WEB_ROOT, centsAt, close, launch, listen, phone, untilQuiet, waitOrReport } from './harness.js';
 
 // Passkey login (Step 2) in a real browser, from the first one-time code to
@@ -105,6 +108,67 @@ describe.runIf(ENGINES.some(([name]) => name === 'chromium'))('login in chromium
       await context.close();
       await close(r.server);
       r.life.done();
+    }
+  });
+
+  it('10.11 A41 a phone that gets notifications logs in again after its login ended: they move to the new login by themselves, and the card says On', async () => {
+    const keys = newPushKeys('mailto:made-up@example.com');
+    const life = await lifeInAFile();
+    const service = await FakePushService.start({ now: () => life.now, serverKey: keys.publicKey });
+    life.restart({ push: { keys, agent: service.agent } });
+    setUpThroughTheDesk(life);
+    let origin = '';
+    const server = life.keeper.server(WEB_ROOT, () => origin);
+    const base = (await listen(server)).replace('127.0.0.1', 'localhost');
+    origin = base;
+    const t = service.newPhone();
+    const context = await browser!.newContext(phone());
+    await stubPush(context, t.subscription());
+    const sessions = (): string[] => (life.h.db.prepare('SELECT session_hash FROM push_subscriptions').all() as { session_hash: string }[]).map((r) => r.session_hash);
+    const card = async (page: Page, words: string): Promise<void> => {
+      await page.goto(`${base}/settings`);
+      await waitOrReport(page, '[data-testid="notifications-state"]');
+      await page.waitForFunction((w) => document.querySelector('[data-testid="notifications-state"]')?.textContent?.includes(w) === true, words);
+      await untilQuiet(page);
+    };
+    try {
+      const page = await context.newPage();
+      await withPasskey(context, page);
+      // The first login, with the code; then notifications turned on there.
+      await page.goto(`${base}/home`);
+      await page.waitForURL(/\/login$/);
+      await waitOrReport(page, '[data-testid="login-code"]');
+      await page.getByTestId('code').fill(life.keeper.loginCode().replaceAll('-', ''));
+      await page.getByTestId('make-passkey').click();
+      await page.waitForURL(/\/home$/);
+      await waitOrReport(page, 'main[data-testid="home"][aria-busy="false"]');
+      await untilQuiet(page);
+      await card(page, 'Off on this phone');
+      await page.getByTestId('notifications-on').click();
+      await page.getByTestId('notice').waitFor();
+      await card(page, 'On for this phone');
+      const before = sessions();
+      expect(before).toHaveLength(1);
+      // 31 days later the login has ended (section 2: 30 days); the phone goes to the login page.
+      life.now = new Date(life.now.getTime() + 31 * 24 * 60 * 60_000);
+      await page.goto(`${base}/home`);
+      await page.waitForURL(/\/login$/);
+      await waitOrReport(page, '[data-testid="login-passkey"]');
+      await page.getByTestId('login-passkey-button').click();
+      await page.waitForURL(/\/home$/);
+      await waitOrReport(page, 'main[data-testid="home"][aria-busy="false"]');
+      await untilQuiet(page);
+      // By themselves: no tap on Turn on, and still one device.
+      await card(page, 'On for this phone');
+      expect(await page.getByTestId('notifications-state').innerText()).not.toContain('other device');
+      const after = sessions();
+      expect(after).toHaveLength(1);
+      expect(after[0]).not.toBe(before[0]);
+    } finally {
+      await context.close();
+      await close(server);
+      await service.close();
+      life.done();
     }
   });
 

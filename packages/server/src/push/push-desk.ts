@@ -5,7 +5,7 @@ import { todayIn } from '../history/today.js';
 import type { Log } from '../log.js';
 import { saveServerLine } from '../server-log.js';
 import type { PushAnswer, PushOnRequest, PushView } from '../views/push.js';
-import { allSubscriptions, removeSubscription, saveSubscription, stoppedOf, subscriptionGone, subscriptionOf, type StoredSubscription } from './push-db.js';
+import { allSubscriptions, moveSubscription, removeSubscription, saveSubscription, stoppedOf, subscriptionGone, subscriptionOf, type StoredSubscription } from './push-db.js';
 import type { PushKeys } from './push-keys.js';
 import { PushSender } from './push-sender.js';
 import { endpointProblem } from './push-services.js';
@@ -80,6 +80,14 @@ export class PushDesk {
       this.#line({ action: 'notifications-on', device: asking.device });
     })();
     return { ok: true };
+  }
+
+  // 10.11 (A41): a device logged in, with the address of its own push
+  // subscription: if that address gets notifications under another login (the
+  // same phone, logged in before), they move to this one. No line in the change
+  // log: the login has its own.
+  loggedIn(token: string, device: string, endpoint: string | null): void {
+    if (endpoint !== null) moveSubscription(this.#input.db, token, endpoint, device);
   }
 
   off(asking: Asking): PushAnswer {

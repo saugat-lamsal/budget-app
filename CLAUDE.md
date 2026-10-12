@@ -47,18 +47,32 @@ This applies to every phase and every session, cloud or local.
 3. Break-it check. After a section passes, break the code on purpose in
    several ways (flip a sign, change a rounding, shift a boundary by one
    cent). Some test must fail each time. If none does, add the missing test.
-   Restore the code afterward. Run break-it only for the sections you
-   changed. Do one full run at the end of each phase.
+   Restore the code afterward. Run break-it only for the functions you
+   changed (see "Test only what changed" below).
 4. Random-scenario tests as soon as a section exists, for things that must
    always be true: paycheck parts add up exactly, no cent is created or
    lost, own-account transfers never change a bucket, the self-check holds.
 5. Worked examples. Keep a plain-text file of examples with made-up numbers,
    calculated step by step, that Saugat can check by hand
    (packages/money/worked-examples.txt). Each one is also a test.
-6. Type-check and run the full test suite (`npm test`) before every commit.
+6. Type-check and run the tests as "Test only what changed" says below.
    Never skip, weaken, or delete a failing test.
 7. End-of-phase report: a table of every rule and its tests, the test
    count, the break-it results, and anything not tested and why.
+
+Test only what changed (his rule, Oct 12, 2026: testing was taking too
+long). It replaces running everything before every commit:
+
+- While working, run only the test files for the code you changed
+  (`npx vitest related <files>` is fine), plus the type check.
+- Before each push, run one full `SKIP_BROWSER_TESTS=1 npm test`. Run
+  browser tests locally only for the screens you touched; CI runs the rest.
+- Never rerun a suite that already passed on the same code.
+- Break-it runs only for the functions you changed.
+- Long simulations only when the money math or the simulator changes.
+- A commit with only docs or notes gets [skip ci].
+- The full break-it run and the 2,000 lives are skipped for Phase 5 (his
+  call). Do one full break-it run before Phase 7, when real money starts.
 
 
 ## Technical decisions already made
@@ -138,7 +152,7 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 19. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 20. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
@@ -157,7 +171,8 @@ This applies to every phase and every session, cloud or local.
   13.7), section 29 his answers after Phase 4's finish line (A32: rule 13.7;
   A33: rule 4.5), section 30 his answers after the alerts were kept (A34 to
   A39: rules 9.7, 10.4, 10.5, 10.7 to 10.10, and section 2), section 31
-  his answers on late alerts (B185, B186: rules 9.7, 10.8).
+  his answers on late alerts (B185, B186: rules 9.7, 10.8), section 32 his
+  answers on the phone (A40 to A42: rules 10.9, 10.11, 10.12).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -1388,5 +1403,38 @@ This applies to every phase and every session, cloud or local.
       finished, so they gave no result. The simulator's lives in npm test,
       seed 1507's replay, and Phase 4's 1,000 lives of 5 years stand.
     - docs/phase-5-report.txt. Then stop, for his feedback.
+- PR #22 merged (Oct 12, 2026).
+- His answers to A40 to A42, and the new testing rule (Oct 12, 2026), on
+  branch phase-5-phone after PR #22 was merged, in PR #23. Then stop, for
+  Windows CI by hand.
+  - Step 0, its own commit: "Test only what changed" in the testing bar
+    above (his rule).
+  - A40 (rule 10.9, his OK to change "once" for these alerts only): of what
+    waited for the phone (tried and not sent), only the newest of each kind
+    goes, if still true; the rest "Not sent: a newer one went." or "Not sent:
+    no longer true." alerts/sending.ts (sendKindOf, planSends, replacedBy),
+    plan.ts stillTrueNow, the Keeper (#sendPlan, toSend, sent, nextTryIn,
+    alertsView notSent incl. 'held'), database step 8 (outbox.not_sent,
+    not_sent_at), Settings' row counts what was sent. B202. Worked example
+    bank 15.
+  - A41 (rule 10.11): the login page sends the phone's own push address with
+    the login (Login.tsx, after the passkey step); a subscription with that
+    address under another login moves to the new one in the same step
+    (AuthInput.loggedIn, PushDesk.loggedIn, push-db moveSubscription). B203.
+  - A42 (rule 10.12): sw.ts keeps the ids of the newest 500 alerts it showed
+    in its own IndexedDB (database budget-alerts-shown, values { id } only);
+    if that storage fails the alert still shows. read-only.test.ts allows
+    indexedDB in sw/sw.ts alone. service-worker.test.ts runs the built
+    worker twice in a blank same-origin page (page.route: the app's own CSP
+    forbids eval, and WebKit ignores bypassCSP), both engines. B204.
+  - Tests: alerts-phone-back (A40 pure and with the real books and timer),
+    alerts-plan (still true), alerts-text, database step 8, keeper-push
+    (A41, through the real login addresses with a soft passkey), login.test
+    (A41 in Chromium), read-only, service-worker. alerts-random's final check
+    now accepts an alert never sent only with a reason 10.9 gives.
+  - Break-it, only the functions changed: "[a40]" (22), "[a41]" (4), "[a42]"
+    (4), all caught (judged with --only by the tests of what changed; the
+    phone's in Chromium). Five older breaks on lines A40 changed were
+    pointed at the code again.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
   rule 9.5, depends on it), and his check of part B (the list at its top).

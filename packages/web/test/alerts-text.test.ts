@@ -61,10 +61,26 @@ describe('10 the list of alerts sent, how each time is written', () => {
     expect(alertCountText(100, 100)).toBe('100 alerts');
   });
 
+  it('10.9 A40 never sent: a newer one of its kind went, or it was no longer true; and one waiting behind a newer one says so', () => {
+    const due = '2026-10-12T20:00:00-04:00';
+    const line = { dueAt: due, sentAt: null, tries: 9, nextTryAt: null, quietUntil: null };
+    expect(alertWhenText({ ...line, notSent: 'newer' }, '2026-10-12')).toBe('Due 8:00 PM. Not sent: a newer one went.');
+    expect(alertWhenText({ ...line, notSent: 'not-true' }, '2026-10-14')).toBe('Due Mon, Oct 12, 8:00 PM. Not sent: no longer true.');
+    expect(alertWhenText({ ...line, notSent: 'held' }, '2026-10-12')).toBe('Due 8:00 PM. Not sent yet: only the newest of its kind goes.');
+    expect(alertWhenText({ ...line, tries: 1, nextTryAt: '2026-10-12T20:01:00-04:00', notSent: null }, '2026-10-12')).toBe('Due 8:00 PM. Not sent yet: tried once, trying again at 8:01 PM.');
+  });
+
+  it('10.9 A40 the row on Settings counts what was sent when some never were', () => {
+    expect(alertsRowText({ total: 12, sent: 10, notSent: 0 })).toBe('12 alerts, 10 sent');
+    expect(alertsRowText({ total: 12, sent: 9, notSent: 1 })).toBe('12 alerts, 9 sent, 1 not sent yet');
+    expect(alertsRowText({ total: 1, sent: 0, notSent: 0 })).toBe('1 alert, 0 sent');
+    expect(alertsRowText({ total: 2345, sent: 2345, notSent: 0 })).toBe('2,345 alerts, all sent');
+  });
+
   it('10.3 the row on Settings: none yet, all sent, and some not sent yet', () => {
-    expect(alertsRowText({ total: 0, notSent: 0 })).toBe('None yet');
-    expect(alertsRowText({ total: 1, notSent: 0 })).toBe('1 alert, all sent');
-    expect(alertsRowText({ total: 1, notSent: 1 })).toBe('1 alert, 1 not sent yet');
-    expect(alertsRowText({ total: 2345, notSent: 2 })).toBe('2,345 alerts, 2 not sent yet');
+    expect(alertsRowText({ total: 0, sent: 0, notSent: 0 })).toBe('None yet');
+    expect(alertsRowText({ total: 1, sent: 1, notSent: 0 })).toBe('1 alert, all sent');
+    expect(alertsRowText({ total: 1, sent: 0, notSent: 1 })).toBe('1 alert, 1 not sent yet');
+    expect(alertsRowText({ total: 2345, sent: 2343, notSent: 2 })).toBe('2,345 alerts, 2 not sent yet');
   });
 });

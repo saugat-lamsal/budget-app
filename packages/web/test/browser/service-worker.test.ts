@@ -78,11 +78,12 @@ function builtWorker(windows: { url: string }[] = []): {
 const alert = { id: 'low-bucket needs pay period 3', title: 'Needs is low', body: 'Open the app to see what is left this pay period.', due: 'Was due 3:10 AM.', screen: '/buckets/needs' };
 
 describe('the service worker as built', () => {
-  it('Phase 5 it listens for pushes and taps only: no fetch handler, so it never serves the app\'s numbers, and it keeps nothing', () => {
+  it('Phase 5 10.12 it listens for pushes and taps only: no fetch handler, so it never serves the app\'s numbers, and it keeps only the ids of the alerts it showed (A42)', () => {
     const code = readFileSync(join(WEB_ROOT, 'sw.js'), 'utf8');
     const events = [...code.matchAll(/addEventListener\(\s*["'`](\w+)["'`]/g)].map((m) => m[1]).sort();
     expect(events).toEqual(['activate', 'install', 'notificationclick', 'push']);
-    expect(code).not.toMatch(/\b(caches|indexedDB|localStorage|fetch)\b/);
+    expect(code).not.toMatch(/\b(caches|localStorage|sessionStorage|fetch)\b/);
+    expect([...code.matchAll(/indexedDB\.open\(\s*["'`]([\w-]+)["'`]/g)].map((m) => m[1])).toEqual(['budget-alerts-shown']);
   });
 
   it('Phase 5 an alert is shown with its id as its tag, its words and when it was due; the same id again is dropped', async () => {
@@ -173,3 +174,96 @@ describe.runIf(runs)('the service worker registered in Chromium', () => {
     await context.close();
   });
 });
+
+// 10.12 (QUESTIONS.md A42): the built worker keeps the ids of the newest 500
+// alerts it showed in its own storage, so a repeat is dropped after the phone
+// stopped and started it again, even of one he swiped away. Run here inside a
+// real page of the app, as a stand-in for a worker's world whose storage is
+// the browser's own IndexedDB (each test a fresh context, so fresh storage).
+interface Kept {
+  readonly shown: readonly (readonly string[])[];
+  readonly kept: readonly unknown[];
+}
+
+async function inThePage(page: import('playwright').Page, code: string, runs: readonly (readonly string[])[]): Promise<Kept> {
+  return page.evaluate(
+    async ({ code, runs }) => {
+      const shown: string[][] = [];
+      for (const ids of runs) {
+        // A fresh start of the worker: nothing in memory, nothing on the screen (swiped away).
+        const listeners: Record<string, ((event: unknown) => void)[]> = {};
+        const notes: string[] = [];
+        const self = {
+          addEventListener: (type: string, fn: (event: unknown) => void) => void (listeners[type] = [...(listeners[type] ?? []), fn]),
+          skipWaiting: async () => undefined,
+          location: { origin: location.origin },
+          indexedDB: window.indexedDB,
+          registration: { showNotification: async (_title: string, options: { tag: string }) => void notes.push(options.tag), getNotifications: async () => [] },
+          clients: { claim: async () => undefined, matchAll: async () => [], openWindow: async () => undefined },
+        };
+        new Function('self', 'URL', code)(self, URL);
+        for (const id of ids) {
+          const waits: Promise<unknown>[] = [];
+          const text = JSON.stringify({ id, title: 'Needs is low', body: 'Open the app to see what is left this pay period.', due: null, screen: '/buckets/needs' });
+          for (const fn of listeners['push'] ?? []) fn({ data: { text: () => text }, waitUntil: (p: Promise<unknown>) => waits.push(p) });
+          await Promise.all(waits);
+        }
+        shown.push(notes);
+      }
+      const kept = await new Promise<unknown[]>((resolve, reject) => {
+        const open = indexedDB.open('budget-alerts-shown', 1);
+        open.onsuccess = () => {
+          const all = open.result.transaction('shown').objectStore('shown').getAll();
+          all.onsuccess = () => {
+            resolve(all.result);
+            open.result.close();
+          };
+          all.onerror = () => reject(all.error);
+        };
+        open.onerror = () => reject(open.error);
+      });
+      return { shown, kept };
+    },
+    { code, runs },
+  );
+}
+
+for (const [name, engine] of ENGINES) {
+  describe(`10.12 A42 the worker as built keeps the ids it showed, in ${name}`, () => {
+    const { browser, base } = useEngine(engine);
+    const code = (): string => readFileSync(join(WEB_ROOT, 'sw.js'), 'utf8');
+    // A blank page at the app's own address, handed out here rather than by the
+    // app: the stand-in runs the worker's code from a string, which the app's
+    // own Content Security Policy rightly forbids on every page it serves.
+    const standIn = async (context: import('playwright').BrowserContext): Promise<import('playwright').Page> => {
+      const page = await context.newPage();
+      const url = `${base()}/a42-stand-in`;
+      await page.route(url, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>stand-in</title>' }));
+      await page.goto(url);
+      return page;
+    };
+
+    it('10.12 A42 after the phone stopped and started the worker again, a repeat of one he swiped away is still dropped; only the id is kept', async () => {
+      const context = await browser().newContext(phone());
+      const page = await standIn(context);
+      const r = await inThePage(page, code(), [['low-bucket needs pay period 3'], ['low-bucket needs pay period 3', 'daily-review 2026-10-12']]);
+      expect(r.shown).toEqual([['low-bucket needs pay period 3'], ['daily-review 2026-10-12']]);
+      expect(r.kept).toEqual([{ id: 'low-bucket needs pay period 3' }, { id: 'daily-review 2026-10-12' }]);
+      await context.close();
+    });
+
+    it('10.12 A42 the newest 500 are kept: the 501st pushes out the oldest, which would show again after a restart', async () => {
+      const context = await browser().newContext(phone());
+      const page = await standIn(context);
+      const ids = Array.from({ length: 501 }, (_, i) => `daily-review ${String(i).padStart(4, '0')}`);
+      // Asked about the second oldest and the newest first: re-showing the oldest then pushes the next one out.
+      const r = await inThePage(page, code(), [ids, [ids[1]!, ids[500]!, ids[0]!]]);
+      expect(r.shown[0]).toHaveLength(501);
+      // After a restart: the oldest went out of the 500 kept, so it shows; the next one and the newest are still kept.
+      expect(r.shown[1]).toEqual([ids[0]]);
+      expect(r.kept).toHaveLength(500);
+      expect(r.kept.every((k) => typeof k === 'object' && k !== null && Object.keys(k).join() === 'id')).toBe(true);
+      await context.close();
+    });
+  });
+}

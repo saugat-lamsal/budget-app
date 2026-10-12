@@ -504,3 +504,49 @@ again only if the bank goes 24 hours unread again.
 
 Times: review due 8:00 PM EDT | review sent 7:30 AM EDT | reminder due 8:00 PM EDT | reminder sent 7:30 AM EDT | not read due 6:00 PM EDT | not read sent 7:30 AM EDT
 Check: shop 12.00 | statement balance 450.00 | minimum 35.00 | alerts sent 3.00 | reminder days left when sent 4.00
+
+
+========================================================================
+EXAMPLE 15. The phone cut off for five days (10.9; QUESTIONS.md A40)
+========================================================================
+
+When the phone cannot be given its alerts for a while, the server keeps
+trying. When the phone can be reached again, of what waited only the
+newest of each kind goes, and only if it is still true. The rest stay in
+the list in the app: "Not sent: a newer one went." Setup day was Oct 1.
+The everyday card's statement closed Oct 1: balance 450.00, minimum
+35.00, due Sat Oct 10. Reminders come 7 and 2 days before. The bank is
+read at 7:30 AM and 6:00 PM each day, so it is never 24 hours unread
+(10.7). All times are New York time (EDT).
+
+Sat Oct 3, noon. The server reads the bank: MADE UP SHOP 12.00 waits in
+review, and nothing is paid toward the card.
+7:00 PM. The phone cannot be reached, until Thu Oct 8 at 9:00 PM.
+
+What comes due while it is cut off, each at 8:00 PM:
+  Sat Oct 3   the daily review (1 thing waits), and the card's reminder:
+              Oct 10 is 7 days away
+  Sun Oct 4   the daily review
+  Mon Oct 5   the daily review
+  Tue Oct 6   the daily review
+  Wed Oct 7   the daily review
+  Thu Oct 8   the daily review, and the card's reminder: 2 days away
+That is 8 alerts kept.
+
+Each is tried the moment it comes due, then after 1, 2, 4, 8, 16 and 32
+minutes, then an hour apart (B181). A newer one of its kind takes over
+the trying: once Sun Oct 4's review came due, Sat Oct 3's waits behind
+it and is not tried again.
+Thu Oct 8's two are tried at 8:00, 8:01, 8:03, 8:07, 8:15 and 8:31 PM.
+The phone is back at 9:00 PM; the next try is at 9:03 PM. Both are still
+true (the shop still waits; the card is still not paid), so both go:
+  "Time to review: 1 thing is waiting for you to sort." It says "Was due
+  8:00 PM.": the same day.
+  "Everyday card payment due in 2 days. Due Sat, Oct 10." It says "Was
+  due 8:00 PM."
+Everything else waited behind them, and the list says of each "Not sent:
+a newer one went.": the reviews of Oct 3 to Oct 7, and the 7-day
+reminder. 2 alerts go, not 8. Settings: "8 alerts, 2 sent".
+
+Times: review due 8:00 PM EDT | review sent 9:03 PM EDT | reminder due 8:00 PM EDT | reminder sent 9:03 PM EDT
+Check: shop 12.00 | statement balance 450.00 | minimum 35.00 | alerts kept 8.00 | alerts sent 2.00 | reminder days left when sent 2.00
