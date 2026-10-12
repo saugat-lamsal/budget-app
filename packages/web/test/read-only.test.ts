@@ -70,6 +70,18 @@ describe('0.4 the screens never move money', () => {
 
   it('0.4 no other way to send anything, and nothing kept on the phone', () => {
     const forbidden = /\b(XMLHttpRequest|WebSocket|EventSource|sendBeacon|localStorage|sessionStorage|indexedDB|document\.cookie|eval)\b|\bFunction\(/;
-    for (const { name, text } of sourceFiles()) expect(text.match(forbidden)?.[0], name).toBeUndefined();
+    // 10.12 (QUESTIONS.md A42): the service worker alone keeps the ids of the alerts it showed; checked below.
+    const inWorker = new RegExp(forbidden.source.replace('|indexedDB', ''));
+    for (const { name, text } of sourceFiles()) expect(text.match(name.replaceAll('\\', '/') === 'sw/sw.ts' ? inWorker : forbidden)?.[0], name).toBeUndefined();
+  });
+
+  it('0.4 10.12 A42 the only thing kept on the phone is the ids of the alerts the service worker showed: one database, opened in sw.ts, holding { id } and nothing else', () => {
+    const worker = sourceFiles().find(({ name }) => name.replaceAll('\\', '/') === 'sw/sw.ts')?.text ?? '';
+    expect(worker.match(/\bindexedDB\b/g)).toEqual(['indexedDB']);
+    expect(worker).toContain("self.indexedDB.open('budget-alerts-shown', 1)");
+    // What it writes to its one store: an id, only; nothing is put anywhere else.
+    expect([...worker.matchAll(/\bstore\.(add|put)\(([^)]*)\)/g)].map((m) => m[0])).toEqual(['store.add({ id })']);
+    expect(worker).not.toMatch(/\.put\(/);
+    expect(worker.match(/createObjectStore\(/g)).toHaveLength(1);
   });
 });
