@@ -17,9 +17,10 @@ import { CAN_RESTORE, CONFIG, backupOf, copied, litestreamBin, replicate, until,
 // Every name, key and number is made up.
 
 const cleanUp: (() => Promise<void> | void)[] = [];
+// Stopping Litestream copies what it has first, which can take a while.
 afterEach(async () => {
   for (const done of cleanUp.splice(0).reverse()) await done();
-});
+}, 60_000);
 
 async function standIn(): Promise<FakeR2> {
   const r2 = await FakeR2.start();
@@ -101,7 +102,7 @@ describe('Phase 6 Litestream copies the books to the bucket', { timeout: 60_000 
   });
 });
 
-describe.runIf(CAN_RESTORE)('Phase 6 the restore check (Linux and macOS: Litestream cannot rebuild a database on Windows)', { timeout: 60_000 }, () => {
+describe.runIf(CAN_RESTORE)('Phase 6 the restore check (Linux and macOS: Litestream cannot rebuild a database on Windows)', { timeout: 120_000 }, () => {
   async function backedUp(): Promise<{ readonly r2: FakeR2; readonly life: Life; readonly running: Replicating }> {
     const r2 = await standIn();
     const life = await busyLife();
@@ -149,10 +150,11 @@ describe.runIf(CAN_RESTORE)('Phase 6 the restore check (Linux and macOS: Litestr
     expect(empty.ok).toBe(false);
     expect(empty.lines[0]).toBe('The books could not be rebuilt from the backup.');
     expect(empty.lines[1]).toMatch(/^Litestream said: /);
-    watch(replicate(life.path, backupOf(r2)));
+    const running = watch(replicate(life.path, backupOf(r2)));
     await copied(r2, 0);
+    await running.stop();
     r2.failing = 503;
-    const down = await restoreCheck({ backup: backupOf(r2), db: life.path, out: join(folder(), 'b.sqlite'), bin: litestreamBin(), config: CONFIG });
+    const down = await restoreCheck({ backup: backupOf(r2), db: life.path, out: join(folder(), 'b.sqlite'), bin: litestreamBin(), config: CONFIG, limitMs: 20_000 });
     expect(down.ok).toBe(false);
     expect(down.lines[0]).toBe('The books could not be rebuilt from the backup.');
     r2.failing = null;
@@ -161,7 +163,7 @@ describe.runIf(CAN_RESTORE)('Phase 6 the restore check (Linux and macOS: Litestr
       for (let i = Math.floor(spoiled.length / 2); i < spoiled.length; i += 7) spoiled[i] = (spoiled[i] ?? 0) ^ 0xff;
       r2.objects.set(key, { ...object, body: spoiled });
     }
-    const spoiled = await restoreCheck({ backup: backupOf(r2), db: life.path, out: join(folder(), 'c.sqlite'), bin: litestreamBin(), config: CONFIG });
+    const spoiled = await restoreCheck({ backup: backupOf(r2), db: life.path, out: join(folder(), 'c.sqlite'), bin: litestreamBin(), config: CONFIG, limitMs: 20_000 });
     expect(spoiled.ok).toBe(false);
   });
 
@@ -178,7 +180,8 @@ describe.runIf(CAN_RESTORE)('Phase 6 the restore check (Linux and macOS: Litestr
   });
 
   it('Phase 6 on starting, books missing from the volume are rebuilt from the backup; with no backup they start empty; books there are left alone; a backup that cannot be read stops it', async () => {
-    const { r2, life } = await backedUp();
+    const { r2, life, running } = await backedUp();
+    await running.stop();
     const dir = folder();
     // A new volume: the books rebuilt, the same as the backup's.
     const lost = join(dir, 'lost', 'budget.sqlite');
@@ -200,7 +203,7 @@ describe.runIf(CAN_RESTORE)('Phase 6 the restore check (Linux and macOS: Litestr
     expect(existsSync(first)).toBe(false);
     // The bucket cannot be read: it does not start empty over the backup.
     r2.failing = 503;
-    const down = await restoreIfMissing(join(dir, 'down', 'budget.sqlite'), backupOf(r2), litestreamBin(), CONFIG);
+    const down = await restoreIfMissing(join(dir, 'down', 'budget.sqlite'), backupOf(r2), litestreamBin(), CONFIG, 20_000);
     expect(down.kind).toBe('failed');
     expect(existsSync(join(dir, 'down', 'budget.sqlite'))).toBe(false);
   });

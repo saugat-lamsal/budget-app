@@ -20,6 +20,8 @@ export interface RestoreCheckInput {
   // Litestream, and its configuration.
   readonly bin: string;
   readonly config: string;
+  // How long the restore may take (RESTORE_LIMIT_MS unless told another).
+  readonly limitMs?: number;
 }
 
 export interface RestoreCheckReport {
@@ -50,7 +52,7 @@ export async function restoreCheck(input: RestoreCheckInput): Promise<RestoreChe
   if (['', '-wal', '-shm', '-journal'].some((end) => existsSync(`${out}${end}`))) {
     return { ok: false, lines: [`${out} is there already. Nothing was changed: the check rebuilds into a new file only.`] };
   }
-  const ran = await runLitestream(input.bin, ['restore', '-config', input.config, '-integrity-check', 'full', '-o', out, input.db], litestreamEnv(input.db, input.backup));
+  const ran = await runLitestream(input.bin, ['restore', '-config', input.config, '-integrity-check', 'full', '-o', out, input.db], litestreamEnv(input.db, input.backup), input.limitMs);
   if (ran.code !== 0 || !existsSync(out)) {
     return { ok: false, lines: ['The books could not be rebuilt from the backup.', `Litestream said: ${said(ran.output)}`] };
   }

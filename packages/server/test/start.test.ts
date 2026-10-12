@@ -2,9 +2,8 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { request as httpRequest } from 'node:http';
 import { createServer } from 'node:net';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { buildServer } from '../../../scripts/server-build.mjs';
 import { newTokenKey } from '../src/crypto/token-box.js';
@@ -28,7 +27,10 @@ let built = '';
 let work = '';
 beforeAll(async () => {
   if (!CAN_RESTORE) return;
-  work = mkdtempSync(join(tmpdir(), 'budget-start-'));
+  // Inside the project, as /app is in the image: the built server finds the
+  // database driver and web push in node_modules above it.
+  mkdirSync(fileURLToPath(new URL('../dist', import.meta.url)), { recursive: true });
+  work = mkdtempSync(fileURLToPath(new URL('../dist/start-test-', import.meta.url)));
   built = join(work, 'serve');
   await buildServer(built);
 }, 180_000);
@@ -39,7 +41,7 @@ afterAll(() => {
 const cleanUp: (() => Promise<void> | void)[] = [];
 afterEach(async () => {
   for (const done of cleanUp.splice(0).reverse()) await done();
-});
+}, 60_000);
 
 function freePort(): Promise<number> {
   return new Promise((resolve) => {

@@ -79,15 +79,32 @@ export interface Ran {
   readonly output: string;
 }
 
+// How long a restore may take before it counts as failed: a bucket that
+// never answers must not hold the start (or the check) for ever.
+export const RESTORE_LIMIT_MS = 10 * 60_000;
+
 // Runs Litestream once (restore), with only its own environment, and gives
-// back how it ended and what it said. Never throws for a failure: the code says.
-export function runLitestream(bin: string, args: readonly string[], env: Record<string, string>): Promise<Ran> {
+// back how it ended and what it said. Never throws for a failure: the code
+// says. Past the time limit it is stopped, and that is a failure (124).
+export function runLitestream(bin: string, args: readonly string[], env: Record<string, string>, limitMs: number = RESTORE_LIMIT_MS): Promise<Ran> {
   return new Promise((resolve) => {
     let output = '';
+    let late = false;
     const child = spawn(bin, [...args], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+    const timer = setTimeout(() => {
+      late = true;
+      child.kill('SIGKILL');
+    }, limitMs);
     child.stdout.on('data', (chunk: Buffer) => (output += chunk.toString('utf8')));
     child.stderr.on('data', (chunk: Buffer) => (output += chunk.toString('utf8')));
-    child.on('error', (error) => resolve({ code: 127, output: `${output}${error.message}` }));
-    child.on('close', (code) => resolve({ code: code ?? 1, output }));
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      resolve({ code: 127, output: `${output}${error.message}` });
+    });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      resolve(late ? { code: 124, output: `${output}
+no answer from the backup in ${Math.round(limitMs / 1000)} s` } : { code: code ?? 1, output });
+    });
   });
 }

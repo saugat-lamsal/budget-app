@@ -24,10 +24,10 @@ import { Supervisor } from './supervisor.js';
 export type RestoreOutcome = { readonly kind: 'there' } | { readonly kind: 'restored' } | { readonly kind: 'none' } | { readonly kind: 'failed'; readonly output: string };
 
 // Step 3: the books from the backup, when the volume has none.
-export async function restoreIfMissing(db: string, backup: Backup, bin: string, config: string): Promise<RestoreOutcome> {
+export async function restoreIfMissing(db: string, backup: Backup, bin: string, config: string, limitMs?: number): Promise<RestoreOutcome> {
   if (existsSync(db)) return { kind: 'there' };
   mkdirSync(dirname(db), { recursive: true });
-  const ran = await runLitestream(bin, ['restore', '-config', config, '-if-replica-exists', '-integrity-check', 'full', db], litestreamEnv(db, backup));
+  const ran = await runLitestream(bin, ['restore', '-config', config, '-if-replica-exists', '-integrity-check', 'full', db], litestreamEnv(db, backup), limitMs);
   if (ran.code !== 0) return { kind: 'failed', output: ran.output };
   return existsSync(db) ? { kind: 'restored' } : { kind: 'none' };
 }
