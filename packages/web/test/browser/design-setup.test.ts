@@ -1,8 +1,8 @@
 import type { BrowserContext, Page } from 'playwright';
 import { describe, expect, it } from 'vitest';
 import { addStyle, atRest, axeViolations, tappable } from './design-helpers.js';
-import { ENGINES, IPHONE, IPHONE_INSETS, phone, textAt, untilQuiet, useEngine, watchPage } from './harness.js';
-import { answerHalf, openSetup, typeAmount, type SetupStepName } from './setup-screens.js';
+import { ENGINES, IPHONE, IPHONE_INSETS, emulatePhone, phone, textAt, untilQuiet, useEngine, watchPage } from './harness.js';
+import { answerHalf, openSetup, showSetup, typeAmount, type SetupStepName } from './setup-screens.js';
 
 // The design rules (CLAUDE.md) on the Setup day screens and their sheets:
 // light and dark, readable contrast, 44-point tap targets, the notch and the
@@ -111,18 +111,19 @@ const SHEETS: readonly (readonly [string, string, SetupStepName, (page: Page) =>
 ];
 
 // part: only the states, or only the sheets; both when left out.
+// One page, moved from state to state and sheet to sheet, the life started
+// over each time (showLive in live.ts says why).
 async function each(context: BrowserContext, base: string, check: (page: Page, where: string) => Promise<void>, part?: 'states' | 'sheets'): Promise<void> {
+  const page = await context.newPage();
   for (const [where, life, step, first] of part === 'sheets' ? [] : STATES) {
-    const page = await openSetup(context, base, life, step);
+    await showSetup(page, base, life, step);
     if (first !== null) await first(page);
     await check(page, where);
-    await page.close();
   }
   for (const [name, life, step, open] of part === 'states' ? [] : SHEETS) {
-    const page = await openSetup(context, base, life, step);
+    await showSetup(page, base, life, step);
     await open(page);
     await check(page, `sheet: ${name}`);
-    await page.close();
   }
 }
 
@@ -159,8 +160,9 @@ describe.each(ENGINES)('design rules on Setup day in %s', (_engine, engine) => {
 
   it('nothing sits under the notch or the home bar, and the end of each step scrolls clear of the tabs', async () => {
     const context = await browser().newContext(phone({ bypassCSP: true }));
+    const page = await context.newPage();
     for (const step of STEPS) {
-      const page = await openSetup(context, base(), 'setup-day', step);
+      await showSetup(page, base(), 'setup-day', step);
       await addStyle(page, `:root { --safe-top: ${IPHONE_INSETS.top}px !important; --safe-bottom: ${IPHONE_INSETS.bottom}px !important; }`);
       const first = await page.locator('main > :not(.sr-only):not(dialog)').first().boundingBox();
       expect(first!.y, step).toBeGreaterThanOrEqual(IPHONE_INSETS.top);
@@ -168,15 +170,15 @@ describe.each(ENGINES)('design rules on Setup day in %s', (_engine, engine) => {
       const bar = await page.locator('.tabbar').boundingBox();
       const last = await page.locator('main > :not(.sr-only):not(dialog)').last().boundingBox();
       expect(last!.y + last!.height, step).toBeLessThanOrEqual(bar!.y);
-      await page.close();
     }
     await context.close();
   });
 
   it("the text grows with the phone's text size, and every step still fits", async () => {
     const context = await browser().newContext(phone({ bypassCSP: true }));
+    const page = await context.newPage();
     for (const [life, step] of [...STEPS.map((s) => ['setup-day', s] as const), ['setup-owes-more', 'bank'] as const]) {
-      const page = await openSetup(context, base(), life, step);
+      await showSetup(page, base(), life, step);
       const before = await page.locator('.screen-title').evaluate((e) => Number.parseFloat(getComputedStyle(e).fontSize));
       await addStyle(page, 'html { font-size: 36px !important; }');
       const after = await page.locator('.screen-title').evaluate((e) => Number.parseFloat(getComputedStyle(e).fontSize));
@@ -186,26 +188,27 @@ describe.each(ENGINES)('design rules on Setup day in %s', (_engine, engine) => {
         expect(b.left, `${life} ${step}`).toBeGreaterThanOrEqual(0);
         expect(b.right, `${life} ${step}`).toBeLessThanOrEqual(IPHONE.width);
       }
-      await page.close();
     }
     await context.close();
   });
 
   it('with reduced motion on, the sheet does not slide', async () => {
-    const moving = await openSetup(await browser().newContext(phone()), base(), 'setup-day', 'assign');
-    await moving.getByTestId('assign-needs').click();
-    expect(await moving.getByTestId('amount-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('sheet-in');
-    await moving.context().close();
-    const still = await openSetup(await browser().newContext(phone({ reducedMotion: 'reduce' })), base(), 'setup-day', 'assign');
-    await still.getByTestId('assign-needs').click();
-    expect(await still.getByTestId('amount-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
-    await still.context().close();
+    const page = await openSetup(await browser().newContext(phone()), base(), 'setup-day', 'assign');
+    await page.getByTestId('assign-needs').click();
+    expect(await page.getByTestId('amount-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('sheet-in');
+    // The same page with motion reduced, the life started over.
+    await emulatePhone(page, { reducedMotion: 'reduce' });
+    await showSetup(page, base(), 'setup-day', 'assign');
+    await page.getByTestId('assign-needs').click();
+    expect(await page.getByTestId('amount-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
+    await page.context().close();
   });
 
   it('money is written the same way on every step, with digits that line up, and negatives obvious', async () => {
     const context = await browser().newContext(phone());
+    const page = await context.newPage();
     for (const [life, step] of [...STEPS.map((s) => ['setup-day', s] as const), ['setup-owes-more', 'bank'] as const, ['setup-owes-more', 'assign'] as const]) {
-      const page = await openSetup(context, base(), life, step);
+      await showSetup(page, base(), life, step);
       const amounts = await page.locator('[data-money]').evaluateAll((els) => els.map((e) => ({ text: e.textContent ?? '', numbers: getComputedStyle(e).fontVariantNumeric, negative: e.classList.contains('is-negative'), label: e.getAttribute('aria-label') })));
       // The last paycheck step has a date and no amounts.
       if (step !== 'paycheck') expect(amounts.length, `${life} ${step}`).toBeGreaterThan(2);
@@ -214,25 +217,22 @@ describe.each(ENGINES)('design rules on Setup day in %s', (_engine, engine) => {
         expect(a.numbers, `${life} ${step}`).toContain('tabular-nums');
         if (a.text.startsWith('−')) expect([a.negative, a.label?.startsWith('minus')], `${life} ${step} ${a.text}`).toEqual([true, true]);
       }
-      await page.close();
     }
     await context.close();
   });
 
   it('what each state means is said in words, not by color alone', async () => {
     const context = await browser().newContext(phone());
-    const transfers = await openSetup(context, base(), 'setup-day', 'transfers');
-    expect(await textAt(transfers, 'half-su-card-left')).toContain('Not answered yet');
-    await answerHalf(transfers, 'su-card-left', true);
-    expect(await textAt(transfers, 'half-su-card-left')).toContain('Your answer: on its way');
-    await transfers.close();
-    const assign = await openSetup(context, base(), 'setup-owes-more', 'assign');
-    await typeAmount(assign, 'savings', '150.00');
-    expect(await textAt(assign, 'setup-hero')).toContain('More is handed out than there is');
-    await assign.close();
-    const check = await openSetup(context, base(), 'setup-day', 'check');
-    expect(await textAt(check, 'missing')).toContain('Before tracking can start');
-    await check.close();
+    // One page, moved from step to step, the life started over each time (showLive in live.ts says why).
+    const page = await openSetup(context, base(), 'setup-day', 'transfers');
+    expect(await textAt(page, 'half-su-card-left')).toContain('Not answered yet');
+    await answerHalf(page, 'su-card-left', true);
+    expect(await textAt(page, 'half-su-card-left')).toContain('Your answer: on its way');
+    await showSetup(page, base(), 'setup-owes-more', 'assign');
+    await typeAmount(page, 'savings', '150.00');
+    expect(await textAt(page, 'setup-hero')).toContain('More is handed out than there is');
+    await showSetup(page, base(), 'setup-day', 'check');
+    expect(await textAt(page, 'missing')).toContain('Before tracking can start');
     await context.close();
   });
 
@@ -249,32 +249,32 @@ describe.each(ENGINES)('design rules on Setup day in %s', (_engine, engine) => {
     expect(await slow.locator('main').getAttribute('aria-busy')).toBe('true');
     await slow.getByTestId('setup-done').waitFor();
     await untilQuiet(slow);
-    await slow.close();
-    const error = await openSetup(context, base(), 'error', 'bank');
-    expect(await textAt(error, 'setup-error')).toContain("Couldn't load setup day");
-    expect(await error.getByTestId('retry').count()).toBe(1);
-    await error.close();
-    const empty = await openSetup(context, base(), 'setup-owes-more', 'transfers');
-    expect(await textAt(empty, 'transfers-none')).toContain('Nothing on its way');
-    await atRest(empty);
-    await empty.close();
-    const notReady = await openSetup(context, base(), 'not-set-up', 'check');
-    expect(await textAt(notReady, 'setup-not-ready')).toContain("Setup day can't start yet");
-    await notReady.close();
-    const done = await openSetup(context, base(), 'normal', 'bank');
-    expect(await textAt(done, 'setup-done')).toContain('Setup day is done');
-    await done.close();
+    // The same page, moved to each other life (showLive in live.ts says why).
+    const page = slow;
+    await showSetup(page, base(), 'error', 'bank');
+    expect(await textAt(page, 'setup-error')).toContain("Couldn't load setup day");
+    expect(await page.getByTestId('retry').count()).toBe(1);
+    await showSetup(page, base(), 'setup-owes-more', 'transfers');
+    expect(await textAt(page, 'transfers-none')).toContain('Nothing on its way');
+    await atRest(page);
+    await showSetup(page, base(), 'not-set-up', 'check');
+    expect(await textAt(page, 'setup-not-ready')).toContain("Setup day can't start yet");
+    await showSetup(page, base(), 'normal', 'bank');
+    expect(await textAt(page, 'setup-done')).toContain('Setup day is done');
     await context.close();
   });
 
   it('light and dark follow the phone on Setup day', async () => {
+    const context = await browser().newContext(phone());
+    const page = await context.newPage();
     for (const [scheme, background] of [
       ['light', 'rgb(242, 242, 247)'],
       ['dark', 'rgb(0, 0, 0)'],
     ] as const) {
-      const page = await openSetup(await browser().newContext(phone({ colorScheme: scheme })), base(), 'setup-day', 'bank');
+      await emulatePhone(page, { colorScheme: scheme });
+      await showSetup(page, base(), 'setup-day', 'bank');
       expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), scheme).toBe(background);
-      await page.context().close();
     }
+    await context.close();
   });
 });

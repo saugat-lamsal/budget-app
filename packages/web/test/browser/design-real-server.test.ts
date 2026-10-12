@@ -5,7 +5,7 @@ import { savePasskey } from '../../../server/src/auth/auth-db.js';
 import { lifeInAFile, setUpThroughTheDesk, type Life } from '../../../server/test/keeper-harness.js';
 import { loginCookieForTests } from '../../../server/test/login-for-tests.js';
 import { addStyle, axeViolations, tappable } from './design-helpers.js';
-import { ENGINES, IPHONE, IPHONE_INSETS, WEB_ROOT, close, listen, phone, untilAnswered, untilQuiet, useEngine, waitOrReport } from './harness.js';
+import { ENGINES, IPHONE, IPHONE_INSETS, WEB_ROOT, close, emulatePhone, listen, phone, untilAnswered, untilQuiet, useEngine, waitOrReport } from './harness.js';
 
 // The design rules (CLAUDE.md) for what only the real server shows, in both
 // engines: the login page and Settings' Login card (Step 2), and Home's
@@ -172,45 +172,61 @@ describe.each(ENGINES)('design rules on what only the real server shows (login, 
     return context;
   }
 
-  async function eachLoginState(options: Parameters<typeof phone>[0], check: (page: Page, where: string) => Promise<void>): Promise<void> {
+  // One page for a whole test, moved from state to state (showLive in live.ts
+  // says why), each loaded afresh with its own motion setting and nothing held
+  // or failed from the state before.
+  async function onOnePage(options: Parameters<typeof phone>[0], run: (page: Page) => Promise<void>): Promise<void> {
     const context = await contextFor(options, false);
-    const still = await contextFor({ ...options, reducedMotion: 'reduce' }, false);
+    try {
+      await run(await context.newPage());
+    } finally {
+      await context.close();
+    }
+  }
+
+  // Logged out throughout: nothing on the login page sets a cookie but a
+  // login or a log out.
+  async function eachLoginState(page: Page, options: Parameters<typeof phone>[0], check: (page: Page, where: string) => Promise<void>): Promise<void> {
+    await page.context().clearCookies();
     for (const [name, which, open] of LOGIN_STATES) {
-      const page = await (STILL.has(name) ? still : context).newPage();
+      await emulatePhone(page, STILL.has(name) ? { ...options, reducedMotion: 'reduce' } : options);
       const letGo = await open(page, real(which).base);
       await check(page, `login page: ${name}`);
       if (letGo !== undefined) await letGo();
-      await page.close();
+      await page.unrouteAll({ behavior: 'wait' });
     }
-    await context.close();
-    await still.close();
   }
 
-  async function eachCardState(options: Parameters<typeof phone>[0], check: (page: Page, where: string) => Promise<void>): Promise<void> {
-    const context = await contextFor(options, true);
+  // Logged in the tests' way.
+  async function eachCardState(page: Page, options: Parameters<typeof phone>[0], check: (page: Page, where: string) => Promise<void>): Promise<void> {
+    await page.context().addCookies([loginCookieForTests(real('passkey').life.h.db, real('passkey').life.now, real('passkey').base)]);
+    await emulatePhone(page, options);
     for (const [name, open] of CARD_STATES) {
-      const page = await context.newPage();
       await open(page, real('passkey').base);
       await check(page, `Settings: ${name}`);
-      await page.close();
     }
-    await context.close();
   }
 
   for (const scheme of ['light', 'dark'] as const) {
     it(`readable contrast and no accessibility problems on the login page, in ${scheme} mode, in every state`, async () => {
       const problems: string[] = [];
-      await eachLoginState({ colorScheme: scheme, bypassCSP: true }, async (page, where) => {
-        problems.push(...(await axeViolations(page)).map((p) => `${scheme} ${where}: ${p}`));
-      });
+      const options = { colorScheme: scheme, bypassCSP: true } as const;
+      await onOnePage(options, (page) =>
+        eachLoginState(page, options, async (at, where) => {
+          problems.push(...(await axeViolations(at)).map((p) => `${scheme} ${where}: ${p}`));
+        }),
+      );
       expect(problems).toEqual([]);
     });
 
     it(`readable contrast and no accessibility problems on Home's Checked at, the Login card, the Bank card and their sheets, in ${scheme} mode`, async () => {
       const problems: string[] = [];
-      await eachCardState({ colorScheme: scheme, bypassCSP: true }, async (page, where) => {
-        problems.push(...(await axeViolations(page)).map((p) => `${scheme} ${where}: ${p}`));
-      });
+      const options = { colorScheme: scheme, bypassCSP: true } as const;
+      await onOnePage(options, (page) =>
+        eachCardState(page, options, async (at, where) => {
+          problems.push(...(await axeViolations(at)).map((p) => `${scheme} ${where}: ${p}`));
+        }),
+      );
       expect(problems).toEqual([]);
     });
   }
@@ -220,37 +236,41 @@ describe.each(ENGINES)('design rules on what only the real server shows (login, 
     const check = async (page: Page, where: string): Promise<void> => {
       for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`${where}: ${t.what} is ${t.width}x${t.height}`);
     };
-    await eachLoginState({}, check);
-    await eachCardState({}, check);
+    await onOnePage({}, async (page) => {
+      await eachLoginState(page, {}, check);
+      await eachCardState(page, {}, check);
+    });
     expect(small).toEqual([]);
   });
 
   it('nothing on the login page sits under the notch or the home bar; the sheets end above the home bar', async () => {
     const off: string[] = [];
     const insets = `:root { --safe-top: ${IPHONE_INSETS.top}px !important; --safe-bottom: ${IPHONE_INSETS.bottom}px !important; }`;
-    await eachLoginState({ bypassCSP: true }, async (page, where) => {
-      await addStyle(page, insets);
-      // What is drawn on the screen (a wrapper that only groups others takes no space of its own).
-      const drawn = (): Promise<{ readonly top: number; readonly bottom: number }> =>
-        page.locator('main *:not(.sr-only)').evaluateAll((els) => {
-          const boxes = els.map((e) => e.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0);
-          return { top: Math.min(...boxes.map((r) => r.top)), bottom: Math.max(...boxes.map((r) => r.bottom)) };
-        });
-      const first = await drawn();
-      if (first.top < IPHONE_INSETS.top) off.push(`${where}: the first thing is at ${first.top}, under the notch`);
-      for (const t of await tappable(page)) if (t.y < IPHONE_INSETS.top) off.push(`${where}: ${t.what} is under the notch`);
-      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-      const last = await drawn();
-      if (last.bottom > IPHONE.height - IPHONE_INSETS.bottom + 0.5) off.push(`${where}: the last thing ends at ${last.bottom}, under the home bar`);
-    });
-    await eachCardState({ bypassCSP: true }, async (page, where) => {
-      const sheet = page.locator('dialog[open]');
-      if ((await sheet.count()) === 0) return;
-      await addStyle(page, insets);
-      await sheet.evaluate((e) => Promise.all(e.getAnimations().map((a) => a.finished)));
-      await sheet.evaluate((e) => e.scrollTo(0, e.scrollHeight));
-      const lastControl = await sheet.locator('button').last().boundingBox();
-      if (lastControl!.y + lastControl!.height > IPHONE.height - IPHONE_INSETS.bottom + 0.5) off.push(`${where}: the last button ends at ${lastControl!.y + lastControl!.height}, under the home bar`);
+    await onOnePage({ bypassCSP: true }, async (one) => {
+      await eachLoginState(one, { bypassCSP: true }, async (page, where) => {
+        await addStyle(page, insets);
+        // What is drawn on the screen (a wrapper that only groups others takes no space of its own).
+        const drawn = (): Promise<{ readonly top: number; readonly bottom: number }> =>
+          page.locator('main *:not(.sr-only)').evaluateAll((els) => {
+            const boxes = els.map((e) => e.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0);
+            return { top: Math.min(...boxes.map((r) => r.top)), bottom: Math.max(...boxes.map((r) => r.bottom)) };
+          });
+        const first = await drawn();
+        if (first.top < IPHONE_INSETS.top) off.push(`${where}: the first thing is at ${first.top}, under the notch`);
+        for (const t of await tappable(page)) if (t.y < IPHONE_INSETS.top) off.push(`${where}: ${t.what} is under the notch`);
+        await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+        const last = await drawn();
+        if (last.bottom > IPHONE.height - IPHONE_INSETS.bottom + 0.5) off.push(`${where}: the last thing ends at ${last.bottom}, under the home bar`);
+      });
+      await eachCardState(one, { bypassCSP: true }, async (page, where) => {
+        const sheet = page.locator('dialog[open]');
+        if ((await sheet.count()) === 0) return;
+        await addStyle(page, insets);
+        await sheet.evaluate((e) => Promise.all(e.getAnimations().map((a) => a.finished)));
+        await sheet.evaluate((e) => e.scrollTo(0, e.scrollHeight));
+        const lastControl = await sheet.locator('button').last().boundingBox();
+        if (lastControl!.y + lastControl!.height > IPHONE.height - IPHONE_INSETS.bottom + 0.5) off.push(`${where}: the last button ends at ${lastControl!.y + lastControl!.height}, under the home bar`);
+      });
     });
     expect(off).toEqual([]);
   });
@@ -271,36 +291,35 @@ describe.each(ENGINES)('design rules on what only the real server shows (login, 
         }
       }
     };
-    await eachLoginState({ bypassCSP: true }, check);
-    await eachCardState({ bypassCSP: true }, check);
+    await onOnePage({ bypassCSP: true }, async (page) => {
+      await eachLoginState(page, { bypassCSP: true }, check);
+      await eachCardState(page, { bypassCSP: true }, check);
+    });
     expect(off).toEqual([]);
   });
 
   it('with reduced motion on, the loading page does not shimmer and the sheet does not slide', async () => {
-    const moving = await contextFor({}, true);
-    const slides = await moving.newPage();
-    await settingsPage(slides, real('passkey').base);
-    await slides.getByTestId('row-stay-logged-in').click();
-    expect(await slides.getByTestId('stay-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('sheet-in');
-    await moving.close();
+    // One page, with motion on and then reduced, each screen loaded afresh (showLive in live.ts says why).
+    const context = await contextFor({}, true);
+    const page = await context.newPage();
+    await settingsPage(page, real('passkey').base);
+    await page.getByTestId('row-stay-logged-in').click();
+    expect(await page.getByTestId('stay-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('sheet-in');
 
-    const still = await contextFor({ reducedMotion: 'reduce' }, true);
-    const sheet = await still.newPage();
-    await settingsPage(sheet, real('passkey').base);
-    await sheet.getByTestId('row-stay-logged-in').click();
-    expect(await sheet.getByTestId('stay-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
-    const durations = await sheet.locator('.row, .button, .field__input').evaluateAll((els) => els.map((e) => getComputedStyle(e).transitionDuration));
+    await emulatePhone(page, { reducedMotion: 'reduce' });
+    await settingsPage(page, real('passkey').base);
+    await page.getByTestId('row-stay-logged-in').click();
+    expect(await page.getByTestId('stay-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
+    const durations = await page.locator('.row, .button, .field__input').evaluateAll((els) => els.map((e) => getComputedStyle(e).transitionDuration));
     expect(durations.every((d) => d.split(',').every((part) => Number.parseFloat(part) === 0))).toBe(true);
-    await sheet.close();
-    const loading = await still.newPage();
-    const letGo = await holdAuth(loading);
-    await loading.goto(`${real('passkey').base}/login`);
-    await waitOrReport(loading, '[data-testid="login-loading"]');
-    const shimmer = await loading.locator('.skeleton').evaluateAll((els) => els.map((e) => getComputedStyle(e).animationName));
+    const letGo = await holdAuth(page);
+    await page.goto(`${real('passkey').base}/login`);
+    await waitOrReport(page, '[data-testid="login-loading"]');
+    const shimmer = await page.locator('.skeleton').evaluateAll((els) => els.map((e) => getComputedStyle(e).animationName));
     expect(shimmer.length).toBeGreaterThan(0);
     expect(shimmer.every((name) => name === 'none')).toBe(true);
     await letGo();
-    await still.close();
+    await context.close();
   });
 
   it('every state is there: loading, then the passkey button; an error, and Try again brings the page', async () => {
@@ -313,31 +332,33 @@ describe.each(ENGINES)('design rules on what only the real server shows (login, 
     await letGo();
     await waitOrReport(page, '[data-testid="login-passkey"]');
     expect(await page.locator('main').getAttribute('aria-busy')).toBe('false');
-    await page.close();
+    await page.unrouteAll({ behavior: 'wait' });
 
-    const broken = await context.newPage();
+    // The same page, loaded afresh (showLive in live.ts says why).
     let fail = true;
-    await broken.route('**/api/auth', (route) => (fail ? route.fulfill({ status: 500, body: 'no' }) : route.continue()));
-    await loginPage(broken, real('passkey').base, '[data-testid="login-error"]');
-    expect(await broken.getByTestId('login-error').innerText()).toContain("Couldn't reach the app");
+    await page.route('**/api/auth', (route) => (fail ? route.fulfill({ status: 500, body: 'no' }) : route.continue()));
+    await loginPage(page, real('passkey').base, '[data-testid="login-error"]');
+    expect(await page.getByTestId('login-error').innerText()).toContain("Couldn't reach the app");
     fail = false;
-    await broken.getByTestId('retry').click();
-    await waitOrReport(broken, '[data-testid="login-passkey"]');
-    await untilQuiet(broken);
+    await page.getByTestId('retry').click();
+    await waitOrReport(page, '[data-testid="login-passkey"]');
+    await untilQuiet(page);
     await context.close();
   });
 
   it('light and dark follow the phone on the login page', async () => {
+    // One page, loaded afresh in each scheme (showLive in live.ts says why).
+    const context = await contextFor({}, false);
+    const page = await context.newPage();
     for (const [scheme, background] of [
       ['light', 'rgb(242, 242, 247)'],
       ['dark', 'rgb(0, 0, 0)'],
     ] as const) {
-      const context = await contextFor({ colorScheme: scheme }, false);
-      const page = await context.newPage();
+      await emulatePhone(page, { colorScheme: scheme });
       await loginPage(page, real('passkey').base, '[data-testid="login-passkey"]');
       expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), scheme).toBe(background);
-      await context.close();
     }
+    await context.close();
   });
 
   it('Step 3 Checked at is said in words with a clock, in the secondary text color, under safe to spend', async () => {

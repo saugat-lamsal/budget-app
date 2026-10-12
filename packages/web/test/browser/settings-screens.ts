@@ -2,7 +2,7 @@ import { payoffCountdown, type Book, type Cents, type IsoDate, type SortingRule 
 import type { BrowserContext, Page } from 'playwright';
 import { dayWithYear } from '../../src/ui/dates.js';
 import { daysText, leftoverText, lockAmountsText, notReadText, quietHoursText, reminderText, textRuleText, timeText, zoneText } from '../../src/screens/settings-text.js';
-import { openScenario, readCents, untilAnswered, waitOrReport } from './harness.js';
+import { openScenario, readCents, showScenario, untilAnswered, waitOrReport } from './harness.js';
 
 // Opens Settings on a made-up life, once its numbers are in. (openScenario
 // also takes a screen marked "settings" as ready, which the placeholder used
@@ -12,6 +12,14 @@ export async function openSettings(context: BrowserContext, base: string, life: 
   await waitOrReport(page, 'main[aria-busy="false"]');
   await untilAnswered(page);
   return page;
+}
+
+// The same in a page already open, the life started over (showLive in live.ts
+// says why a test moves one page instead of opening another).
+export async function showSettings(page: Page, base: string, life: string): Promise<void> {
+  await showScenario(page, base, life, '/settings');
+  await waitOrReport(page, 'main[aria-busy="false"]');
+  await untilAnswered(page);
 }
 
 // Reading the Settings screen the way a person reads it, and working out what

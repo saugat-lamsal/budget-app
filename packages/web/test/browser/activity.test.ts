@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { START_DATE, appSide, openTestBook, purchase, refund, takenBack } from '../../../money/test/helpers.js';
 import { demoScenario } from '../../../server/src/demo/scenarios.js';
 import { activityOf, amountAt, numbersOf, pathOfPot, readActivity, rowOf } from './activity-screens.js';
-import { ENGINES, close, openScenario, phone, textAt, untilQuiet, useEngine, launch } from './harness.js';
+import { ENGINES, close, openScenario, phone, showScenario, textAt, untilQuiet, useEngine, launch } from './harness.js';
 import { openLive, startLive } from './live.js';
 import { sheetGapsAfterAnAnswer, watchChoices, watchSheetsAfterAnAnswer } from './screens.js';
 
@@ -35,26 +35,27 @@ describe.each(ENGINES)('what went in and out of a bucket, in %s', (_name, engine
 
   it('B97 B98 B99 every row and every number of every bucket\'s list is the money math\'s, in the same order', async () => {
     const { book } = life('activity-busy');
+    // One page, moved from list to list, the life started over each time (showLive in live.ts says why).
     const context = await browser().newContext(phone());
+    const page = await context.newPage();
     for (const pot of MOVABLE_POTS) {
-      const page = await openScenario(context, base(), 'activity-busy', pathOfPot(pot));
+      await showScenario(page, base(), 'activity-busy', pathOfPot(pot));
       const shown = await readActivity(page);
       expect(numbersOf(shown), pot).toEqual(numbersOf(activityOf(book, pot)));
-      await page.close();
     }
     await context.close();
   });
 
   it('12.2 B97 it adds up on the screen: what it held, plus what came in, plus what went out, is what it holds now', async () => {
     const context = await browser().newContext(phone());
+    const page = await context.newPage();
     for (const name of ['activity-busy', 'normal', 'payday-paid'] as const) {
       for (const pot of MOVABLE_POTS) {
-        const page = await openScenario(context, base(), name, pathOfPot(pot));
+        await showScenario(page, base(), name, pathOfPot(pot));
         const s = await readActivity(page);
         expect(s.opening + s.in + s.out, `${name} ${pot}`).toBe(s.closing);
         expect(s.rows.reduce((sum, r) => sum + r.amount, 0), `${name} ${pot}`).toBe(s.in + s.out);
         expect(s.now, `${name} ${pot}`).toBe(life(name).book.pots()[pot]);
-        await page.close();
       }
     }
     await context.close();
@@ -97,15 +98,16 @@ describe.each(ENGINES)('what went in and out of a bucket, in %s', (_name, engine
 
   it('7.3 the mom reserve and held for others have lists too, and a bucket with nothing says so', async () => {
     const context = await browser().newContext(phone());
-    const mom = await openScenario(context, base(), 'activity-busy', '/buckets/mom-reserve');
-    const m = await readActivity(mom);
+    const page = await openScenario(context, base(), 'activity-busy', '/buckets/mom-reserve');
+    const m = await readActivity(page);
     expect(m.rows.map((r) => r.text.split(' ')[0])).toEqual(['ZELLE', 'MADE']);
     expect(numbersOf(m)).toEqual(numbersOf(activityOf(life('activity-busy').book, 'momReserve')));
-    const held = await openScenario(context, base(), 'normal', '/buckets/held-for-others');
-    expect(await textAt(held, 'activity-empty')).toBe('Nothing has gone in or out of Held for others yet this pay period');
+    // The same page, moved to another life's list (showLive in live.ts says why).
+    await showScenario(page, base(), 'normal', '/buckets/held-for-others');
+    expect(await textAt(page, 'activity-empty')).toBe('Nothing has gone in or out of Held for others yet this pay period');
     // Nothing came in and nothing went out: no plus and no minus on zero.
-    expect(await textAt(held, 'activity-figures')).toBe('This pay period Carried in $0.00 Came in $0.00 Went out $0.00 Now $0.00');
-    expect((await readActivity(held)).rows).toEqual([]);
+    expect(await textAt(page, 'activity-figures')).toBe('This pay period Carried in $0.00 Came in $0.00 Went out $0.00 Now $0.00');
+    expect((await readActivity(page)).rows).toEqual([]);
     await context.close();
   });
 
@@ -141,13 +143,14 @@ describe.each(ENGINES)('what went in and out of a bucket, in %s', (_name, engine
       ['row-mom-reserve', 'momReserve'],
       ['row-held', 'heldForOthers'],
     ];
+    // One page, Buckets opened afresh before each tap (showLive in live.ts says why).
+    const page = await context.newPage();
     for (const [testId, pot] of targets) {
-      const page = await openScenario(context, base(), 'activity-busy', '/buckets');
+      await showScenario(page, base(), 'activity-busy', '/buckets');
       await page.getByTestId(testId).click();
       await page.getByTestId('activity-now').waitFor();
       expect(new URL(page.url()).pathname, pot).toBe(pathOfPot(pot));
       expect(await amountAt(page, 'activity-now'), pot).toBe(life('activity-busy').book.pots()[pot]);
-      await page.close();
     }
     await context.close();
   });

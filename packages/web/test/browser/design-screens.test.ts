@@ -2,7 +2,7 @@ import type { Page } from 'playwright';
 import { describe, expect, it } from 'vitest';
 import { demoScenario } from '../../../server/src/demo/scenarios.js';
 import { addStyle, axeViolations, tappable } from './design-helpers.js';
-import { ENGINES, IPHONE, IPHONE_INSETS, openScenario, phone, useEngine } from './harness.js';
+import { ENGINES, IPHONE, IPHONE_INSETS, emulatePhone, openScenario, phone, showScenario, useEngine } from './harness.js';
 
 // The design rules (CLAUDE.md) for Buckets and Review and their sheets, in
 // the browser: light and dark, readable contrast, 44-point tap targets, the
@@ -102,11 +102,12 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
     ] as const) {
       it(`readable contrast and no accessibility problems, in ${scheme} mode, on ${screen} in every state`, async () => {
         const problems: string[] = [];
+        // One page, moved from state to state, the life started over each time (showLive in live.ts says why).
         const context = await browser().newContext(phone({ colorScheme: scheme, bypassCSP: true }));
+        const page = await context.newPage();
         for (const [life, at] of SCREENS.filter(([, p]) => p === path)) {
-          const page = await openScenario(context, base(), life, at);
+          await showScenario(page, base(), life, at);
           problems.push(...(await axeViolations(page)).map((p) => `${scheme} ${at} ${life}: ${p}`));
-          await page.close();
         }
         await context.close();
         expect(problems).toEqual([]);
@@ -137,10 +138,10 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
   it('every tap target is at least 44 by 44 points, in every state', async () => {
     const small: string[] = [];
     const context = await browser().newContext(phone());
+    const page = await context.newPage();
     for (const [life, path] of SCREENS) {
-      const page = await openScenario(context, base(), life, path);
+      await showScenario(page, base(), life, path);
       for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`${path} ${life}: ${t.what} is ${t.width}x${t.height}`);
-      await page.close();
     }
     await context.close();
     expect(small).toEqual([]);
@@ -148,13 +149,14 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
 
   it('nothing sits under the notch or the home bar, and the end of the screen scrolls clear of the tabs', async () => {
     const context = await browser().newContext(phone({ bypassCSP: true }));
+    const page = await context.newPage();
     for (const [life, path] of [
       ['normal', '/buckets'],
       ['mismatch', '/buckets'],
       ['review-busy', '/review'],
       ['all-clear', '/review'],
     ] as const) {
-      const page = await openScenario(context, base(), life, path);
+      await showScenario(page, base(), life, path);
       await addStyle(page, `:root { --safe-top: ${IPHONE_INSETS.top}px !important; --safe-bottom: ${IPHONE_INSETS.bottom}px !important; }`);
       const first = await page.locator('main > :not(.sr-only):not(dialog)').first().boundingBox();
       expect(first!.y, `${path} ${life}`).toBeGreaterThanOrEqual(IPHONE_INSETS.top);
@@ -167,10 +169,9 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
       const bar = await page.locator('.tabbar').boundingBox();
       const last = await page.locator('main > :not(.sr-only):not(dialog)').last().boundingBox();
       expect(last!.y + last!.height, `${path} ${life}`).toBeLessThanOrEqual(bar!.y);
-      await page.close();
     }
     // A sheet leaves room for the home bar too: its last control ends above it.
-    const page = await openScenario(context, base(), 'review-busy', '/review');
+    await showScenario(page, base(), 'review-busy', '/review');
     await addStyle(page, `:root { --safe-top: ${IPHONE_INSETS.top}px !important; --safe-bottom: ${IPHONE_INSETS.bottom}px !important; }`);
     await page.getByTestId(`item-${idOf('review-busy', 'CORNER STORE')}`).getByTestId('more').click();
     const sheet = page.getByTestId('review-sheet');
@@ -185,22 +186,24 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
   });
 
   it('with reduced motion on, the sheet does not slide and the switch does not slide', async () => {
-    const moving = await openScenario(await browser().newContext(phone()), base(), 'review-busy', '/review');
-    await moving.getByTestId(`item-${idOf('review-busy', 'CORNER STORE')}`).getByTestId('more').click();
-    expect(await moving.getByTestId('review-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('sheet-in');
-    await moving.context().close();
+    const page = await openScenario(await browser().newContext(phone()), base(), 'review-busy', '/review');
+    await page.getByTestId(`item-${idOf('review-busy', 'CORNER STORE')}`).getByTestId('more').click();
+    expect(await page.getByTestId('review-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('sheet-in');
 
-    const still = await openScenario(await browser().newContext(phone({ reducedMotion: 'reduce' })), base(), 'review-busy', '/review');
-    await still.getByTestId(`item-${idOf('review-busy', 'CORNER STORE')}`).getByTestId('more').click();
-    expect(await still.getByTestId('review-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
-    const durations = await still.locator('.toggle__track, .toggle__thumb, .button, .bar__fill').evaluateAll((els) => els.map((e) => getComputedStyle(e).transitionDuration));
+    // The same page with motion reduced, the life started over (showLive in live.ts says why).
+    await emulatePhone(page, { reducedMotion: 'reduce' });
+    await showScenario(page, base(), 'review-busy', '/review');
+    await page.getByTestId(`item-${idOf('review-busy', 'CORNER STORE')}`).getByTestId('more').click();
+    expect(await page.getByTestId('review-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
+    const durations = await page.locator('.toggle__track, .toggle__thumb, .button, .bar__fill').evaluateAll((els) => els.map((e) => getComputedStyle(e).transitionDuration));
     expect(durations.length).toBeGreaterThan(3);
     expect(durations.every((d) => d.split(',').every((part) => Number.parseFloat(part) === 0))).toBe(true);
-    await still.context().close();
+    await page.context().close();
   });
 
   it("the text grows with the phone's text size, and Buckets and Review still fit", async () => {
     const context = await browser().newContext(phone({ bypassCSP: true }));
+    const page = await context.newPage();
     for (const [life, path] of [
       ['normal', '/buckets'],
       ['big', '/buckets'],
@@ -208,7 +211,7 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
       ['review-busy', '/review'],
       ['big', '/review'],
     ] as const) {
-      const page = await openScenario(context, base(), life, path);
+      await showScenario(page, base(), life, path);
       const before = await page.locator('.row__title, .hero__label, .state__title, .decision__title').first().evaluate((e) => Number.parseFloat(getComputedStyle(e).fontSize));
       // The largest accessibility text size on the iPhone is about twice the default.
       await addStyle(page, 'html { font-size: 36px !important; }');
@@ -231,10 +234,9 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
         }),
       );
       expect(squeezed, `${path} ${life}`).toEqual([]);
-      await page.close();
     }
     // And with a sheet open at the largest size.
-    const page = await openScenario(context, base(), 'review-busy', '/review');
+    await showScenario(page, base(), 'review-busy', '/review');
     await addStyle(page, 'html { font-size: 36px !important; }');
     await page.getByTestId(`item-${idOf('review-busy', 'CORNER STORE')}`).getByTestId('more').click();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(IPHONE.width);
@@ -245,6 +247,7 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
 
   it('money is written the same way everywhere on the new screens, with digits that line up', async () => {
     const context = await browser().newContext(phone());
+    const page = await context.newPage();
     for (const [life, path] of [
       ['normal', '/buckets'],
       ['overspent', '/buckets'],
@@ -254,44 +257,47 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
       ['review-busy', '/review'],
       ['big', '/review'],
     ] as const) {
-      const page = await openScenario(context, base(), life, path);
+      await showScenario(page, base(), life, path);
       const amounts = await page.locator('[data-money]').evaluateAll((els) => els.map((e) => ({ text: e.textContent ?? '', numbers: getComputedStyle(e).fontVariantNumeric })));
       expect(amounts.length, `${path} ${life}`).toBeGreaterThan(0);
       for (const a of amounts) {
         expect(a.text, `${path} ${life}`).toMatch(/^−?\$\d{1,3}(,\d{3})*\.\d{2}$/);
         expect(a.numbers, `${path} ${life}`).toContain('tabular-nums');
       }
-      await page.close();
     }
     await context.close();
   });
 
   it('light and dark follow the phone on the new screens', async () => {
+    const context = await browser().newContext(phone());
+    const page = await context.newPage();
     for (const [scheme, background] of [
       ['light', 'rgb(242, 242, 247)'],
       ['dark', 'rgb(0, 0, 0)'],
     ] as const) {
+      await emulatePhone(page, { colorScheme: scheme });
       for (const path of ['/buckets', '/review']) {
-        const page = await openScenario(await browser().newContext(phone({ colorScheme: scheme })), base(), 'normal', path);
+        await showScenario(page, base(), 'normal', path);
         expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), `${scheme} ${path}`).toBe(background);
-        await page.context().close();
       }
     }
+    await context.close();
   });
 
   it('low, empty, under target, over target, pending, and refused say so in words and an icon, never by color alone', async () => {
     const context = await browser().newContext(phone());
-    const buckets = await openScenario(context, base(), 'low', '/buckets');
+    const page = await openScenario(context, base(), 'low', '/buckets');
     for (const status of ['low'] as const) {
-      const label = buckets.locator(`[data-status="${status}"]`).first();
+      const label = page.locator(`[data-status="${status}"]`).first();
       expect((await label.innerText()).length).toBeGreaterThan(2);
       expect(await label.locator('[data-icon]').count()).toBe(1);
     }
-    const mom = await openScenario(context, base(), 'normal', '/buckets');
-    expect(await mom.locator('[data-status="under-target"] [data-icon]').count()).toBe(1);
-    const review = await openScenario(context, base(), 'review-busy', '/review');
-    expect(await review.locator('[data-status="pending"] [data-icon]').count()).toBeGreaterThan(0);
-    for (const label of await review.locator('[data-status]').all()) expect((await label.innerText()).trim().length).toBeGreaterThan(2);
+    // The same page, moved to each other life (showLive in live.ts says why).
+    await showScenario(page, base(), 'normal', '/buckets');
+    expect(await page.locator('[data-status="under-target"] [data-icon]').count()).toBe(1);
+    await showScenario(page, base(), 'review-busy', '/review');
+    expect(await page.locator('[data-status="pending"] [data-icon]').count()).toBeGreaterThan(0);
+    for (const label of await page.locator('[data-status]').all()) expect((await label.innerText()).trim().length).toBeGreaterThan(2);
     await context.close();
   });
 

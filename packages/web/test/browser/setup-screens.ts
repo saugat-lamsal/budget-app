@@ -5,7 +5,7 @@ import { DEMO_TODAY, demoScenario } from '../../../server/src/demo/scenarios.js'
 import type { SetupDesk } from '../../../server/src/setup-desk.js';
 import type { SetupResponse, SetupStep } from '../../../server/src/views/choice.js';
 import type { SetupReadyView } from '../../../server/src/views/setup.js';
-import { centsAt, openScenario, untilQuiet } from './harness.js';
+import { centsAt, openScenario, showScenario, untilQuiet } from './harness.js';
 
 // Helpers for the Setup day screens (rulebook section 14): opening a step,
 // a twin of a made-up life's setup desk to compare with, and doing what a
@@ -16,6 +16,12 @@ export type SetupStepName = 'bank' | 'rules' | 'transfers' | 'paycheck' | 'assig
 // Opens one step of a life not set up yet, the life started over.
 export async function openSetup(context: BrowserContext, base: string, life: string, step: SetupStepName): Promise<Page> {
   return openScenario(context, base, life, `/setup/${step}`);
+}
+
+// The same in a page already open, the life started over (showLive in live.ts
+// says why a test moves one page instead of opening another).
+export async function showSetup(page: Page, base: string, life: string, step: SetupStepName): Promise<void> {
+  await showScenario(page, base, life, `/setup/${step}`);
 }
 
 // A twin of the life's setup desk, as the demo makes it: the same answers

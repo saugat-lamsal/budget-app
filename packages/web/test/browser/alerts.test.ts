@@ -7,7 +7,7 @@ import { lifeInAFile, noonInNewYork, setUpThroughTheDesk, type Life } from '../.
 import { loginCookieForTests } from '../../../server/test/login-for-tests.js';
 import { alertWhenText, alertsRowText } from '../../src/screens/alerts-text.js';
 import { addStyle, axeViolations, tappable } from './design-helpers.js';
-import { ENGINES, IPHONE, IPHONE_INSETS, WEB_ROOT, close, listen, phone, textAt, untilAnswered, untilQuiet, useEngine, waitOrReport } from './harness.js';
+import { ENGINES, IPHONE, IPHONE_INSETS, WEB_ROOT, close, emulatePhone, listen, phone, textAt, untilAnswered, untilQuiet, useEngine, waitOrReport } from './harness.js';
 
 // Phase 5: the list of alerts the app worked out and sent, on the real
 // server, in a browser like a person would use it. The alerts are worked out
@@ -134,22 +134,37 @@ describe.each(ENGINES)('the list of alerts sent, on the real server, in %s', (_n
     return r;
   };
 
-  // Logged in the tests' way (login-for-tests.ts). A cookie is kept by host,
-  // not by port, so each test server has its own context.
+  // Logged in the tests' way (login-for-tests.ts) to one test server. A cookie
+  // is kept by host, not by port, so a context logged in to another server
+  // has its cookies replaced first.
+  async function logInTo(context: BrowserContext, which: Which): Promise<void> {
+    const r = real(which);
+    await context.clearCookies();
+    await context.addCookies([loginCookieForTests(r.life.h.db, r.life.now, r.base)]);
+  }
+
   async function contextFor(options: Parameters<typeof phone>[0], which: Which = 'alerts'): Promise<BrowserContext> {
     const context = await browser().newContext(phone(options));
-    const r = real(which);
-    await context.addCookies([loginCookieForTests(r.life.h.db, r.life.now, r.base)]);
+    await logInTo(context, which);
     return context;
   }
 
+  // One page for every state, moved from state to state (showLive in live.ts
+  // says why), each loaded afresh: logged in to that state's server, with its
+  // colour scheme and motion, and nothing held or failed from the state before.
   async function eachState(options: Parameters<typeof phone>[0], check: (page: Page, where: string) => Promise<void>): Promise<void> {
-    for (const [name, which, open] of STATES) {
-      const context = await contextFor(STILL.has(name) ? { ...options, reducedMotion: 'reduce' } : options, which);
+    const context = await browser().newContext(phone(options));
+    try {
       const page = await context.newPage();
-      const letGo = await open(page, real(which).base);
-      await check(page, name);
-      if (letGo !== undefined) await letGo();
+      for (const [name, which, open] of STATES) {
+        await logInTo(context, which);
+        await emulatePhone(page, STILL.has(name) ? { ...options, reducedMotion: 'reduce' } : options);
+        const letGo = await open(page, real(which).base);
+        await check(page, name);
+        if (letGo !== undefined) await letGo();
+        await page.unrouteAll({ behavior: 'wait' });
+      }
+    } finally {
       await context.close();
     }
   }
@@ -214,28 +229,27 @@ describe.each(ENGINES)('the list of alerts sent, on the real server, in %s', (_n
     await letGo();
     await waitOrReport(page, '[data-testid="alerts-list"]');
     expect(await page.locator('main').getAttribute('aria-busy')).toBe('false');
-    await page.close();
+    await page.unrouteAll({ behavior: 'wait' });
 
+    // The same page, moved to each other server (showLive in live.ts says why).
     for (const [which, testId, words] of [
       ['none', 'alerts-empty', 'No alerts yet'],
       ['not-set-up', 'alerts-not-set-up', 'Alerts start once setup day is done.'],
     ] as const) {
-      const other = await contextFor({}, which);
-      const none = await other.newPage();
-      await openAlerts(none, real(which).base, `[data-testid="${testId}"]`);
-      expect(await textAt(none, testId)).toContain(words);
-      await other.close();
+      await logInTo(context, which);
+      await openAlerts(page, real(which).base, `[data-testid="${testId}"]`);
+      expect(await textAt(page, testId)).toContain(words);
     }
 
-    const broken = await context.newPage();
+    await logInTo(context, 'alerts');
     let fail = true;
-    await broken.route('**/api/alerts', (route) => (fail ? route.fulfill({ status: 500, body: 'no' }) : route.continue()));
-    await openAlerts(broken, real('alerts').base, '[data-testid="alerts-error"]');
-    expect(await textAt(broken, 'alerts-error')).toContain("Couldn't load the alerts");
+    await page.route('**/api/alerts', (route) => (fail ? route.fulfill({ status: 500, body: 'no' }) : route.continue()));
+    await openAlerts(page, real('alerts').base, '[data-testid="alerts-error"]');
+    expect(await textAt(page, 'alerts-error')).toContain("Couldn't load the alerts");
     fail = false;
-    await broken.getByTestId('retry').click();
-    await waitOrReport(broken, '[data-testid="alerts-list"]');
-    await untilQuiet(broken);
+    await page.getByTestId('retry').click();
+    await waitOrReport(page, '[data-testid="alerts-list"]');
+    await untilQuiet(page);
     await context.close();
   });
 
@@ -295,8 +309,8 @@ describe.each(ENGINES)('the list of alerts sent, on the real server, in %s', (_n
   });
 
   it('with reduced motion on, the loading list does not shimmer', async () => {
-    const still = await contextFor({ reducedMotion: 'reduce' });
-    const page = await still.newPage();
+    const context = await contextFor({ reducedMotion: 'reduce' });
+    const page = await context.newPage();
     const letGo = await holdAlerts(page);
     await page.goto(`${real('alerts').base}/alerts`);
     await waitOrReport(page, '[data-testid="alerts-loading"]');
@@ -304,15 +318,15 @@ describe.each(ENGINES)('the list of alerts sent, on the real server, in %s', (_n
     expect(shimmer.length).toBeGreaterThan(0);
     expect(shimmer.every((name) => name === 'none')).toBe(true);
     await letGo();
-    await still.close();
-    const moving = await contextFor({});
-    const shimmering = await moving.newPage();
-    const letGoToo = await holdAlerts(shimmering);
-    await shimmering.goto(`${real('alerts').base}/alerts`);
-    await waitOrReport(shimmering, '[data-testid="alerts-loading"]');
-    const names = await shimmering.locator('.skeleton').evaluateAll((els) => els.map((e) => getComputedStyle(e).animationName));
+    await page.unrouteAll({ behavior: 'wait' });
+    // The same page with motion on, loaded afresh (showLive in live.ts says why).
+    await emulatePhone(page, {});
+    const letGoToo = await holdAlerts(page);
+    await page.goto(`${real('alerts').base}/alerts`);
+    await waitOrReport(page, '[data-testid="alerts-loading"]');
+    const names = await page.locator('.skeleton').evaluateAll((els) => els.map((e) => getComputedStyle(e).animationName));
     expect(names.some((name) => name !== 'none')).toBe(true);
     await letGoToo();
-    await moving.close();
+    await context.close();
   });
 });

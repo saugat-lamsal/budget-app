@@ -489,9 +489,8 @@ describe.each(ENGINES)('Review in %s', (_name, engine) => {
     await item(page, id).getByTestId('more').click();
     const sheet = page.getByTestId('review-sheet');
     await sheet.waitFor();
-    // Meanwhile, the phone's other window sorts it.
-    const other = await context.newPage();
-    const answer = await other.request.post(`${base()}/api/choice`, { headers: { 'Content-Type': 'application/json' }, data: { id: 'another-window-1', item: id, choice: { to: 'needs' } } });
+    // Meanwhile, the phone's other window sorts it (the same browser's request, no page of its own: showLive in live.ts says why).
+    const answer = await context.request.post(`${base()}/api/choice`, { headers: { 'Content-Type': 'application/json' }, data: { id: 'another-window-1', item: id, choice: { to: 'needs' } } });
     expect(answer.status()).toBe(200);
     const twin = life('review-busy');
     twin.book.sort(id, { to: 'needs' }, twin.today);

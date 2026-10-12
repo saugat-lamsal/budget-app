@@ -2,7 +2,7 @@ import type { Book, IsoDate } from '@budget-app/money';
 import { describe, expect, it } from 'vitest';
 import { appSide, openTestBook } from '../../../money/test/helpers.js';
 import { axeViolations, tappable } from './design-helpers.js';
-import { ENGINES, close, openScenario, phone, textAt, untilQuiet, useEngine } from './harness.js';
+import { ENGINES, close, emulatePhone, phone, showScenario, textAt, untilQuiet, useEngine } from './harness.js';
 import { openLive, startLive } from './live.js';
 import { bucketsOf, readBuckets } from './screens.js';
 
@@ -29,15 +29,18 @@ describe.each(ENGINES)('"It was not a payment to the old card" in %s', (_name, e
 
   it('A21 design rules: readable in light and dark, and every tap target at least 44 points, with the choice open', async () => {
     const problems: string[] = [];
+    // One page, the life started over in each scheme (showLive in live.ts says why).
+    const context = await browser().newContext(phone({ bypassCSP: true }));
+    const page = await context.newPage();
     for (const scheme of ['light', 'dark'] as const) {
-      const context = await browser().newContext(phone({ colorScheme: scheme, bypassCSP: true }));
-      const page = await openScenario(context, base(), 'review-marked-savings', '/review');
+      await emulatePhone(page, { colorScheme: scheme });
+      await showScenario(page, base(), 'review-marked-savings', '/review');
       await page.getByTestId('item-act-water').getByTestId('more').click();
       await page.getByTestId('choice-unmark').waitFor();
       problems.push(...(await axeViolations(page)).map((p) => `${scheme}: ${p}`));
       for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) problems.push(`${scheme}: ${t.what} is ${t.width}x${t.height}`);
-      await context.close();
     }
+    await context.close();
     expect(problems).toEqual([]);
   });
 

@@ -1,7 +1,7 @@
 import type { BankBalances, Book, IsoDate } from '@budget-app/money';
 import { describe, expect, it } from 'vitest';
 import { demoScenario } from '../../../server/src/demo/scenarios.js';
-import { ENGINES, centsAt, openScenario, phone, textAt, useEngine } from './harness.js';
+import { ENGINES, centsAt, openScenario, phone, showScenario, textAt, useEngine } from './harness.js';
 
 // Home, used in a browser like a person would, with every number it shows
 // compared to the money math for the same made-up life. The expected
@@ -34,9 +34,10 @@ describe.each(ENGINES)('Home in %s', (_name, engine) => {
     expect(await textAt(page, 'checked-at')).toBe('Checked at 9:41 AM');
     expect(await page.getByTestId('checked-at').locator('[data-icon="clock"]').count()).toBe(1);
     // When the bank cannot be read it stays, at the last read, next to the last checked safe to spend.
-    const stale = await openScenario(page.context(), base(), 'bank-not-read');
-    expect(await textAt(stale, 'checked-at')).toBe('Checked at 7:15 AM');
-    expect(await textAt(stale, 'as-of')).toBe("As of Wed, Oct 7, 7:15 AM. Can't reach the bank to check it now.");
+    // (The same page, moved to that life: showLive in live.ts says why.)
+    await showScenario(page, base(), 'bank-not-read');
+    expect(await textAt(page, 'checked-at')).toBe('Checked at 7:15 AM');
+    expect(await textAt(page, 'as-of')).toBe("As of Wed, Oct 7, 7:15 AM. Can't reach the bank to check it now.");
     await page.context().close();
   });
 
@@ -51,12 +52,13 @@ describe.each(ENGINES)('Home in %s', (_name, engine) => {
 
   it('11.2 on payday it says so, and a late paycheck says late (B35)', async () => {
     const context = await browser().newContext(phone());
-    const payday = await openScenario(context, base(), 'payday');
+    const page = await openScenario(context, base(), 'payday');
     expect(life('payday').book.safeToSpend(life('payday').today).daysToPayday).toBe(0);
-    expect(await textAt(payday, 'payday')).toBe('Payday is today · Fri, Oct 16');
-    const late = await openScenario(context, base(), 'late');
+    expect(await textAt(page, 'payday')).toBe('Payday is today · Fri, Oct 16');
+    // The same page, moved to the other life (showLive in live.ts says why).
+    await showScenario(page, base(), 'late');
     expect(life('late').book.safeToSpend(life('late').today).daysToPayday).toBe(-2);
-    expect(await textAt(late, 'payday')).toBe('Paycheck is 2 days late · Fri, Oct 16');
+    expect(await textAt(page, 'payday')).toBe('Paycheck is 2 days late · Fri, Oct 16');
     await context.close();
   });
 

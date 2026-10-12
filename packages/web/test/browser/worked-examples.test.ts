@@ -1,7 +1,7 @@
 import type { Page } from 'playwright';
 import { describe, expect, it } from 'vitest';
 import { BUCKETS_EXAMPLES, EXAMPLE_LIVES, HOME_EXAMPLES, checksOf } from '../worked-examples.js';
-import { ENGINES, centsAt, openScenario, phone, readCents, textAt, useEngine } from './harness.js';
+import { ENGINES, centsAt, openScenario, phone, readCents, showScenario, textAt, useEngine } from './harness.js';
 
 // Every example in packages/web/worked-examples.txt, against what the screen
 // shows a person for the same made-up life.
@@ -97,12 +97,13 @@ describe.each(ENGINES)('worked examples on the screen in %s', (_name, engine) =>
 
   it('example 7 says Under target, and example 8 says In the target and Holding money that is not his', async () => {
     const context = await browser().newContext(phone());
-    const seven = await openScenario(context, base(), EXAMPLE_LIVES[7] ?? '', '/buckets');
-    expect(await seven.getByTestId('mom').locator('[data-status]').innerText()).toBe('Under target');
-    expect(await textAt(seven, 'row-held')).toContain('Settled');
-    const eight = await openScenario(context, base(), EXAMPLE_LIVES[8] ?? '', '/buckets');
-    expect(await eight.getByTestId('mom').locator('[data-status]').innerText()).toBe('In the target');
-    expect(await textAt(eight, 'row-held')).toContain("Holding money that isn't yours");
+    const page = await openScenario(context, base(), EXAMPLE_LIVES[7] ?? '', '/buckets');
+    expect(await page.getByTestId('mom').locator('[data-status]').innerText()).toBe('Under target');
+    expect(await textAt(page, 'row-held')).toContain('Settled');
+    // The same page, moved to example 8's life (showLive in live.ts says why).
+    await showScenario(page, base(), EXAMPLE_LIVES[8] ?? '', '/buckets');
+    expect(await page.getByTestId('mom').locator('[data-status]').innerText()).toBe('In the target');
+    expect(await textAt(page, 'row-held')).toContain("Holding money that isn't yours");
     await context.close();
   });
 
