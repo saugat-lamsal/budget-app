@@ -94,6 +94,9 @@ export interface AlertWorld {
   readonly statements: readonly CardStatement[];
   // The last good read of the bank, as an instant; null before the first (10.7).
   readonly lastRead: string | null;
+  // 10.13: when the bank's permission to read his accounts runs out, as an
+  // instant, when the bank gave it.
+  readonly permissionEnds?: string | null;
 }
 
 const HOUR = 3_600_000;
@@ -246,13 +249,29 @@ function eveningAlerts(world: AlertWorld, ledger: AlertLedger, date: IsoDate): A
   if (again(mismatch) && check !== null && !check.ok) facts.push({ kind: 'totals-mismatch', time: mismatch.times, difference: check.difference, day: date, again: true });
   const login = ledger.lasting['bank-login'];
   if (again(login) && world.needsLogin) facts.push({ kind: 'bank-login', time: login.times, day: date, again: true });
+  // 10.13: from the setting's days before the day it runs out, until that day.
+  const ends = permissionEndsOn(world);
+  if (ends !== null && date >= addDays(ends, -settings.bankPermissionWarnDays) && date < ends) facts.push({ kind: 'bank-permission', ends });
   return facts;
+}
+
+// 10.13: the day the bank's permission runs out, on his clock; null when the bank gave no date.
+function permissionEndsOn(world: Pick<AlertWorld, 'zone' | 'permissionEnds'>): IsoDate | null {
+  const at = world.permissionEnds ?? null;
+  return at === null ? null : todayIn(world.zone, new Date(at));
+}
+
+// 10.13: still the date the bank gives, and not run out yet.
+function permissionStillTrue(world: AlertWorld, f: Extract<AlertFacts, { kind: 'bank-permission' }>): boolean {
+  const at = world.permissionEnds ?? null;
+  return at !== null && permissionEndsOn(world) === f.ends && world.now.getTime() < Date.parse(at);
 }
 
 // 10.9: an evening's alert is still true now. A reminder: the card is still
 // due (9.6: not enough paid, the due date not passed); the overdue alert:
 // still overdue. The rest are worked out with the books now already.
 function stillTrue(world: AlertWorld, today: IsoDate, f: AlertFacts): boolean {
+  if (f.kind === 'bank-permission') return permissionStillTrue(world, f);
   if (f.kind !== 'card-reminder' && f.kind !== 'card-overdue') return true;
   const statement = world.statements.find((s) => s.card === f.card);
   if (statement === undefined) return false;
@@ -287,6 +306,8 @@ export function stillTrueNow(world: AlertWorld, ledger: AlertLedger, f: AlertFac
     }
     case 'bank-took-back':
       return true;
+    case 'bank-permission':
+      return permissionStillTrue(world, f);
   }
 }
 

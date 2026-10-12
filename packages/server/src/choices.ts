@@ -296,6 +296,7 @@ const SETTING_READERS: { readonly [K in keyof Settings]: (value: unknown) => Set
   },
   bankNotReadAlertHours: whole,
   amountsOnLockScreen: (v) => (typeof v === 'boolean' ? v : undefined),
+  bankPermissionWarnDays: whole,
 };
 
 // A change to one or more settings, exactly as the money math keeps them; otherwise null.

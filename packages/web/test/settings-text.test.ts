@@ -1,6 +1,6 @@
 import type { RecheckedItem } from '@budget-app/money';
 import { describe, expect, it } from 'vitest';
-import { SETTING_NAMES, ZONE_CHOICES, daysText, leftoverText, lockAmountsText, notReadText, quietHoursText, recheckedText, reminderText, ruleDoneText, ruleText, settingValueText, settingsDoneText, splitText, textRuleText, timeText, zoneText } from '../src/screens/settings-text.js';
+import { SETTING_NAMES, ZONE_CHOICES, daysText, leftoverText, lockAmountsText, notReadText, permissionWarnText, quietHoursText, recheckedText, reminderText, ruleDoneText, ruleText, settingValueText, settingsDoneText, splitText, textRuleText, timeText, zoneText } from '../src/screens/settings-text.js';
 
 // The words on the Settings screen. Every value comes from the money math;
 // these only write it, and must write it right.
@@ -51,6 +51,14 @@ describe('section 2 how each setting is written', () => {
     expect(ZONE_CHOICES[0]).toBe('America/New_York');
     expect(zoneText('Asia/Kathmandu')).toBe('Asia/Kathmandu');
     expect(settingValueText('homeTimeZone', 'America/Chicago')).toBe('Central time (Chicago)');
+  });
+
+  it('section 2 10.13 the warning before the bank\'s permission runs out, in words', () => {
+    expect(permissionWarnText(7)).toBe('7 days before');
+    expect(permissionWarnText(1)).toBe('1 day before');
+    expect(permissionWarnText(60)).toBe('60 days before');
+    expect(settingValueText('bankPermissionWarnDays', 14)).toBe('14 days before');
+    expect(SETTING_NAMES.bankPermissionWarnDays).toBe('Bank permission ending');
   });
 
   it('section 2 10.7 10.8 10.10 quiet hours, the bank-not-read alert and amounts on the lock screen, in words', () => {

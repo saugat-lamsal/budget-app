@@ -411,6 +411,7 @@ export class Keeper {
       box: bank.box,
       log: bank.log,
       today: () => this.today(),
+      zone: () => this.timeZone(),
       tracking: () => this.book() !== null,
       bookLines: () => this.book()?.changeLog().length ?? 0,
       sync: () => this.sync(bank),
@@ -514,7 +515,8 @@ export class Keeper {
   #alertWorld(): AlertWorld | null {
     const book = this.book();
     if (book === null) return null;
-    return { book, now: this.#now(), zone: this.timeZone(), bank: this.#bank(), needsLogin: readConnection(this.#db)?.needsLogin ?? false, statements: this.#statements(), lastRead: this.lastRead() };
+    const connection = readConnection(this.#db);
+    return { book, now: this.#now(), zone: this.timeZone(), bank: this.#bank(), needsLogin: connection?.needsLogin ?? false, statements: this.#statements(), lastRead: this.lastRead(), permissionEnds: connection?.permissionEnds ?? null };
   }
 
   // Works out every alert due now (alerts/plan.ts) and keeps it: each

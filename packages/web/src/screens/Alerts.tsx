@@ -22,6 +22,7 @@ const ICONS: Readonly<Record<AlertLine['kind'], IconName>> = {
   'bank-login': 'bank',
   'bank-took-back': 'undo',
   'bank-not-read': 'clock',
+  'bank-permission': 'bank',
 };
 
 export function AlertsScreen({ load, onRetry, back }: { readonly load: Load<AlertsView>; readonly onRetry: Reload; readonly back: Back }) {

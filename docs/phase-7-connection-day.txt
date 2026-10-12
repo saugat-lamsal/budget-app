@@ -1,0 +1,96 @@
+PHASE 7: CONNECTION DAY (plain steps)
+
+Nothing here happens until you say so. This is the first time real money
+comes near the app: one of your 10 Plaid connections gets used, and the
+hosted books start fresh for your real accounts.
+
+Built before it (branch before-phase-7): the backups' heartbeat (A43), the
+Bank screen (rules 1.1 to 1.3), the permission end date (10.13), and the
+production switch (off until this day). Tried first on this PC against
+Plaid's test bank through the real Plaid login (the rehearsal).
+
+
+ONCE, BEFORE THE DAY (yours, about 15 minutes; creates nothing)
+
+1. Plaid dashboard (dashboard.plaid.com):
+   a. The home page says Trial plan, 0 of 10 Items. If it says "Limited
+      Production", or asks you to apply for Production, stop and tell me.
+   b. Do not submit a Production application. It is one-way and ends the
+      free Trial.
+   c. OAuth institutions page: Bank of America is available.
+   d. Never use Plaid's own Quickstart or test tools with Production keys:
+      every connection made there counts against the 10, even if removed.
+2. Your Production secret is under Developers > Keys. Leave it there until
+   step 3 of the day. Never paste it in a chat.
+
+
+ON THE DAY (together, in this order; anything odd, we stop)
+
+1. A new bank key for the new books, on this PC:
+     node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
+   Keep it where you keep a bank password. (The old one only ever sealed
+   the test bank's key.)
+
+2. The switch, a small commit of mine, at your word: fly.toml says
+   PLAID_ENV "production", mounts the new volume (budget_real), and the
+   backups go to a new folder in the same bucket. test/sandbox-only.test.ts
+   changes with it: fly.toml alone may say production. CI runs on it.
+
+3. The secrets: a file .env.fly with two lines,
+     PLAID_SECRET=      (the Production secret)
+     BANK_TOKEN_KEY=    (from step 1)
+   then
+     Get-Content .env.fly | fly secrets import --stage --app budget-app-x7q2
+   (--stage: nothing restarts yet) and delete .env.fly. PLAID_CLIENT_ID,
+   the push keys and the R2 keys stay as they are.
+
+4. The new volume, and the machine moved onto it:
+     fly volumes create budget_real --app budget-app-x7q2 --region ewr --size 1 --yes
+     fly machine list --app budget-app-x7q2          (note the one machine's id)
+     fly machine destroy <id> --app budget-app-x7q2 --force
+     fly deploy --ha=false --remote-only
+   The old volume (budget_data, the test bank's books) and the old backup
+   folder are not touched: they are the way back. Delete them yourself
+   later (about $0.15 a month until then).
+   The log should say: "starting with empty books", "Budget app: the real
+   bank, through Plaid, hosted", and "No bank is connected yet".
+
+5. Checks: fly status (one machine), /health says ok, /health/backups says
+   ok. In UptimeRobot add a second monitor: HTTP(s),
+   https://budget-app-x7q2.fly.dev/health/backups, every 5 minutes, alert
+   your email and the app. Try it as in Phase 6 (a wrong address, then put
+   it back).
+
+6. Log in on the PC (Chrome): open the app, "Use a one-time code",
+     fly ssh console -C "node /app/serve/login-code.mjs"
+   and make a passkey (Windows Hello).
+
+7. Connect, on the PC: Settings > Bank card > Bank connection > Connect the
+   bank. It asks first (1 of the 10). Yes. Bank of America's own login opens
+   (through Plaid). On Bank of America's own screen, tick all four accounts.
+   Back in the app: pick which is checking, savings, the everyday card and
+   the old card; Save; Yes. If Plaid is still sending the history, "Look
+   again" in a minute or two.
+   If one account is missing: Log in to the bank again (no new connection)
+   and tick it.
+
+8. Setup day, with your real balances (Phase 7, step 2 of the roadmap).
+
+9. On the iPhone: open the app from the home screen, log in with a new
+   one-time code, make a passkey, then delete the old passkey for
+   budget-app-x7q2.fly.dev in the Passwords app (the new books do not know
+   it). Settings > Notifications > Turn on.
+
+10. The restore check on the machine:
+      fly ssh console -C "node /app/serve/restore-check.mjs"
+    The last line must be: The backup works.
+
+
+THE WAY BACK (before setup day only)
+
+fly.toml back to sandbox, the old volume and backup folder, the sandbox
+secret, and a deploy: the test bank's books come back as they were. They
+can no longer read the test bank (its key was sealed with the old bank key,
+replaced in step 3), which is fine for made-up data. The Plaid connection
+made in step 7 stays used (1 of the 10): connections are never removed.
+(Each fly command's flags are checked against flyctl's own help on the day.)

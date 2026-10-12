@@ -53,6 +53,7 @@ export const SETTING_NAMES: Readonly<Record<keyof Settings, string>> = {
   quietHours: 'Quiet hours',
   bankNotReadAlertHours: 'Bank not read',
   amountsOnLockScreen: 'Amounts on the lock screen',
+  bankPermissionWarnDays: 'Bank permission ending',
 };
 
 // Section 2: the home time zones offered on Settings, his first, and how each
@@ -107,6 +108,11 @@ export function quietHoursText(quiet: Settings['quietHours']): string {
 }
 
 // 10.7: "After 24 hours".
+// 10.13: how long before the bank's permission runs out he is told.
+export function permissionWarnText(days: number): string {
+  return `${days} ${days === 1 ? 'day' : 'days'} before`;
+}
+
 export function notReadText(hours: number): string {
   return `After ${hours} ${hours === 1 ? 'hour' : 'hours'}`;
 }
@@ -167,6 +173,8 @@ export function settingValueText<K extends keyof Settings>(key: K, value: Settin
       return notReadText(v as number);
     case 'amountsOnLockScreen':
       return lockAmountsText(v as boolean);
+    case 'bankPermissionWarnDays':
+      return permissionWarnText(v as number);
     default:
       return String(v);
   }

@@ -202,6 +202,19 @@ describe('the database', () => {
     db.close();
   });
 
+  it('step 9 (10.13, A45) keeps the connection as it was, with no permission date until a sync reads one', () => {
+    const path = tempFile();
+    const old = openDatabase(path, { upTo: 8 });
+    old.prepare("INSERT INTO connection (id, item_id, institution_id, sealed_key, connected_on) VALUES (1, 'item-made-up', NULL, 'v1.sealed', '2026-10-01')").run();
+    old.close();
+    const db = openDatabase(path);
+    expect(db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION);
+    expect(db.prepare('SELECT item_id, sealed_key, permission_ends FROM connection').all()).toEqual([{ item_id: 'item-made-up', sealed_key: 'v1.sealed', permission_ends: null }]);
+    db.prepare("UPDATE connection SET permission_ends = '2027-10-12T15:00:00Z'").run();
+    expect(db.prepare('SELECT permission_ends FROM connection').get()).toEqual({ permission_ends: '2027-10-12T15:00:00Z' });
+    db.close();
+  });
+
   it('the history takes only what the bank sent, setup day, and his answers, each with its day; a decision number is used once and names its event', () => {
     const db = openDatabase(':memory:');
     const add = db.prepare('INSERT INTO book_events (sync, kind, date, payload, totals) VALUES (NULL, ?, ?, ?, ?)');

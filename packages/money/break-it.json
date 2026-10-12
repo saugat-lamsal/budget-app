@@ -3673,5 +3673,19 @@
     "find": "    quietHours: { ...s.quietHours },\n",
     "replace": "",
     "why": "[a35] section 2 quiet hours can be changed through the settings kept"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/settings.ts",
+    "find": "  check(isWholeInRange(s.bankPermissionWarnDays, 1, 60), ",
+    "replace": "  check(isWholeInRange(s.bankPermissionWarnDays, 0, 60), ",
+    "why": "[a45] 10.13 a warning 0 days before taken"
+  },
+  {
+    "section": "10",
+    "file": "packages/money/src/settings.ts",
+    "find": "  bankPermissionWarnDays: 7,\n",
+    "replace": "  bankPermissionWarnDays: 5,\n",
+    "why": "[a45] 10.13 section 2 the warning starts at 5 days"
   }
 ]

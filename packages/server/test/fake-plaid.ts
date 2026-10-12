@@ -55,6 +55,8 @@ export class FakePlaid {
   readonly calls: { endpoint: string; body: Record<string, unknown> }[] = [];
   historyComplete = true;
   needsLogin = false;
+  // 10.13: when the bank's permission runs out, as /item/get gives it; null for a bank that sets none.
+  consentExpiration: string | null = null;
   // Runs before each call is answered; can change the bank or make the call fail.
   beforeCall: ((endpoint: string, body: Record<string, unknown>, callNumber: number) => FakeError | 'network' | undefined) | undefined;
   // Cursors handed out with has_more, and how many changes there were then.
@@ -207,7 +209,7 @@ export class FakePlaid {
     }
     if (body['access_token'] !== this.accessToken) return error(400, 'INVALID_INPUT', 'INVALID_ACCESS_TOKEN');
     if (this.needsLogin) return error(400, 'ITEM_ERROR', 'ITEM_LOGIN_REQUIRED');
-    const item = { item_id: this.itemId, institution_id: 'ins_109508', error: null, products: ['transactions', 'liabilities'] };
+    const item = { item_id: this.itemId, institution_id: 'ins_109508', error: null, products: ['transactions', 'liabilities'], consent_expiration_time: this.consentExpiration };
     switch (endpoint) {
       case '/transactions/sync':
         return this.#sync(body, requestId, error);

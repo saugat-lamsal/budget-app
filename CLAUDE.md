@@ -1594,16 +1594,46 @@ long). It replaces running everything before every commit:
     them later). A new BANK_TOKEN_KEY; the push keys stay. He then redoes the
     one-time code, a passkey (and deletes the old one on the iPhone),
     notifications, and setup day.
-  - The code to build on this branch, test bank only: A43; rule 10.13; and,
-    after his OK to A46, the Connect screen (Plaid Link), logging in again
-    (update mode, the same connection), which account is which, the
-    production switch (tests can never reach Plaid's production; only the
-    hosted server with PLAID_ENV set to production; no test bank connected by
-    itself there), and the fresh start's new volume and backup folder.
-    Tried on this PC with Plaid's test bank through the real Link first.
-  - The full break-it run: on main as it was (309bb4c), one night on his PC;
-    the new code gets break-it for what it changes. The five
-    "[hosting-linux]" breaks only judge on Linux; they were caught on CI
-    run 38291820227 (Oct 12) on the same server code.
+  - Built on this branch (Oct 12, his "do all of that", which OK'd A46's
+    wording), test bank only:
+    - A43 option 5: litestream.yml heartbeat-url (heartbeatUrl, always
+      127.0.0.1 and the server's port) every minute; backup/backup-watch.ts;
+      /health/backups (not ok 10 minutes after the last beat) and the beat
+      address (this machine only, never through Fly's proxy). Hosted only.
+      After the copies stop Litestream can beat once more up to ~75 s later
+      (B215). Breaks "[a43]".
+    - The production switch (plaid/sandbox-lock.ts): two banks; the real one
+      only with PLAID_ENV production, hosted (APP_ORIGIN https), never under
+      VITEST, BREAK_IT_RUN or PLAID_LOCK=sandbox; the client asks the lock
+      again before every request, sends a key only to its own bank, and
+      refuses the test bank's own calls on the real bank. The real address is
+      named in the lock alone (test/sandbox-only.test.ts). fly.toml still
+      says sandbox. On the real bank the test bank is never connected by
+      itself (serve/options.ts testBankOnStart). Breaks "[switch]".
+    - 1.1 to 1.3 (bank-desk.ts, Keeper.bankDesk; views/bank.ts; /api/bank and
+      its four POSTs; screens/Bank.tsx at /bank): connect asks first and
+      happens once; Link's answer kept at once; the four picks; logging in
+      again on the same connection; nothing read until all four are picked
+      (Keeper.sync refuses, syncDueIn null). The /bank page alone lets Plaid
+      Link in (bankPageHeaders: its script, a fresh nonce, its frame, the
+      bank in use, COOP same-origin-allow-popups), and is always opened as a
+      page of its own; the page gets Link's address and the nonce in meta
+      tags, so the phone's code never names Plaid. Breaks "[bank-connect]".
+    - 10.13 (A45): Settings.bankPermissionWarnDays (7, 1 to 60, on Settings
+      as "Bank permission ending"); each sync reads /item/get
+      consent_expiration_time (never failing the sync for it; database step
+      9, connection.permission_ends); the Bank screen shows it as his date;
+      the alert 'bank-permission' at the review time that many days before,
+      once per end date, a tap opens /bank. Breaks "[a45]".
+    - QUESTIONS.md B215 to B224 (the readings), docs/phase-7-connection-day.txt
+      (the day's steps, and the way back).
+  - Still to do before connection day: the rehearsal on this PC (the real
+    Plaid Link against the test bank), his review, CI, and the full
+    break-it run (now on this branch's tip, so the new code is in it). The
+    fresh start's new volume and backup folder are a connection-day commit
+    (docs/phase-7-connection-day.txt step 2), so main stays deployable to
+    the test bank meanwhile. The five "[hosting-linux]" breaks only judge
+    on Linux; they were caught on CI run 38291820227 (Oct 12) on the same
+    code, and one more ("[hosting-linux] A43") joins them.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
   rule 9.5, depends on it), and his check of part B (the list at its top).

@@ -2217,5 +2217,12 @@
     "find": "        else if (outcome.kind === 'closed') onSaid({ tone: 'warning', text: outcome.failed ? W.closedFailed : W.closed });",
     "replace": "        else if (outcome.kind === 'closed') onSaid({ tone: 'ok', text: 'The bank is connected. Now say which account is which.' });",
     "why": "[bank-connect] 1.1 a closed login said to have connected"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "  return `${days} ${days === 1 ? 'day' : 'days'} before`;",
+    "replace": "  return `${days} days before`;",
+    "why": "[a45] 10.13 the warning in words: 1 days"
   }
 ]

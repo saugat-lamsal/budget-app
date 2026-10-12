@@ -16,11 +16,13 @@ export interface Connection {
   readonly historyComplete: boolean;
   readonly needsLogin: boolean;
   readonly connectedOn: IsoDate;
+  // 10.13: when the bank's permission runs out, as an instant; null when it gave none.
+  readonly permissionEnds: string | null;
 }
 
 export function readConnection(db: Db): Connection | null {
   const row = statement(db, 'SELECT * FROM connection WHERE id = 1').get() as
-    | { item_id: string; institution_id: string | null; sealed_key: string; cursor: string | null; history_complete: number; needs_login: number; connected_on: string }
+    | { item_id: string; institution_id: string | null; sealed_key: string; cursor: string | null; history_complete: number; needs_login: number; connected_on: string; permission_ends: string | null }
     | undefined;
   if (row === undefined) return null;
   return {
@@ -31,7 +33,13 @@ export function readConnection(db: Db): Connection | null {
     historyComplete: row.history_complete === 1,
     needsLogin: row.needs_login === 1,
     connectedOn: row.connected_on,
+    permissionEnds: row.permission_ends,
   };
+}
+
+// 10.13: what the bank said last about when its permission runs out.
+export function savePermissionEnds(db: Db, at: string | null): void {
+  db.prepare('UPDATE connection SET permission_ends = ? WHERE id = 1').run(at);
 }
 
 export function saveNewConnection(db: Db, c: { itemId: string; institutionId: string | null; sealedKey: string; connectedOn: IsoDate }): void {

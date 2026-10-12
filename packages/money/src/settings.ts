@@ -47,6 +47,9 @@ export interface Settings {
   // screen. The money math only keeps these three, for the server that sends
   // the alerts.
   readonly amountsOnLockScreen: boolean;
+  // Rule 10.13: told this many days before the bank stops letting the app
+  // read the accounts. The money math only keeps it, for the server.
+  readonly bankPermissionWarnDays: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = deepFreeze({
@@ -67,6 +70,7 @@ export const DEFAULT_SETTINGS: Settings = deepFreeze({
   quietHours: { from: '22:00', to: '07:00' },
   bankNotReadAlertHours: 24,
   amountsOnLockScreen: false,
+  bankPermissionWarnDays: 7,
 });
 
 const LEFTOVER_CHOICES: readonly LeftoverChoice[] = ['ask', 'roll-over', 'move-to-savings'];
@@ -114,6 +118,7 @@ export function validateSettings(settings: Settings): Settings {
   check(typeof s.quietHours === 'object' && s.quietHours !== null && isClockTime(s.quietHours.from) && isClockTime(s.quietHours.to), 'quiet hours must be two times, HH:MM');
   check(isWholeInRange(s.bankNotReadAlertHours, 1, 168), 'the bank-not-read alert must be a whole number of hours from 1 to 168');
   check(typeof s.amountsOnLockScreen === 'boolean', 'amounts on the lock screen must be on or off');
+  check(isWholeInRange(s.bankPermissionWarnDays, 1, 60), 'the warning before the bank permission runs out must be a whole number of days from 1 to 60');
   return deepFreeze(copySettings(s));
 }
 

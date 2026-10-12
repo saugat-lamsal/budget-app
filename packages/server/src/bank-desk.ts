@@ -4,6 +4,7 @@ import type { TokenBox } from './crypto/token-box.js';
 import type { Db } from './db/database.js';
 import { readAccounts, readConnection, saveAccount, saveNewConnection, setAccountRoles } from './db/store.js';
 import type { Log } from './log.js';
+import { todayIn } from './history/today.js';
 import { BankKey, type PlaidClient } from './plaid/client.js';
 import { saveServerLine } from './server-log.js';
 import type { BankAccountLine, BankAnswer, BankConnectedRequest, BankConnectionView, BankLinkAnswer, BankLinkRequest, BankRefusal, BankRolesRequest } from './views/bank.js';
@@ -35,6 +36,8 @@ export interface BankDeskInput {
   readonly box: TokenBox;
   readonly log: Log;
   readonly today: () => IsoDate;
+  // His home time zone (section 2): the permission's end is his date (10.13).
+  readonly zone: () => string;
   // Tracking has started (setup day is done): the picks cannot change (1.2).
   readonly tracking: () => boolean;
   // How many lines the book's change log has, for the order of the log (13.5).
@@ -73,7 +76,7 @@ export class BankDesk {
       accounts: accounts.map(lineOf),
       rolesSet: rolesComplete(accounts),
       rolesFixed: this.#input.tracking(),
-      permissionEnds: null,
+      permissionEnds: connection.permissionEnds === null ? null : todayIn(this.#input.zone(), new Date(connection.permissionEnds)),
       historyComplete: connection.historyComplete,
     };
   }

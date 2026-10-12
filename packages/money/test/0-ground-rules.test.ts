@@ -137,6 +137,7 @@ describe('0.2 every number and rule is a setting', () => {
       quietHours: { from: '22:00', to: '07:00' },
       bankNotReadAlertHours: 24,
       amountsOnLockScreen: false,
+      bankPermissionWarnDays: 7,
     } satisfies Settings);
   });
 
@@ -166,7 +167,9 @@ describe('0.2 every number and rule is a setting', () => {
       quietHours: { from: '23:00', to: '06:30' },
       bankNotReadAlertHours: 12,
       amountsOnLockScreen: true,
+      bankPermissionWarnDays: 10,
     });
+    expect(changed.bankPermissionWarnDays).toBe(10);
     expect(changed.split).toEqual({ savings: 60, needs: 25, wants: 15 });
     expect(changed.quietHours).toEqual({ from: '23:00', to: '06:30' });
     expect(changed.bankNotReadAlertHours).toBe(12);
@@ -217,6 +220,10 @@ describe('0.2 every number and rule is a setting', () => {
       { bankNotReadAlertHours: 1.5 },
       { bankNotReadAlertHours: 169 },
       { amountsOnLockScreen: 'yes' as unknown as boolean },
+      { bankPermissionWarnDays: 0 },
+      { bankPermissionWarnDays: -1 },
+      { bankPermissionWarnDays: 2.5 },
+      { bankPermissionWarnDays: 61 },
     ];
     for (const patch of bad) {
       expect(codeOf(() => changeSettings(DEFAULT_SETTINGS, patch)), JSON.stringify(patch)).toBe('bad-setting');
@@ -235,6 +242,14 @@ describe('0.2 every number and rule is a setting', () => {
     expect(() => changeSettings(DEFAULT_SETTINGS, { quietHours: { from: '00:00', to: '23:59' } })).not.toThrow();
     expect(() => changeSettings(DEFAULT_SETTINGS, { bankNotReadAlertHours: 1 })).not.toThrow();
     expect(() => changeSettings(DEFAULT_SETTINGS, { bankNotReadAlertHours: 168 })).not.toThrow();
+    expect(() => changeSettings(DEFAULT_SETTINGS, { bankPermissionWarnDays: 1 })).not.toThrow();
+    expect(() => changeSettings(DEFAULT_SETTINGS, { bankPermissionWarnDays: 60 })).not.toThrow();
+  });
+
+  it('section 2 10.13 the warning before the bank\'s permission runs out is a setting: 7 days to start, a whole number from 1 to 60; the money math only keeps it', () => {
+    expect(DEFAULT_SETTINGS.bankPermissionWarnDays).toBe(7);
+    expect(changeSettings(DEFAULT_SETTINGS, { bankPermissionWarnDays: 14 }).bankPermissionWarnDays).toBe(14);
+    for (const days of [0, 61, 7.5, Number.NaN]) expect(codeOf(() => changeSettings(DEFAULT_SETTINGS, { bankPermissionWarnDays: days })), String(days)).toBe('bad-setting');
   });
 
   it('section 2 10.7 10.8 10.10 quiet hours, the bank-not-read alert and amounts on the lock screen are settings; the money math only keeps them', () => {

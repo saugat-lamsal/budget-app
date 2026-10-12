@@ -3995,5 +3995,103 @@
     "find": "  { method: 'GET', path: BANK_PATHS.view, login: true },",
     "replace": "  { method: 'GET', path: BANK_PATHS.view, login: false },",
     "why": "[bank-connect] 1.1 the bank connection's numbers open without a login"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  if (ends !== null && date >= addDays(ends, -settings.bankPermissionWarnDays) && date < ends) facts.push(",
+    "replace": "  if (ends !== null && date >= addDays(ends, -settings.bankPermissionWarnDays - 1) && date < ends) facts.push(",
+    "why": "[a45] 10.13 told a day early"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  if (ends !== null && date >= addDays(ends, -settings.bankPermissionWarnDays) && date < ends) facts.push(",
+    "replace": "  if (ends !== null && date >= addDays(ends, -7) && date < ends) facts.push(",
+    "why": "[a45] 10.13 the setting's days not used"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  return at !== null && permissionEndsOn(world) === f.ends && world.now.getTime() < Date.parse(at);",
+    "replace": "  return at !== null && permissionEndsOn(world) === f.ends;",
+    "why": "[a45] 10.13 a warning after it has run out"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  return at !== null && permissionEndsOn(world) === f.ends && world.now.getTime() < Date.parse(at);",
+    "replace": "  return at !== null && world.now.getTime() < Date.parse(at);",
+    "why": "[a45] 10.13 a warning for a date the bank no longer gives"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  return at === null ? null : todayIn(world.zone, new Date(at));",
+    "replace": "  return at === null ? null : at.slice(0, 10);",
+    "why": "[a45] 10.13 the end day in UTC, not on his clock"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "    case 'bank-permission':\n      return '/bank';",
+    "replace": "    case 'bank-permission':\n      return '/home';",
+    "why": "[a45] 10.13 a tap does not open the Bank screen"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "left === 1 ? 'by tomorrow' : `within ${left} days`;",
+    "replace": "left === 1 ? 'within 1 days' : `within ${left} days`;",
+    "why": "[a45] 10.13 the words for the day before"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "      return `bank-permission ends ${f.ends}`;",
+    "replace": "      return 'bank-permission';",
+    "why": "[a45] 10.13 a new date never told: one key for every date"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "  if (fetched.permissionEnds !== connection.permissionEnds) savePermissionEnds(db, fetched.permissionEnds);\n",
+    "replace": "",
+    "why": "[a45] 10.13 the date the bank gave not kept"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "    fetched.permissionEnds !== connection.permissionEnds ||\n",
+    "replace": "",
+    "why": "[a45] 10.13 a new date alone counts as nothing new"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "lastRead: this.lastRead(), permissionEnds: connection?.permissionEnds ?? null };",
+    "replace": "lastRead: this.lastRead(), permissionEnds: null };",
+    "why": "[a45] 10.13 the alerts never see the date"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "todayIn(this.#input.zone(), new Date(connection.permissionEnds)),",
+    "replace": "connection.permissionEnds.slice(0, 10),",
+    "why": "[a45] 10.13 the Bank screen shows the date in UTC"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "    if (error instanceof PlaidError && error.errorCode !== 'ITEM_LOGIN_REQUIRED') return undefined;\n",
+    "replace": "",
+    "why": "[a45] 10.13 a sync fails when the bank cannot say the date"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "    if (error instanceof PlaidError && error.errorCode !== 'ITEM_LOGIN_REQUIRED') return undefined;\n",
+    "replace": "    if (error instanceof PlaidError && error.errorCode !== 'ITEM_LOGIN_REQUIRED') return null;\n",
+    "why": "[a45] 10.13 the date kept is dropped when the bank cannot say it"
   }
 ]

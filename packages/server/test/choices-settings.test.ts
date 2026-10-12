@@ -65,6 +65,7 @@ describe('section 2 reading what the phone sent: a settings change', () => {
       quietHours: { from: '23:00', to: '06:00' },
       bankNotReadAlertHours: 36,
       amountsOnLockScreen: true,
+      bankPermissionWarnDays: 10,
     };
     expect(Object.keys(patch).sort()).toEqual(Object.keys(DEFAULT_SETTINGS).sort());
     const request = { id: 'abcdefgh', settings: patch, confirmed: true, seen: '0123456789abcdef'.repeat(2) };

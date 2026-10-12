@@ -29,6 +29,7 @@ import {
   retotaledText,
   lockAmountsText,
   notReadText,
+  permissionWarnText,
   quietHoursText,
   reminderText,
   ruleDoneText,
@@ -110,7 +111,7 @@ function SettingsLoading() {
 
 // What is being changed in the sheet.
 type Editing =
-  | { readonly what: 'split' | 'reserve' | 'target' | 'low-alert' | 'reminders' | 'review-time' | 'time-zone' | 'quiet-hours' | 'not-read' | 'lock-amounts' | 'leftover' | 'promo' | 'paycheck-rule' | 'pay-schedule' | 'mom-rule' | 'early-days' }
+  | { readonly what: 'split' | 'reserve' | 'target' | 'low-alert' | 'reminders' | 'review-time' | 'time-zone' | 'quiet-hours' | 'not-read' | 'permission-warn' | 'lock-amounts' | 'leftover' | 'promo' | 'paycheck-rule' | 'pay-schedule' | 'mom-rule' | 'early-days' }
   // A sorting rule: null to add one.
   | { readonly what: 'rule'; readonly rule: RuleRow | null };
 
@@ -244,6 +245,7 @@ function SettingsReady({ view, reload, onChanged }: { readonly view: Tracking; r
         {textRow('time-zone', 'Home time zone', zoneText(s.homeTimeZone), 'Today is the date here, and the daily review time is in it')}
         {textRow('quiet-hours', 'Quiet hours', quietHoursText(s.quietHours), 'No alerts then. What comes due waits until they end')}
         {textRow('not-read', 'Bank not read', notReadText(s.bankNotReadAlertHours), 'An alert when the bank has not been read for this long')}
+        {textRow('permission-warn', 'Bank permission ending', permissionWarnText(s.bankPermissionWarnDays), 'Told before the bank stops letting the app read your accounts')}
         {textRow('lock-amounts', 'Amounts on the lock screen', lockAmountsText(s.amountsOnLockScreen), 'The amounts are always in the app')}
         {view.alerts !== undefined && <ListRow icon="tray" title="Alerts sent" detail={alertsRowText(view.alerts)} href={pathOfRoute({ screen: 'alerts' })} testId="row-alerts-sent" />}
       </Card>
@@ -498,6 +500,8 @@ function startFields(editing: Editing, s: Settings): Fields {
       return { from: s.quietHours.from, to: s.quietHours.to };
     case 'not-read':
       return { hours: String(s.bankNotReadAlertHours) };
+    case 'permission-warn':
+      return { days: String(s.bankPermissionWarnDays) };
     case 'lock-amounts':
       return { on: s.amountsOnLockScreen ? 'on' : 'off' };
     case 'leftover':
@@ -568,6 +572,10 @@ function readSettings(editing: Editing, f: Fields): Reading<Partial<Settings>> {
       const r = wholes(['hours']);
       return 'problem' in r ? r : { value: { bankNotReadAlertHours: r.value[0] ?? 0 } };
     }
+    case 'permission-warn': {
+      const r = wholes(['days']);
+      return 'problem' in r ? r : { value: { bankPermissionWarnDays: r.value[0] ?? 0 } };
+    }
     case 'lock-amounts':
       return { value: { amountsOnLockScreen: get('on') === 'on' } };
     case 'leftover':
@@ -607,6 +615,7 @@ const TITLES: Readonly<Record<Editing['what'], string>> = {
   'time-zone': 'Home time zone',
   'quiet-hours': 'Quiet hours',
   'not-read': 'Bank not read',
+  'permission-warn': 'Bank permission ending',
   'lock-amounts': 'Amounts on the lock screen',
   leftover: 'Leftover at payday',
   promo: 'Old card promo end date',
@@ -838,6 +847,8 @@ function SheetFields({ editing, get, set, view, kind }: { readonly editing: Edit
       );
     case 'not-read':
       return <TextField label="Alert after this many hours" kind="whole" value={get('hours')} onChange={set('hours')} testId="field-not-read" hint="1 to 168 (a week). Told once, and again only after the bank is read." />;
+    case 'permission-warn':
+      return <TextField label="Days before it runs out" kind="whole" value={get('days')} onChange={set('days')} testId="field-permission-warn" hint="1 to 60. Told once, at the daily review time. Logging in to the bank again moves the date." />;
     case 'lock-amounts':
       return (
         <SelectField
