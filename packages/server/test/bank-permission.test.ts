@@ -38,7 +38,7 @@ function look(w: AlertWorld, ledger: AlertLedger): { readonly events: AlertsEven
 const given = (l: { readonly events: AlertsEvent[] }) => l.events.flatMap((e) => e.given);
 const keys = (l: { readonly events: AlertsEvent[] }) => given(l).map((g) => g.key);
 
-function book(settings: Parameters<typeof openTestBook>[0]['settings'] = {}): Book {
+function book(settings: NonNullable<Parameters<typeof openTestBook>[0]>['settings'] = {}): Book {
   return openTestBook({ pots: { savings: 100_000, needs: 50_000, wants: 30_000, momReserve: 150_000 }, settings });
 }
 
