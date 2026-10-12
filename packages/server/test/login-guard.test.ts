@@ -109,6 +109,20 @@ describe('login: every route on the real server needs a login', () => {
     expect(NEEDS_LOGIN.length).toBeGreaterThan(20);
   });
 
+  // A new address (the Notifications card's, Phase 5) left open by mistake
+  // would never be in NEEDS_LOGIN, so nothing below would try it.
+  it('login the only addresses open without a login are the login page and its own requests', () => {
+    expect(ROUTES.filter((r) => !r.login).map((r) => `${r.method} ${r.path}`)).toEqual([
+      'GET /login',
+      'GET /api/auth',
+      'POST /api/auth/login/options',
+      'POST /api/auth/login',
+      'POST /api/auth/code/options',
+      'POST /api/auth/code',
+    ]);
+    for (const path of ['/api/push/on', '/api/push/off', '/api/push/test']) expect(ROUTES.filter((r) => r.path === path), path).toEqual([{ method: 'POST', path, login: true }]);
+  });
+
   it('login with no login, every screen and every /api route is refused', async () => {
     const r = await realServer();
     for (const route of NEEDS_LOGIN) refused(await ask(r, route.method, route.path), route.path);

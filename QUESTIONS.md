@@ -632,6 +632,49 @@ A40. Alerts the phone could not be given for days. 10.9 says that when the
      "once" means for those alerts (one goes instead of each), so it is
      yours to decide; nothing is built for it yet.
 
+A41. Notifications on a phone whose login has ended. A phone's notifications
+     are tied to its login: logging out on it turns them off, and so does
+     "Turn off" on its Settings card. A login also ends by itself after 30
+     days (section 2), and the rulebook does not say what that does to the
+     phone's notifications. Built now: they keep coming until he logs out
+     there or turns them off. After he logs in again on that phone, its card
+     says "Off on this phone. 1 other device gets them." (the other is the
+     same phone's old login) until he taps Turn on, which moves them to the
+     new login (the same phone is never sent anything twice).
+     Options:
+     1. As built: they keep coming after the login ends, so a phone he has
+        not opened the app on for a month still gets card reminders.
+     2. They stop when the login ends, like everything else the login lets
+        a phone see. The card after the next login says "They stopped Nov 9,
+        when this phone's login ended. Turn them on to start again.", and it
+        is a line in the change log.
+     3. As 1, and logging in again on a phone that already gets them moves
+        them to the new login by itself (the card says "On").
+     Recommendation: option 3. A card reminder matters most when he has not
+     opened the app for a while, and the words on the lock screen hold no
+     amounts unless he turns that on (10.10). If he turns amounts on, option
+     2 is the safer one.
+
+A42. Remembering the alerts the phone has shown. You asked for the service
+     worker to remember the ids it has shown, so a repeat is dropped (a
+     repeat happens when the push service took an alert but the server
+     stopped before marking it sent, B181). The screens' rule is that
+     nothing is kept on the phone (rule 0.4's test forbids every kind of
+     storage, IndexedDB too), so it remembers them only while it runs, plus
+     the alerts still on the screen (their tag is the id). The phone stops
+     the service worker when it likes, so a repeat of an alert he already
+     swiped away, arriving after that, shows again.
+     Options:
+     1. As built: nothing kept on the phone; a rare repeat can show twice.
+     2. Keep only the ids (never words or amounts), the newest 500, in the
+        service worker's own storage (IndexedDB), and allow exactly that in
+        rule 0.4's test, for sw.ts only.
+     Recommendation: option 2. It is what you asked for, it keeps no number
+     of the app's, and only the service worker can read it. Either way, on
+     an iPhone a push that shows nothing may count against the app (Apple
+     can end a subscription whose pushes show nothing); a dropped repeat
+     shows nothing. That can only be seen on a real iPhone (Phase 6).
+
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
@@ -735,7 +778,7 @@ so if you want them here too. B4, B20, B82 and B84 are answered.
   B174. Money on its way between your accounts is listed on Buckets (12.5, B44).
   B175. Payday and Home show what is on its way to the savings account (3.8, B46).
   B176. A purchase made on payday itself is not "made before payday" (3.4, B4).
-  B177 to B184 (Phase 5, part one) and B185 to B192 (your answers to A34 to A39, Oct 11): in their own sections at the end of part B.
+  B177 to B184 (Phase 5, part one), B185 to B192 (your answers to A34 to A39, Oct 11) and B193 to B201 (the phone, Oct 11 and 12): in their own sections at the end of part B.
 
 B1. Paycheck smaller than the mom reserve (3.2).
     A $1,200 paycheck can only give the reserve $1,200, not $1,500. The
@@ -2192,3 +2235,64 @@ B194. After a sheet closes, the screen takes no tap for half a second (found
       second" because a double tap is quicker than reading a change. A tap
       a person means for the screen within that half second does nothing,
       and he taps again.
+
+B195. How an alert reaches the phone (Phase 5, the phone): web push, through
+      the web-push library (3.6.7), the usual one for Node. Each alert is
+      encrypted on the server for that phone alone (RFC 8291) and the
+      request is signed with the app's own key (VAPID, RFC 8292), which is
+      what Apple's push service asks of a home-screen app. The private key
+      is only in the server's environment (VAPID_PRIVATE_KEY; npm run
+      push-keys makes a pair; .env.example has the names only). The phone
+      is given the public key alone. The server sends only to a push
+      service's own address (Apple's, and Chrome's, Firefox's and Edge's
+      for a browser on his computer), checked when a phone turns
+      notifications on and again before each send.
+
+B196. What one push carries: the alert's id, its title and line, when it
+      was due if it went late (B185), and the screen a tap opens. With
+      "amounts on the lock screen" off (10.10) the words are the ones
+      without amounts, so no amount leaves the server. A push service keeps
+      an alert for a phone that is off for a day at most; a phone off for
+      longer does not get them when it is back on, and they are all in the
+      list in the app (Settings, Alerts sent). Each alert has its own topic,
+      so a second try waiting at the push service replaces the first.
+
+B197. With no phone that has notifications on, an alert is not sent: it
+      waits in the outbox and is tried again like any failed send (B181),
+      and goes once a phone turns them on (A40 asks what should go then).
+      With two phones, each alert goes to both; if one fails it is tried
+      again for both, and the one that had it already shows it once (A42).
+
+B198. A phone whose push service says its subscription is gone (it answers
+      404 or 410) is taken off and logged in the change log ("Notifications
+      stopped on Safari on iPhone"). Its card says: "Off on this phone. They
+      stopped Oct 12: this phone's push service would not take them any
+      more. Turn them on to start again." Any other answer is a failure,
+      tried again later, and the phone stays on. So is a phone that turned
+      them on under push keys that have since been replaced (npm run
+      push-keys makes a new pair): its push service turns each alert away
+      until he turns notifications on again there.
+
+B199. The Notifications card on Settings (real server only, like the Bank
+      card), in words: "On for this phone" (since when, and how many other
+      devices get them), "Off on this phone", "Blocked in the phone's
+      settings" (how to allow them), "Open the app from the home screen
+      first" (iPhone sends notifications only to home-screen apps), "Not on
+      this address" (they need https, so they work once the app is hosted),
+      "This browser can't show them", and "Not set up on the server" (no
+      push keys: npm run serve then writes each alert in its own window, as
+      before). Turn on asks the phone only from his tap. Turning on, off,
+      and a push service stopping them are each a line in the change log.
+      Logging out on a phone turns its notifications off with it.
+
+B200. "Send a test alert" goes to this phone only, at once, even in quiet
+      hours (he asked for it), and is not one of the rules' alerts: it is
+      not kept in the history, the outbox or the list. Its words have no
+      amounts: "Test alert. Notifications are on for this phone. Alerts
+      come like this one." A tap on it opens Settings.
+
+B201. A tap on an alert opens the screen it is about: Review for the daily
+      review, the bucket's list for low and empty, Home for a card, the
+      totals, the bank and a take-back; one kept before the outbox kept
+      each alert's facts (database step 6) opens the list of alerts. An
+      address that is not one of the app's own screens opens Home.

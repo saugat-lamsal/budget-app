@@ -72,6 +72,22 @@ export function alertKey(f: AlertFacts): string {
   }
 }
 
+// Phase 5, the phone: the screen a tap on the alert opens. A bucket's
+// alert opens that bucket's list; the daily review, Review; everything else
+// Home, where Needs attention says what it is about.
+export function alertScreen(f: AlertFacts | null): string {
+  if (f === null) return '/alerts';
+  switch (f.kind) {
+    case 'low-bucket':
+    case 'empty-bucket':
+      return `/buckets/${f.bucket}`;
+    case 'daily-review':
+      return '/review';
+    default:
+      return '/home';
+  }
+}
+
 export function alertRecord(facts: AlertFacts, dueAt: string): AlertRecord {
   return { key: alertKey(facts), facts, dueAt, ...alertWords(facts) };
 }

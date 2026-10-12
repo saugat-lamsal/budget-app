@@ -2028,5 +2028,124 @@
     "find": ".tap-hold {\n  position: fixed;\n  inset: 0;",
     "replace": ".tap-hold {\n  position: fixed;\n  inset: 100%;",
     "why": "[b194] the tap hold covers nothing"
+  },
+  {
+    "section": "push",
+    "file": "packages/web/src/push/rules.ts",
+    "find": "  if (shownBefore) return { repeat: p.id };\n",
+    "replace": "",
+    "why": "[push] a repeat is shown again"
+  },
+  {
+    "section": "push",
+    "file": "packages/web/src/push/rules.ts",
+    "find": "body: p.due === null ? p.body : `${p.body} ${p.due}`",
+    "replace": "body: p.body",
+    "why": "[push] B185 the phone does not say when a late alert was due"
+  },
+  {
+    "section": "push",
+    "file": "packages/web/src/push/rules.ts",
+    "find": "tag: p.id, screen: screenToOpen(p.screen)",
+    "replace": "tag: 'budget', screen: screenToOpen(p.screen)",
+    "why": "[push] every alert has the same tag, so each replaces the one before"
+  },
+  {
+    "section": "push",
+    "file": "packages/web/src/push/rules.ts",
+    "find": "!(due === null || text_(due, 200))",
+    "replace": "false",
+    "why": "[push] a push with something else as its due is taken"
+  },
+  {
+    "section": "push",
+    "file": "packages/web/src/push/rules.ts",
+    "find": "return route === null ? '/home' : pathOfRoute(route);",
+    "replace": "return route === null ? screen : pathOfRoute(route);",
+    "why": "[push] a tap can open an address that is not one of the app's"
+  },
+  {
+    "section": "push",
+    "file": "packages/web/src/push/rules.ts",
+    "find": "if (p === null) return { show: UNREADABLE };",
+    "replace": "if (p === null) return { repeat: 'unreadable' };",
+    "why": "[push] a push it cannot read shows nothing"
+  },
+  {
+    "section": "push",
+    "file": "packages/web/src/screens/notifications-text.ts",
+    "find": " && facts.endpoint === d.endpoint) return { kind: 'on'",
+    "replace": ") return { kind: 'on'",
+    "why": "[push] the card says on when this browser's subscription is not the one the server has"
+  },
+  {
+    "section": "push",
+    "file": "packages/web/src/screens/notifications-text.ts",
+    "find": "  if (facts.permission === 'denied') return { kind: 'blocked' };\n",
+    "replace": "",
+    "why": "[push] the card does not say they are blocked in the phone's settings"
+  },
+  {
+    "section": "push",
+    "file": "packages/web/src/screens/notifications-text.ts",
+    "find": "devices: d.on ? view.devices - 1 : view.devices",
+    "replace": "devices: view.devices",
+    "why": "[push] the card counts this phone among the other devices"
+  },
+  {
+    "section": "push",
+    "file": "packages/web/src/screens/notifications-text.ts",
+    "find": "(n === 0 ? '' : n === 1 ?",
+    "replace": "(n < 0 ? '' : n === 1 ?",
+    "why": "[push] with no other device the card says 0 other devices get them"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/sw.ts",
+    "find": "  event.notification.close();\n",
+    "replace": "",
+    "why": "[push] a tapped alert stays on the screen"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/sw.ts",
+    "find": "  return still.length === 0;",
+    "replace": "  return true;",
+    "why": "[push] after a restart, a repeat of an alert still on the screen shows again"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/sw.ts",
+    "find": "  if (shown.has(id)) return false;\n",
+    "replace": "",
+    "why": "[push] a repeat of an alert he swiped away shows again while the service worker runs"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/sw.ts",
+    "find": "self.addEventListener('activate', (event) => {",
+    "replace": "self.addEventListener('fetch', (event) => {\n  event.respondWith(caches.open('budget').then(async (c) => (await c.match(event.request)) ?? fetch(event.request)));\n});\n\nself.addEventListener('activate', (event) => {",
+    "why": "[push] the service worker serves the app's numbers from a cache"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/sw.ts",
+    "find": "      await focused.navigate(url);\n",
+    "replace": "",
+    "why": "[push] a tap with the app open brings it forward on the screen it was on"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/push.ts",
+    "find": "    await (await registration?.pushManager.getSubscription())?.unsubscribe();\n",
+    "replace": "",
+    "why": "[push] turning off leaves this browser subscribed"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/notifications-card.tsx",
+    "find": "<Button wide disabled={busy} onClick={() => void run(() => turnOn(push.publicKey), NOTIFICATION_DONE.on)} testId=\"notifications-on\">",
+    "replace": "<Button wide onClick={() => void run(() => turnOn(push.publicKey), NOTIFICATION_DONE.on)} testId=\"notifications-on\">",
+    "why": "[push] a double tap on Turn on sends two"
   }
 ]

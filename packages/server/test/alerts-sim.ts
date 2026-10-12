@@ -21,7 +21,9 @@ import type { AlertTimer } from '../src/serve/alert-timer.js';
 import { serveBooks } from '../src/serve/serving.js';
 import { planSync, type Plan, type PlanInput } from '../src/sync/plan.js';
 import { FakeClock } from './fake-clock.js';
-import { FakePhone } from './fake-phone.js';
+import { newPushKeys } from '../src/push/push-keys.js';
+import { FakePushService } from './fake-push-service.js';
+import { loginForTests } from './login-for-tests.js';
 import { connected, type Harness } from './harness.js';
 import { ACCOUNT, SIM_BANK_RULES, inPlaidFormat } from './sim-bank.js';
 
@@ -32,7 +34,8 @@ import { ACCOUNT, SIM_BANK_RULES, inPlaidFormat } from './sim-bank.js';
 // lives the same days on a clock the test moves: the bank's activity reaches
 // it only by syncs with the made-up bank (what the bank shows, its balances and
 // its card statements), each answer is saved in its history, and its own
-// alert timer works the alerts out, keeps them, and sends them to a fake phone.
+// alert timer works the alerts out, keeps them, and sends them through the
+// real sender (web push) to a test phone at the made-up push service.
 // What its book is given is the simulator's own (the sync's test seam), so the
 // two books are the same.
 //
@@ -223,7 +226,14 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
   const path = join(dir, 'books.sqlite');
   const clock = { now: at(input.date, '07:00') };
   const fakeClock = new FakeClock(clock);
-  const phone = new FakePhone(() => clock.now);
+  // Phase 5, the phone: the alerts go through the real sender (web push) to
+  // the made-up push service on this computer, which checks the app's
+  // signature, opens each one with the phone's own keys, and shows it as the
+  // phone's service worker would (fake-push-service.ts).
+  const keys = newPushKeys('mailto:made-up@example.com');
+  const service = await FakePushService.start({ now: () => clock.now, serverKey: keys.publicKey });
+  const phone = service.newPhone();
+  let subscribed = false;
   let h: Harness | undefined;
   let db: Db | undefined;
   let keeper: Keeper | undefined;
@@ -263,6 +273,8 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
     }
     return hm >= from && hm < to ? instantIn(zone, date, to) : null;
   };
+  // B201: a tap opens the screen an alert is about: Review for the daily review, the bucket's own list for low and empty, Home for the rest.
+  const screenOf = (f: AlertFacts): string => (f.kind === 'daily-review' ? '/review' : f.kind === 'low-bucket' || f.kind === 'empty-bucket' ? `/buckets/${f.bucket}` : '/home');
   // B185: "Was due 2:30 AM." (his answer, Oct 11: not "Due" again), with the day when it was another day; nothing when sent in the minute it came due.
   const dueWordsOf = (dueAt: string, shownAt: string): string | null => {
     const due = timeIn(zone, new Date(dueAt));
@@ -515,11 +527,19 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
     };
     const start = async (): Promise<void> => {
       if (db === undefined) db = openDatabase(path);
-      keeper = Keeper.open({ db, now: () => clock.now });
+      keeper = Keeper.open({ db, now: () => clock.now, push: { keys, agent: service.agent } });
+      if (!subscribed) {
+        // He turned notifications on, on his phone, logged in there.
+        const token = loginForTests(db, clock.now, 'Safari on iPhone').slice('budget-login='.length);
+        expect(keeper.pushDesk().on({ token, device: 'Safari on iPhone' }, phone.subscription())).toEqual({ ok: true });
+        subscribed = true;
+      }
+      const sender = keeper.pushSender();
+      if (sender === null) throw new Error('no push sender');
       running = true;
       catchUp(clock.now);
       tellNotRead(clock.now);
-      const serving = serveBooks({ keeper, bank, clock: fakeClock, webRoot: 'C:/made-up/no-screens/', origin: () => '', sender: phone });
+      const serving = serveBooks({ keeper, bank, clock: fakeClock, webRoot: 'C:/made-up/no-screens/', origin: () => '', sender });
       alerts = serving.alerts;
       alerts.start();
       await settle();
@@ -637,9 +657,11 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
         expect(shown.due, `${where}: ${key}, shown at ${shown.at}, says when it was due`).toBe(dueWordsOf(e.dueAt, shown.at));
         if (e.facts.kind === 'card-reminder') expect(shown.title, `${where}: ${key}, shown at ${shown.at}, counts the days from then`).toBe(reminderTitleOf(e.facts, shown.at));
         expect(`${shown.title} ${shown.body}`, `${where}: ${key} has no amount on the lock screen (10.10)`).not.toContain('$');
+        expect(shown.notification.screen, `${where}: ${key}: a tap opens the screen it is about (B201)`).toBe(screenOf(e.facts));
       }
       for (const shown of phone.shown) if (!expected.has(shown.id)) throw new Error(`${where}: ${shown.id} was shown at ${shown.at}, and was not expected`);
       expect(phone.repeats, `${where}: nothing shown twice`).toBe(0);
+      expect(service.problems, `${where}: every push signed by the app and encrypted for the phone`).toEqual([]);
     };
 
     clock.now = at(input.date, '08:00');
@@ -832,6 +854,7 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
   } finally {
     await alerts?.stop();
     db?.close();
+    await service.close();
     rmSync(dir, { recursive: true, force: true });
   }
 }

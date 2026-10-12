@@ -43,7 +43,7 @@ class MadeUpOutbox implements Alerter {
 
   toSend(): readonly OutgoingAlert[] {
     const now = this.#now().toISOString();
-    return this.rows.filter((r) => r.sentAt === null && r.nextTryAt <= now).map((r) => ({ id: r.key, title: `title ${r.key}`, body: 'body', dueAt: r.dueAt, due: null }));
+    return this.rows.filter((r) => r.sentAt === null && r.nextTryAt <= now).map((r) => ({ id: r.key, title: `title ${r.key}`, body: 'body', dueAt: r.dueAt, due: null, screen: '/home' }));
   }
 
   nextTryIn(): number | null {

@@ -40,7 +40,7 @@ export interface Life {
 
 // The made-up bank, connected, with his accounts and bank rules set, before
 // setup day; the books kept in a file.
-export async function lifeInAFile(options: Parameters<typeof connected>[0] & { readonly beforeCommit?: () => void } = {}): Promise<Life> {
+export async function lifeInAFile(options: Parameters<typeof connected>[0] & { readonly beforeCommit?: () => void; readonly push?: KeeperInput['push'] } = {}): Promise<Life> {
   const dir = mkdtempSync(join(tmpdir(), 'budget-keeper-'));
   const path = join(dir, 'books.sqlite');
   const h = await connected({ rules: BANK_RULES, ...options, path });
@@ -74,7 +74,7 @@ export async function lifeInAFile(options: Parameters<typeof connected>[0] & { r
       rmSync(dir, { recursive: true, force: true });
     },
   };
-  life.keeper = Keeper.open({ db: h.db, now: () => life.now, ...(options.beforeCommit === undefined ? {} : { beforeCommit: options.beforeCommit }) });
+  life.keeper = Keeper.open({ db: h.db, now: () => life.now, ...(options.beforeCommit === undefined ? {} : { beforeCommit: options.beforeCommit }), ...(options.push === undefined ? {} : { push: options.push }) });
   return life;
 }
 

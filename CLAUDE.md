@@ -138,7 +138,7 @@ This applies to every phase and every session, cloud or local.
 
 ## Status
 
-- Rulebook: draft 18. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 19. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
@@ -156,7 +156,8 @@ This applies to every phase and every session, cloud or local.
   section 28 his answers after syncing on a timer (A30: rule 0.6; A31: rule
   13.7), section 29 his answers after Phase 4's finish line (A32: rule 13.7;
   A33: rule 4.5), section 30 his answers after the alerts were kept (A34 to
-  A39: rules 9.7, 10.4, 10.5, 10.7 to 10.10, and section 2).
+  A39: rules 9.7, 10.4, 10.5, 10.7 to 10.10, and section 2), section 31
+  his answers on late alerts (B185, B186: rules 9.7, 10.8).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -1275,5 +1276,94 @@ This applies to every phase and every session, cloud or local.
     (runs 38148899781, 38149980939, 38150776127, 38151934145, 38152749704,
     Oct 11, 14:51 to 16:00 UTC): the WebKit job green every time, and checks
     and Chromium too. PR #21 open, CI green.
+- PR #21 merged (Oct 11, 2026).
+- Phase 5, the phone side: branch phase-5-phone (Oct 11 to 12, 2026), one
+  pull request. Then stop, for his feedback.
+  - Step 0a, its own commit: simulated life seed 1507 was the simulator's own
+    mistake, not the app's: it changed a setting in the book, checked the
+    alerts, and only then changed its own record (the book had 25%, the
+    simulator 20%). It now changes its own record with the book's, with the
+    bank's activity so far counted first (#changeSettings in
+    packages/money/test/sim/life.ts), everywhere it changes a setting. Test:
+    simulator.test.ts replays seed 1507. B193.
+  - Step 0b, its own commit: the browser tests that opened and closed pages
+    one after another (the WebKit stall, PR #21) now open one page per test
+    and move it with page.goto: showScenario (harness.ts), showSettings,
+    showSetup, emulatePhone. The same checks; no time limit raised.
+  - Step 0c, its own commit (B194): after a sheet closes the screen takes no
+    tap for half a second (BottomSheet, TAP_HOLD_MS, an invisible cover). The
+    second tap of a double tap used to land on what was under the sheet: the
+    cause of settings.test.ts "B92 a double tap on Save" failing in WebKit.
+    tapThenTapWhereItWas (screens.ts) taps again in the page where the button
+    was, the moment the sheet has closed. Breaks "[b194]".
+  - Step 0d, its own commit (his OK to change the rulebook: draft 19,
+    section 31): a card reminder sent late counts the days from the day it
+    is sent ("due in 4 days"), and a late alert says "Was due Sat, Oct 3,
+    8:00 PM." (alertWords sentOn, dueWords). Worked example bank 14.
+    QUESTIONS.md A40 (alerts the phone could not be given for days).
+    Breaks "[b185]", "[b186]".
+  - Step 1, the phone. Library: web-push 3.6.7 (VAPID RFC 8292, aes128gcm
+    RFC 8291), the usual one for Node; Apple's push service takes it for
+    home-screen apps. Keys only in the environment (VAPID_PUBLIC_KEY,
+    VAPID_PRIVATE_KEY, VAPID_SUBJECT; npm run push-keys makes a pair;
+    .env.example has the names only). The private key never leaves the
+    server (push-keys.ts keeps it out of printing and JSON).
+    - packages/server/src/push: push-services.ts (where the server may send:
+      Apple's, Chrome's, Firefox's, Edge's push services, https only; under
+      the tests, VITEST, this computer only), push-keys.ts, push-db.ts
+      (database step 7: push_subscriptions and push_stopped, each tied to a
+      login, ON DELETE CASCADE), push-sender.ts (PushSender, the real sender
+      behind the AlertSender plug: each alert to every device on, TTL a day,
+      a topic per alert; 404 or 410 means gone: removed, logged, and that
+      device's card says so; anything else fails the send so the outbox
+      tries again), push-desk.ts (the Notifications card's view, on, off,
+      test, the change log lines). views/push.ts (the types the phone and its
+      service worker share). The outbox is unchanged: quiet hours, once,
+      tries again, catching up. With amounts on the lock screen off (10.10)
+      the push carries the words without amounts.
+    - POST /api/push/on, /api/push/off, /api/push/test (PUSH_PATHS, in ROUTES,
+      login and the app's own Origin, parsed strictly). read-only.test.ts
+      lists them (his OK: exactly those). Settings' view has push.
+    - The phone: src/app/push.ts (support, permission, turnOn only from his
+      tap, turnOff, sendTestAlert), screens/notifications-card.tsx and
+      notifications-text.ts (the card in words: on, off, blocked in the
+      phone's settings, open it from the home screen first, not on https,
+      not this browser, not set up on the server), the service worker
+      src/sw/sw.ts, built by vite.config.ts as dist/sw.js (no fetch handler:
+      it never keeps or serves the app's numbers), its rules in
+      src/push/rules.ts (the id as the tag, a repeat dropped, a tap opens the
+      screen it is about; alertScreen in alerts.ts).
+    - Tests: a made-up push service on this computer
+      (packages/server/test/fake-push-service.ts: HTTPS with a throwaway
+      certificate, checks the VAPID signature, opens each alert with the test
+      phone's own keys, and the phone follows rules.ts); push.test.ts,
+      keeper-push.test.ts; the simulated life through the real server
+      (alerts-sim.ts) now goes through the real sender to it, every alert
+      checked at its moment, once; test/push-only-here.test.ts (no test can
+      reach a real push service); web push-rules, notifications-text;
+      browser notifications.test.ts (a stand-in for the browser's push parts,
+      push-stub.ts), service-worker.test.ts (the built sw.js in a stand-in
+      scope: headless Chromium has no notifications), design-real-server
+      (the card's states).
+    - Break-it, only for what this chunk changed: the new breaks "[push]"
+      (47: 40 without a browser, 7 with), "[b194]" (3), "[b185]" and
+      "[b186]" (11 with the three pointed again), and the "[ci]" breaks of
+      harness.ts (10): all caught (the browser ones in Chromium). Eleven
+      survived at first and got tests: a push service answering 404 (B198),
+      the screen each alert opens (B201: push.test.ts, and the simulated
+      life checks every tap's screen), the card counting this phone among
+      the others, a tapped alert leaving the screen, a repeat of one he swiped
+      away, Turn off letting the browser's subscription go, a double tap on
+      Turn on, and a sheet its screen takes away holding taps (setup.test.ts
+      B194). Two were not mistakes the tests could see: a second guard in
+      screenToOpen (routeOf already knows only the app's paths) and a check
+      on busy that read the value from before the tap (removed); each break
+      now makes a real mistake. Also new: login-guard.test.ts checks that
+      the only addresses open without a login are the login page's own.
+    - What only a real iPhone can show (Phase 6): Apple's push service
+      taking the app's key, the permission prompt, the lock screen, a tap
+      opening the screen, and Apple's rule about pushes that show nothing.
+    - QUESTIONS.md A41 (notifications after a login ends), A42 (keeping the
+      ids shown on the phone), B195 to B201.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
   rule 9.5, depends on it), and his check of part B (the list at its top).

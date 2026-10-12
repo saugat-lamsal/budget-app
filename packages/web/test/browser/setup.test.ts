@@ -2,7 +2,7 @@ import { formatDollars, type Pot } from '@budget-app/money';
 import type { Page } from 'playwright';
 import { describe, expect, it } from 'vitest';
 import { ENGINES, centsAt, openScenario, phone, readCents, textAt, useEngine } from './harness.js';
-import { watchChoices } from './screens.js';
+import { tapThenTapWhereItWas, watchChoices } from './screens.js';
 import { answerHalf, lookBack, openSetup, pickPaycheck, putTheRest, readAssign, ready, settled, tell, twinOf, typeAmount } from './setup-screens.js';
 
 // Setup day (rulebook section 14, with A10, B42, B43, B48), used in a
@@ -247,6 +247,26 @@ describe.each(ENGINES)('Setup day in %s', (_name, engine) => {
     await page.getByTestId('half-su-card-left').getByTestId('answer').filter({ hasText: 'on its way' }).waitFor();
     await settled(page);
     expect(posts.posts.length).toBe(1);
+    await page.context().close();
+  });
+
+  // B194: a sheet its screen takes off the screen when its answer comes back
+  // (Setup day's, the bank rule's, the login and sync sheets) holds the rest of
+  // a double tap too, like one that closes.
+  it('B194 the rest of a double tap on Save in an amount sheet does not land on the step under it', async () => {
+    const twin = twinOf('setup-day');
+    const page = await openSetup(await browser().newContext(phone()), base(), 'setup-day', 'assign');
+    const posts = watchChoices(page);
+    await page.getByTestId('assign-savings').click();
+    const sheet = page.getByTestId('amount-sheet');
+    await sheet.getByTestId('amount').fill('8,000.00');
+    expect(await tapThenTapWhereItWas(page, sheet.getByTestId('sheet-save'), 'amount-sheet'), 'what of the screen the second tap reached').toBe('nothing');
+    await settled(page);
+    expect(posts.posts.length).toBe(1);
+    expect(await page.locator('dialog[open]').count(), 'a sheet opened under the second tap').toBe(0);
+    tell(twin, { assign: { pot: 'savings', amount: 800_000 } });
+    const v = ready(twin);
+    expect(await readAssign(page)).toEqual({ left: v.leftToAssign, assigned: v.assigned, startingMoney: v.startingMoney, pots: v.assignment });
     await page.context().close();
   });
 

@@ -16,6 +16,7 @@
     "serve": "node scripts/serve.mjs",
     "replay-check": "node scripts/replay-check.mjs",
     "login-code": "node scripts/login-code.mjs",
+    "push-keys": "node scripts/push-keys.mjs",
     "pay-period-agent": "node scripts/pay-period-agent.mjs"
   },
   "engines": {

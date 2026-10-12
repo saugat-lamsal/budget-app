@@ -13,6 +13,7 @@ import type {
   MoveRequest,
   MoveResponse,
   PaydayView,
+  PushAnswer,
   ReviewView,
   RuleRequest,
   RuleResponse,
@@ -142,6 +143,17 @@ export async function sendSyncEvery(minutes: number): Promise<AuthReply> {
   if (response.status === 401) return { ok: false, why: 'You are not logged in any more. Log in again.' };
   if (response.status !== 200 && response.status !== 422) throw new Error(`/api/sync/every answered ${response.status}`);
   return (await response.json()) as AuthReply;
+}
+
+// Phase 5: the Notifications card's addresses (app/push.ts). They change which
+// devices get the alerts, never money (0.4).
+export type PushPath = '/api/push/on' | '/api/push/off' | '/api/push/test';
+
+export async function pushSend(pushPath: PushPath, body: object): Promise<PushAnswer> {
+  const response = await fetch(pushPath, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (response.status === 401) return { ok: false, why: 'You are not logged in any more. Log in again.' };
+  if (response.status !== 200 && response.status !== 422) throw new Error(`${pushPath} answered ${response.status}`);
+  return (await response.json()) as PushAnswer;
 }
 
 // A new number for a decision, made once when it is made and kept for every

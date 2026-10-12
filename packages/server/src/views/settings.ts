@@ -19,6 +19,7 @@ import type { BankRuleLogLine } from './bank-rules.js';
 import type { RuleView } from './choice.js';
 import type { CheckedAt } from './home.js';
 import type { LoginView } from './login.js';
+import type { PushView } from './push.js';
 import type { ServerLogLine } from './server-log.js';
 
 // What the Settings screen shows, worked out on the server from the book:
@@ -47,6 +48,8 @@ export interface SettingsInput {
   readonly sync?: SyncView;
   // Phase 5: the list of alerts sent, on the real server only (the demo sends none).
   readonly alerts?: AlertsCount;
+  // Phase 5: the Notifications card, for the device asking, on the real server only.
+  readonly push?: PushView;
 }
 
 // Phase 5: how many alerts the app worked out, and how many are not sent yet.
@@ -105,11 +108,14 @@ export type LogRow =
   | { readonly key: string; readonly date: IsoDate; readonly kind: 'logged-in' | 'logged-out' | 'passkey-added'; readonly device: string }
   | { readonly key: string; readonly date: IsoDate; readonly kind: 'stay-logged-in-changed'; readonly before: number; readonly after: number }
   // Step 3: how often it syncs with the bank, in minutes.
-  | { readonly key: string; readonly date: IsoDate; readonly kind: 'sync-every-changed'; readonly before: number; readonly after: number };
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'sync-every-changed'; readonly before: number; readonly after: number }
+  // Phase 5: notifications turned on or off on a device, or stopped by its push service.
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'notifications-on' | 'notifications-off'; readonly device: string }
+  | { readonly key: string; readonly date: IsoDate; readonly kind: 'notifications-stopped'; readonly device: string; readonly why: string };
 
 export type SettingsView =
   // Before setup day there are no settings yet, but he can still log out.
-  | { readonly state: 'not-set-up'; readonly madeUpData: boolean; readonly login?: LoginView; readonly sync?: SyncView; readonly alerts?: AlertsCount }
+  | { readonly state: 'not-set-up'; readonly madeUpData: boolean; readonly login?: LoginView; readonly sync?: SyncView; readonly alerts?: AlertsCount; readonly push?: PushView }
   | {
       readonly state: 'tracking';
       readonly madeUpData: boolean;
@@ -117,8 +123,9 @@ export type SettingsView =
       readonly login?: LoginView;
       // Step 3: syncing with the bank, on the real server only.
       readonly sync?: SyncView;
-      // Phase 5: the list of alerts sent, on the real server only.
+      // Phase 5: the list of alerts sent, and the Notifications card, on the real server only.
       readonly alerts?: AlertsCount;
+      readonly push?: PushView;
       readonly today: IsoDate;
       // 0.5: Settings says so too when the totals do not match the bank.
       readonly check: { readonly state: 'matches' } | { readonly state: 'does-not-match'; readonly difference: Cents } | { readonly state: 'bank-not-read' };
@@ -162,7 +169,7 @@ export function ruleViewOf(rule: SortingRule): RuleView {
 
 export function settingsView(input: SettingsInput): SettingsView {
   const { today, book, bank, madeUpData } = input;
-  const login = { ...(input.login === undefined ? {} : { login: input.login }), ...(input.sync === undefined ? {} : { sync: input.sync }), ...(input.alerts === undefined ? {} : { alerts: input.alerts }) };
+  const login = { ...(input.login === undefined ? {} : { login: input.login }), ...(input.sync === undefined ? {} : { sync: input.sync }), ...(input.alerts === undefined ? {} : { alerts: input.alerts }), ...(input.push === undefined ? {} : { push: input.push }) };
   if (book === null) return { state: 'not-set-up', madeUpData, ...login };
 
   let check: Extract<SettingsView, { state: 'tracking' }>['check'];
@@ -287,6 +294,8 @@ function serverRow(line: ServerLogLine, key: string): LogRow {
     case 'stay-logged-in-changed':
     case 'sync-every-changed':
       return { key, date: line.date, kind: line.action, before: line.before, after: line.after };
+    case 'notifications-stopped':
+      return { key, date: line.date, kind: line.action, device: line.device, why: line.why };
     default:
       return { key, date: line.date, kind: line.action, device: line.device };
   }
