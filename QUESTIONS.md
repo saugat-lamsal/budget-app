@@ -610,9 +610,12 @@ A39. ANSWERED Oct 11, built. Your answer: option 3, amounts off by default.
      phone, later in Phase 5.
 
 
-## Part A, added with the phone (Phase 5, Oct 11). Waiting on your answer.
+## Part A, added with the phone (Phase 5, Oct 11). All answered.
 
-A40. Alerts the phone could not be given for days. 10.9 says that when the
+A40. ANSWERED Oct 12, built. Your answer: option 2, with your OK to change
+     "once" this way for those alerts only. Rulebook 10.9 and 32a; the
+     details are B202.
+     The question was: alerts the phone could not be given for days. 10.9 says that when the
      app was not running, only the newest of each kind goes when it is back,
      if still true. It does not say what happens when the app was running
      but the phone could not be given its alerts (the push service could not
@@ -632,7 +635,9 @@ A40. Alerts the phone could not be given for days. 10.9 says that when the
      "once" means for those alerts (one goes instead of each), so it is
      yours to decide; nothing is built for it yet.
 
-A41. Notifications on a phone whose login has ended. A phone's notifications
+A41. ANSWERED Oct 12, built. Your answer: option 3. Rulebook 10.11 and
+     32b; the details are B203.
+     The question was: notifications on a phone whose login has ended. A phone's notifications
      are tied to its login: logging out on it turns them off, and so does
      "Turn off" on its Settings card. A login also ends by itself after 30
      days (section 2), and the rulebook does not say what that does to the
@@ -655,7 +660,9 @@ A41. Notifications on a phone whose login has ended. A phone's notifications
      amounts unless he turns that on (10.10). If he turns amounts on, option
      2 is the safer one.
 
-A42. Remembering the alerts the phone has shown. You asked for the service
+A42. ANSWERED Oct 12, built. Your answer: option 2. Rulebook 10.12 and
+     32c; the details are B204.
+     The question was: remembering the alerts the phone has shown. You asked for the service
      worker to remember the ids it has shown, so a repeat is dropped (a
      repeat happens when the push service took an alert but the server
      stopped before marking it sent, B181). The screens' rule is that

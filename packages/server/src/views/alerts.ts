@@ -20,6 +20,10 @@ export interface AlertLine {
   readonly nextTryAt: string | null;
   // Not sent yet because it is quiet hours (10.8): when they end.
   readonly quietUntil: string | null;
+  // 10.9 (A40), for one the phone could not be given: never sent, as a newer
+  // one of its kind went ('newer') or it was no longer true ('not-true'); or
+  // not sent yet, waiting behind a newer one of its kind ('held'). Null otherwise.
+  readonly notSent: 'newer' | 'not-true' | 'held' | null;
 }
 
 export type AlertsView =

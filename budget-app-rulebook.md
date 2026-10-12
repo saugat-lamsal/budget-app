@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 19)
+# Budget App Rulebook (draft 20)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -303,9 +303,24 @@ number so a test can point at it. Nothing gets coded until you approve this.
       a reminder day): when it is back, only the newest of each kind, and
       only if it is still true then. One daily review, one reminder per
       card.
+      The same when the app was running but the phone could not be given
+      its alerts (it could not be reached, or no phone had them on): when
+      it can be again, of what waited only the newest of each kind goes,
+      and only if it is still true then. Each bucket's low alert and empty
+      alert are kinds of their own, and each take-back is its own. The
+      rest stay in the list of alerts in the app: "Not sent: a newer one
+      went." or "Not sent: no longer true."
 10.10 On the phone's lock screen an alert shows amounts only if the setting
       says so (off to start): words only, such as "Needs is low", and the
       amounts are in the app.
+10.11 Notifications go to each phone where you turned them on, until you
+      turn them off there or log out there. They keep coming after that
+      phone's login ends (section 2). Logging in again on that phone moves
+      them to the new login by itself, and Settings says they are on.
+10.12 A phone shows each alert once. It keeps the ids of the newest 500
+      alerts it has shown (ids only, never words or amounts) in its own
+      storage, so a repeat is dropped even after the phone has stopped and
+      started the app's background part. Nothing else is kept on the phone.
 
 
 ## 11. Safe to spend
@@ -647,3 +662,17 @@ a.  A card reminder that goes out late counts the days to the due date
     from the day it is sent, and the line saying an alert went out late
     reads "Was due Sat, Oct 3, 8:00 PM.", not "Due" again (9.7, 10.8,
     QUESTIONS.md B185, B186).
+
+
+## 32. Answers on the phone (Oct 12, 2026)
+
+a.  Alerts the phone could not be given for a while: when it can be again,
+    only the newest of each kind goes, if still true; the rest show in the
+    list as not sent. This changes "once" for those alerts only (10.9,
+    QUESTIONS.md A40).
+b.  Notifications keep coming after a phone's login ends. Logging in again
+    on that phone moves them to the new login by itself, and its card says
+    "On" (10.11, A41).
+c.  The phone keeps only the ids of the newest 500 alerts it showed, in the
+    service worker's own storage, so a repeat stays dropped after the
+    service worker restarts (10.12, A42).

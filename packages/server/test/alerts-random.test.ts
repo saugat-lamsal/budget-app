@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addDays, DEFAULT_SETTINGS } from '@budget-app/money';
 import { outboxCounts, outboxKeys, readOutbox } from '../src/alerts/outbox.js';
-import { quietUntil } from '../src/alerts/sending.js';
+import { quietUntil, sendKindOf } from '../src/alerts/sending.js';
 import { instantIn, todayIn } from '../src/history/today.js';
 import { openDatabase } from '../src/db/database.js';
 import { Keeper } from '../src/history/keeper.js';
@@ -115,7 +115,7 @@ async function sync(server: Server): Promise<void> {
   await server.alerts.idle();
 }
 
-async function scenario(seed: number): Promise<{ readonly shown: number; readonly crashes: number; readonly restarts: number; readonly halfway: number }> {
+async function scenario(seed: number): Promise<{ readonly shown: number; readonly crashes: number; readonly restarts: number; readonly halfway: number; readonly notSent: number }> {
   const r = randomFrom(seed);
   const a = await aServer();
   const b = await aServer();
@@ -211,8 +211,10 @@ async function scenario(seed: number): Promise<{ readonly shown: number; readonl
       // A fresh copy of each from its database replays, alerts and all.
       for (const s of both) s.life.reopen().close();
     }
-    // In the end, with the phone answering, everything is sent, once: by 9:00
-    // AM after the next two hours, past any quiet hours.
+    // In the end, with the phone answering, everything is sent, once, or was
+    // never sent for a reason 10.9 gives (A40): it waited for the phone and a
+    // newer one of its kind went, or it was no longer true by then. By 9:00 AM
+    // after the next two hours, past any quiet hours.
     for (const s of both) {
       s.phone.failing = null;
       s.phone.afterShowing = null;
@@ -221,10 +223,22 @@ async function scenario(seed: number): Promise<{ readonly shown: number; readonl
       if (nine.getTime() < later.getTime()) nine = instantIn(ZONE, addDays(todayIn(ZONE, later), 1), '09:00');
       await s.clock.advance(nine.getTime() - s.life.now.getTime(), () => s.alerts.idle());
       expect(outboxCounts(s.life.h.db).notSent, `seed ${seed}: everything sent`).toBe(0);
-      expect(s.phone.ids().toSorted(), `seed ${seed}: every alert kept is shown, once`).toEqual(outboxKeys(s.life.h.db).toSorted());
+      const rows = readOutbox(s.life.h.db, 100_000).rows;
+      expect(s.phone.ids().toSorted(), `seed ${seed}: every alert sent is shown, once`).toEqual(rows.filter((row) => row.sentAt !== null).map((row) => row.key).toSorted());
+      for (const row of rows.filter((r) => r.sentAt === null)) {
+        expect(row.tries, `seed ${seed}: ${row.key} never sent, only after the phone could not be given it`).toBeGreaterThan(0);
+        expect(row.notSent, `seed ${seed}: ${row.key} never sent, with a reason`).not.toBeNull();
+        if (row.notSent === 'newer') {
+          const kind = sendKindOf(row.key, row.facts);
+          expect(
+            rows.some((r) => r.sentAt !== null && r.dueAt >= row.dueAt && r.key !== row.key && sendKindOf(r.key, r.facts) === kind),
+            `seed ${seed}: ${row.key} never sent, as a newer one of its kind went`,
+          ).toBe(true);
+        }
+      }
     }
     expect(b.phone.ids().toSorted()).toEqual(a.phone.ids().toSorted());
-    return { shown: a.phone.shown.length, crashes, restarts, halfway };
+    return { shown: a.phone.shown.length, crashes, restarts, halfway, notSent: readOutbox(a.life.h.db, 100_000).rows.filter((row) => row.notSent !== null).length };
   } finally {
     for (const s of both) {
       await s.alerts.stop();
@@ -234,23 +248,27 @@ async function scenario(seed: number): Promise<{ readonly shown: number; readonl
 }
 
 describe('Phase 5 random scenarios: restarts at any moment never repeat or lose an alert', () => {
-  it('0.6 10.1 10.2 10.3 10.6 10.8 two servers given the same random activity, one stopped and started again at random moments', async () => {
+  it('0.6 10.1 10.2 10.3 10.6 10.8 10.9 two servers given the same random activity, one stopped and started again at random moments', async () => {
     let shown = 0;
     let crashes = 0;
     let restarts = 0;
     let halfway = 0;
+    let notSent = 0;
     for (let seed = FIRST; seed < FIRST + SCENARIOS; seed++) {
       const o = await scenario(seed);
       shown += o.shown;
       crashes += o.crashes;
       restarts += o.restarts;
       halfway += o.halfway;
+      notSent += o.notSent;
     }
     if (SCENARIOS >= 12) {
       expect(shown).toBeGreaterThan(SCENARIOS);
       expect(crashes).toBeGreaterThan(0);
       expect(restarts).toBeGreaterThan(SCENARIOS);
       expect(halfway).toBeGreaterThan(0);
+      // 10.9 A40: some waited for the phone and were never sent.
+      expect(notSent).toBeGreaterThan(0);
     }
   }, 600_000);
 });
