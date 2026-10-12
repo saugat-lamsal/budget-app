@@ -1532,6 +1532,36 @@ long). It replaces running everything before every commit:
     each with 2,600 to 3,500 connections on 127.0.0.1 waiting to close.
     Not the app (Step 0 above). If it keeps on, a choice for him: rerun as
     now, or tune the Windows runner's network in the workflow.
+- PR #24 merged (Oct 12, 2026).
+- Deployed Oct 12, 2026, from main, at his word: he made the Fly.io and
+  Cloudflare accounts and the R2 bucket and token; the app and its volume
+  were made from here (fly apps create, fly volumes create, as in
+  docs/phase-6-setup.txt); the ten secrets were written to .env.fly by a
+  script that printed no value, imported with fly secrets import at his
+  word, and .env.fly deleted (the machine's BANK_TOKEN_KEY checked to be the
+  same first, by fingerprint). Deployed with fly deploy --ha=false (Fly
+  builds the image; no Docker on his PC). flyctl is in ~/.fly/bin.
+  - Checked on the real thing: one machine in ewr on the volume, Fly's
+    health check passing, /health "ok" with HSTS, http sent to https, /api
+    401 without a login, the test bank connected by itself on the first
+    start (sandbox addresses only), Litestream copying to R2, no key in
+    Fly's log. Restore check on the machine: "The backup works." before
+    setup day (no history) and after it (8 events, every one replaying).
+  - His iPhone (Oct 12): added to the home screen, the first code and a
+    passkey with Face ID, setup day on the test bank, notifications on
+    (Apple's push service), the test alert, and his checklist (end of
+    docs/phase-6-setup.txt): all good. One line of that checklist was wrong
+    and is fixed: it said notifications stay on after logging out and back
+    in, but logging out turns them off on that phone (10.11, B199, B203);
+    the server showed none after his log out, as it should, and one again
+    once he tapped Turn on.
+- Phase 6: finish line crossed Oct 12, 2026 (the checklist passes, and the
+  app works on his iPhone against the test bank).
+- Before Phase 7 (his list, Oct 12): A43 (how he hears the backups stopped;
+  option 2 recommended), the full break-it run (about 8 hours on his PC),
+  whether the repo goes private before real data comes near it, Plaid
+  production access for Bank of America, and a fresh start of the hosted
+  books for his real accounts (the test bank's are there now).
   - docs/phase-6-checklist.txt (the checklist as tests, the secrets, the
     cost) and docs/phase-6-setup.txt (his steps and the iPhone checklist).
   - QUESTIONS.md A43 (how he hears the backups stopped), B205 to B214.

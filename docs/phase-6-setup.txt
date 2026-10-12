@@ -61,7 +61,8 @@ APP_ORIGIN); use your name wherever this says budget-app-x7q2.
       values).
 
 5. THE FIRST DEPLOY
-        fly deploy
+        fly deploy --ha=false
+   (--ha=false: one machine only; Fly would otherwise add a second.)
    Fly builds the image on its own machines (a few minutes), then starts one
    machine. Then:
         fly status          one machine, started
@@ -117,7 +118,9 @@ THE IPHONE CHECKLIST (tick each)
     shows "Checked at" a time in the last hour; Review lists the test bank's
     items; one answer in Review goes through.
 [ ] Logging out and back in with Face ID works (no code needed the second
-    time), and Settings > Notifications still says On.
+    time). Logging out turns notifications off on that phone (10.11), so
+    Settings > Notifications then says Off: Turn on again. (A login that
+    simply runs out after 30 days keeps them on.)
 [ ] The app opens full screen from the home screen (no Safari bar), and the
     notch and home bar cover nothing.
 [ ] UptimeRobot shows the monitor up.
