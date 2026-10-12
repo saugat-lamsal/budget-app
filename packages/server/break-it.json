@@ -3708,5 +3708,131 @@
     "find": "    if (path === BACKUP_HEALTH_PATH && options.backups !== undefined) {\n      if (request.method !== 'GET' && request.method !== 'HEAD') {",
     "replace": "    if (path === BACKUP_HEALTH_PATH && options.backups !== undefined) {\n      if (request.method === 'DELETE') {",
     "why": "[a43] /health/backups takes a POST"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "e['VITEST'] !== undefined || e['BREAK_IT_RUN']",
+    "replace": "e['BREAK_IT_RUN']",
+    "why": "[switch] the tests do not tighten the lock"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "|| e['BREAK_IT_RUN'] !== undefined ||",
+    "replace": "||",
+    "why": "[switch] a break-it run does not tighten the lock"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "  return tight(env) || tight(own) ? 'sandbox-only' : 'hosted';",
+    "replace": "  return tight(env) ? 'sandbox-only' : 'hosted';",
+    "why": "[switch] the lock reads only the environment handed in"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "e['PLAID_LOCK']?.trim() === 'sandbox';",
+    "replace": "e['PLAID_LOCK']?.trim() === 'tight';",
+    "why": "[switch] PLAID_LOCK=sandbox does not tighten the lock"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "    if (lock !== 'hosted') throw new SandboxOnlyError(",
+    "replace": "    if (false) throw new SandboxOnlyError(",
+    "why": "[switch] production whatever the lock says"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "    if (!(env['APP_ORIGIN']?.trim() ?? '').startsWith('https://')) throw",
+    "replace": "    if (false) throw",
+    "why": "[switch] production off the hosted server"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "  for (const environment of ['sandbox', 'production'] as const) if (token.startsWith(`${kind}-${environment}-`) && token.length",
+    "replace": "  for (const environment of ['sandbox', 'production'] as const) if (token.startsWith(`${kind}-`) && token.length",
+    "why": "[switch] any key taken as a test-bank key"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "    environment: { value: environment, enumerable: false },",
+    "replace": "    environment: { value: 'sandbox', enumerable: false },",
+    "why": "[switch] the keys always say sandbox"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "    if (environment !== 'sandbox' && plaidLock() !== 'hosted') throw",
+    "replace": "    if (false) throw",
+    "why": "[switch] the client does not ask the lock again before a request"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "    if (key !== undefined && key.environment !== environment) throw new SandboxOnlyError(MIXED);",
+    "replace": "",
+    "why": "[switch] a key sent to the other bank"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "    if (tokenEnvironment(publicToken, 'public') !== this.#keys.environment) throw new SandboxOnlyError(MIXED);",
+    "replace": "",
+    "why": "[switch] a link key from the other bank exchanged"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "    if (this.#keys.environment !== 'sandbox') throw new SandboxOnlyError('the test bank only: never on the real bank');",
+    "replace": "",
+    "why": "[switch] the test bank's own calls on the real bank"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "export const HISTORY_DAYS = 90;",
+    "replace": "export const HISTORY_DAYS = 730;",
+    "why": "[switch] A44 two years of history asked for"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "access_token: input.updateKey.reveal(), update: { account_selection_enabled: true } });",
+    "replace": "access_token: input.updateKey.reveal(), update: { account_selection_enabled: false } });",
+    "why": "[switch] 1.3 logging in again cannot add a missing account"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "    if (input.updateKey === undefined) Object.assign(body, { products:",
+    "replace": "    Object.assign(body, { products:",
+    "why": "[switch] 1.3 logging in again asks for products, as a new connection"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "    if (typeof reply.link_token !== 'string' || reply.link_token === '') throw",
+    "replace": "    if (reply.link_token === undefined) throw",
+    "why": "[switch] 1.1 an empty link key taken"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/serve/options.ts",
+    "find": "    return 'never';\n  }\n  return options.connect",
+    "replace": "    return options.connectOnce ? 'connect-once' : 'never';\n  }\n  return options.connect",
+    "why": "[switch] 1.1 the test bank connected by itself on the real bank"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/serve/options.ts",
+    "find": "    if (options.connect) throw new Error('--connect is for the test bank",
+    "replace": "    if (false) throw new Error('--connect is for the test bank",
+    "why": "[switch] 1.1 --connect taken on the real bank"
   }
 ]

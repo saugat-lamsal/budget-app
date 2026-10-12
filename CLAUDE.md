@@ -1598,7 +1598,7 @@ long). It replaces running everything before every commit:
     after his OK to A46, the Connect screen (Plaid Link), logging in again
     (update mode, the same connection), which account is which, the
     production switch (tests can never reach Plaid's production; only the
-    hosted server with PLAID_ENV=production; no test bank connected by
+    hosted server with PLAID_ENV set to production; no test bank connected by
     itself there), and the fresh start's new volume and backup folder.
     Tried on this PC with Plaid's test bank through the real Link first.
   - The full break-it run: on main as it was (309bb4c), one night on his PC;

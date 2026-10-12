@@ -18,6 +18,8 @@ function projectFiles(): string[] {
 }
 
 const join = (...parts: string[]): string => parts.join('');
+// The one file that may name Plaid's real address (the production switch).
+const LOCK = 'packages/server/src/plaid/sandbox-lock.ts';
 const realHosts = new RegExp(join('(production|development)', '\\.plaid\\.com'), 'i');
 const realKeys = new RegExp(join('(access|public)-(production|development)', '-[0-9a-f]'), 'i');
 // PLAID_ENV=... as in .env files, shell lines and docs, and PLAID_ENV: ... as
@@ -31,9 +33,16 @@ describe('safety: nothing points at a real bank', () => {
     expect(projectFiles().length).toBeGreaterThan(20);
   });
 
-  it('safety: no file names a Plaid address other than the test bank', () => {
+  // Before Phase 7 (his OK, Oct 12): the production switch names Plaid's real
+  // address in one place, the lock, which refuses it unless PLAID_ENV says
+  // production on the hosted server, and always under the tests. Nowhere
+  // else may name it, and nothing may set PLAID_ENV to it (below) until
+  // connection day.
+  it('safety: no file names a Plaid address other than the test bank, but the lock itself', () => {
     const found = projectFiles().filter((path) => realHosts.test(readFileSync(new URL(path, repoRoot), 'utf8')));
-    expect(found).toEqual([]);
+    expect(found).toEqual([LOCK]);
+    const text = readFileSync(new URL(LOCK, repoRoot), 'utf8');
+    expect(text.match(new RegExp(realHosts.source, 'gi'))).toHaveLength(1);
   });
 
   it('safety: no file holds a key for a real bank connection', () => {
@@ -49,12 +58,15 @@ describe('safety: nothing points at a real bank', () => {
     expect(found).toEqual([]);
   });
 
-  it('safety: every Plaid address in the server code is the test bank', () => {
-    const addresses = projectFiles()
-      .filter((path) => path.startsWith('packages/server/src/'))
-      .flatMap((path) => [...readFileSync(new URL(path, repoRoot), 'utf8').matchAll(/https?:\/\/[a-z0-9.-]*plaid\.com/gi)].map((m) => m[0]));
-    expect(addresses.length).toBeGreaterThan(0);
-    expect(new Set(addresses)).toEqual(new Set(['https://sandbox.plaid.com']));
+  it('safety: every Plaid address in the server code is the test bank, or the real one in the lock alone', () => {
+    const where = new Map<string, Set<string>>();
+    for (const path of projectFiles().filter((p) => p.startsWith('packages/server/src/'))) {
+      for (const m of readFileSync(new URL(path, repoRoot), 'utf8').matchAll(/https?:\/\/[a-z0-9.-]*plaid\.com/gi)) {
+        where.set(m[0], (where.get(m[0]) ?? new Set()).add(path));
+      }
+    }
+    expect(new Set(where.keys())).toEqual(new Set(['https://sandbox.plaid.com', join('https://', 'production', '.plaid.com')]));
+    expect([...(where.get(join('https://', 'production', '.plaid.com')) ?? [])]).toEqual([LOCK]);
   });
 
   it('safety: .env.example says sandbox', () => {

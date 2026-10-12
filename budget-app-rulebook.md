@@ -33,6 +33,24 @@ number so a test can point at it. Nothing gets coded until you approve this.
 - Everyday card (the credit card you use normally)
 - Old card (the house card, about $3,000, no longer used)
 
+1.1  Connecting the bank. "Connect the bank" is offered only while there
+     is no connection. It asks first: it uses 1 of the 10 connections Plaid
+     allows, and one that is removed never comes back. The bank's own login
+     opens (through Plaid). The app keeps the connection the moment it gets
+     it, sealed, on the server only. There is only ever one connection: the
+     app never makes a second, and never removes one.
+1.2  Which account is which. After connecting, before setup day, you say
+     which of the bank's accounts is checking, savings, the everyday card,
+     and the old card, each once. Nothing is read from the bank until all
+     four are picked. If one is missing, log in to the bank again to add it
+     (1.3). Once tracking starts they cannot change. An account that is none
+     of the four is never read.
+1.3  Logging in to the bank again. When the bank needs it (10.5), when its
+     permission is running out (10.13), or to add an account that is
+     missing, Settings offers "Log in to the bank again". It keeps the same
+     connection: it never uses another of the 10, and nothing already read
+     changes.
+
 
 ## 2. Settings and starting values
 
@@ -695,3 +713,5 @@ a.  When the bank is connected, the app asks it for the last 90 days of
     history (section 2, QUESTIONS.md A44).
 b.  When the bank gives the date its permission to read your accounts runs
     out, Settings shows it, and you are told 7 days before (10.13, A45).
+c.  Connecting the bank, which account is which, and logging in to the
+    bank again (1.1 to 1.3, QUESTIONS.md A46).

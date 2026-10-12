@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import type { PlaidEnvironment } from '../plaid/sandbox-lock.js';
 
 // What npm run serve was asked to do:
 //   --db <file>      the books (BUDGET_DB too); data/budget.sqlite by default
@@ -67,4 +68,15 @@ function portOf(value: string | undefined, name: string): number {
   const port = Number(value);
   if (value === undefined || value === '' || !Number.isInteger(port) || port < 0 || port > 65_535) throw new Error(`${name} needs a port number, got ${String(value)}`);
   return port;
+}
+
+// Phase 7: on the real bank the test bank is never connected. --connect is
+// refused, and --connect-once (the image always passes it) does nothing: he
+// connects the bank himself, from Setup day (1.1).
+export function testBankOnStart(options: ServeOptions, environment: PlaidEnvironment): 'connect' | 'connect-once' | 'never' {
+  if (environment === 'production') {
+    if (options.connect) throw new Error('--connect is for the test bank: on the real bank, connect it from Setup day (1.1)');
+    return 'never';
+  }
+  return options.connect ? 'connect' : options.connectOnce ? 'connect-once' : 'never';
 }

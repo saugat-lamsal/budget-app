@@ -742,8 +742,8 @@ A45. ANSWERED Oct 12, to be built. Bank of America's permission to read
      when the bank gives it, and you are told 7 days before (a setting),
      once, at the daily review time. Rulebook 10.13, section 2 and 33b.
 
-A46. Waiting on your OK: the wording of three new rules, for section 1.
-     Nothing is built until you say yes or change it.
+A46. ANSWERED Oct 12 ("do all of that"), to be built: the wording below,
+     as written. Rulebook 1.1 to 1.3 and 33c.
 
      1.1  Connecting the bank. "Connect the bank" is offered only while
           there is no connection. It asks first: it uses 1 of the 10

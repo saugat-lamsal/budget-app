@@ -351,6 +351,8 @@ describe('the demo is made-up data only', () => {
     expect(files.sort()).toEqual([
       'alerts/alerts.ts',
       'alerts/plan.ts',
+      // A43: the backups' health addresses (the web server names them); the demo has no backup.
+      'backup/backup-watch.ts',
       'bank-rules-desk.ts',
       'bank-rules.ts',
       'bank/amounts.ts',
