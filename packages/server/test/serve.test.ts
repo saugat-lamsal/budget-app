@@ -18,9 +18,9 @@ import { POSTED_AT_START, TOKEN_KEY } from './harness.js';
 const ROOT = join('C:', 'made-up', 'budget-app');
 
 describe('the real server command', () => {
-  it('keeps its books in data/budget.sqlite unless told another file; listens on this computer only', () => {
-    expect(serveOptions([], {}, ROOT)).toEqual({ db: join(ROOT, 'data', 'budget.sqlite'), port: 5190, sync: false, connect: false });
-    expect(serveOptions(['--db', 'C:/made-up/other.sqlite', '--port', '6000', '--sync'], {}, ROOT)).toEqual({ db: 'C:/made-up/other.sqlite', port: 6000, sync: true, connect: false });
+  it('keeps its books in data/budget.sqlite unless told another file; listens on this computer only (unless hosted, Phase 6: hosted.test.ts)', () => {
+    expect(serveOptions([], {}, ROOT)).toEqual({ db: join(ROOT, 'data', 'budget.sqlite'), port: 5190, sync: false, connect: false, connectOnce: false, hosted: null, host: '127.0.0.1' });
+    expect(serveOptions(['--db', 'C:/made-up/other.sqlite', '--port', '6000', '--sync'], {}, ROOT)).toEqual({ db: 'C:/made-up/other.sqlite', port: 6000, sync: true, connect: false, connectOnce: false, hosted: null, host: '127.0.0.1' });
     expect(serveOptions(['--connect'], { BUDGET_DB: 'C:/made-up/env.sqlite' }, ROOT)).toMatchObject({ db: 'C:/made-up/env.sqlite', connect: true });
   });
 
@@ -34,9 +34,9 @@ describe('the real server command', () => {
     expect(() => serveOptions(args, {}, ROOT)).toThrow(why);
   });
 
-  it('only on this computer, through the sandbox lock, with the bank key sealed: what main.ts does', () => {
+  it('where options say (this computer only unless hosted), through the sandbox lock, with the bank key sealed: what main.ts does', () => {
     const main = readFileSync(new URL('../src/serve/main.ts', import.meta.url), 'utf8');
-    expect(main).toContain("server.listen(options.port, '127.0.0.1'");
+    expect(main).toContain('server.listen(options.port, options.host,');
     expect(main).toContain('plaidKeysFromEnv(process.env)');
     expect(main).toContain('tokenBoxFromEnv(process.env)');
     expect(main).not.toMatch(/0\.0\.0\.0|--wifi/);

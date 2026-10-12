@@ -2060,8 +2060,8 @@
   {
     "section": "login",
     "file": "packages/server/src/http/server.ts",
-    "find": "      response.setHeader('Location', `${own.origin}${request.url ?? '/'}`);",
-    "replace": "      response.setHeader('Location', request.url ?? '/');",
+    "find": "      response.setHeader('Location', `${own.origin}${request.url ?? '/'}`);\n      response.setHeader('Cache-Control', 'no-store');\n      response.statusCode = 307;",
+    "replace": "      response.setHeader('Location', request.url ?? '/');\n      response.setHeader('Cache-Control', 'no-store');\n      response.statusCode = 307;",
     "why": "[login] B162 127.0.0.1 is not sent to localhost"
   },
   {

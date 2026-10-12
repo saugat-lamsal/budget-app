@@ -17,6 +17,9 @@
     "replay-check": "node scripts/replay-check.mjs",
     "login-code": "node scripts/login-code.mjs",
     "push-keys": "node scripts/push-keys.mjs",
+    "build": "node scripts/build.mjs",
+    "litestream": "node scripts/litestream.mjs",
+    "restore-check": "node scripts/restore-check.mjs",
     "pay-period-agent": "node scripts/pay-period-agent.mjs"
   },
   "engines": {

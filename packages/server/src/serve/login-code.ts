@@ -8,7 +8,9 @@ import { serveOptions } from './options.js';
 // npm run login-code [-- --db <file>] [-- --port N]
 // Step 2: a new one-time code, for when he has lost all his passkeys (or
 // before the first). Only on the computer the books are on: it opens the
-// database file directly. The code makes a new passkey on the device it is
+// database file directly. Hosted (Phase 6): fly ssh console -C "node
+// /app/serve/login-code.mjs", which shows it in his own window, never in
+// the server's log. The code makes a new passkey on the device it is
 // typed on; good once, for 15 minutes, and any older code stops working.
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
@@ -22,7 +24,7 @@ try {
 mkdirSync(dirname(options.db), { recursive: true });
 const db = openDatabase(options.db);
 try {
-  const origin = `http://localhost:${options.port}`;
+  const origin = options.hosted ?? `http://localhost:${options.port}`;
   const auth = new Auth({ db, now: () => new Date(), origin, today: () => new Date().toISOString().slice(0, 10), bookLines: () => 0 });
   const code = auth.newCode();
   console.log(`One-time code: ${code}`);

@@ -6,6 +6,12 @@
 # - webkit: the browser tests in WebKit only (BROWSER_ENGINE=webkit).
 # Together they are exactly npm test: test/ci-workflow.test.ts checks that no
 # test is left out. (One job took 38 min 46 s on PR #16, against 45.)
+# The checks job first puts Litestream on the runner (Phase 6: the backup
+# tests run it against a stand-in for R2), kept between runs.
+#
+# Phase 6, a fourth job, image: builds the image Fly.io builds (Dockerfile)
+# and starts it the way Fly does, against the stand-in for R2. Linux only. It
+# is not part of npm test (it needs Docker): its one test is skipped there.
 #
 # On every pull request: Linux only. Windows minutes count double, so
 # Windows runs only when started by hand (Actions, Tests, Run workflow,
@@ -56,6 +62,18 @@ jobs:
           cache: npm
       - run: npm ci
 
+      # Phase 6: Litestream for the backup tests, the version the image has
+      # (scripts/litestream.mjs checks its SHA-256), kept between runs.
+      - name: Keep Litestream between runs
+        if: matrix.part == 'checks'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/budget-app
+          key: litestream-${{ runner.os }}-${{ hashFiles('scripts/litestream.mjs') }}
+      - name: Litestream for the backup tests
+        if: matrix.part == 'checks'
+        run: node scripts/litestream.mjs
+
       # The type check, then everything but the browser tests.
       - name: Type check
         if: matrix.part == 'checks'
@@ -96,3 +114,23 @@ jobs:
         env:
           BROWSER_ENGINE: ${{ matrix.part }}
         run: npx vitest run --project web-browser
+
+  image:
+    name: image (ubuntu-latest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build the image, as Fly does
+        run: docker build --tag budget-app:test .
+      - name: Start it as Fly does, and check it
+        env:
+          IMAGE: budget-app:test
+        run: npx vitest run --project server test/image.test.ts

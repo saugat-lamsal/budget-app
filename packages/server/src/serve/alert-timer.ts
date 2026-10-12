@@ -42,11 +42,13 @@ export interface AlertSender {
 }
 
 // npm run serve's plug without push keys: each alert is written to the
-// server's own window, and that counts as sent.
-export function logSender(log: Log): AlertSender {
+// server's own window, and that counts as sent. Hosted (Phase 6) its log is
+// kept by Fly, so only the title goes in it, never the words, which can
+// hold amounts and names (10.10): they are in the list of alerts in the app.
+export function logSender(log: Log, words: 'all' | 'title only' = 'all'): AlertSender {
   return {
     send: (alert) => {
-      log.info('alert', { title: alert.title, body: alert.body, ...(alert.due === null ? {} : { late: alert.due }), due: alert.dueAt });
+      log.info('alert', { title: alert.title, ...(words === 'all' ? { body: alert.body } : {}), ...(alert.due === null ? {} : { late: alert.due }), due: alert.dueAt });
       return Promise.resolve();
     },
   };

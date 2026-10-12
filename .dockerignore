@@ -1,0 +1,21 @@
+# What fly deploy sends to the builder: the code only. Never the keys, the
+# books, or anything built or downloaded here.
+.env
+.env.*
+!.env.example
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+node_modules/
+**/node_modules/
+**/dist/
+screenshots/
+coverage/
+.git/
+.github/
+.claude/
+handoff*.md
+*.log
+*.tsbuildinfo
+*.break-it-backup

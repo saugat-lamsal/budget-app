@@ -506,8 +506,8 @@
   {
     "section": "home",
     "file": "packages/server/src/http/server.ts",
-    "find": "if (request.method !== 'GET' && request.method !== 'HEAD') {",
-    "replace": "if (request.method === 'DELETE') {",
+    "find": "    if (request.method !== 'GET' && request.method !== 'HEAD') {\n      response.setHeader('Allow', 'GET, HEAD');\n      send(response, 405, 'text/plain; charset=utf-8', 'Only GET and HEAD.', 'no-store');\n      return;\n    }\n\n    if (path === '/api/home') {",
+    "replace": "    if (request.method === 'DELETE') {\n      response.setHeader('Allow', 'GET, HEAD');\n      send(response, 405, 'text/plain; charset=utf-8', 'Only GET and HEAD.', 'no-store');\n      return;\n    }\n\n    if (path === '/api/home') {",
     "why": "0.4 the server accepts writes"
   },
   {
