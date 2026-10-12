@@ -28,6 +28,9 @@ afterEach(async () => {
 });
 
 describe('Phase 6 nothing sensitive in the logs', () => {
+  // A whole hosted server through logins, syncs and alerts: 0.6 s on his PC,
+  // 0.8 s on Linux CI, 5.9 s on CI's Windows runner (2 cores, busy with the
+  // long simulations beside it), past the 5-second default.
   it('Phase 6 a hosted server\'s log, through logins, syncs, alerts and failing phones, holds no key, login, code, push address, amount or bank name', async () => {
     const keys = newPushKeys('mailto:made-up@example.com');
     const life = await lifeInAFile();
@@ -121,7 +124,7 @@ describe('Phase 6 nothing sensitive in the logs', () => {
         else expect(value.test(line), `${what} in ${line}`).toBe(false);
       }
     }
-  });
+  }, 60_000);
 
   it('Phase 6 what the server hides in its log is every secret it is given: the Plaid keys, the bank key, the push key, and (on Fly) the backup\'s key', () => {
     const main = readFileSync(new URL('../src/serve/main.ts', import.meta.url), 'utf8');
