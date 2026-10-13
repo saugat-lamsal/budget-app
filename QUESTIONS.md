@@ -2591,3 +2591,39 @@ B225. The rehearsal (npm run rehearsal, Oct 12): on the Bank page the
       nonce, and Link opened and closed normally. The console also shows
       the 422 of "Connect the bank" before the yes: the server refusing
       until you say yes (1.1), which is what makes the screen ask.
+
+
+## Part B, added on connection day (Phase 7, Oct 12). Tell me if any is wrong.
+
+B226. Found on setup day: a card payment still pending was read as a
+      purchase. The bank words a pending payment differently from the posted
+      one ("PAYMENT TO ACCT #nnnn ON mm/dd VIA WEB" against "Mobile Banking
+      payment to CRD nnnn Confirmation#"), so the bank rule made from the
+      posted wording did not fit it, it counted as a pending charge (14.2),
+      and the starting money came out low by its amount. Fixed on the day
+      with bank rules for the pending wording on checking, one per card;
+      the starting money then matched his own sum to the cent. Still to do,
+      a test first: setup day should point out a pending item the bank
+      labels as a card payment or a transfer that is being read as a
+      purchase, and offer a rule for its wording.
+
+B227. The suggestions covered the leaving side of each card payment but not
+      the arriving side ("PAYMENT FROM CHK nnnn" on each card, money in): the
+      bank labels it with a label the suggestions do not know. Without a rule
+      it reads as a refund. He added one on each card by hand; each matched
+      exactly the payments from checking. Still to do, a test first: suggest
+      it from the history (the same amount the other way, a day or so later).
+
+B228. His paycheck was split by his employer, part to savings and part to
+      checking. The rulebook knows one deposit per paycheck: the first would
+      have been the paycheck and the other held in review (3.7). His call:
+      all of it to checking from now on (the Payday screen says how much to
+      move to savings, 3.8). Until that takes effect, the paycheck rule stays
+      unset, and a split payday is answered in review: the checking part
+      "this is my paycheck", the savings part "other income" (the reserve
+      once, then the split of all of it, 6.1).
+
+B229. The mom rule is "Zelle payment to Mom", not "Mom": the rule matches
+      text anywhere in a payment to a person's description, ignoring capitals,
+      so the longer text cannot catch another name or a confirmation code
+      that happens to contain the word.
