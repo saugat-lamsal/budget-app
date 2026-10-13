@@ -3810,8 +3810,8 @@
   {
     "section": "bank",
     "file": "packages/server/src/plaid/client.ts",
-    "find": "    if (input.updateKey === undefined) Object.assign(body, { products:",
-    "replace": "    Object.assign(body, { products:",
+    "find": "    else Object.assign(body, { access_token: input.updateKey.reveal(), update: { account_selection_enabled: true } });",
+    "replace": "    else Object.assign(body, { products: ['transactions', 'liabilities'], access_token: input.updateKey.reveal(), update: { account_selection_enabled: true } });",
     "why": "[switch] 1.3 logging in again asks for products, as a new connection"
   },
   {

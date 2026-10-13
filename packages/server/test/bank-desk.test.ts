@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TokenBox } from '../src/crypto/token-box.js';
 import { openDatabase } from '../src/db/database.js';
-import { readAccounts, readConnection } from '../src/db/store.js';
+import { readAccounts, readConnection, setAccountRoles } from '../src/db/store.js';
 import { Keeper, type SyncBank } from '../src/history/keeper.js';
 import { memoryLog, type LogLine } from '../src/log.js';
 import { PlaidClient } from '../src/plaid/client.js';
@@ -137,6 +137,20 @@ describe('1.2 which account is which', () => {
     const { keeper, bank, asked } = await connectedFresh();
     expect(keeper.syncDueIn()).toBeNull();
     await expect(keeper.sync(bank)).rejects.toThrow(/not all picked/);
+    expect(asked('/transactions/sync')).toBe(0);
+  });
+
+  it('1.2 all four means all four: with three picked, or one, nothing is read, no sync is due, and the screen asks for the rest', async () => {
+    // The screen sends the four together; a book with fewer is written
+    // straight to the database, as a check on the rule itself.
+    const { keeper, bank, desk, db, asked } = await connectedFresh();
+    for (const picked of [{ [PICKS.checking]: 'checking', [PICKS.savings]: 'savings', [PICKS['everyday-card']]: 'everyday-card' }, { [PICKS.checking]: 'checking' }] as const) {
+      setAccountRoles(db, picked);
+      expect(keeper.syncDueIn(), JSON.stringify(picked)).toBeNull();
+      await expect(keeper.sync(bank)).rejects.toThrow(/not all picked/);
+      expect(desk.view()).toMatchObject({ rolesSet: false });
+      expect(await desk.read()).toMatchObject({ ok: true, said: 'The accounts were read. Now say which account is which.' });
+    }
     expect(asked('/transactions/sync')).toBe(0);
   });
 

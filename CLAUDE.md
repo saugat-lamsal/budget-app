@@ -72,7 +72,8 @@ long). It replaces running everything before every commit:
 - Long simulations only when the money math or the simulator changes.
 - A commit with only docs or notes gets [skip ci].
 - The full break-it run and the 2,000 lives are skipped for Phase 5 (his
-  call). Do one full break-it run before Phase 7, when real money starts.
+  call). Before Phase 7 too, only the breaks new or changed on the branch
+  were run, not the full list (his call, Oct 12).
 
 
 ## Technical decisions already made
@@ -1637,9 +1638,18 @@ long). It replaces running everything before every commit:
       bank's login into Plaid's window is his (docs/phase-7-connection-day.txt,
       before the day, step 3). B225: the one style the page rules refuse is
       Plaid's own probe; Link's style carries the nonce.
+  - Break-it, his call (Oct 12): no full run before Phase 7 (this replaces
+    "one full break-it run before Phase 7" in the testing bar), only the
+    breaks new or changed on this branch: 85, all caught. Each group judged
+    by --only the test file of its code; the ones that file missed by the
+    whole suite. One survived: "[bank-connect] 1.2 the bank read with one
+    account picked" (the screen only sends all four, so no test had fewer);
+    bank-desk.test.ts "1.2 all four means all four" now catches it. One was
+    INVALID (it left an else with no if) and now makes the mistake it names.
+    "[hosting-linux] A43" was judged on Linux CI on a throwaway branch,
+    deleted after (run 38324734468).
   - Still to do before connection day: his rehearsal on this PC (the real
-    Plaid Link against the test bank, steps c to e), his review, CI, and the full
-    break-it run (now on this branch's tip, so the new code is in it). The
+    Plaid Link against the test bank, steps c to e), his review, and CI. The
     fresh start's new volume and backup folder are a connection-day commit
     (docs/phase-7-connection-day.txt step 2), so main stays deployable to
     the test bank meanwhile. The five "[hosting-linux]" breaks only judge
