@@ -1663,11 +1663,38 @@ long). It replaces running everything before every commit:
     (the test bank's books stay in "budget" and on budget_data, the way
     back); test/sandbox-only.test.ts lets fly.toml alone say production, in
     any form (a .toml line was not checked before); test/hosting-config.test.ts.
-  - Still to do before connection day: CI on the switch, and the day's steps. The
-    fresh start's new volume and backup folder are a connection-day commit
-    (docs/phase-7-connection-day.txt step 2), so main stays deployable to
-    the test bank meanwhile. The five "[hosting-linux]" breaks only judge
-    on Linux; they were caught on CI run 38291820227 (Oct 12) on the same
-    code, and one more ("[hosting-linux] A43") joins them.
+  - PR #27 merged (Oct 12, 2026).
+- Phase 7 started: connection day, Oct 12, 2026 (evening, at his word; the
+  steps in docs/phase-7-connection-day.txt).
+  - His Plaid Production secret and a new BANK_TOKEN_KEY staged on Fly from
+    a .env.fly checked by shape without printing (the Plaid secret not the
+    test bank's, the key new; Notepad's byte order mark had to be stripped
+    first), then the file deleted. The old machine stopped (its last copy
+    went to "budget") and destroyed; the new volume budget_real
+    (vol_vz8zw1ll6mmwq19v); deployed with --ha=false --remote-only: one
+    machine (d89520eb9e5578), "starting with empty books", "the real bank,
+    through Plaid, hosted", backups to budget-real. /health and
+    /health/backups ok, /api 401, http sent to https.
+  - He logged in on the PC (one-time code, Windows Hello passkey) and
+    connected Bank of America from Chrome (guest in Plaid, the bank's own
+    window, all four ticked): the first read had the history, the statements
+    and /item/get, nothing failed.
+  - Setup day with real balances: 9 bank rules (the 5 suggestions, the money
+    arriving on each card, B227, and the pending wording of a card payment
+    on checking, B226). The starting money matched his own sum from Bank of
+    America's numbers once the pending payment was read as a transfer; the
+    self-check passed; tracking started. The mom rule is "Zelle payment to
+    Mom" (B229); the paycheck rule waits until his pay lands in checking
+    only (B228). The restore check on the machine: "The backup works." (17
+    events).
+  - Nothing from his real accounts is in the repo; the notes above use no
+    numbers of his.
+  - Still to do: B226 and B227 as tests and fixes; his iPhone (a new code
+    and passkey, the old passkey deleted, notifications on); the second
+    UptimeRobot monitor on /health/backups; the first payday Oct 14 (answered
+    in review if it arrives split). The old volume budget_data and the old
+    backup folder "budget" are his to delete later (the way back, until
+    then). The "[hosting-linux]" breaks only judge on Linux (CI runs
+    38291820227 and 38324734468).
 - Waiting on: the promo end date for the old card (only the payoff countdown,
   rule 9.5, depends on it), and his check of part B (the list at its top).
