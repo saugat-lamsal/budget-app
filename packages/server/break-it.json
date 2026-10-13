@@ -856,8 +856,8 @@
   {
     "section": "review",
     "file": "packages/server/src/http/server.ts",
-    "find": "export const SCREEN_PATHS: readonly string[] = ['/payday', '/alerts', ...",
-    "replace": "export const SCREEN_PATHS: readonly string[] = ['/alerts', ...",
+    "find": "export const SCREEN_PATHS: readonly string[] = ['/payday', '/alerts', '/bank', ...",
+    "replace": "export const SCREEN_PATHS: readonly string[] = ['/alerts', '/bank', ...",
     "why": "[activity] B104 Payday has no address of its own"
   },
   {
@@ -2095,8 +2095,8 @@
   {
     "section": "sync",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "    if (this.#syncing !== null) return this.#syncing;\n    this.#lastTry = this.#now().getTime();",
-    "replace": "    if (this.#syncing !== null) return this.#syncing;",
+    "find": "    this.#lastTry = this.#now().getTime();\n    const running = syncBank({",
+    "replace": "    const running = syncBank({",
     "why": "[sync] B168 the next sync is counted from the last read, so a failed one is tried again at once"
   },
   {
@@ -2123,8 +2123,8 @@
   {
     "section": "sync",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "    if (readConnection(this.#db) === null) return null;\n",
-    "replace": "",
+    "find": "    if (readConnection(this.#db) === null || !rolesComplete(readAccounts(this.#db))) return null;\n",
+    "replace": "    if (readConnection(this.#db) !== null && !rolesComplete(readAccounts(this.#db))) return null;\n",
     "why": "[sync] B168 with no bank connection it tries to sync anyway"
   },
   {
@@ -2368,8 +2368,8 @@
   {
     "section": "sync",
     "file": "packages/server/src/serve/serving.ts",
-    "find": "const server = keeper.server(input.webRoot, input.origin, input.onError);",
-    "replace": "const server = keeper.server(input.webRoot, () => 'http://localhost:1', input.onError);",
+    "find": "const server = keeper.server(input.webRoot, input.origin, input.onError, { ...(input.backups === undefined ? {} : { backups: input.backups }), bank });",
+    "replace": "const server = keeper.server(input.webRoot, () => 'http://localhost:1', input.onError, { ...(input.backups === undefined ? {} : { backups: input.backups }), bank });",
     "why": "[pay-period] Step 2 the server npm run serve starts checks requests against the wrong address"
   },
   {
@@ -3341,8 +3341,8 @@
   {
     "section": "hosting",
     "file": "packages/server/src/http/server.ts",
-    "find": "      if (request.method !== 'GET' && request.method !== 'HEAD') {\n        response.setHeader('Allow', 'GET, HEAD');",
-    "replace": "      if (request.method === 'DELETE') {\n        response.setHeader('Allow', 'GET, HEAD');",
+    "find": "    if (path === HEALTH_PATH && options.health !== undefined) {\n      if (request.method !== 'GET' && request.method !== 'HEAD') {",
+    "replace": "    if (path === HEALTH_PATH && options.health !== undefined) {\n      if (request.method === 'DELETE') {",
     "why": "[hosting] health takes a POST"
   },
   {
@@ -3589,5 +3589,509 @@
     "find": "    if (options.hosted === null) {\n      console.log('  No passkey yet.",
     "replace": "    if (true) {\n      console.log('  No passkey yet.",
     "why": "[hosting-linux] hosted, the one-time code in the log"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-watch.ts",
+    "find": "    return this.#now() - (this.#last ?? this.#since) < BACKUP_SILENCE_MS;",
+    "replace": "    return this.#now() - (this.#last ?? this.#since) <= BACKUP_SILENCE_MS;",
+    "why": "[a43] the backups still ok at exactly 10 minutes"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-watch.ts",
+    "find": "    return this.#now() - (this.#last ?? this.#since) < BACKUP_SILENCE_MS;",
+    "replace": "    return this.#now() - this.#since < BACKUP_SILENCE_MS;",
+    "why": "[a43] a beat is never counted"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-watch.ts",
+    "find": "    return this.#now() - (this.#last ?? this.#since) < BACKUP_SILENCE_MS;",
+    "replace": "    return true;",
+    "why": "[a43] the backups always ok"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-watch.ts",
+    "find": "export const BACKUP_SILENCE_MS = 10 * 60_000;",
+    "replace": "export const BACKUP_SILENCE_MS = 60 * 60_000;",
+    "why": "[a43] an hour without a beat before the backups are not ok"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-watch.ts",
+    "find": "  if (remoteAddress === undefined || !LOOPBACK.has(remoteAddress)) return false;",
+    "replace": "  if (remoteAddress === undefined) return false;",
+    "why": "[a43] a beat taken from any address"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-watch.ts",
+    "find": "  return PROXY_HEADERS.every((name) => headers[name] === undefined);",
+    "replace": "  return true;",
+    "why": "[a43] a beat taken through Fly's proxy"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup-watch.ts",
+    "find": "const PROXY_HEADERS = ['x-forwarded-for', 'x-forwarded-proto', 'fly-client-ip', 'fly-forwarded-port', 'via'];",
+    "replace": "const PROXY_HEADERS = ['x-forwarded-proto'];",
+    "why": "[a43] only one of the proxy's headers looked at"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup.ts",
+    "find": "  return `http://127.0.0.1:${Number(port)}${BACKUP_BEAT_PATH}`;",
+    "replace": "  return `http://0.0.0.0:${Number(port)}${BACKUP_BEAT_PATH}`;",
+    "why": "[a43] the heartbeat not to this machine"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup.ts",
+    "find": "  if (!/^\\d{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65_535) throw",
+    "replace": "  if (!/^\\d{1,5}/.test(port) || Number(port) < 1 || Number(port) > 65_535) throw",
+    "why": "[a43] a port with more after it taken"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup.ts",
+    "find": "  if (!/^\\d{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65_535) throw",
+    "replace": "  if (!/^\\d{1,5}$/.test(port) || Number(port) < 0 || Number(port) > 65_535) throw",
+    "why": "[a43] port 0 taken"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/backup/backup.ts",
+    "find": "BUDGET_DB: db, BACKUP_HEARTBEAT_URL: heartbeatUrl(env), R2_ENDPOINT",
+    "replace": "BUDGET_DB: db, R2_ENDPOINT",
+    "why": "[a43] Litestream not told where its heartbeat goes"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      const ok = options.backups.healthy();",
+    "replace": "      const ok = options.health();",
+    "why": "[a43] /health/backups says the server's health"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      if (!fromThisMachine(request.socket.remoteAddress, request.headers)) {",
+    "replace": "      if (false) {",
+    "why": "[a43] a beat taken from anywhere"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      options.backups.beat();\n",
+    "replace": "\n",
+    "why": "[a43] the beat not counted"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      if (request.method !== 'GET') {\n        response.setHeader('Allow', 'GET');",
+    "replace": "      if (request.method === 'PUT') {\n        response.setHeader('Allow', 'GET');",
+    "why": "[a43] a beat taken by POST"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/serve/main.ts",
+    "find": "  ...(options.hosted === null ? {} : { backups: new BackupWatch(Date.now) }),\n",
+    "replace": "\n",
+    "why": "[hosting-linux] A43 hosted, the server does not watch the backups"
+  },
+  {
+    "section": "hosting",
+    "file": "packages/server/src/http/server.ts",
+    "find": "    if (path === BACKUP_HEALTH_PATH && options.backups !== undefined) {\n      if (request.method !== 'GET' && request.method !== 'HEAD') {",
+    "replace": "    if (path === BACKUP_HEALTH_PATH && options.backups !== undefined) {\n      if (request.method === 'DELETE') {",
+    "why": "[a43] /health/backups takes a POST"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "e['VITEST'] !== undefined || e['BREAK_IT_RUN']",
+    "replace": "e['BREAK_IT_RUN']",
+    "why": "[switch] the tests do not tighten the lock"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "|| e['BREAK_IT_RUN'] !== undefined ||",
+    "replace": "||",
+    "why": "[switch] a break-it run does not tighten the lock"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "  return tight(env) || tight(own) ? 'sandbox-only' : 'hosted';",
+    "replace": "  return tight(env) ? 'sandbox-only' : 'hosted';",
+    "why": "[switch] the lock reads only the environment handed in"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "e['PLAID_LOCK']?.trim() === 'sandbox';",
+    "replace": "e['PLAID_LOCK']?.trim() === 'tight';",
+    "why": "[switch] PLAID_LOCK=sandbox does not tighten the lock"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "    if (lock !== 'hosted') throw new SandboxOnlyError(",
+    "replace": "    if (false) throw new SandboxOnlyError(",
+    "why": "[switch] production whatever the lock says"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "    if (!(env['APP_ORIGIN']?.trim() ?? '').startsWith('https://')) throw",
+    "replace": "    if (false) throw",
+    "why": "[switch] production off the hosted server"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "  for (const environment of ['sandbox', 'production'] as const) if (token.startsWith(`${kind}-${environment}-`) && token.length",
+    "replace": "  for (const environment of ['sandbox', 'production'] as const) if (token.startsWith(`${kind}-`) && token.length",
+    "why": "[switch] any key taken as a test-bank key"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/sandbox-lock.ts",
+    "find": "    environment: { value: environment, enumerable: false },",
+    "replace": "    environment: { value: 'sandbox', enumerable: false },",
+    "why": "[switch] the keys always say sandbox"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "    if (environment !== 'sandbox' && plaidLock() !== 'hosted') throw",
+    "replace": "    if (false) throw",
+    "why": "[switch] the client does not ask the lock again before a request"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "    if (key !== undefined && key.environment !== environment) throw new SandboxOnlyError(MIXED);",
+    "replace": "",
+    "why": "[switch] a key sent to the other bank"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "    if (tokenEnvironment(publicToken, 'public') !== this.#keys.environment) throw new SandboxOnlyError(MIXED);",
+    "replace": "",
+    "why": "[switch] a link key from the other bank exchanged"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "    if (this.#keys.environment !== 'sandbox') throw new SandboxOnlyError('the test bank only: never on the real bank');",
+    "replace": "",
+    "why": "[switch] the test bank's own calls on the real bank"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "export const HISTORY_DAYS = 90;",
+    "replace": "export const HISTORY_DAYS = 730;",
+    "why": "[switch] A44 two years of history asked for"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "access_token: input.updateKey.reveal(), update: { account_selection_enabled: true } });",
+    "replace": "access_token: input.updateKey.reveal(), update: { account_selection_enabled: false } });",
+    "why": "[switch] 1.3 logging in again cannot add a missing account"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "    else Object.assign(body, { access_token: input.updateKey.reveal(), update: { account_selection_enabled: true } });",
+    "replace": "    else Object.assign(body, { products: ['transactions', 'liabilities'], access_token: input.updateKey.reveal(), update: { account_selection_enabled: true } });",
+    "why": "[switch] 1.3 logging in again asks for products, as a new connection"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "    if (typeof reply.link_token !== 'string' || reply.link_token === '') throw",
+    "replace": "    if (reply.link_token === undefined) throw",
+    "why": "[switch] 1.1 an empty link key taken"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/serve/options.ts",
+    "find": "    return 'never';\n  }\n  return options.connect",
+    "replace": "    return options.connectOnce ? 'connect-once' : 'never';\n  }\n  return options.connect",
+    "why": "[switch] 1.1 the test bank connected by itself on the real bank"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/serve/options.ts",
+    "find": "    if (options.connect) throw new Error('--connect is for the test bank",
+    "replace": "    if (false) throw new Error('--connect is for the test bank",
+    "why": "[switch] 1.1 --connect taken on the real bank"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "      if (connection !== null) return refuse('connected-already', 'The bank is connected already. The app never makes a second connection.');\n      if (!request.yes)",
+    "replace": "      if (!request.yes)",
+    "why": "[bank-connect] 1.1 a link key for a second connection"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "      if (!request.yes) return refuse('needs-yes',",
+    "replace": "      if (false) return refuse('needs-yes',",
+    "why": "[bank-connect] 1.1 connecting does not ask first"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (this.#connecting !== null) return Promise.resolve(refuse('busy',",
+    "replace": "    if (false) return Promise.resolve(refuse('busy',",
+    "why": "[bank-connect] 1.1 two answers from Link at once both exchanged"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (readConnection(db) !== null) return refuse('connected-already', 'The bank is connected already. The app never makes a second connection.');\n    let exchanged",
+    "replace": "    let exchanged",
+    "why": "[bank-connect] 1.1 a second answer from Link exchanged"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "      saveServerLine(db, { date: today(), action: 'bank-connected', bank: this.#bank, afterBookLines: this.#input.bookLines() });\n",
+    "replace": "",
+    "why": "[bank-connect] 1.1 13.5 connecting not in the change log"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (this.#input.tracking()) return refuse('roles-fixed',",
+    "replace": "    if (false) return refuse('roles-fixed',",
+    "why": "[bank-connect] 1.2 the picks changed after tracking started"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (named.join() !== [...ROLES].sort().join()) return refuse(",
+    "replace": "    if (named.length < 2) return refuse(",
+    "why": "[bank-connect] 1.2 a pick that leaves one out taken"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (new Set(picked).size !== ROLES.length) return refuse(",
+    "replace": "    if (new Set(picked).size < 2) return refuse(",
+    "why": "[bank-connect] 1.2 one account picked for two of the four"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (picked.some((a) => a === undefined)) return refuse(",
+    "replace": "    if (picked.every((a) => a === undefined)) return refuse(",
+    "why": "[bank-connect] 1.2 an account the bank did not send taken"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (!request.yes) return refuse('needs-yes', 'Once tracking starts",
+    "replace": "    if (false) return refuse('needs-yes', 'Once tracking starts",
+    "why": "[bank-connect] 1.2 the picks do not ask first"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "  return ROLES.every((role) => roles.includes(role));",
+    "replace": "  return ROLES.some((role) => roles.includes(role));",
+    "why": "[bank-connect] 1.2 the bank read with one account picked"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (options.loggedInAgain === true) saveServerLine(",
+    "replace": "    if (false) saveServerLine(",
+    "why": "[bank-connect] 1.3 13.5 logging in again not in the change log"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "    if (rolesComplete(readAccounts(db))) {\n      try {\n        await this.#input.sync();",
+    "replace": "    if (false) {\n      try {\n        await this.#input.sync();",
+    "why": "[bank-connect] 1.2 1.3 the bank not read after the picks or a new login"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "  return a.raw.mask === null || a.raw.mask === undefined ? a.raw.name : `${a.raw.name} ••${a.raw.mask}`;",
+    "replace": "  return a.raw.name;",
+    "why": "[bank-connect] 1.2 13.5 the change log names an account without its last digits"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    if (readConnection(this.#db) !== null && !rolesComplete(readAccounts(this.#db))) return Promise.reject(",
+    "replace": "    if (false) return Promise.reject(",
+    "why": "[bank-connect] 1.2 a sync before the four are picked"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    if (readConnection(this.#db) === null || !rolesComplete(readAccounts(this.#db))) return null;\n",
+    "replace": "    if (readConnection(this.#db) === null) return null;\n",
+    "why": "[bank-connect] 1.2 a sync due before the four are picked"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/http/server.ts",
+    "find": "    if (path === BANK_SCREEN_PATH && options.bank !== undefined) {",
+    "replace": "    if (false) {",
+    "why": "[bank-connect] 1.1 the Bank page served with the strict rules: Link cannot load"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      `script-src 'self' 'nonce-${nonce}' ${PLAID_LINK_SCRIPT}`,",
+    "replace": "      `script-src 'self' 'unsafe-inline' https://cdn.plaid.com`,",
+    "why": "[bank-connect] 1.1 the Bank page lets in any inline script and any of Plaid's"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/http/server.ts",
+    "find": "    'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',",
+    "replace": "    'Cross-Origin-Opener-Policy': 'same-origin',",
+    "why": "[bank-connect] 1.1 the bank's own login window cannot keep in touch with the page"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      `connect-src 'self' ${bankAddress}`,",
+    "replace": "      \"connect-src 'self'\",",
+    "why": "[bank-connect] 1.1 the Bank page cannot talk to the bank in use"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      if (exactly(sent, ['mode', 'yes']) && sent['mode'] === 'connect' && typeof sent['yes'] === 'boolean') return",
+    "replace": "      if (exactly(sent, ['mode', 'yes']) && sent['mode'] === 'connect') return",
+    "why": "[bank-connect] 1.1 a yes that is not a yes taken"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      return typeof token === 'string' && /^public-[a-z]+-[A-Za-z0-9-]{1,200}$/.test(token) ? bank.connected(",
+    "replace": "      return typeof token === 'string' ? bank.connected(",
+    "why": "[bank-connect] 1.1 something that is not a link key sent to the bank"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/http/server.ts",
+    "find": "  { method: 'GET', path: BANK_PATHS.view, login: true },",
+    "replace": "  { method: 'GET', path: BANK_PATHS.view, login: false },",
+    "why": "[bank-connect] 1.1 the bank connection's numbers open without a login"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  if (ends !== null && date >= addDays(ends, -settings.bankPermissionWarnDays) && date < ends) facts.push(",
+    "replace": "  if (ends !== null && date >= addDays(ends, -settings.bankPermissionWarnDays - 1) && date < ends) facts.push(",
+    "why": "[a45] 10.13 told a day early"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  if (ends !== null && date >= addDays(ends, -settings.bankPermissionWarnDays) && date < ends) facts.push(",
+    "replace": "  if (ends !== null && date >= addDays(ends, -7) && date < ends) facts.push(",
+    "why": "[a45] 10.13 the setting's days not used"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  return at !== null && permissionEndsOn(world) === f.ends && world.now.getTime() < Date.parse(at);",
+    "replace": "  return at !== null && permissionEndsOn(world) === f.ends;",
+    "why": "[a45] 10.13 a warning after it has run out"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  return at !== null && permissionEndsOn(world) === f.ends && world.now.getTime() < Date.parse(at);",
+    "replace": "  return at !== null && world.now.getTime() < Date.parse(at);",
+    "why": "[a45] 10.13 a warning for a date the bank no longer gives"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  return at === null ? null : todayIn(world.zone, new Date(at));",
+    "replace": "  return at === null ? null : at.slice(0, 10);",
+    "why": "[a45] 10.13 the end day in UTC, not on his clock"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "    case 'bank-permission':\n      return '/bank';",
+    "replace": "    case 'bank-permission':\n      return '/home';",
+    "why": "[a45] 10.13 a tap does not open the Bank screen"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "left === 1 ? 'by tomorrow' : `within ${left} days`;",
+    "replace": "left === 1 ? 'within 1 days' : `within ${left} days`;",
+    "why": "[a45] 10.13 the words for the day before"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "      return `bank-permission ends ${f.ends}`;",
+    "replace": "      return 'bank-permission';",
+    "why": "[a45] 10.13 a new date never told: one key for every date"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "  if (fetched.permissionEnds !== undefined && fetched.permissionEnds !== connection.permissionEnds) savePermissionEnds(db, fetched.permissionEnds);\n",
+    "replace": "",
+    "why": "[a45] 10.13 the date the bank gave not kept"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "    (fetched.permissionEnds !== undefined && fetched.permissionEnds !== connection.permissionEnds) ||\n",
+    "replace": "",
+    "why": "[a45] 10.13 a new date alone counts as nothing new"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "lastRead: this.lastRead(), permissionEnds: connection?.permissionEnds ?? null };",
+    "replace": "lastRead: this.lastRead(), permissionEnds: null };",
+    "why": "[a45] 10.13 the alerts never see the date"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "todayIn(this.#input.zone(), new Date(connection.permissionEnds)),",
+    "replace": "connection.permissionEnds.slice(0, 10),",
+    "why": "[a45] 10.13 the Bank screen shows the date in UTC"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "    if (error instanceof PlaidError && error.errorCode !== 'ITEM_LOGIN_REQUIRED') return undefined;\n",
+    "replace": "",
+    "why": "[a45] 10.13 a sync fails when the bank cannot say the date"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "    if (error instanceof PlaidError && error.errorCode !== 'ITEM_LOGIN_REQUIRED') return undefined;\n",
+    "replace": "    if (error instanceof PlaidError && error.errorCode !== 'ITEM_LOGIN_REQUIRED') return null;\n",
+    "why": "[a45] 10.13 the date kept is dropped when the bank cannot say it"
   }
 ]

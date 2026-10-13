@@ -28,6 +28,9 @@ export type AlertFacts =
   // 10.7 (A38): the last good read of the bank is this many hours old (the
   // time-th time), and when that read was, as an instant and on his clock.
   | { readonly kind: 'bank-not-read'; readonly time: number; readonly hours: number; readonly lastRead: string; readonly lastReadLocal: string }
+  // 10.13: once per date the bank gave, the setting's days before it, at the
+  // review time. ends: the day it runs out, on his clock.
+  | { readonly kind: 'bank-permission'; readonly ends: IsoDate }
   // 10.6: once, when it happens.
   | { readonly kind: 'bank-took-back'; readonly id: string; readonly date: IsoDate; readonly description: string; readonly amount: Cents };
 
@@ -69,6 +72,8 @@ export function alertKey(f: AlertFacts): string {
       return `bank-not-read ${f.time}`;
     case 'bank-took-back':
       return `bank-took-back ${f.id}`;
+    case 'bank-permission':
+      return `bank-permission ends ${f.ends}`;
   }
 }
 
@@ -83,6 +88,9 @@ export function alertScreen(f: AlertFacts | null): string {
       return `/buckets/${f.bucket}`;
     case 'daily-review':
       return '/review';
+    // 10.13: where he logs in to the bank again (1.3).
+    case 'bank-permission':
+      return '/bank';
     default:
       return '/home';
   }
@@ -153,6 +161,11 @@ export function alertWords(f: AlertFacts, options: { readonly amounts?: boolean;
         title: 'The bank took something back',
         body: amounts ? `${f.description}, ${formatDollars(f.amount)}, taken back ${dayWords(f.date)}. It is undone in your buckets too.` : `${f.description}, taken back ${dayWords(f.date)}. It is undone in your buckets too.`,
       };
+    case 'bank-permission': {
+      const left = options.sentOn === undefined ? null : daysBetween(options.sentOn, f.ends);
+      const when = left === null ? 'soon' : left <= 0 ? 'today' : left === 1 ? 'by tomorrow' : `within ${left} days`;
+      return { title: `Log in to your bank again ${when}`, body: `The bank lets the app read your accounts until ${dayWords(f.ends)}. Logging in again keeps it reading, and nothing is lost.` };
+    }
     case 'bank-not-read':
       return {
         title: `The bank has not been read for ${f.hours} ${f.hours === 1 ? 'hour' : 'hours'}`,

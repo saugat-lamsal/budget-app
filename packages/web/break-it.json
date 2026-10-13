@@ -1059,8 +1059,8 @@
   {
     "section": "home",
     "file": "packages/web/src/app/routes.ts",
-    "find": "return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : route.screen === 'alerts' ? 'settings' : 'buckets';",
-    "replace": "return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : route.screen === 'alerts' ? 'settings' : 'home';",
+    "find": "return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : route.screen === 'alerts' || route.screen === 'bank' ? 'settings' : 'buckets';",
+    "replace": "return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : route.screen === 'alerts' || route.screen === 'bank' ? 'settings' : 'home';",
     "why": "[activity] B97 a bucket's screen lights the wrong tab"
   },
   {
@@ -2189,5 +2189,40 @@
     "find": "      outDir = config.build.outDir;\n",
     "replace": "",
     "why": "[hosting] the service worker built apart from the screens"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/App.tsx",
+    "find": "      if (next.screen === 'bank' || route.screen === 'bank') {",
+    "replace": "      if (false) {",
+    "why": "[bank-connect] 1.1 the Bank screen opened inside another page: its rules never apply"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Bank.tsx",
+    "find": "        <Button wide disabled={busy} onClick={() => void start(false)} testId=\"bank-connect\">",
+    "replace": "        <Button wide disabled={busy} onClick={() => void start(true)} testId=\"bank-connect\">",
+    "why": "[bank-connect] 1.1 the screen connects without asking first"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Bank.tsx",
+    "find": "                const next: Partial<Record<AccountId, string>> = Object.fromEntries(Object.entries(picks).filter(([, id]) => id !== a.id));",
+    "replace": "                const next: Partial<Record<AccountId, string>> = { ...picks };",
+    "why": "[bank-connect] 1.2 an account picked twice stays in both"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Bank.tsx",
+    "find": "        else if (outcome.kind === 'closed') onSaid({ tone: 'warning', text: outcome.failed ? W.closedFailed : W.closed });",
+    "replace": "        else if (outcome.kind === 'closed') onSaid({ tone: 'ok', text: 'The bank is connected. Now say which account is which.' });",
+    "why": "[bank-connect] 1.1 a closed login said to have connected"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "  return `${days} ${days === 1 ? 'day' : 'days'} before`;",
+    "replace": "  return `${days} days before`;",
+    "why": "[a45] 10.13 the warning in words: 1 days"
   }
 ]

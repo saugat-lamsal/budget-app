@@ -2,11 +2,13 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { BackupWatch } from '../src/backup/backup-watch.js';
 import { restoreCheck } from '../src/backup/restore-check.js';
 import { openDatabase, type Db } from '../src/db/database.js';
 import { restoreIfMissing } from '../src/serve/start.js';
 import { ACCOUNT_IDS } from './fake-plaid.js';
 import { FakeR2 } from './fake-r2.js';
+import { servedAt, stop } from './hosted-harness.js';
 import { lifeInAFile, noonInNewYork, setUpThroughTheDesk, type Life } from './keeper-harness.js';
 import { CAN_RESTORE, CONFIG, backupOf, copied, litestreamBin, replicate, until, type Replicating } from './litestream-harness.js';
 
@@ -99,6 +101,42 @@ describe('Phase 6 Litestream copies the books to the bucket', { timeout: 60_000 
     r2.failing = null;
     await copied(r2, back);
     expect(r2.keys().length).toBeGreaterThan(keys.length);
+  });
+});
+
+// QUESTIONS.md A43, option 5, with the real Litestream and the real server:
+// the heartbeat comes to the server's beat address on this computer while
+// every copy goes through, also while nothing in the books changes (a quiet
+// night), and stops once a change cannot be copied. Litestream beats at most
+// once a minute, so this takes four or five minutes of real time.
+describe('A43 Litestream\'s heartbeat', { timeout: 420_000 }, () => {
+  it('A43 reaches the server while every copy goes through, also while nothing changes, and stops once a change cannot be copied', async () => {
+    const r2 = await standIn();
+    const beats = new BackupWatch(Date.now);
+    const r = await servedAt(undefined, true, beats);
+    cleanUp.push(() => stop(r));
+    watch(replicate(r.life.path, backupOf(r2), { PORT: String(r.port) }));
+    await copied(r2, 0);
+    await until('the first beat', () => beats.lastBeat !== null, 100_000);
+    const first = beats.lastBeat ?? 0;
+    // Nothing changes in the books, and it still beats.
+    await until('a beat while nothing changes', () => (beats.lastBeat ?? 0) > first, 100_000);
+    expect(beats.healthy()).toBe(true);
+    // The bucket cannot be reached, and a change waits to be copied.
+    r2.failing = 503;
+    r.life.h.fake.addPosted({ id: 'cafe-9', account: ACCOUNT_IDS.everyday, amount: 990, date: '2026-10-03', description: 'MADE UP TEA' });
+    await r.life.sync();
+    const tried = r2.requests.length;
+    await until('Litestream to try', () => r2.requests.slice(tried).some((req) => req.status === 503));
+    const failedAt = Date.now();
+    // Litestream beats while its last good copy is less than a minute old, and
+    // looks every 15 s, so one more beat can come up to about 75 s after the
+    // copies stop (seen at 59 s on a busy PC). None after that: two more
+    // minutes would have had two beats.
+    await new Promise((resolve) => setTimeout(resolve, 150_000));
+    expect(beats.lastBeat ?? 0).toBeLessThan(failedAt + 90_000);
+    // So that stopping Litestream can copy what it has.
+    r2.failing = null;
   });
 });
 

@@ -70,6 +70,8 @@ export interface PlaidItem {
   readonly item_id: string;
   readonly institution_id?: string | null;
   readonly error: PlaidErrorBody | null;
+  // 10.13: when the bank stops letting the app read the accounts (an instant), for banks that set one.
+  readonly consent_expiration_time?: string | null;
 }
 
 export interface AccountsGetResponse {

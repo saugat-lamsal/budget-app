@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 20)
+# Budget App Rulebook (draft 21)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -33,6 +33,24 @@ number so a test can point at it. Nothing gets coded until you approve this.
 - Everyday card (the credit card you use normally)
 - Old card (the house card, about $3,000, no longer used)
 
+1.1  Connecting the bank. "Connect the bank" is offered only while there
+     is no connection. It asks first: it uses 1 of the 10 connections Plaid
+     allows, and one that is removed never comes back. The bank's own login
+     opens (through Plaid). The app keeps the connection the moment it gets
+     it, sealed, on the server only. There is only ever one connection: the
+     app never makes a second, and never removes one.
+1.2  Which account is which. After connecting, before setup day, you say
+     which of the bank's accounts is checking, savings, the everyday card,
+     and the old card, each once. Nothing is read from the bank until all
+     four are picked. If one is missing, log in to the bank again to add it
+     (1.3). Once tracking starts they cannot change. An account that is none
+     of the four is never read.
+1.3  Logging in to the bank again. When the bank needs it (10.5), when its
+     permission is running out (10.13), or to add an account that is
+     missing, Settings offers "Log in to the bank again". It keeps the same
+     connection: it never uses another of the 10, and nothing already read
+     changes.
+
 
 ## 2. Settings and starting values
 
@@ -52,6 +70,10 @@ number so a test can point at it. Nothing gets coded until you approve this.
   last sync started (a clock change does not move it). When the app starts,
   it syncs at once if one is due. A sync that fails changes nothing and is
   tried again at the next time. A change to this is logged (13.5).
+- Bank permission ending: told 7 days before the bank's permission to read
+  your accounts runs out (10.13).
+- History at connection: when the bank is connected, the app asks it for
+  the last 90 days. This cannot change once the bank is connected.
 - Home time zone: America/New_York. The app's today is the date there,
   whatever time zone the server's own clock is set to. Dates the bank sends
   stay exactly as sent.
@@ -321,6 +343,13 @@ number so a test can point at it. Nothing gets coded until you approve this.
       alerts it has shown (ids only, never words or amounts) in its own
       storage, so a repeat is dropped even after the phone has stopped and
       started the app's background part. Nothing else is kept on the phone.
+10.13 The bank lets the app read your accounts only until a date it sets
+      (Bank of America: a year after you connect, or log in to the bank
+      again). When the bank gives that date, Settings shows it, and you are
+      told once, 7 days before it (section 2), at the daily review time.
+      Logging in to the bank again before then moves the date, and nothing
+      is lost. If it runs out anyway, the bank needs you to log in again
+      (10.5).
 
 
 ## 11. Safe to spend
@@ -676,3 +705,13 @@ b.  Notifications keep coming after a phone's login ends. Logging in again
 c.  The phone keeps only the ids of the newest 500 alerts it showed, in the
     service worker's own storage, so a repeat stays dropped after the
     service worker restarts (10.12, A42).
+
+
+## 33. Answers before Phase 7 (Oct 12, 2026)
+
+a.  When the bank is connected, the app asks it for the last 90 days of
+    history (section 2, QUESTIONS.md A44).
+b.  When the bank gives the date its permission to read your accounts runs
+    out, Settings shows it, and you are told 7 days before (10.13, A45).
+c.  Connecting the bank, which account is which, and logging in to the
+    bank again (1.1 to 1.3, QUESTIONS.md A46).

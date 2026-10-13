@@ -13,3 +13,4 @@ export type * from './server-log.js';
 export type * from './login.js';
 export * from './alerts.js';
 export type * from './push.js';
+export type * from './bank.js';

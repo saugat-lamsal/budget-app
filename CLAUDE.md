@@ -72,7 +72,8 @@ long). It replaces running everything before every commit:
 - Long simulations only when the money math or the simulator changes.
 - A commit with only docs or notes gets [skip ci].
 - The full break-it run and the 2,000 lives are skipped for Phase 5 (his
-  call). Do one full break-it run before Phase 7, when real money starts.
+  call). Before Phase 7 too, only the breaks new or changed on the branch
+  were run, not the full list (his call, Oct 12).
 
 
 ## Technical decisions already made
@@ -152,7 +153,7 @@ long). It replaces running everything before every commit:
 
 ## Status
 
-- Rulebook: draft 20. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 21. Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
@@ -172,7 +173,8 @@ long). It replaces running everything before every commit:
   A33: rule 4.5), section 30 his answers after the alerts were kept (A34 to
   A39: rules 9.7, 10.4, 10.5, 10.7 to 10.10, and section 2), section 31
   his answers on late alerts (B185, B186: rules 9.7, 10.8), section 32 his
-  answers on the phone (A40 to A42: rules 10.9, 10.11, 10.12).
+  answers on the phone (A40 to A42: rules 10.9, 10.11, 10.12), section 33
+  his answers before Phase 7 (A44: section 2; A45: rule 10.13).
 - Phase 0 (setup): finish line crossed Oct 6, 2026. `npm test` type-checks
   everything, then runs every test. Saugat still has to add his Plaid sandbox
   keys to .env (not needed until Phase 3).
@@ -1565,5 +1567,93 @@ long). It replaces running everything before every commit:
   - docs/phase-6-checklist.txt (the checklist as tests, the secrets, the
     cost) and docs/phase-6-setup.txt (his steps and the iPhone checklist).
   - QUESTIONS.md A43 (how he hears the backups stopped), B205 to B214.
+- The plan before Phase 7, his calls (Oct 12, 2026), branch before-phase-7.
+  Nothing real is connected until he says so on connection day.
+  - Found planning it: the app cannot connect a real bank yet. It connects
+    only through the test bank's shortcut (no screens), cannot log in to the
+    bank again (10.5 is told, but the only fix would be a new connection, one
+    of the 10), and has no screen to say which account is which (the test
+    bank's are picked by made-up account numbers, serve/test-bank.ts).
+  - Plaid: the free Trial plan (teams made after Apr 15, 2026): 10 real
+    connections, removed ones never come back, Bank of America included
+    since May 2026, transactions and liabilities included. He checks his
+    dashboard says Trial, 0 of 10. Never submit a Production application
+    (one-way, ends the Trial). Connect from the PC's browser (Plaid's pop-up
+    flow), not the home-screen app. Bank of America's own screen picks the
+    accounts: all four. Its permission runs out after 12 months.
+  - His answers: A43 option 5 (/health/backups and Litestream's heartbeat,
+    a second UptimeRobot monitor); A44 90 days of history; A45 rule 10.13
+    (the bank's permission end date, told 7 days before). A46 (the wording of
+    rules 1.1 connecting, 1.2 which account is which, 1.3 logging in again)
+    waits on his OK; build them only after it.
+  - The repo stays public for now: he will not pay for CI. So nothing from
+    his real accounts may go in the repo, including Phase 7's real history
+    with names removed; where that test lives is decided in Phase 7.
+  - The hosted books start fresh (option A): the same app and address, the
+    machine replaced with a new volume and a new backup folder in R2, the
+    test bank's volume and backup kept untouched as a way back (he deletes
+    them later). A new BANK_TOKEN_KEY; the push keys stay. He then redoes the
+    one-time code, a passkey (and deletes the old one on the iPhone),
+    notifications, and setup day.
+  - Built on this branch (Oct 12, his "do all of that", which OK'd A46's
+    wording), test bank only:
+    - A43 option 5: litestream.yml heartbeat-url (heartbeatUrl, always
+      127.0.0.1 and the server's port) every minute; backup/backup-watch.ts;
+      /health/backups (not ok 10 minutes after the last beat) and the beat
+      address (this machine only, never through Fly's proxy). Hosted only.
+      After the copies stop Litestream can beat once more up to ~75 s later
+      (B215). Breaks "[a43]".
+    - The production switch (plaid/sandbox-lock.ts): two banks; the real one
+      only with PLAID_ENV production, hosted (APP_ORIGIN https), never under
+      VITEST, BREAK_IT_RUN or PLAID_LOCK=sandbox; the client asks the lock
+      again before every request, sends a key only to its own bank, and
+      refuses the test bank's own calls on the real bank. The real address is
+      named in the lock alone (test/sandbox-only.test.ts). fly.toml still
+      says sandbox. On the real bank the test bank is never connected by
+      itself (serve/options.ts testBankOnStart). Breaks "[switch]".
+    - 1.1 to 1.3 (bank-desk.ts, Keeper.bankDesk; views/bank.ts; /api/bank and
+      its four POSTs; screens/Bank.tsx at /bank): connect asks first and
+      happens once; Link's answer kept at once; the four picks; logging in
+      again on the same connection; nothing read until all four are picked
+      (Keeper.sync refuses, syncDueIn null). The /bank page alone lets Plaid
+      Link in (bankPageHeaders: its script, a fresh nonce, its frame, the
+      bank in use, COOP same-origin-allow-popups), and is always opened as a
+      page of its own; the page gets Link's address and the nonce in meta
+      tags, so the phone's code never names Plaid. Breaks "[bank-connect]".
+    - 10.13 (A45): Settings.bankPermissionWarnDays (7, 1 to 60, on Settings
+      as "Bank permission ending"); each sync reads /item/get
+      consent_expiration_time (never failing the sync for it; database step
+      9, connection.permission_ends); the Bank screen shows it as his date;
+      the alert 'bank-permission' at the review time that many days before,
+      once per end date, a tap opens /bank. Breaks "[a45]".
+    - QUESTIONS.md B215 to B224 (the readings), docs/phase-7-connection-day.txt
+      (the day's steps, and the way back).
+    - npm run rehearsal (scripts/rehearsal.mjs,
+      packages/web/test/browser/rehearsal/rehearsal-server.ts): the real
+      server's code with a throwaway database and bank key, the test bank only
+      (it sets PLAID_LOCK=sandbox itself), on http://localhost:5392, and a
+      control page on 5393 ("Log this browser in", what the books hold). Checked
+      from here (Oct 12): Connect asks first, Plaid Link opens in Sandbox mode
+      under the page rules, closing it connects nothing. Typing the test
+      bank's login into Plaid's window is his (docs/phase-7-connection-day.txt,
+      before the day, step 3). B225: the one style the page rules refuse is
+      Plaid's own probe; Link's style carries the nonce.
+  - Break-it, his call (Oct 12): no full run before Phase 7 (this replaces
+    "one full break-it run before Phase 7" in the testing bar), only the
+    breaks new or changed on this branch: 85, all caught. Each group judged
+    by --only the test file of its code; the ones that file missed by the
+    whole suite. One survived: "[bank-connect] 1.2 the bank read with one
+    account picked" (the screen only sends all four, so no test had fewer);
+    bank-desk.test.ts "1.2 all four means all four" now catches it. One was
+    INVALID (it left an else with no if) and now makes the mistake it names.
+    "[hosting-linux] A43" was judged on Linux CI on a throwaway branch,
+    deleted after (run 38324734468).
+  - Still to do before connection day: his rehearsal on this PC (the real
+    Plaid Link against the test bank, steps c to e), his review, and CI. The
+    fresh start's new volume and backup folder are a connection-day commit
+    (docs/phase-7-connection-day.txt step 2), so main stays deployable to
+    the test bank meanwhile. The five "[hosting-linux]" breaks only judge
+    on Linux; they were caught on CI run 38291820227 (Oct 12) on the same
+    code, and one more ("[hosting-linux] A43") joins them.
 - Waiting on: the promo end date for the old card (only the payoff countdown,
   rule 9.5, depends on it), and his check of part B (the list at its top).

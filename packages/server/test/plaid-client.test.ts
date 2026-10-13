@@ -36,6 +36,7 @@ describe('0.4 the app is read-only: the bank connection cannot move money', () =
         '/item/get',
         '/item/public_token/exchange',
         '/liabilities/get',
+        '/link/token/create',
         '/sandbox/item/reset_login',
         '/sandbox/public_token/create',
         '/sandbox/transactions/create',
@@ -70,8 +71,51 @@ describe('safety: requests to Plaid', () => {
     expect(sent[0]?.body['cursor']).toBe('cursor-0');
   });
 
-  it('safety: a key that is not a test-bank key is refused before anything is sent', () => {
-    expect(() => new BankKey(['access', 'production', '0f1e2d3c'].join('-'))).toThrow(SandboxOnlyError);
+  it('safety: a key that is not a test-bank key is refused before anything is sent', async () => {
+    const { fetch, sent } = fakeFetch(() => ({ status: 200, body: okSync }));
+    const client = new PlaidClient(keys, { fetch, log: memoryLog([]) });
+    // A real bank's key is a bank key (Phase 7), but the test bank's client never sends it.
+    await expect(client.syncTransactions(new BankKey(['access', 'production', '0f1e2d3c'].join('-')), null, 100)).rejects.toThrow(SandboxOnlyError);
+    expect(() => new BankKey(['access', 'development', '0f1e2d3c'].join('-'))).toThrow(SandboxOnlyError);
+    expect(sent).toEqual([]);
+  });
+
+  it('1.1 A44 the link key asks for the bank\'s own login, for transactions and card statements, 90 days of history, in English, for one person', async () => {
+    const { fetch, sent } = fakeFetch(() => ({ status: 200, body: { link_token: 'link-sandbox-made-up', expiration: '2026-10-13T01:00:00Z', request_id: 'req-1' } }));
+    const client = new PlaidClient(keys, { fetch, log: memoryLog([]) });
+    expect(await client.createLinkToken({ clientUserId: 'budget-app-made-up' })).toBe('link-sandbox-made-up');
+    expect(sent[0]?.url).toBe('https://sandbox.plaid.com/link/token/create');
+    expect(sent[0]?.body).toEqual({
+      client_name: 'Budget App',
+      language: 'en',
+      country_codes: ['US'],
+      user: { client_user_id: 'budget-app-made-up' },
+      products: ['transactions', 'liabilities'],
+      transactions: { days_requested: 90 },
+    });
+  });
+
+  it('1.3 logging in again asks with the connection\'s own key and lets him add a missing account; it asks for no new connection and no products', async () => {
+    const { fetch, sent } = fakeFetch(() => ({ status: 200, body: { link_token: 'link-sandbox-made-up', expiration: '2026-10-13T01:00:00Z', request_id: 'req-1' } }));
+    const client = new PlaidClient(keys, { fetch, log: memoryLog([]) });
+    await client.createLinkToken({ clientUserId: 'budget-app-made-up', updateKey: new BankKey(TOKEN) });
+    expect(sent[0]?.body).toEqual({
+      client_name: 'Budget App',
+      language: 'en',
+      country_codes: ['US'],
+      user: { client_user_id: 'budget-app-made-up' },
+      access_token: TOKEN,
+      update: { account_selection_enabled: true },
+    });
+    expect(sent[0]?.body).not.toHaveProperty('products');
+  });
+
+  it('1.1 a link key that does not look like one is refused', async () => {
+    for (const body of [{}, { link_token: '' }, { link_token: 42 }]) {
+      const { fetch } = fakeFetch(() => ({ status: 200, body }));
+      const client = new PlaidClient(keys, { fetch, log: memoryLog([]) });
+      await expect(client.createLinkToken({ clientUserId: 'budget-app-made-up' }), JSON.stringify(body)).rejects.toThrow(/link key/);
+    }
   });
 
   it('safety: the bank key never shows when printed', () => {

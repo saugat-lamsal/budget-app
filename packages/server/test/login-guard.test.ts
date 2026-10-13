@@ -111,11 +111,15 @@ describe('login: every route on the real server needs a login', () => {
 
   // A new address (the Notifications card's, Phase 5) left open by mistake
   // would never be in NEEDS_LOGIN, so nothing below would try it. Phase 6
-  // adds one: /health, for the uptime monitor, which says only "ok".
-  it('login Phase 6 the only addresses open without a login are the login page and its own requests, and the health address', () => {
+  // adds one: /health, for the uptime monitor, which says only "ok". A43 adds
+  // two: /health/backups, for the second monitor, and the beat Litestream sends
+  // it from the same machine (taken only from there).
+  it('login Phase 6 A43 the only addresses open without a login are the login page and its own requests, and the health addresses', () => {
     expect(ROUTES.filter((r) => !r.login).map((r) => `${r.method} ${r.path}`)).toEqual([
       'GET /login',
       'GET /health',
+      'GET /health/backups',
+      'GET /health/backups/beat',
       'GET /api/auth',
       'POST /api/auth/login/options',
       'POST /api/auth/login',

@@ -292,6 +292,11 @@ const STEPS: readonly string[] = [
   DROP INDEX outbox_unsent;
   CREATE INDEX outbox_unsent ON outbox (next_try_at) WHERE sent_at IS NULL AND not_sent IS NULL;
   `,
+  `
+  -- Step 9 (10.13, QUESTIONS.md A45): when the bank's permission to read his
+  -- accounts runs out, as the bank last said (an instant); NULL when it gave none.
+  ALTER TABLE connection ADD COLUMN permission_ends TEXT;
+  `,
 ];
 
 // Steps that make a table again, which SQLite does with foreign keys off

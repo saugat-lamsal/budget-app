@@ -20,7 +20,8 @@
     "build": "node scripts/build.mjs",
     "litestream": "node scripts/litestream.mjs",
     "restore-check": "node scripts/restore-check.mjs",
-    "pay-period-agent": "node scripts/pay-period-agent.mjs"
+    "pay-period-agent": "node scripts/pay-period-agent.mjs",
+    "rehearsal": "node scripts/rehearsal.mjs"
   },
   "engines": {
     "node": ">=22.12.0"

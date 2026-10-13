@@ -1,3 +1,5 @@
+import { BankDesk, rolesComplete } from '../bank-desk.js';
+import { PLAID_URLS } from '../plaid/sandbox-lock.js';
 import type { IncomingMessage, Server } from 'node:http';
 import type { Agent } from 'node:https';
 import { DEFAULT_SETTINGS, type BankBalances, type Book, type CardStatement, type IsoDate, type Pot } from '@budget-app/money';
@@ -116,6 +118,8 @@ export class Keeper {
   // Step 3: the sync on its way, if any, and when the last one started (an
   // instant, in milliseconds); when the server starts, the last read.
   #syncing: Promise<SyncResult> | null = null;
+  // 1.1 to 1.3: made the first time the screen needs it.
+  #bankDesk: BankDesk | null = null;
   #lastTry: number | null;
   // The last event of the history the books in memory have.
   #lastSeq = 0;
@@ -396,6 +400,29 @@ export class Keeper {
     return true;
   }
 
+  // ----- The bank connection (1.1 to 1.3) -----
+
+  // The Bank connection screen's desk: one per server, so a connection on its
+  // way is never made twice.
+  bankDesk(bank: SyncBank): BankDesk {
+    this.#bankDesk ??= new BankDesk({
+      db: this.#db,
+      plaid: bank.plaid,
+      box: bank.box,
+      log: bank.log,
+      today: () => this.today(),
+      zone: () => this.timeZone(),
+      tracking: () => this.book() !== null,
+      bookLines: () => this.book()?.changeLog().length ?? 0,
+      sync: () => this.sync(bank),
+      changed: () => {
+        this.reload();
+        this.#changed();
+      },
+    });
+    return this.#bankDesk;
+  }
+
   // ----- Syncing with the bank (Step 3) -----
 
   // One sync with the bank. Never two at once: asked again while one is on
@@ -408,6 +435,8 @@ export class Keeper {
   // nothing.
   sync(bank: SyncBank): Promise<SyncResult> {
     if (this.#syncing !== null) return this.#syncing;
+    // 1.2: nothing is read from the bank until all four accounts are picked.
+    if (readConnection(this.#db) !== null && !rolesComplete(readAccounts(this.#db))) return Promise.reject(new Error('the accounts are not all picked yet (1.2): nothing is read from the bank until they are'));
     this.#lastTry = this.#now().getTime();
     const running = syncBank({
       db: this.#db,
@@ -441,9 +470,9 @@ export class Keeper {
   // How long until the next sync is due, in milliseconds of real time: one
   // interval (section 2) after the last one started, or after the last read
   // when the server has just started. 0 or less: due now. Null while there is
-  // no bank connection to read.
+  // no bank connection to read, or its accounts are not all picked (1.2).
   syncDueIn(): number | null {
-    if (readConnection(this.#db) === null) return null;
+    if (readConnection(this.#db) === null || !rolesComplete(readAccounts(this.#db))) return null;
     if (this.#lastTry === null) return 0;
     return this.#lastTry + this.syncEveryMinutes() * 60_000 - this.#now().getTime();
   }
@@ -486,7 +515,8 @@ export class Keeper {
   #alertWorld(): AlertWorld | null {
     const book = this.book();
     if (book === null) return null;
-    return { book, now: this.#now(), zone: this.timeZone(), bank: this.#bank(), needsLogin: readConnection(this.#db)?.needsLogin ?? false, statements: this.#statements(), lastRead: this.lastRead() };
+    const connection = readConnection(this.#db);
+    return { book, now: this.#now(), zone: this.timeZone(), bank: this.#bank(), needsLogin: connection?.needsLogin ?? false, statements: this.#statements(), lastRead: this.lastRead(), permissionEnds: connection?.permissionEnds ?? null };
   }
 
   // Works out every alert due now (alerts/plan.ts) and keeps it: each
@@ -620,7 +650,11 @@ export class Keeper {
   // The web server for the screens, with these books behind it. Every
   // screen and every /api address needs a login (Step 2), checked against
   // the app's own address, `origin`.
-  server(webRoot: string, origin: () => string, onError?: (error: unknown) => void): Server {
+  // A43: hosted, `backups` watches Litestream's heartbeat for /health/backups.
+  // 1.1 to 1.3: with `bank`, the Bank connection screen (the real server always has it).
+  server(webRoot: string, origin: () => string, onError?: (error: unknown) => void, extras: { readonly backups?: { readonly beat: () => void; readonly healthy: () => boolean }; readonly bank?: SyncBank } = {}): Server {
+    const { backups, bank } = extras;
+    const desk = bank === undefined ? null : this.bankDesk(bank);
     this.#origin = origin;
     const auth = this.#auth;
     return createAppServer({
@@ -648,6 +682,19 @@ export class Keeper {
       syncEvery: (_request, minutes) => this.changeSyncEvery(minutes),
       alerts: () => this.alertsView(),
       health: () => this.healthy(),
+      ...(backups === undefined ? {} : { backups }),
+      ...(desk === null || bank === undefined
+        ? {}
+        : {
+            bank: {
+              bankAddress: PLAID_URLS[bank.plaid.environment],
+              view: () => desk.view(),
+              link: (_request, request) => desk.link(request),
+              connected: (_request, request) => desk.connected(request),
+              roles: (_request, request) => desk.roles(request),
+              read: (_request, request) => desk.read(request),
+            },
+          }),
       push: {
         on: (request, subscription) => this.#asking(request, (asking) => this.#push.on(asking, subscription)),
         off: (request) => this.#asking(request, (asking) => this.#push.off(asking)),

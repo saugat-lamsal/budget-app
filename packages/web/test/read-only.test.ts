@@ -7,8 +7,11 @@ import { describe, expect, it } from 'vitest';
 // review, which the server's money math decides, and, on the real server, the
 // login's own requests (Step 2: who is logged in and with which passkeys,
 // never money), how often it syncs with the bank (Step 3: a setting, never
-// money), and the Notifications card's (Phase 5: which devices get the
-// alerts, never money). None of it reaches the bank. Nothing about money is kept on
+// money), the Notifications card's (Phase 5: which devices get the
+// alerts, never money), and the Bank connection screen's (1.1 to 1.3: which
+// bank the app reads and which account is which, never money; the bank's own
+// login is Plaid's, and the bank key never comes to the phone). None of it
+// moves money at the bank. Nothing about money is kept on
 // the phone either.
 const sourceDir = new URL('../src/', import.meta.url);
 
@@ -44,10 +47,11 @@ describe('0.4 the screens never move money', () => {
     expect(calls.length).toBeGreaterThan(1);
     // The login's requests go to one of its own /api/auth addresses (AuthPath
     // in api.ts), and the Notifications card's to its three (PushPath).
-    for (const { name, call } of calls) expect(call, name).toMatch(/^fetch\( ?('\/api\/|path, |pushPath, )/);
+    for (const { name, call } of calls) expect(call, name).toMatch(/^fetch\( ?('\/api\/|path, |pushPath, |bankPath, )/);
     const api = sourceFiles().find(({ name }) => name.replaceAll('\\', '/') === 'app/api.ts')?.text ?? '';
     expect(api).toMatch(/type AuthPath = ('\/api\/auth\/[a-z/]+'( \| )?)+;/);
     expect(api).toContain("export type PushPath = '/api/push/on' | '/api/push/off' | '/api/push/test';");
+    expect(api).toContain("export type BankPath = '/api/bank/link' | '/api/bank/connected' | '/api/bank/roles' | '/api/bank/read';");
   });
 
   it('0.4 every request only reads, except the ones that send his answers (a take-back seen, a choice in review), the login\'s own, and how often to sync', () => {
@@ -58,6 +62,7 @@ describe('0.4 the screens never move money', () => {
       "fetch(path, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })",
       "fetch('/api/sync/every', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ minutes }) })",
       "fetch(pushPath, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })",
+      "fetch(bankPath, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })",
     ]);
   });
 

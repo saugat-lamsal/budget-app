@@ -55,6 +55,8 @@ export class FakePlaid {
   readonly calls: { endpoint: string; body: Record<string, unknown> }[] = [];
   historyComplete = true;
   needsLogin = false;
+  // 10.13: when the bank's permission runs out, as /item/get gives it; null for a bank that sets none.
+  consentExpiration: string | null = null;
   // Runs before each call is answered; can change the bank or make the call fail.
   beforeCall: ((endpoint: string, body: Record<string, unknown>, callNumber: number) => FakeError | 'network' | undefined) | undefined;
   // Cursors handed out with has_more, and how many changes there were then.
@@ -195,13 +197,19 @@ export class FakePlaid {
     if (!url.startsWith('https://sandbox.plaid.com/')) return error(400, 'INVALID_REQUEST', 'NOT_THE_TEST_BANK');
     if (headers['PLAID-CLIENT-ID'] !== this.clientId || headers['PLAID-SECRET'] !== this.secret) return error(400, 'INVALID_INPUT', 'INVALID_API_KEYS');
     if (endpoint === '/sandbox/public_token/create') return { status: 200, body: { public_token: this.publicToken, request_id: requestId } };
+    // 1.1 and 1.3: a link key for Plaid Link; with the bank key, to log in
+    // again on that connection (a key that is not this connection's is refused).
+    if (endpoint === '/link/token/create') {
+      if (body['access_token'] !== undefined && body['access_token'] !== this.accessToken) return error(400, 'INVALID_INPUT', 'INVALID_ACCESS_TOKEN');
+      return { status: 200, body: { link_token: `link-sandbox-made-up-${this.#requestCount}`, expiration: '2026-10-13T01:00:00Z', request_id: requestId } };
+    }
     if (endpoint === '/item/public_token/exchange') {
       if (body['public_token'] !== this.publicToken) return error(400, 'INVALID_INPUT', 'INVALID_PUBLIC_TOKEN');
       return { status: 200, body: { access_token: this.accessToken, item_id: this.itemId, request_id: requestId } };
     }
     if (body['access_token'] !== this.accessToken) return error(400, 'INVALID_INPUT', 'INVALID_ACCESS_TOKEN');
     if (this.needsLogin) return error(400, 'ITEM_ERROR', 'ITEM_LOGIN_REQUIRED');
-    const item = { item_id: this.itemId, institution_id: 'ins_109508', error: null, products: ['transactions', 'liabilities'] };
+    const item = { item_id: this.itemId, institution_id: 'ins_109508', error: null, products: ['transactions', 'liabilities'], consent_expiration_time: this.consentExpiration };
     switch (endpoint) {
       case '/transactions/sync':
         return this.#sync(body, requestId, error);

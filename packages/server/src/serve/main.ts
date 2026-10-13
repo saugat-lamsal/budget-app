@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { BackupWatch } from '../backup/backup-watch.js';
 import { tokenBoxFromEnv, type TokenBox } from '../crypto/token-box.js';
 import { openDatabase } from '../db/database.js';
 import { readConnection } from '../db/store.js';
@@ -10,7 +11,7 @@ import { consoleLog } from '../log.js';
 import { PlaidClient } from '../plaid/client.js';
 import { plaidKeysFromEnv, type PlaidKeys } from '../plaid/sandbox-lock.js';
 import { pushKeysFromEnv, type PushKeys } from '../push/push-keys.js';
-import { serveOptions, type ServeOptions } from './options.js';
+import { serveOptions, testBankOnStart, type ServeOptions } from './options.js';
 import { logSender, type AlertSender } from './alert-timer.js';
 import { EXIT } from './exit-codes.js';
 import { serveBooks } from './serving.js';
@@ -42,7 +43,8 @@ if (existsSync(envFile)) process.loadEnvFile(envFile);
 
 let started: { options: ServeOptions; keys: PlaidKeys; box: TokenBox; push: PushKeys | null };
 try {
-  // The sandbox lock: anything but Plaid's test bank stops it here.
+  // The lock: Plaid's test bank, or (Phase 7, hosted, PLAID_ENV production)
+  // the real one; anything else stops it here.
   started = { options: serveOptions(process.argv.slice(2), process.env, root), keys: plaidKeysFromEnv(process.env), box: tokenBoxFromEnv(process.env), push: pushKeysFromEnv(process.env) };
 } catch (error) {
   console.error(`The server did not start: ${error instanceof Error ? error.message : String(error)}`);
@@ -75,14 +77,23 @@ try {
 }
 
 const plaid = new PlaidClient(keys, { log });
-if (options.connect) {
+// Phase 7: on the real bank the test bank is never connected (1.1).
+let testBank: ReturnType<typeof testBankOnStart>;
+try {
+  testBank = testBankOnStart(options, keys.environment);
+} catch (error) {
+  console.error(`The server did not start: ${error instanceof Error ? error.message : String(error)}`);
+  process.exit(EXIT.didNotStart);
+}
+const bankName = keys.environment === 'production' ? 'the bank' : 'the test bank';
+if (testBank === 'connect') {
   console.log("Connecting Plaid's test bank, with made-up accounts like yours. This takes a minute.");
   await connectLikeHis({ db, plaid, box, log, today: keeper.today() });
   keeper.reload();
 }
 if (options.sync) {
   const result = await keeper.sync({ plaid, box, log });
-  console.log(`Synced with the test bank: ${result.added} new, ${result.modified} changed, ${result.removed} removed.`);
+  console.log(`Synced with ${bankName}: ${result.added} new, ${result.modified} changed, ${result.removed} removed.`);
 }
 // The screens, and (Step 3) the timer that syncs by itself, every interval
 // (section 2), and at once if one is due.
@@ -96,12 +107,15 @@ const { server, timer, alerts } = serveBooks({
   onError: (error) => log.error('a request failed', { error: error instanceof Error ? error.message : String(error) }),
   // Phase 5: to the phones, through web push; without push keys, written here, in this window.
   sender: phoneSender(keeper, log),
+  // A43: hosted, Litestream runs beside it (start.ts) and its heartbeat comes here.
+  ...(options.hosted === null ? {} : { backups: new BackupWatch(Date.now) }),
 });
 server.listen(options.port, options.host, () => {
   const address = server.address();
   const at = typeof address === 'object' && address !== null ? address.port : options.port;
   if (options.hosted === null) origin = `http://localhost:${at}`;
-  console.log(options.hosted === null ? "Budget app: Plaid's test bank only, this computer only." : "Budget app: Plaid's test bank only, hosted.");
+  if (keys.environment === 'production') console.log("Budget app: the real bank, through Plaid, hosted.");
+  else console.log(options.hosted === null ? "Budget app: Plaid's test bank only, this computer only." : "Budget app: Plaid's test bank only, hosted.");
   console.log(`  The books: ${options.db}`);
   console.log(`  Open: ${origin}/home`);
   if (!keeper.hasPasskeys()) {
@@ -115,7 +129,8 @@ server.listen(options.port, options.host, () => {
       console.log('  No passkey yet. For a one-time code to make your first one: fly ssh console -C "node /app/serve/login-code.mjs"');
     }
   }
-  console.log(`  It syncs with the test bank by itself every ${keeper.syncEveryMinutes()} minutes (a setting).`);
+  console.log(`  It syncs with ${bankName} by itself every ${keeper.syncEveryMinutes()} minutes (a setting).`);
+  if (readConnection(db) === null && testBank === 'never') console.log('  No bank is connected yet: connect it from Setup day (1.1).');
   console.log(push === null ? '  Alerts are worked out and written here, in this window (no push keys: npm run push-keys).' : '  Alerts go to each phone that turned notifications on (Settings, Notifications).');
   if (options.hosted === null) console.log('Stop it with Ctrl+C.');
   alerts.start();
@@ -125,7 +140,7 @@ server.listen(options.port, options.host, () => {
 });
 
 async function connectIfNone(): Promise<void> {
-  if (!options.connectOnce || readConnection(db) !== null) return;
+  if (testBank !== 'connect-once' || readConnection(db) !== null) return;
   log.info('connecting the test bank, with made-up accounts like his (first start)');
   try {
     await connectLikeHis({ db, plaid, box, log, today: keeper.today() });

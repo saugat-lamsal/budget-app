@@ -218,7 +218,7 @@ describe('syncing on a timer (Step 3)', () => {
     expect(life.h.fake.calls.length).toBeGreaterThan(calls);
   });
 
-  it('section 2 the timer only reads the bank: /transactions/sync, /accounts/get and /liabilities/get, never /transactions/refresh', async () => {
+  it('section 2 10.13 the timer only reads the bank: /transactions/sync, /accounts/get, /liabilities/get and /item/get, never /transactions/refresh', async () => {
     const life = await setUp();
     const r = timerOn(life);
     const before = life.h.fake.calls.length;
@@ -229,7 +229,7 @@ describe('syncing on a timer (Step 3)', () => {
       await r.advance(HOUR);
     }
     expect(reads(life)).toHaveLength(25);
-    expect([...new Set(life.h.fake.calls.slice(before).map((c) => c.endpoint))].sort()).toEqual(['/accounts/get', '/liabilities/get', '/transactions/sync']);
+    expect([...new Set(life.h.fake.calls.slice(before).map((c) => c.endpoint))].sort()).toEqual(['/accounts/get', '/item/get', '/liabilities/get', '/transactions/sync']);
     // Nothing in the server asks Plaid to look at the bank again: only the client knows the call.
     const src = new URL('../src/', import.meta.url);
     for (const name of readdirSync(src, { recursive: true, encoding: 'utf8' }).filter((n) => n.endsWith('.ts') && n.replaceAll('\\', '/') !== 'plaid/client.ts')) {

@@ -2,6 +2,9 @@ import { readFile, stat } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';
 import type { Pot } from '@budget-app/money';
+import { randomBytes } from 'node:crypto';
+import { BACKUP_BEAT_PATH, BACKUP_HEALTH_PATH, fromThisMachine } from '../backup/backup-watch.js';
+import type { BankAnswer, BankConnectedRequest, BankConnectionView, BankLinkAnswer, BankLinkRequest, BankRolesRequest } from '../views/bank.js';
 import { parseRequest } from '../choices.js';
 import { POT_SLUGS, potOfSlug, type ActivityView } from '../views/activity.js';
 import type { AlertsView } from '../views/alerts.js';
@@ -30,7 +33,16 @@ export const APP_PATHS: readonly string[] = ['/', '/home', '/buckets', '/review'
 // The screens that are not tabs: the activity of each bucket, Payday, and the
 // alerts sent (Phase 5). They get the app too. Must match
 // packages/web/src/app/routes.ts (a test checks).
-export const SCREEN_PATHS: readonly string[] = ['/payday', '/alerts', ...Object.keys(POT_SLUGS).map((slug) => `/buckets/${slug}`)];
+export const SCREEN_PATHS: readonly string[] = ['/payday', '/alerts', '/bank', ...Object.keys(POT_SLUGS).map((slug) => `/buckets/${slug}`)];
+
+// 1.1 to 1.3: the Bank connection screen, the one page Plaid Link opens on
+// (its page rules let Plaid's login in: bankPageHeaders), and its numbers and
+// what it sends. They change which bank the app reads, never money (0.4).
+export const BANK_SCREEN_PATH = '/bank';
+export const BANK_PATHS = { view: '/api/bank', link: '/api/bank/link', connected: '/api/bank/connected', roles: '/api/bank/roles', read: '/api/bank/read' } as const;
+
+// Plaid Link's own script, which Plaid says must come straight from its address.
+export const PLAID_LINK_SCRIPT = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js';
 
 // The Setup day screens, one address per step (section 14). They get the app
 // too. Must match packages/web/src/app/routes.ts (a test checks).
@@ -84,11 +96,16 @@ export const ROUTES: readonly Route[] = [
   ...[...APP_PATHS, ...SCREEN_PATHS, ...SETUP_PATHS].map((path): Route => ({ method: 'GET', path, login: true })),
   { method: 'GET', path: LOGIN_PATH, login: false },
   { method: 'GET', path: HEALTH_PATH, login: false },
+  // A43: the backups' health, for a second monitor, and Litestream's beat (from this machine only).
+  { method: 'GET', path: BACKUP_HEALTH_PATH, login: false },
+  { method: 'GET', path: BACKUP_BEAT_PATH, login: false },
   ...['home', 'buckets', 'review', 'settings', 'setup', 'payday', 'alerts', ...Object.keys(POT_SLUGS).map((slug) => `activity/${slug}`)].map((name): Route => ({ method: 'GET', path: `/api/${name}`, login: true })),
   { method: 'POST', path: '/api/choice', login: true },
   { method: 'POST', path: '/api/seen', login: true },
   { method: 'POST', path: SYNC_EVERY_PATH, login: true },
   ...Object.values(PUSH_PATHS).map((path): Route => ({ method: 'POST', path, login: true })),
+  { method: 'GET', path: BANK_PATHS.view, login: true },
+  ...[BANK_PATHS.link, BANK_PATHS.connected, BANK_PATHS.roles, BANK_PATHS.read].map((path): Route => ({ method: 'POST', path, login: true })),
   ...AUTH_ROUTES,
 ];
 
@@ -157,6 +174,23 @@ export interface AppServerOptions {
   // Phase 6: whether the server can read its books now, for /health. Without
   // it (the demo), the address is not there.
   readonly health?: () => boolean;
+  // A43: whether Litestream's heartbeat still comes, for /health/backups, and
+  // its beat. Only the hosted server has it: on a computer there is no backup.
+  readonly backups?: { readonly beat: () => void; readonly healthy: () => boolean };
+  // 1.1 to 1.3: the Bank connection screen. Without it (the demo, which has no
+  // bank), its addresses are not there.
+  readonly bank?: BankHandlers;
+}
+
+export interface BankHandlers {
+  // The address of the Plaid bank in use (the test bank or the real one, from
+  // the lock): the Bank page lets the page talk to that one only.
+  readonly bankAddress: string;
+  readonly view: (request: IncomingMessage) => BankConnectionView;
+  readonly link: (request: IncomingMessage, link: BankLinkRequest) => Promise<BankLinkAnswer>;
+  readonly connected: (request: IncomingMessage, connected: BankConnectedRequest) => Promise<BankAnswer>;
+  readonly roles: (request: IncomingMessage, roles: BankRolesRequest) => BankAnswer;
+  readonly read: (request: IncomingMessage, read: { readonly loggedInAgain?: true }) => Promise<BankAnswer>;
 }
 
 export interface PushHandlers {
@@ -365,6 +399,36 @@ export function createAppServer(options: AppServerOptions): Server {
       send(response, ok ? 200 : 503, 'text/plain; charset=utf-8', ok ? 'ok\n' : 'not ok\n', 'no-store');
       return;
     }
+    // A43, the same way: the backups, for the second monitor. /health stays
+    // the server's alone (Fly uses it: "not ok" there would take the app away).
+    if (path === BACKUP_HEALTH_PATH && options.backups !== undefined) {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        response.setHeader('Allow', 'GET, HEAD');
+        send(response, 405, 'text/plain; charset=utf-8', 'Only GET and HEAD.', 'no-store');
+        return;
+      }
+      const ok = options.backups.healthy();
+      send(response, ok ? 200 : 503, 'text/plain; charset=utf-8', ok ? 'ok\n' : 'not ok\n', 'no-store');
+      return;
+    }
+    // Litestream's beat: from this machine only, never through Fly's proxy.
+    if (path === BACKUP_BEAT_PATH && options.backups !== undefined) {
+      if (request.method !== 'GET') {
+        response.setHeader('Allow', 'GET');
+        send(response, 405, 'text/plain; charset=utf-8', 'Only GET.', 'no-store');
+        return;
+      }
+      if (!fromThisMachine(request.socket.remoteAddress, request.headers)) {
+        send(response, 403, 'text/plain; charset=utf-8', 'Only from this machine.', 'no-store');
+        return;
+      }
+      options.backups.beat();
+      for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.setHeader(name, value);
+      response.setHeader('Cache-Control', 'no-store');
+      response.statusCode = 204;
+      response.end();
+      return;
+    }
     if (options.gate !== undefined && (await atTheGate(options.gate, request, response, path))) return;
     // The one thing the screens can send: that he has seen a notice. It
     // changes no money (0.4).
@@ -410,6 +474,25 @@ export function createAppServer(options: AppServerOptions): Server {
         return;
       }
       const said = subscription !== null ? options.push.on(request, subscription) : pushAction === 'off' ? options.push.off(request) : await options.push.test(request);
+      send(response, said.ok ? 200 : 422, 'application/json; charset=utf-8', JSON.stringify(said), 'no-store');
+      return;
+    }
+    // 1.1 to 1.3: the Bank connection screen's answers. They change which bank
+    // the app reads, never money (0.4).
+    const bankAction = (Object.entries(BANK_PATHS) as [keyof typeof BANK_PATHS, string][]).find(([, p]) => p === path)?.[0];
+    if (bankAction !== undefined && bankAction !== 'view' && options.bank !== undefined) {
+      if (request.method !== 'POST') {
+        response.setHeader('Allow', 'POST');
+        send(response, 405, 'text/plain; charset=utf-8', 'Only POST.', 'no-store');
+        return;
+      }
+      const sent = await readOwnJson(request, response, BANK_LIMIT);
+      if (response.writableEnded || response.headersSent) return;
+      const said = await bankAnswer(options.bank, bankAction, request, sent);
+      if (said === null) {
+        send(response, 400, 'text/plain; charset=utf-8', 'Not something the Bank screen sends.', 'no-store');
+        return;
+      }
       send(response, said.ok ? 200 : 422, 'application/json; charset=utf-8', JSON.stringify(said), 'no-store');
       return;
     }
@@ -491,11 +574,27 @@ export function createAppServer(options: AppServerOptions): Server {
       send(response, 200, 'application/json; charset=utf-8', JSON.stringify(view), 'no-store');
       return;
     }
+    if (path === BANK_PATHS.view && options.bank !== undefined) {
+      let view: BankConnectionView;
+      try {
+        view = options.bank.view(request);
+      } catch (error) {
+        options.onError?.(error);
+        send(response, 500, 'application/json; charset=utf-8', JSON.stringify({ error: 'bank-unavailable' }), 'no-store');
+        return;
+      }
+      send(response, 200, 'application/json; charset=utf-8', JSON.stringify(view), 'no-store');
+      return;
+    }
     if (path.startsWith('/api/')) {
       send(response, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'not-found' }), 'no-store');
       return;
     }
     if (options.extra !== undefined && (await options.extra(request, response, path))) return;
+    if (path === BANK_SCREEN_PATH && options.bank !== undefined) {
+      await sendBankPage(response, join(webRoot, 'index.html'), options.bank.bankAddress);
+      return;
+    }
 
     if (APP_PATHS.includes(path) || SCREEN_PATHS.includes(path) || SETUP_PATHS.includes(path) || (options.gate !== undefined && path === LOGIN_PATH)) {
       await sendFile(response, join(webRoot, 'index.html'), 'no-cache');
@@ -598,6 +697,80 @@ async function atTheGate(gate: Gate, request: IncomingMessage, response: ServerR
   }
   // The app's own files: the login page needs them.
   return false;
+}
+
+// 1.1: the Bank page, the one page whose rules let Plaid Link in, as Plaid
+// asks: its script straight from its own address, its login in a frame of its
+// own, its styles, and the page talking to the bank in use (the test bank or
+// the real one), with a fresh nonce each time the page is loaded (Plaid's way
+// without 'unsafe-inline'). The bank's own login may open in a window of its
+// own (OAuth), so this page lets its windows keep in touch with it. Every
+// other page keeps the strict rules.
+export function bankPageHeaders(nonce: string, bankAddress: string): Record<string, string> {
+  return {
+    ...SECURITY_HEADERS,
+    'Content-Security-Policy': [
+      "default-src 'self'",
+      `script-src 'self' 'nonce-${nonce}' ${PLAID_LINK_SCRIPT}`,
+      `style-src 'self' 'nonce-${nonce}'`,
+      `style-src-elem 'self' 'nonce-${nonce}'`,
+      "style-src-attr 'unsafe-inline'",
+      "img-src 'self' data:",
+      `connect-src 'self' ${bankAddress}`,
+      'frame-src https://cdn.plaid.com/',
+      "manifest-src 'self'",
+      "base-uri 'none'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+      "object-src 'none'",
+    ].join('; '),
+    'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+  };
+}
+
+// The page is given the nonce and Link's address here, so the phone's own
+// code never names Plaid (test/build-has-no-secrets.test.ts).
+async function sendBankPage(response: ServerResponse, file: string, bankAddress: string): Promise<void> {
+  const nonce = randomBytes(16).toString('base64');
+  const html = (await readFile(file, 'utf8')).replace(/<head(\s[^>]*)?>/i, (head) => `${head}<meta name="plaid-nonce" content="${nonce}"><meta name="plaid-link" content="${PLAID_LINK_SCRIPT}">`);
+  for (const [name, value] of Object.entries(bankPageHeaders(nonce, bankAddress))) response.setHeader(name, value);
+  response.setHeader('Content-Type', 'text/html; charset=utf-8');
+  response.setHeader('Cache-Control', 'no-store');
+  response.setHeader('Content-Length', Buffer.byteLength(html));
+  response.statusCode = 200;
+  response.end(response.req.method === 'HEAD' ? undefined : html);
+}
+
+// The most the Bank screen sends: an account id for each of the four.
+const BANK_LIMIT = 2048;
+
+function exactly(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).sort().join() === [...keys].sort().join();
+}
+
+// What the Bank screen sends, parsed strictly; null when it is not that.
+async function bankAnswer(bank: BankHandlers, action: Exclude<keyof typeof BANK_PATHS, 'view'>, request: IncomingMessage, sent: unknown): Promise<BankLinkAnswer | BankAnswer | null> {
+  switch (action) {
+    case 'link':
+      if (exactly(sent, ['mode', 'yes']) && sent['mode'] === 'connect' && typeof sent['yes'] === 'boolean') return bank.link(request, { mode: 'connect', yes: sent['yes'] });
+      if (exactly(sent, ['mode']) && sent['mode'] === 'login-again') return bank.link(request, { mode: 'login-again' });
+      return null;
+    case 'connected': {
+      const token = exactly(sent, ['publicToken']) ? sent['publicToken'] : null;
+      return typeof token === 'string' && /^public-[a-z]+-[A-Za-z0-9-]{1,200}$/.test(token) ? bank.connected(request, { publicToken: token }) : null;
+    }
+    case 'roles': {
+      if (!exactly(sent, ['roles', 'yes']) || typeof sent['yes'] !== 'boolean') return null;
+      const roles = sent['roles'];
+      if (typeof roles !== 'object' || roles === null || Array.isArray(roles) || Object.keys(roles).length > 8) return null;
+      if (!Object.values(roles).every((id) => typeof id === 'string' && id.length > 0 && id.length <= 200)) return null;
+      return bank.roles(request, { roles: roles as BankRolesRequest['roles'], yes: sent['yes'] });
+    }
+    case 'read':
+      if (isEmptyObject(sent)) return bank.read(request, {});
+      if (exactly(sent, ['loggedInAgain']) && sent['loggedInAgain'] === true) return bank.read(request, { loggedInAgain: true });
+      return null;
+  }
 }
 
 async function sendFile(response: ServerResponse, file: string, cache: string): Promise<void> {

@@ -1,7 +1,8 @@
 import { payoffCountdown, type Book, type Cents, type IsoDate, type SortingRule } from '@budget-app/money';
 import type { BrowserContext, Page } from 'playwright';
 import { dayWithYear } from '../../src/ui/dates.js';
-import { daysText, leftoverText, lockAmountsText, notReadText, quietHoursText, reminderText, textRuleText, timeText, zoneText } from '../../src/screens/settings-text.js';
+import { daysText, leftoverText, lockAmountsText, notReadText,
+  permissionWarnText, quietHoursText, reminderText, textRuleText, timeText, zoneText } from '../../src/screens/settings-text.js';
 import { openScenario, readCents, showScenario, untilAnswered, waitOrReport } from './harness.js';
 
 // Opens Settings on a made-up life, once its numbers are in. (openScenario
@@ -45,7 +46,7 @@ export interface SettingsNumbers {
   readonly log: readonly string[];
 }
 
-const VALUE_ROWS = ['paycheck-rule', 'pay-schedule', 'early-days', 'leftover', 'mom-rule', 'low-alert', 'reminders', 'review-time', 'time-zone', 'quiet-hours', 'not-read', 'lock-amounts', 'promo'] as const;
+const VALUE_ROWS = ['paycheck-rule', 'pay-schedule', 'early-days', 'leftover', 'mom-rule', 'low-alert', 'reminders', 'review-time', 'time-zone', 'quiet-hours', 'not-read', 'permission-warn', 'lock-amounts', 'promo'] as const;
 
 export async function readSettings(page: Page): Promise<SettingsNumbers> {
   const text = async (testId: string): Promise<string> => (await page.getByTestId(testId).innerText()).replace(/\s+/g, ' ').trim();
@@ -130,6 +131,7 @@ export function settingsOf(book: Book, today: IsoDate): SettingsNumbers {
       'time-zone': zoneText(s.homeTimeZone),
       'quiet-hours': quietHoursText(s.quietHours),
       'not-read': notReadText(s.bankNotReadAlertHours),
+      'permission-warn': permissionWarnText(s.bankPermissionWarnDays),
       'lock-amounts': lockAmountsText(s.amountsOnLockScreen),
       promo: s.oldCardPromoEndDate === null ? 'Not entered' : dayWithYear(s.oldCardPromoEndDate),
     },

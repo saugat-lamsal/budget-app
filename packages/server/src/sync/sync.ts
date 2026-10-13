@@ -14,6 +14,7 @@ import {
   saveAccount,
   saveConnectionState,
   saveItem,
+  savePermissionEnds,
   saveStatement,
   saveSync,
 } from '../db/store.js';
@@ -77,6 +78,9 @@ interface Fetched {
   readonly cursor: string;
   readonly accounts: AccountsGetResponse;
   readonly cards: readonly PlaidCreditCard[] | null;
+  // 10.13: when the bank's permission runs out, as it says now; undefined
+  // when it could not say just then (the date kept is left as it is).
+  readonly permissionEnds: string | null | undefined;
 }
 
 const TRIES = 3;
@@ -130,10 +134,11 @@ async function fetchUpdate(plaid: PlaidClient, key: BankKey, start: string | nul
       for (let round = 0; ; round += 1) {
         const accounts = await plaid.getAccounts(key);
         const cards = accounts.accounts.some((a) => a.type === 'credit') ? await creditCards(plaid, key) : null;
+        const ends = await permissionEndsFrom(plaid, key);
         const before = pages.length;
         await more();
         const quiet = pages.slice(before).every((p) => p.added.length === 0 && p.modified.length === 0 && p.removed.length === 0);
-        if (quiet || round >= 2) return { pages, cursor: cursor ?? '', accounts, cards };
+        if (quiet || round >= 2) return { pages, cursor: cursor ?? '', accounts, cards, permissionEnds: ends };
       }
     } catch (error) {
       if (error instanceof PlaidError && error.errorCode === 'TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION' && restart < TRIES) continue;
@@ -149,6 +154,20 @@ async function creditCards(plaid: PlaidClient, key: BankKey): Promise<readonly P
   } catch (error) {
     // Without the Liabilities product there are no statements to read.
     if (error instanceof PlaidError && (error.errorCode === 'PRODUCTS_NOT_SUPPORTED' || error.errorCode === 'NO_LIABILITY_ACCOUNTS')) return null;
+    throw error;
+  }
+}
+
+// 10.13: when the bank's permission runs out (an instant, kept exactly as
+// sent; none when the bank sets none). It only informs, so a sync never fails
+// for it: when the bank cannot say just then, undefined, and the date kept
+// stays. A new login wanted still stops the sync (10.5).
+async function permissionEndsFrom(plaid: PlaidClient, key: BankKey): Promise<string | null | undefined> {
+  try {
+    const value = (await plaid.getItem(key)).item.consent_expiration_time;
+    return typeof value === 'string' && !Number.isNaN(Date.parse(value)) ? value : null;
+  } catch (error) {
+    if (error instanceof PlaidError && error.errorCode !== 'ITEM_LOGIN_REQUIRED') return undefined;
     throw error;
   }
 }
@@ -217,6 +236,7 @@ function save(input: SyncInput, startCursor: string | null, fetched: Fetched): S
     changedAccounts.length > 0 ||
     changedCards.length > 0 ||
     historyComplete !== connection.historyComplete ||
+    (fetched.permissionEnds !== undefined && fetched.permissionEnds !== connection.permissionEnds) ||
     connection.cursor === null ||
     connection.needsLogin;
   const result: SyncResult = {
@@ -233,6 +253,7 @@ function save(input: SyncInput, startCursor: string | null, fetched: Fetched): S
   if (!changed) return result;
 
   for (const account of changedAccounts) saveAccount(db, account, JSON.stringify(account), sync);
+  if (fetched.permissionEnds !== undefined && fetched.permissionEnds !== connection.permissionEnds) savePermissionEnds(db, fetched.permissionEnds);
   for (const { accountId, card } of changedCards) saveStatement(db, accountId, JSON.stringify(card), sync);
   for (const item of plan.items) saveItem(db, item);
   // Each with the day of the sync, and the book's totals after it.

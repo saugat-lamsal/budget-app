@@ -683,9 +683,22 @@ A42. ANSWERED Oct 12, built. Your answer: option 2. Rulebook 10.12 and
      shows nothing. That can only be seen on a real iPhone (Phase 6).
 
 
-## Part A, added with Phase 6, hosting (Oct 12). Waiting on your answer.
+## Part A, added with Phase 6, hosting (Oct 12). All answered.
 
-A43. How you hear that the backups have stopped. The uptime monitor watches
+A43. ANSWERED Oct 12, built (B215). Your answer: option 5, found while
+     planning Phase 7 and recommended. Litestream's own heartbeat goes to the
+     app's server on the machine (it never leaves it); a new address,
+     /health/backups, says "not ok" when none has come for 10 minutes; a
+     second UptimeRobot monitor watches it, so you hear on the iPhone app you
+     already have. No new account, no new secret. /health stays as it is:
+     Fly uses it, and if it said "not ok" for the backups Fly would stop
+     sending you to the app. Tried on this PC with Litestream 0.5.17 (the
+     image's): with heartbeat-url and heartbeat-interval 1m it called about
+     once a minute while nothing in the books changed, and not once while
+     the backup could not be reached. Also found: Healthchecks.io (option 2)
+     has no iPhone app that I could confirm; it alerts by email and the like.
+     The question as it was:
+     How you hear that the backups have stopped. The uptime monitor watches
      /health, which says "ok" when the server is running and can read its
      books (B206). It says nothing about the backups: if Litestream cannot
      reach R2 (a wrong or expired key, R2 down, a full bucket), the books are
@@ -707,6 +720,51 @@ A43. How you hear that the backups have stopped. The uptime monitor watches
      Recommendation: option 2. It catches every way the copies stop, from
      Litestream's own point of view, within minutes. Option 3 adds little to
      it. Built: option 1.
+
+
+## Part A, added while planning Phase 7 (Oct 12).
+
+What the app still needs before a real bank: today it connects only through
+the test bank's shortcut (no screens), so it has no way to connect Bank of
+America, to log in to the bank again, or to say which account is which (the
+test bank's are picked by made-up account numbers).
+
+A44. ANSWERED Oct 12. How much history to ask the bank for when it is
+     connected. It cannot change afterwards. Your answer, the
+     recommendation: 90 days, Plaid's default, which covers everything the
+     app looks back at (setup day's 10 days, a refund's 90 days). Up to 2
+     years was possible, with more of your real data kept. Rulebook section
+     2 and 33a.
+
+A45. ANSWERED Oct 12, built (B222, B223). Bank of America's permission to read
+     your accounts now runs out a year after you connect or log in again
+     (Plaid, 2026). Your answer, the recommendation: Settings shows the date
+     when the bank gives it, and you are told 7 days before (a setting),
+     once, at the daily review time. Rulebook 10.13, section 2 and 33b.
+
+A46. ANSWERED Oct 12 ("do all of that"), built (B216 to B221): the wording below,
+     as written. Rulebook 1.1 to 1.3 and 33c.
+
+     1.1  Connecting the bank. "Connect the bank" is offered only while
+          there is no connection. It asks first: it uses 1 of the 10
+          connections Plaid allows, and one that is removed never comes
+          back. The bank's own login opens (through Plaid). The app keeps
+          the connection the moment it gets it, sealed, on the server only.
+          There is only ever one connection: the app never makes a second,
+          and never removes one.
+     1.2  Which account is which. After connecting, before setup day, you
+          say which of the bank's accounts is checking, savings, the
+          everyday card, and the old card, each once. Nothing is read from
+          the bank until all four are picked. If one is missing, log in to
+          the bank again to add it (1.3). Once tracking starts they cannot
+          change. An account that is none of the four is never read.
+     1.3  Logging in to the bank again. When the bank needs it (10.5), when
+          its permission is running out (10.13), or to add an account that
+          is missing, Settings offers "Log in to the bank again". It keeps
+          the same connection: it never uses another of the 10, and nothing
+          already read changes.
+
+     Recommendation: as written.
 
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
@@ -2458,3 +2516,78 @@ B214. The restore check rebuilds into a new file, in the machine's temporary
       there, and checks the copy with SQLite's integrity check and the replay
       check (0.6). It cannot run on Windows (Litestream cannot restore
       there), so on your PC it says to run it on the server.
+
+
+## Part B, added before Phase 7 (Oct 12). Tell me if any is wrong.
+
+B215. The backups' health (A43): Litestream calls the server once a minute
+      while every copy goes through. After the copies stop it can still call
+      once more, up to about 75 s later (seen at 59 s), so /health/backups
+      says "not ok" about 11 minutes after the copies stop, and the monitor
+      sees it within its 5 minutes after that. With nothing to copy (no
+      change in the books) it keeps calling, as there is nothing behind; the
+      books change at least once an hour (each sync notes its read). At a
+      start Litestream gets the same 10 minutes before its first call. The
+      call is taken only from the machine itself, never through Fly's proxy.
+
+B216. Connecting (1.1) happens on the Bank screen (/bank), opened from
+      Settings (Bank card, "Bank connection") and from Setup day's "can't
+      start yet" screen. That page is always loaded as a page of its own:
+      its rules let Plaid's login in (Plaid's script from its own address
+      with a fresh nonce, its frame, its styles, and the bank in use), and
+      the bank's own login may open in a window of its own. Every other page
+      keeps the strict rules. The screen says it is best done on a computer.
+
+B217. "Nothing is read from the bank until all four are picked" (1.2): no
+      transactions, balances or statements are read, and no sync is due.
+      The list of the bank's accounts is read once when connecting (and
+      when logging in again), so there is something to pick from; only each
+      account's name, last digits and kind are shown.
+
+B218. Which account is which (1.2) can be picked again any time before
+      tracking starts, each time asking first; picking an account for a
+      second of the four takes it off the first. Once setup day is done it
+      cannot change. Each pick is in the change log by name and last digits.
+
+B219. Right after the four are picked, and right after logging in again
+      (1.3), the bank is read at once, not at the next hourly sync. While
+      Plaid is still sending the history, the Bank screen says so and has
+      "Look again" (it reads the bank now); setup day waits for it.
+
+B220. If Link closes without logging in, or fails, nothing is connected and
+      the screen says so. If the bank's accounts cannot be read right after
+      connecting, the connection is kept all the same, and the screen offers
+      "Read them now".
+
+B221. The connection is kept the moment Plaid hands it over: sealed, in one
+      step with its change log line. A second answer from Link while one is
+      being kept (a double tap) is refused, never exchanged, so a second of
+      the 10 can never be used by the app.
+
+B222. The bank's permission end date (10.13) comes from Plaid with every
+      sync (/item/get, consent_expiration_time), kept as Plaid gives it, and
+      shown on the Bank screen as your date in your home time zone. A bank
+      that gives none shows none and is never warned about.
+
+B223. The warning (10.13) is told at the daily review time on the evening
+      the setting's days before the end date (7 to start, 1 to 60), once
+      for each end date. If the server was down then, or learns the date
+      with fewer days left, it is told at the next daily review time, if
+      the permission has not run out by then (10.9). After logging in again
+      the date moves, and a warning still waiting for the phone is not sent
+      ("no longer true"); the new date gets its own warning in its time. A
+      tap opens the Bank screen. It shows no amounts, so the lock screen
+      setting does not change it.
+
+B224. History at connection (A44): 90 days, Plaid's default, asked for once
+      when connecting (days_requested 90). Logging in again asks for no
+      products and no history: the same connection.
+
+
+B225. The rehearsal (npm run rehearsal, Oct 12): on the Bank page the
+      browser's console shows one style refused by the page rules. It is
+      Plaid's script testing whether a style with no nonce works (it does
+      not, on purpose); the style Link itself uses carries the page's
+      nonce, and Link opened and closed normally. The console also shows
+      the 422 of "Connect the bank" before the yes: the server refusing
+      until you say yes (1.1), which is what makes the screen ask.

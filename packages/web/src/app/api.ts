@@ -4,6 +4,9 @@ import type {
   AlertsView,
   ActivityView,
   AuthState,
+  BankAnswer,
+  BankConnectionView,
+  BankLinkAnswer,
   BankRuleRequest,
   BankRuleResponse,
   BucketsView,
@@ -40,6 +43,7 @@ const READS = {
   '/api/settings': () => fetch('/api/settings', READ),
   '/api/setup': () => fetch('/api/setup', READ),
   '/api/alerts': () => fetch('/api/alerts', READ),
+  '/api/bank': () => fetch('/api/bank', READ),
   '/api/activity/savings': () => fetch('/api/activity/savings', READ),
   '/api/activity/needs': () => fetch('/api/activity/needs', READ),
   '/api/activity/wants': () => fetch('/api/activity/wants', READ),
@@ -67,7 +71,8 @@ async function fetchView<T extends { readonly state: string }>(url: ViewUrl): Pr
   toLogin(response);
   if (!response.ok) throw new Error(`${url} answered ${response.status}`);
   const view = (await response.json()) as T;
-  if (view.state !== 'tracking' && view.state !== 'not-set-up') throw new Error(`${url} sent something unexpected`);
+  const states = url === '/api/bank' ? ['none', 'connected'] : ['tracking', 'not-set-up'];
+  if (!states.includes(view.state)) throw new Error(`${url} sent something unexpected`);
   return view;
 }
 
@@ -154,6 +159,21 @@ export async function pushSend(pushPath: PushPath, body: object): Promise<PushAn
   if (response.status === 401) return { ok: false, why: 'You are not logged in any more. Log in again.' };
   if (response.status !== 200 && response.status !== 422) throw new Error(`${pushPath} answered ${response.status}`);
   return (await response.json()) as PushAnswer;
+}
+
+// 1.1 to 1.3: the Bank connection screen's addresses. They change which bank
+// the app reads, never money (0.4): a link key for the bank's own login
+// (Plaid Link), Link's answer once he logged in, his four accounts, and
+// reading the bank again. The bank key never comes to the phone.
+export type BankPath = '/api/bank/link' | '/api/bank/connected' | '/api/bank/roles' | '/api/bank/read';
+
+export async function bankSend(bankPath: '/api/bank/link', body: object): Promise<BankLinkAnswer>;
+export async function bankSend(bankPath: Exclude<BankPath, '/api/bank/link'>, body: object): Promise<BankAnswer>;
+export async function bankSend(bankPath: BankPath, body: object): Promise<BankLinkAnswer | BankAnswer> {
+  const response = await fetch(bankPath, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  toLogin(response);
+  if (response.status !== 200 && response.status !== 422) throw new Error(`${bankPath} answered ${response.status}`);
+  return (await response.json()) as BankLinkAnswer | BankAnswer;
 }
 
 // A new number for a decision, made once when it is made and kept for every
@@ -247,4 +267,5 @@ export const usePayday = (): [Load<PaydayView>, Reload] => useView<PaydayView>('
 export const useSettings = (): [Load<SettingsView>, Reload] => useView<SettingsView>('/api/settings');
 export const useSetup = (): [Load<SetupView>, Reload] => useView<SetupView>('/api/setup');
 export const useAlerts = (): [Load<AlertsView>, Reload] => useView<AlertsView>('/api/alerts');
+export const useBank = (): [Load<BankConnectionView>, Reload] => useView<BankConnectionView>('/api/bank');
 export const useActivity = (pot: Pot): [Load<ActivityView>, Reload] => useView<ActivityView>(ACTIVITY_URL[pot]);

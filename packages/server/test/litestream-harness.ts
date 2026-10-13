@@ -34,10 +34,11 @@ export interface Replicating {
   stop(): Promise<void>;
 }
 
-// litestream replicate, copying `db` to the stand-in, until stopped.
-export function replicate(db: string, backup: Backup): Replicating {
+// litestream replicate, copying `db` to the stand-in, until stopped. Its
+// heartbeat (A43) goes to the server on `env.PORT` of this computer.
+export function replicate(db: string, backup: Backup, env: Readonly<Record<string, string>> = {}): Replicating {
   let output = '';
-  const child = spawn(litestreamBin(), ['replicate', '-config', CONFIG], { env: litestreamEnv(db, backup), stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(litestreamBin(), ['replicate', '-config', CONFIG], { env: litestreamEnv(db, backup, { ...process.env, ...env }), stdio: ['ignore', 'pipe', 'pipe'] });
   child.stdout?.on('data', (chunk: Buffer) => (output += chunk.toString('utf8')));
   child.stderr?.on('data', (chunk: Buffer) => (output += chunk.toString('utf8')));
   const ended = new Promise<void>((resolve) => child.once('exit', () => resolve()));

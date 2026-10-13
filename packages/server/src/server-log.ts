@@ -22,6 +22,9 @@ const WHAT: Readonly<Record<ServerLogLine['action'], string>> = {
   'notifications-on': 'notifications on',
   'notifications-off': 'notifications off',
   'notifications-stopped': 'notifications stopped',
+  'bank-connected': 'bank connected',
+  'bank-accounts': 'bank accounts picked',
+  'bank-logged-in-again': 'logged in to the bank again',
 };
 
 type WithoutBankLines<T> = T extends unknown ? Omit<T, 'afterBankLines'> : never;

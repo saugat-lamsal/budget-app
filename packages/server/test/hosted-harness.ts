@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { request as httpRequest, type IncomingHttpHeaders, type Server } from 'node:http';
 import { join } from 'node:path';
+import type { BackupWatch } from '../src/backup/backup-watch.js';
 import { lifeInAFile, setUpThroughTheDesk, type Life } from './keeper-harness.js';
 import { SoftPasskey } from './soft-passkey.js';
 
@@ -35,7 +36,7 @@ export interface Ask {
 }
 
 // The books after setup day, served at `origin` (the hosted address unless told another).
-export async function servedAt(origin: string = HOSTED, setUp = true): Promise<Running> {
+export async function servedAt(origin: string = HOSTED, setUp = true, backups?: BackupWatch): Promise<Running> {
   const life = await lifeInAFile();
   if (setUp) setUpThroughTheDesk(life);
   const webRoot = join(life.dir, 'dist');
@@ -43,7 +44,7 @@ export async function servedAt(origin: string = HOSTED, setUp = true): Promise<R
   writeFileSync(join(webRoot, 'index.html'), '<!doctype html><title>app</title>');
   writeFileSync(join(webRoot, 'assets', 'index-abc123.js'), 'console.log(1)');
   let own = origin;
-  const server = life.keeper.server(webRoot, () => own);
+  const server = life.keeper.server(webRoot, () => own, undefined, backups === undefined ? {} : { backups });
   await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
   const address = server.address();
   const port = typeof address === 'object' && address !== null ? address.port : 0;
