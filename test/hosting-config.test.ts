@@ -37,7 +37,9 @@ describe('Phase 6 fly.toml', () => {
     expect(value('primary_region')).toBe('ewr');
     expect(value('size', 'vm')).toBe('shared-cpu-1x');
     expect(value('memory', 'vm')).toBe('512mb');
-    expect(value('source', 'mounts')).toBe('budget_data');
+    // Phase 7 (his yes, Oct 12): the real bank's books on a volume of their
+    // own; the test bank's (budget_data) stay untouched, as the way back.
+    expect(value('source', 'mounts')).toBe('budget_real');
     expect(value('destination', 'mounts')).toBe('/data');
     expect(value('initial_size', 'mounts')).toBe('1gb');
     expect(value('BUDGET_DB', 'env')).toBe('/data/budget.sqlite');
@@ -68,10 +70,17 @@ describe('Phase 6 fly.toml', () => {
     expect(value('kill_timeout')).toBe('60s');
   });
 
-  it("Phase 6 Plaid's test bank only, and no key in the file", () => {
-    expect(value('PLAID_ENV', 'env')).toBe('sandbox');
+  it("Phase 7 Plaid's real bank (the lock lets it in only on the hosted server), and no key in the file", () => {
+    expect(value('PLAID_ENV', 'env')).toBe('production');
     const env = settings.slice(settings.indexOf('[env]') + 1, settings.findIndex((l, i) => i > settings.indexOf('[env]') && l.startsWith('[')));
     expect(env.map((l) => l.split('=')[0]?.trim()).sort()).toEqual(['APP_ORIGIN', 'BUDGET_DB', 'PLAID_ENV', 'PORT']);
+  });
+});
+
+describe('Phase 7 the backups', () => {
+  it("Phase 7 the real bank's books go to a folder of their own in the bucket (budget-real), so a new machine never brings back the test bank's (budget)", () => {
+    const paths = [...read('litestream.yml').matchAll(/^\s*path:\s*(\S+)\s*$/gm)].map((m) => m[1]);
+    expect(paths).toEqual(['budget-real']);
   });
 });
 
