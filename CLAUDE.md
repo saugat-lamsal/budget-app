@@ -1648,8 +1648,22 @@ long). It replaces running everything before every commit:
     INVALID (it left an else with no if) and now makes the mistake it names.
     "[hosting-linux] A43" was judged on Linux CI on a throwaway branch,
     deleted after (run 38324734468).
-  - Still to do before connection day: his rehearsal on this PC (the real
-    Plaid Link against the test bank, steps c to e), his review, and CI. The
+  - PR #26 merged (Oct 12, 2026). His rehearsal the same evening: the fake
+    Bank of America and First Platypus Bank through Plaid's real window
+    (Continue as guest; the bank's own account screen; all ticked), the four
+    picked, the first sync read 48 items, the statements and /item/get; setup
+    day done on the fake books (starting money -$90, so safe to spend $0, and
+    the self-check passing). Plaid: he is on the Trial (0 of 10); Plaid's own
+    API says Bank of America is OAuth, takes new connections
+    (connection_availability SUPPORTED), with transactions and liabilities.
+    The dashboard's "currently migrating" banner is about old connections
+    moving to its new API (Mar to late Oct 2026); new ones get 12 months.
+  - The switch (his yes, Oct 12, branch phase-7-switch): fly.toml PLAID_ENV
+    production and the volume budget_real; litestream.yml path budget-real
+    (the test bank's books stay in "budget" and on budget_data, the way
+    back); test/sandbox-only.test.ts lets fly.toml alone say production, in
+    any form (a .toml line was not checked before); test/hosting-config.test.ts.
+  - Still to do before connection day: CI on the switch, and the day's steps. The
     fresh start's new volume and backup folder are a connection-day commit
     (docs/phase-7-connection-day.txt step 2), so main stays deployable to
     the test bank meanwhile. The five "[hosting-linux]" breaks only judge

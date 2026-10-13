@@ -90,8 +90,10 @@ ON THE DAY (together, in this order; anything odd, we stop)
    and make a passkey (Windows Hello).
 
 7. Connect, on the PC: Settings > Bank card > Bank connection > Connect the
-   bank. It asks first (1 of the 10). Yes. Bank of America's own login opens
-   (through Plaid). On Bank of America's own screen, tick all four accounts.
+   bank. It asks first (1 of the 10). Yes. Plaid asks for a phone number:
+   "Continue as guest" is fine. Bank of America's own login opens (through
+   Plaid, in a window of its own; "Return to institution" brings it back if
+   it is behind). On Bank of America's own screen, tick all four accounts.
    Back in the app: pick which is checking, savings, the everyday card and
    the old card; Save; Yes. If Plaid is still sending the history, "Look
    again" in a minute or two.

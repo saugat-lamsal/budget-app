@@ -31,12 +31,15 @@ swap_size_mb = 512
   APP_ORIGIN = "https://budget-app-x7q2.fly.dev"
   BUDGET_DB = "/data/budget.sqlite"
   PORT = "8080"
-  # Plaid's test bank only, until Phase 7 (the sandbox lock refuses anything else).
-  PLAID_ENV = "sandbox"
+  # Phase 7: Plaid's real bank. The lock lets it in only here, on the hosted
+  # server (APP_ORIGIN https), never under the tests; the key is a Fly secret.
+  PLAID_ENV = "production"
 
-# The volume: the books, and Litestream's own notes beside them.
+# The volume: the books, and Litestream's own notes beside them. Phase 7: the
+# real bank's books on a volume of their own; the test bank's (budget_data)
+# is kept untouched, as the way back (docs/phase-7-connection-day.txt).
 [mounts]
-  source = "budget_data"
+  source = "budget_real"
   destination = "/data"
   initial_size = "1gb"
 

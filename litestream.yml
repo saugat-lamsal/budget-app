@@ -14,7 +14,10 @@ dbs:
       type: s3
       endpoint: ${R2_ENDPOINT}
       bucket: ${R2_BUCKET}
-      path: budget
+      # Phase 7: the real bank's books, in a folder of their own. The test
+      # bank's are in "budget", kept as the way back; a new machine with an
+      # empty volume restores from here, so it never brings those back.
+      path: budget-real
       region: auto
       access-key-id: ${R2_ACCESS_KEY_ID}
       secret-access-key: ${R2_SECRET_ACCESS_KEY}
