@@ -2627,3 +2627,11 @@ B229. The mom rule is "Zelle payment to Mom", not "Mom": the rule matches
       text anywhere in a payment to a person's description, ignoring capitals,
       so the longer text cannot catch another name or a confirmation code
       that happens to contain the word.
+
+B230. Oct 13, 9:34 AM: the "totals do not match" alert (10.4) for a gap
+      that was Plaid's timing, not the books. The everyday card's balance at
+      the bank already showed the card payment and some charges as posted,
+      while Plaid's list of transactions (unchanged since connecting) still
+      had them pending, so the bank side was ahead by the difference. It
+      clears when Plaid sends the posted items. Whether to tell such a gap
+      only once it has lasted a few syncs is his call (docs/later.txt 3).

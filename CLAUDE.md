@@ -1689,12 +1689,17 @@ long). It replaces running everything before every commit:
     events).
   - Nothing from his real accounts is in the repo; the notes above use no
     numbers of his.
-  - Still to do: B226 and B227 as tests and fixes; his iPhone (a new code
-    and passkey, the old passkey deleted, notifications on); the second
-    UptimeRobot monitor on /health/backups; the first payday Oct 14 (answered
-    in review if it arrives split). The old volume budget_data and the old
-    backup folder "budget" are his to delete later (the way back, until
-    then). The "[hosting-linux]" breaks only judge on Linux (CI runs
-    38291820227 and 38324734468).
-- Waiting on: the promo end date for the old card (only the payoff countdown,
-  rule 9.5, depends on it), and his check of part B (the list at its top).
+  - His iPhone is set up again (new passkey, notifications on), and he
+    entered the old card's promo end date on Oct 13 (the payoff countdown,
+    9.5, is on).
+  - Oct 13, 9:34 AM: the first "totals do not match" alert, a Plaid timing
+    gap (B230): the card's balance at the bank already showed the payment,
+    Plaid's transactions did not yet. Looked at read-only on the machine
+    with his OK; nothing to fix in the books.
+  - Everything still to do, fixes and ideas alike, is in docs/later.txt (his
+    ask, Oct 13): B226, B227, B230 (his call), the split paycheck, his steps,
+    and the ideas for after Phase 7 (webhooks, bucket suggestions, moving
+    money to savings). The "[hosting-linux]" breaks only judge on Linux (CI
+    runs 38291820227 and 38324734468).
+- Waiting on: his check of part B (the list at its top), and the items in
+  docs/later.txt marked DECIDE.

@@ -1,0 +1,117 @@
+THINGS TO COME BACK TO (started Oct 13, 2026)
+
+One list of every fix, change and idea that came up on and after
+connection day, so nothing is lost. Each is done the usual way: his OK where
+the rulebook changes, a test first, then the code. No numbers from his real
+accounts are written here; "nnnn" stands for an account's last digits.
+
+Marked: FIX (the app does something wrong or unhelpful), DECIDE (needs his
+call first), HIS (a step only he can do), LATER (an idea for after Phase 7).
+
+
+FIXES FOUND ON CONNECTION DAY
+
+1. FIX. Setup day and pending card payments (QUESTIONS.md B226).
+   A card payment still pending is worded differently by the bank
+   ("PAYMENT TO ACCT #nnnn ON mm/dd VIA WEB") from the posted one ("Mobile
+   Banking payment to CRD nnnn Confirmation#"). No bank rule fit it, so it
+   was read as a purchase and the starting money came out low by its
+   amount. Fixed on the day with two bank rules. To build: setup day points
+   out a pending item the bank labels as a card payment or transfer that is
+   being read as a purchase, and offers a rule for its wording.
+
+2. FIX. Suggestions for the arriving side of card payments (B227).
+   The suggestions covered money leaving checking for each card, but not
+   the same money arriving on the card ("PAYMENT FROM CHK nnnn"); without a
+   rule it reads as a refund. Added by hand on the day. To build: suggest
+   it from the history (the same amount the other way, a day or so later).
+
+3. DECIDE. The "totals do not match" alert when Plaid lags (B230).
+   Oct 13 morning: the everyday card's balance at the bank already showed
+   the card payment, but Plaid's list of transactions still had it pending,
+   so the self-check was off and the alert went out (rule 10.4 tells it at
+   once). It clears by itself when Plaid sends the posted transactions.
+   Options: keep as is; or tell it only once a gap has lasted a few syncs
+   in a row (3, say), so timing gaps never reach the phone. A rulebook
+   change (10.4), his call after a few days of seeing how often it happens.
+
+4. FIX if it comes back. The split paycheck (B228).
+   His employer sent part of each paycheck to savings and part to checking;
+   the app knows one deposit per paycheck. He moved all of it to checking.
+   If a split payday still comes: the checking part "This is my paycheck",
+   the savings part "Other income". Only if he ever wants the split again:
+   teach the app that two deposits the same day are one paycheck (option A
+   of that day: the mom reserve once, then the split of the whole).
+
+
+HIS STEPS
+
+5. HIS. The paycheck rule: set it in Settings once his pay lands all in
+   checking (the employer words from the deposit's description, nothing
+   that changes). Until then each paycheck waits in Review: "This is my
+   paycheck".
+
+6. HIS. Check the old card's pending payment wording at the next $35
+   payment (early November): the rule "PAYMENT TO ACCT #nnnn" on checking
+   is a guess from the everyday card's wording. If the app reads it as a
+   purchase, add a rule for the words the bank shows.
+
+7. HIS. The second UptimeRobot monitor on /health/backups (every 5
+   minutes), if not done yet.
+
+8. HIS. Delete the test bank's leftovers when sure they are not needed:
+   the Fly volume budget_data and the R2 folder "budget" (about $0.15 a
+   month until then). They are the way back to the test bank's books.
+
+9. HIS, optional. Bank rules for money moved from savings back to
+   checking (none happened in the 90 days before setup). Without them such
+   a move waits in Review, where "Transfer between my accounts" fixes it.
+
+10. HIS, weekly through Phase 7. Compare the app with the bank statements;
+    any difference becomes a test before it is fixed. Phase 7's finish
+    line: 30 days in a row with no self-check mismatch and no surprises.
+
+
+IDEAS FOR AFTER PHASE 7
+
+11. LATER. Plaid webhooks: Plaid tells the app the moment it has new data,
+    so it syncs then instead of waiting for the hourly timer (the timer
+    stays as a backup). Free. About a day of work: a signed address for
+    Plaid to call, the check of Plaid's signature, one setting call to
+    point the existing connection at it (not a new connection), a line in
+    rulebook section 2. It does not make a card swipe appear instantly:
+    Plaid still fetches from the bank a few times a day.
+
+12. LATER. Bucket suggestions in Review. Stage 1: each waiting item comes
+    with a picked bucket and a reason, one tap to accept; first from
+    Plaid's own category labels (free, nothing sent anywhere new), then an
+    AI model (Claude Haiku) for the unclear ones. Stage 2, only if stage 1
+    matches his picks nearly always for a month: sort the obvious ones by
+    itself, each re-sortable with one tap. A rulebook change first (4.2
+    says only his rules sort). Sends transaction descriptions to an
+    outside service: needs his OK. Each pick is saved as an answer, so the
+    history still replays exactly (0.6).
+
+13. LATER. Moving money to savings on payday. Not from the app (the app
+    stays read-only, rule 0.4; Plaid's money moving is for businesses and
+    would end the free Trial). Either a "Move it" button on Payday that
+    copies the amount and opens Bank of America, or, simpler, a recurring
+    transfer set up in Bank of America on paydays if his pay is the same
+    every time. Decide after the first payday shows the real amount.
+
+14. LATER. Where the permanent test made from his real history lives (the
+    roadmap's Phase 7 step): never in this repo while it is public.
+
+
+SMALL THINGS NOTICED
+
+15. "Sent to mom this month" counts only from setup day: a payment to her
+    before it does not show for October. Expected, not a bug.
+
+16. The rehearsal's connect card says connecting uses 1 of the 10, which is
+    not true on the test bank (test-bank connections are free). Wording
+    only; the real day's card is right.
+
+17. Syncing every 15 minutes instead of 60 is allowed and harmless but
+    gains little (Plaid's own schedule decides when new items appear). Left
+    at 60.
