@@ -4247,5 +4247,12 @@
     "find": "catchingUp: input.catchingUp ?? false };",
     "replace": "catchingUp: false };",
     "why": "[a47] 10.4 Buckets never says the bank is still catching up"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "    if (item.pendingTransactionId !== null && item.amount > 0 && reading.kind === 'purchase') {",
+    "replace": "    if (item.pendingTransactionId !== null && item.amount > 0) {",
+    "why": "[a50b] 4.6 B226 a posted card payment or payment to a person linked to a pending purchase stays that purchase"
   }
 ]

@@ -99,7 +99,7 @@ function ConnectCard({ view, onSaid, reload }: { readonly view: Extract<BankConn
     <>
       <Card title={W.noneTitle} padded testId="bank-connect-card">
         <p className="card__note">{view.bank === 'test' ? W.noneTest : W.noneReal}</p>
-        <p className="card__note">{W.slots}</p>
+        <p className="card__note">{view.bank === 'test' ? W.slotsTest : W.slots}</p>
         <p className="card__note">{W.computer}</p>
         <Button wide disabled={busy} onClick={() => void start(false)} testId="bank-connect">
           {busy ? W.connecting : W.connect}

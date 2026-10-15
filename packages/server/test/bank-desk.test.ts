@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { connectQuestion } from '../src/bank-desk.js';
 import { TokenBox } from '../src/crypto/token-box.js';
 import { openDatabase } from '../src/db/database.js';
 import { readAccounts, readConnection, setAccountRoles } from '../src/db/store.js';
@@ -50,8 +51,11 @@ describe('1.1 connecting the bank', () => {
     const { desk, fake } = fresh();
     const answer = await desk.link({ mode: 'connect', yes: false });
     expect(answer).toMatchObject({ ok: false, code: 'needs-yes' });
-    expect(answer.ok ? '' : answer.why).toMatch(/1 of the 10 connections Plaid allows/);
-    expect(answer.ok ? '' : answer.why).toMatch(/removed never comes back/);
+    // The test bank (the rehearsal): free.
+    expect(answer.ok ? '' : answer.why).toBe(connectQuestion('test'));
+    expect(connectQuestion('test')).toBe("Connecting to Plaid's test bank is free: it uses none of your 10 real connections. Connect the bank?");
+    // The real bank: 1 of the 10, and gone for good once removed.
+    expect(connectQuestion('real')).toBe('Connecting uses 1 of the 10 connections Plaid allows, and one that is removed never comes back. Connect the bank?');
     expect(fake.calls).toEqual([]);
   });
 

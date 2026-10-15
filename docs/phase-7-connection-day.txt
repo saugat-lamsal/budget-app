@@ -120,3 +120,18 @@ can no longer read the test bank (its key was sealed with the old bank key,
 replaced in step 3), which is fine for made-up data. The Plaid connection
 made in step 7 stays used (1 of the 10): connections are never removed.
 (Each fly command's flags are checked against flyctl's own help on the day.)
+
+
+EVERY DEPLOY FROM NOW ON (QUESTIONS.md A50a, Oct 14, 2026)
+
+1. On main, at his word: npm run deploy-check
+   It builds the new image on Fly (nothing is deployed), rebuilds the real
+   books from the backup with it on a throwaway machine (no volume, no
+   traffic, removed after), and replays every event (0.6). It must end with
+   "Deploy check passed: The backup works." If it says FAILED, do not
+   deploy: the new code would not start on his books.
+2. fly deploy --ha=false --remote-only
+3. Check: https://budget-app-x7q2.fly.dev/health says ok, /health/backups
+   says ok, fly logs shows the server listening and Litestream copying, and
+   the restore check on the machine:
+     fly ssh console -C "node /app/serve/restore-check.mjs"

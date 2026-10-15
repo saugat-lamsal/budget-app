@@ -21,7 +21,8 @@
     "litestream": "node scripts/litestream.mjs",
     "restore-check": "node scripts/restore-check.mjs",
     "pay-period-agent": "node scripts/pay-period-agent.mjs",
-    "rehearsal": "node scripts/rehearsal.mjs"
+    "rehearsal": "node scripts/rehearsal.mjs",
+    "deploy-check": "node scripts/deploy-check.mjs"
   },
   "engines": {
     "node": ">=22.12.0"

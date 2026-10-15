@@ -827,6 +827,18 @@ A50. ADDED Oct 14 on Claude's recommendation (his to strike): (a) before
      and fixed if the books do not end right. (c) A read-only look, with his
      OK at the time, that both cards' statements (balance, minimum, due
      date) came through, which the reminders depend on.
+     BUILT Oct 14: (a) npm run deploy-check, first run at the next deploy;
+     (b) one fix (B232). (c) waits for his OK at the time.
+
+B232. Found by A50b's tests (Oct 14): a posted item linked to a pending
+     purchase (pending_transaction_id) always replaced it as a purchase,
+     even when the bank rules read the posted words as a card payment or a
+     payment to a person. A card payment whose pending words no rule knew
+     stayed counted as spending, with its arriving half left in transit.
+     Now only a posted purchase replaces its pending one; anything else is
+     what the bank rules read, and the pending purchase is dropped when the
+     bank removes it (A2). Reading: as if the bank had sent only the posted
+     item.
 
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.

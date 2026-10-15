@@ -1720,6 +1720,28 @@ long). It replaces running everything before every commit:
     browser settings. 100 simulated lives of 3 years passed. Break-it
     "[a48]": 27 of 27 caught (one needed a new test: five days early in
     February).
-  - Item 2, the bank side (A47), part: see docs/later.txt item 3.
+  - Item 2, the bank side (A47), built: 12.1 from the available balance
+    plus pending items the books count once posted (bank/balances.ts
+    BankView.counted; Setup day the same), the made-up bank's lags (B230,
+    B231: fake-plaid notInCurrentYet, addPosted heldBack, holdAvailable,
+    noAvailable), 10.4 told only once a difference has lasted 12 hours
+    (Settings.totalsMismatchAlertHours; database step 10 bank_gap, noted by
+    the Keeper after each sync and at open; alerts/plan.ts due at that
+    moment), "The bank is still catching up" on Home and Buckets (views
+    catchingUp, demo life catching-up). Rulebook 12.1, 10.4, section 2 and
+    34b (his OK). Tests: bank-side-available, totals-catching-up,
+    alerts-plan, the alert simulations (12 hours on), worked examples bank
+    16 and 2. Break-it "[a47]" and the older breaks pointed again: all
+    caught (10, then 28).
+  - Item 3, the deploy check (A50a): npm run deploy-check
+    (scripts/deploy-check-lib.mjs: fly deploy --build-only --push, then
+    fly console --image on a new machine with no volume and no ports
+    running node /app/serve/restore-check.mjs, then any machine left from
+    that image destroyed). test/deploy-check.test.ts against a stand-in
+    for fly. Not yet run against Fly.
+  - Item 4 (A50b, B232): sync/plan.ts, only a posted purchase replaces
+    its pending one. pending-posted-readings.test.ts. Break "[a50b]".
+  - Item 9: the Bank screen and the connect question say a test-bank
+    connection is free (bank-desk.ts connectQuestion).
 - Waiting on: his check of part B (the list at its top), and the items in
   docs/later.txt marked DECIDE.
