@@ -146,9 +146,9 @@ IDEAS ADDED OCT 14
 19. Small, with the next session. The rehearsal's connect card wording
     (item 16).
 
-20. LATER. A weekly statement check for Phase 7: pick an account and a date
+20. DECIDE (QUESTIONS.md A51, Oct 15). A weekly statement check for Phase 7: pick an account and a date
     range, and the app lists what it counted, to tick off against the bank
-    statement.
+    statement. Three shapes in A51; recommended: by week, from Settings.
 
 21. NEXT (his call, Oct 14, QUESTIONS.md A48). The pay schedule as a
     setting: twice a month (the 15th and the last day, the Friday before a

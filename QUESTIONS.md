@@ -852,6 +852,22 @@ B232. Found by A50b's tests (Oct 14): a posted item linked to a pending
      item.
 
 
+A51. ADDED Oct 15 (docs/later.txt 20, the last item of his handoff, "if
+     time is left"): the weekly statement check for Phase 7. It is a new
+     screen, so its shape is his call before it is built. Options:
+     1. (Recommended) Settings, "Check against the bank": pick one of the
+        four accounts and a week (Monday to Sunday, the last 6 weeks). It
+        lists every item the app read for it, as the bank sent it (day,
+        description, amount, pending or posted), how the app reads it (a
+        purchase in needs, a transfer to savings, ...), and the week's money
+        in and money out, all worked out on the server. One tap per week, no
+        typing on the phone; matches "once a week, compare" (roadmap Phase 7).
+     2. Any date range: two date fields. More freedom, more typing.
+     3. By statement: from one statement date to the next for the cards, by
+        month for checking and savings. Matches the paper statements, but a
+        month is a long wait in Phase 7.
+     Not built: waiting on his pick.
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 WAITING FOR YOU TO CHECK (Oct 10, 2026, the end of Phase 4). Each was

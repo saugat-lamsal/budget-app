@@ -1808,5 +1808,6 @@ long). It replaces running everything before every commit:
     18 of 18 caught, and "[a31] Review sends no keys" pointed again, caught.
 - Waiting on: his OK on rule 10.14, the section 2 sync line (34c, 34d) and
   jose; then the deploy and the webhook command, at his word; A50c (the read
-  of both cards' statements, his OK at the time); his check of part B (the
-  list at its top), and the items in docs/later.txt marked DECIDE.
+  of both cards' statements, his OK at the time); A51 (the shape of the weekly
+  statement check); his check of part B (the list at its top), and the items
+  in docs/later.txt marked DECIDE.
