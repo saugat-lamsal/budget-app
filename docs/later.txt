@@ -135,9 +135,17 @@ IDEAS ADDED OCT 14
     setting: twice a month (the 15th and the last day, the Friday before a
     weekend), or every 14 days. His pay is twice a month.
 
-22. NEXT if he says yes (A49). A payday alert: the amount to move to
+22. NEXT (his yes, Oct 14, A49). A payday alert: the amount to move to
     savings, and the old card's share this payday.
 
 23. HIS. A recurring transfer in Bank of America on paydays for the amount
     to move to savings, if his pay stays the same each time. The Payday
     screen then shows $0 left to move, or the small difference.
+
+24. NEXT (A50a). The deploy check: before every deploy, the new image's
+    restore check on a throwaway machine, against the real backup.
+
+25. NEXT (A50b). Pending and posted read differently: tests, and fixes if
+    needed.
+
+26. NEXT (A50c, his OK at the time). Both cards' statements came through.

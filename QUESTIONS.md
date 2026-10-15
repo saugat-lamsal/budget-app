@@ -797,10 +797,21 @@ A48. ANSWERED Oct 14 ("add the twice a month"): his pay comes twice a
      payday by a day: the app shows it late until the money comes (B35).
      His pay now lands all in checking (his change, Oct 14).
 
-A49. OPEN, recommended (Oct 14): a payday alert. When a paycheck is
+A49. ANSWERED Oct 14 ("yes lets do that"): a payday alert. When a paycheck is
      counted, he is told the amount to move to savings (3.8) and, with the
      payoff countdown on, the amount for the old card this payday (9.5).
-     At once, quiet hours apply (10.8). Ask him before building it.
+     At once, quiet hours apply (10.8).
+
+A50. ADDED Oct 14 on Claude's recommendation (his to strike): (a) before
+     every deploy, the new image rebuilds the real books from the backup on
+     a throwaway machine and replays every event (0.6), so an update can
+     never stop the app from starting; it serves as the roadmap's real
+     history test without the data leaving his own server and backup.
+     (b) Items read one way while pending and another once posted (a
+     purchase that posts as a transfer, and the other way round): tested,
+     and fixed if the books do not end right. (c) A read-only look, with his
+     OK at the time, that both cards' statements (balance, minimum, due
+     date) came through, which the reminders depend on.
 
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
