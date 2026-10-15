@@ -79,7 +79,7 @@
   {
     "section": "home",
     "file": "packages/server/src/views/home.ts",
-    "find": "safeToSpend = checked.ok ? { shown: true, amount: checked.safeToSpend.amount } : { shown: false, why: 'totals-do-not-match', check: book.selfCheck(bank) };",
+    "find": "safeToSpend = checked.ok ? { shown: true, amount: checked.safeToSpend.amount } : { shown: false, why: 'totals-do-not-match', check: book.selfCheck(bank), catchingUp: input.catchingUp ?? false };",
     "replace": "safeToSpend = { shown: true, amount: plain.amount };",
     "why": "0.5 show safe to spend even when the totals do not match"
   },
@@ -128,15 +128,15 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Home.tsx",
-    "find": "Off by <Money cents={Math.abs(safeToSpend.check.difference)} testId=\"mismatch-amount\" />",
-    "replace": "Off by <Money cents={safeToSpend.check.difference} testId=\"mismatch-amount\" />",
+    "find": "Off by <Money cents={Math.abs(safeToSpend.check.difference)} testId=\"mismatch-amount\" />\n          </p>",
+    "replace": "Off by <Money cents={safeToSpend.check.difference} testId=\"mismatch-amount\" />\n          </p>",
     "why": "12.3 \"off by\" shows a minus sign"
   },
   {
     "section": "home",
     "file": "packages/web/src/screens/Home.tsx",
-    "find": "{safeToSpend.check.difference > 0 ? 'more' : 'less'}",
-    "replace": "{safeToSpend.check.difference < 0 ? 'more' : 'less'}",
+    "find": "{safeToSpend.check.difference > 0 ? 'more' : 'less'} than your buckets add up to. Safe to spend",
+    "replace": "{safeToSpend.check.difference < 0 ? 'more' : 'less'} than your buckets add up to. Safe to spend",
     "why": "12.3 say more when the bank shows less"
   },
   {
@@ -744,15 +744,15 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Buckets.tsx",
-    "find": "Off by <Money cents={Math.abs(check.difference)}",
-    "replace": "Off by <Money cents={check.difference}",
+    "find": "Off by <Money cents={Math.abs(check.difference)} testId=\"mismatch-amount\" />\n          </p>",
+    "replace": "Off by <Money cents={check.difference} testId=\"mismatch-amount\" />\n          </p>",
     "why": "[review] 12.3 the difference is shown with its sign after \"Off by\""
   },
   {
     "section": "home",
     "file": "packages/web/src/screens/Buckets.tsx",
-    "find": "check.difference > 0 ? 'more' : 'less'",
-    "replace": "check.difference > 0 ? 'less' : 'more'",
+    "find": "check.difference > 0 ? 'more' : 'less'} than your buckets add up to. Home has",
+    "replace": "check.difference > 0 ? 'less' : 'more'} than your buckets add up to. Home has",
     "why": "[review] 12.3 more and less are swapped"
   },
   {
@@ -2252,5 +2252,33 @@
     "find": "      if (get('schedule') === 'twice-a-month') return { value: { paySchedule: 'twice-a-month' } };",
     "replace": "      if (get('schedule') === 'twice-a-month') return { value: { payScheduleDays: 14 } };",
     "why": "[a48] section 2 the sheet cannot pick twice a month"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": ") : safeToSpend.why === 'totals-do-not-match' && safeToSpend.catchingUp ? (",
+    "replace": ") : safeToSpend.why === 'totals-do-not-match' && false ? (",
+    "why": "[a47] 10.4 Home shows the alarm while the bank is still catching up"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Buckets.tsx",
+    "find": "{check.state === 'does-not-match' && !check.catchingUp && (",
+    "replace": "{check.state === 'does-not-match' && (",
+    "why": "[a47] 10.4 Buckets shows the alarm with the catching-up banner"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "      return 'problem' in r ? r : { value: { totalsMismatchAlertHours: r.value[0] ?? 0 } };",
+    "replace": "      return 'problem' in r ? r : { value: { bankNotReadAlertHours: r.value[0] ?? 0 } };",
+    "why": "[a47] 10.4 the Totals do not match sheet changes the bank-not-read setting"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "    case 'bankNotReadAlertHours':\n    case 'totalsMismatchAlertHours':\n",
+    "replace": "    case 'bankNotReadAlertHours':\n",
+    "why": "[a47] 13.5 the change log cannot write the wait"
   }
 ]

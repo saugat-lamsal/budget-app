@@ -221,6 +221,24 @@ describe.each(ENGINES)('Home in %s', (_name, engine) => {
     await page.context().close();
   });
 
+  it('10.4 A47 a difference younger than 12 hours: the bank is still catching up, with the difference, and safe to spend hidden (0.5)', async () => {
+    const { book, bank } = life('catching-up');
+    const check = book.selfCheck(bank);
+    expect(check.difference).toBe(-4_210);
+    const page = await openScenario(await browser().newContext(phone()), base(), 'catching-up');
+    expect(await page.getByTestId('safe-to-spend').count()).toBe(0);
+    expect(await page.getByTestId('mismatch').count()).toBe(0);
+    expect(await centsAt(page, 'mismatch-amount')).toBe(4_210);
+    expect(await textAt(page, 'catching-up')).toContain('The bank is still catching up');
+    expect(await textAt(page, 'catching-up')).toContain('Off by $42.10 for now The bank shows less than your buckets add up to.');
+    // Words and an icon, not color alone.
+    expect(await page.getByTestId('catching-up').locator('[data-icon="clock"]').count()).toBe(1);
+    await page.getByTestId('see-check').click();
+    await expect.poll(() => page.getByTestId('check-sheet').isVisible()).toBe(true);
+    expect(await centsAt(page, 'check-bank')).toBe(check.bankSide);
+    await page.context().close();
+  });
+
   it('0.5 totals that do not match: safe to spend is hidden and the difference cannot be missed (12.3, B37)', async () => {
     const { book, bank, today } = life('mismatch');
     const check = book.selfCheck(bank);

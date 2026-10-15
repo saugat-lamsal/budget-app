@@ -787,6 +787,10 @@ A47. ANSWERED Oct 14 ("can we do option A"; "Okay, I want to add the
      Section 2, syncing: also as soon as Plaid says it has something new
            (a webhook); the 60-minute timer stays.
      The exact rulebook text is shown to him before it is committed.
+     His OK to the text, Oct 14 ("I am okay with both"), with one change
+     from the note above: besides transfers, a pending payment to a person
+     and money leaving savings are put back too (the books count them once
+     posted). In the rulebook as 12.1, 10.4, section 2 and 34b (draft 22).
 
 A48. ANSWERED Oct 14 ("add the twice a month"): his pay comes twice a
      month, on the 15th and on the last day of the month, on the Friday
@@ -805,7 +809,8 @@ A48. ANSWERED Oct 14 ("add the twice a month"): his pay comes twice a
      or more days late. The app starts with every 14 days; he picks twice a
      month on Settings, Pay schedule. A history saved before the setting
      existed opens as every 14 days (as it then was). 3.7's 10 days still
-     let the shortest twice-a-month gap (11 days) through.
+     let the shortest twice-a-month gap (11 days) through. His OK to the
+     nearest-payday wording, Oct 14.
 
 A49. ANSWERED Oct 14 ("yes lets do that"): a payday alert. When a paycheck is
      counted, he is told the amount to move to savings (3.8) and, with the

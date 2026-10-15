@@ -26,7 +26,7 @@ import type { PushKeys } from '../push/push-keys.js';
 import { saveServerLine, serverLinesIn } from '../server-log.js';
 import { SetupDesk } from '../setup-desk.js';
 import { NO_ANSWERS, SETUP_LOOK_BACK_DAYS, type SetupAnswers } from '../setup-view.js';
-import { FEWEST_MINUTES, MOST_MINUTES, readLastRead, saveSyncEveryMinutes, syncEveryMinutes } from '../sync/bank-reads.js';
+import { FEWEST_MINUTES, MOST_MINUTES, readGapSince, readLastRead, saveGapSince, saveSyncEveryMinutes, syncEveryMinutes } from '../sync/bank-reads.js';
 import type { Plan, PlanInput } from '../sync/plan.js';
 import { syncBank, type SyncResult } from '../sync/sync.js';
 import type { AlertSender, OutgoingAlert } from '../serve/alert-timer.js';
@@ -152,7 +152,36 @@ export class Keeper {
   static open(input: KeeperInput): Keeper {
     const keeper = new Keeper(input);
     keeper.reload();
+    keeper.#noteGap();
     return keeper;
+  }
+
+  // 10.4 (A47): when the totals stopped matching the bank: the last read,
+  // when a read first shows a difference; cleared by a read that matches.
+  // Noted after every sync and when the books open. While the bank cannot be
+  // read, or before setup day, it is left as it is.
+  #noteGap(): void {
+    const book = this.book();
+    const bank = this.#bank();
+    if (book === null || bank === null) return;
+    const matches = book.selfCheck(bank).ok;
+    const since = readGapSince(this.#db);
+    if (matches && since !== null) saveGapSince(this.#db, null);
+    if (!matches && since === null) saveGapSince(this.#db, this.lastRead() ?? this.#now().toISOString());
+  }
+
+  // 10.4 (A47): when the totals stopped matching the bank; null while they match.
+  mismatchSince(): string | null {
+    return readGapSince(this.#db);
+  }
+
+  // 10.4 (A47): a difference younger than the setting's hours: the bank is
+  // still catching up, and the screens say so instead of the alarm.
+  #catchingUp(): boolean {
+    const since = readGapSince(this.#db);
+    const book = this.book();
+    if (since === null || book === null) return false;
+    return this.#now().getTime() < Date.parse(since) + book.settings().totalsMismatchAlertHours * 3_600_000;
   }
 
   // Reads everything from the database again: after a sync, or a save that
@@ -254,6 +283,7 @@ export class Keeper {
       seenTakeBacks: this.#state.seen,
       lastChecked: readLastChecked(this.#db),
       checkedAt: this.#checkedAt(),
+      catchingUp: this.#catchingUp(),
     });
     // 0.5, B82: the last safe to spend the bank backed up, and when.
     if (view.state === 'tracking' && view.safeToSpend.shown) saveLastChecked(this.#db, { amount: view.safeToSpend.amount, at: timeIn(this.timeZone(), this.#now()) });
@@ -268,7 +298,7 @@ export class Keeper {
   }
 
   buckets(): BucketsView {
-    return bucketsView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false });
+    return bucketsView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false, catchingUp: this.#catchingUp() });
   }
 
   review(): ReviewView {
@@ -452,6 +482,7 @@ export class Keeper {
       ...(bank.plan === undefined ? {} : { plan: bank.plan }),
       afterSave: (result) => {
         if (result.changed || lastSeqOf(this.#db) !== this.#lastSeq) this.reload();
+        this.#noteGap();
         this.#changed();
       },
     })
@@ -516,7 +547,7 @@ export class Keeper {
     const book = this.book();
     if (book === null) return null;
     const connection = readConnection(this.#db);
-    return { book, now: this.#now(), zone: this.timeZone(), bank: this.#bank(), needsLogin: connection?.needsLogin ?? false, statements: this.#statements(), lastRead: this.lastRead(), permissionEnds: connection?.permissionEnds ?? null };
+    return { book, now: this.#now(), zone: this.timeZone(), bank: this.#bank(), needsLogin: connection?.needsLogin ?? false, statements: this.#statements(), lastRead: this.lastRead(), permissionEnds: connection?.permissionEnds ?? null, mismatchSince: this.mismatchSince() };
   }
 
   // Works out every alert due now (alerts/plan.ts) and keeps it: each
@@ -541,7 +572,7 @@ export class Keeper {
   // evening, or the bank not read for a day, 10.7); null before setup day.
   nextDueIn(): number | null {
     const book = this.book();
-    return book === null ? null : nextDueIn({ book, zone: this.timeZone(), now: this.#now(), lastRead: this.lastRead() }, this.#state.alerts);
+    return book === null ? null : nextDueIn({ book, zone: this.timeZone(), now: this.#now(), lastRead: this.lastRead(), mismatchSince: this.mismatchSince() }, this.#state.alerts);
   }
 
   // 10.8: when quiet hours end, if it is in them now (section 2, his home time zone).

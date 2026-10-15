@@ -79,7 +79,18 @@ function BucketsReady({ view, reload, onChanged }: { readonly view: Tracking; re
 
       {moved !== null && <SaidNotice said={moved} sending={false} onRetry={() => undefined} onDismiss={() => setMoved(null)} sticky />}
 
-      {check.state === 'does-not-match' && (
+      {check.state === 'does-not-match' && check.catchingUp && (
+        // 10.4 (A47): a difference younger than the setting's hours.
+        <Banner tone="warning" icon="clock" title="The bank is still catching up" testId="catching-up">
+          <p className="banner__big">
+            Off by <Money cents={Math.abs(check.difference)} testId="mismatch-amount" /> for now
+          </p>
+          <p className="banner__body">The bank shows {check.difference > 0 ? 'more' : 'less'} than your buckets add up to. This usually clears within a few hours. Home has the numbers behind it.</p>
+          <ListRow title="Open Home" href={pathOf('home')} testId="see-home" />
+        </Banner>
+      )}
+
+      {check.state === 'does-not-match' && !check.catchingUp && (
         <Banner tone="danger" icon="alert" title="Totals do not match the bank" testId="mismatch">
           <p className="banner__big">
             Off by <Money cents={Math.abs(check.difference)} testId="mismatch-amount" />

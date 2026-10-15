@@ -93,6 +93,20 @@ function HomeReady({ view, onChanged }: { readonly view: Tracking; readonly onCh
           <Money cents={safeToSpend.amount} hero testId="safe-to-spend" />
           {paydayLine}
         </section>
+      ) : safeToSpend.why === 'totals-do-not-match' && safeToSpend.catchingUp ? (
+        // 10.4 (A47): a difference younger than the setting's hours, said calmly, with the amount.
+        <Banner tone="warning" icon="clock" title="The bank is still catching up" testId="catching-up">
+          <p className="banner__big">
+            Off by <Money cents={Math.abs(safeToSpend.check.difference)} testId="mismatch-amount" /> for now
+          </p>
+          <p className="banner__body">
+            The bank shows {safeToSpend.check.difference > 0 ? 'more' : 'less'} than your buckets add up to. This usually clears within a few hours; you get an alert if it lasts. Safe to spend is hidden until they match.
+          </p>
+          <Button variant="secondary" onClick={() => setSheet('check')} testId="see-check">
+            See the numbers
+          </Button>
+          {paydayLine}
+        </Banner>
       ) : safeToSpend.why === 'totals-do-not-match' ? (
         <Banner tone="danger" icon="alert" title="Totals do not match the bank" testId="mismatch">
           <p className="banner__big">

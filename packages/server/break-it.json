@@ -618,8 +618,8 @@
   {
     "section": "review",
     "file": "packages/server/src/views/buckets.ts",
-    "find": "difference: self.difference }",
-    "replace": "difference: -self.difference }",
+    "find": "difference: self.difference, catchingUp: input.catchingUp ?? false }",
+    "replace": "difference: -self.difference, catchingUp: input.catchingUp ?? false }",
     "why": "[review] 12.3 the difference is the wrong way round"
   },
   {
@@ -2480,8 +2480,8 @@
   {
     "section": "alerts",
     "file": "packages/server/src/alerts/plan.ts",
-    "find": "if (now && !state.on) give(facts(state.times + 1));",
-    "replace": "if (now && !state.on) give(facts(state.times + 2));",
+    "find": "if (now && !state.on) give(facts(state.times + 1), dueAt);",
+    "replace": "if (now && !state.on) give(facts(state.times + 2), dueAt);",
     "why": "[alerts] 10.4 10.5 a lasting alert is numbered out of turn"
   },
   {
@@ -2501,7 +2501,7 @@
   {
     "section": "alerts",
     "file": "packages/server/src/alerts/plan.ts",
-    "find": "lasting('totals-mismatch', check === null ? null : !check.ok,",
+    "find": "lasting('totals-mismatch', check === null ? null : lasted,",
     "replace": "lasting('totals-mismatch', check === null ? null : check.ok,",
     "why": "[alerts] 10.4 the mismatch alert comes when the totals match"
   },
@@ -2655,15 +2655,15 @@
   {
     "section": "outbox",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "        if (result.changed || lastSeqOf(this.#db) !== this.#lastSeq) this.reload();\n        this.#changed();",
-    "replace": "        if (result.changed || lastSeqOf(this.#db) !== this.#lastSeq) this.reload();",
+    "find": "        this.#noteGap();\n        this.#changed();",
+    "replace": "        this.#noteGap();",
     "why": "[outbox] the alerts are not looked at right after a sync"
   },
   {
     "section": "outbox",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "    return book === null ? null : nextDueIn({ book, zone: this.timeZone(), now: this.#now(), lastRead: this.lastRead() }, this.#state.alerts);",
-    "replace": "    return book === null ? null : (nextDueIn({ book, zone: this.timeZone(), now: this.#now(), lastRead: this.lastRead() }, this.#state.alerts) ?? 0) + 60_000;",
+    "find": "    return book === null ? null : nextDueIn({ book, zone: this.timeZone(), now: this.#now(), lastRead: this.lastRead(), mismatchSince: this.mismatchSince() }, this.#state.alerts);",
+    "replace": "    return book === null ? null : (nextDueIn({ book, zone: this.timeZone(), now: this.#now(), lastRead: this.lastRead(), mismatchSince: this.mismatchSince() }, this.#state.alerts) ?? 0) + 60_000;",
     "why": "[outbox] 10.3 the timer wakes a minute after the evening"
   },
   {
@@ -4069,8 +4069,8 @@
   {
     "section": "sync",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "lastRead: this.lastRead(), permissionEnds: connection?.permissionEnds ?? null };",
-    "replace": "lastRead: this.lastRead(), permissionEnds: null };",
+    "find": "permissionEnds: connection?.permissionEnds ?? null, mismatchSince: this.mismatchSince() };",
+    "replace": "permissionEnds: null, mismatchSince: this.mismatchSince() };",
     "why": "[a45] 10.13 the alerts never see the date"
   },
   {
@@ -4163,5 +4163,89 @@
     "find": "posted: view.view.counted, oldCardBalance",
     "replace": "posted: view.view.posted, oldCardBalance",
     "why": "[a47] 14.1 12.1 setup day reads the bank's current balance while the daily check reads the available one"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  const lasted = check !== null && !check.ok && mismatchDue !== null && mismatchDue <= world.now.getTime();",
+    "replace": "  const lasted = check !== null && !check.ok && mismatchDue !== null && mismatchDue <= world.now.getTime() + 3_600_000;",
+    "why": "[a47] 10.4 a difference told an hour before it has lasted 12 hours"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  const lasted = check !== null && !check.ok && mismatchDue !== null && mismatchDue <= world.now.getTime();",
+    "replace": "  const lasted = check !== null && !check.ok;",
+    "why": "[a47] 10.4 a difference told at once, not after 12 hours"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "lasted ? new Date(mismatchDue).toISOString() : undefined);",
+    "replace": "undefined);",
+    "why": "[a47] 10.4 10.9 a difference told late says it was due when the server looked"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  return since === null ? null : Date.parse(since) + world.book.settings().totalsMismatchAlertHours * HOUR;",
+    "replace": "  return since === null ? null : Date.parse(since) + world.book.settings().bankNotReadAlertHours * HOUR;",
+    "why": "[a47] 10.4 the wait read from the bank-not-read setting"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  if (!ledger.lasting['totals-mismatch'].on && mismatch !== null && mismatch > now) next = Math.min(next, mismatch - now);\n",
+    "replace": "",
+    "why": "[a47] 10.4 the timer does not wake at the 12 hours"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    if (matches && since !== null) saveGapSince(this.#db, null);\n",
+    "replace": "",
+    "why": "[a47] 10.4 a read that matches does not clear when the gap began"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    if (!matches && since === null) saveGapSince(",
+    "replace": "    if (!matches) saveGapSince(",
+    "why": "[a47] 10.4 each read with a difference moves when the gap began"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "        this.#noteGap();\n        this.#changed();",
+    "replace": "        this.#changed();",
+    "why": "[a47] 10.4 a sync does not note when the gap began"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    keeper.reload();\n    keeper.#noteGap();",
+    "replace": "    keeper.reload();",
+    "why": "[a47] 10.4 books from before the update do not note a gap already there when they open"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    return this.#now().getTime() < Date.parse(since) + book.settings().totalsMismatchAlertHours * 3_600_000;",
+    "replace": "    return false;",
+    "why": "[a47] 10.4 never still catching up"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/views/home.ts",
+    "find": "catchingUp: input.catchingUp ?? false };",
+    "replace": "catchingUp: false };",
+    "why": "[a47] 10.4 Home never says the bank is still catching up"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "catchingUp: input.catchingUp ?? false };",
+    "replace": "catchingUp: false };",
+    "why": "[a47] 10.4 Buckets never says the bank is still catching up"
   }
 ]

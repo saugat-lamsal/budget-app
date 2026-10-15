@@ -297,6 +297,15 @@ const STEPS: readonly string[] = [
   -- accounts runs out, as the bank last said (an instant); NULL when it gave none.
   ALTER TABLE connection ADD COLUMN permission_ends TEXT;
   `,
+  `
+  -- Step 10 (10.4, QUESTIONS.md A47): when the totals stopped matching the
+  -- bank, as an instant: the read of the bank that first showed the
+  -- difference. No row while they match.
+  CREATE TABLE bank_gap (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    since TEXT NOT NULL
+  );
+  `,
 ];
 
 // Steps that make a table again, which SQLite does with foreign keys off

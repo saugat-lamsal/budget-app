@@ -236,6 +236,8 @@ describe('0.2 a setting the money math refuses changes nothing and says why', ()
     [{ momReserveCap: -1 }, 'Mom reserve cap must be whole cents, zero or more. Nothing was changed.'],
     [{ momMonthlyTarget: { low: 300_000, high: 200_000 } }, 'Mom monthly target low end must not be above the high end. Nothing was changed.'],
     [{ lowBucketAlertPercent: 101 }, 'Low-bucket alert must be a whole percent from 0 to 100. Nothing was changed.'],
+    [{ totalsMismatchAlertHours: 0 }, 'The totals-do-not-match alert must be a whole number of hours from 1 to 168. Nothing was changed.'],
+    [{ totalsMismatchAlertHours: 169 }, 'The totals-do-not-match alert must be a whole number of hours from 1 to 168. Nothing was changed.'],
     [{ cardReminderDaysBefore: [7, -1] }, 'Card reminder days must be whole days, zero or more. Nothing was changed.'],
     [{ dailyReviewTime: '25:00' }, 'Daily review time must be HH:MM. Nothing was changed.'],
     [{ oldCardPromoEndDate: '2027-02-30' }, 'Old card promo end date must be a real date. Nothing was changed.'],

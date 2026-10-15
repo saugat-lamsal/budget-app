@@ -3792,5 +3792,12 @@
     "find": "  paySchedule: 'every-n-days',\n  payScheduleDays: 14,",
     "replace": "  paySchedule: 'twice-a-month',\n  payScheduleDays: 14,",
     "why": "[a48] section 2 start as twice a month"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "isWholeInRange(s.totalsMismatchAlertHours, 1, 168)",
+    "replace": "isWholeInRange(s.totalsMismatchAlertHours, 0, 169)",
+    "why": "[a47] 10.4 take 0 or 169 hours for the wait"
   }
 ]

@@ -90,6 +90,8 @@ interface Story {
   readonly allDone?: boolean;
   // The bank shows this much more (or, negative, less) than the app (0.5).
   readonly bankOff?: Cents;
+  // 10.4 (A47): the difference is younger than the setting's hours.
+  readonly catchingUp?: boolean;
   readonly needsLogin?: boolean;
   readonly statements?: readonly CardStatement[];
   // A restaurant charge the bank shows twice, then takes the copy back (4.10).
@@ -342,6 +344,7 @@ function story(s: Story): HomeInput {
     seenTakeBacks: new Set(),
     lastChecked: s.bankNotRead === true ? { amount: checkedThisMorning, at: LAST_CHECKED_AT } : null,
     // Step 3: when the made-up bank was last read: this morning.
+    catchingUp: s.catchingUp ?? false,
     checkedAt: { at: s.bankNotRead === true ? LAST_CHECKED_AT : timeIn(book.settings().homeTimeZone, new Date(`${s.today ?? DEMO_TODAY}T13:41:00Z`)), timeZone: book.settings().homeTimeZone },
   };
 }
@@ -369,6 +372,7 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   { name: 'low', title: 'Wants is low', input: () => story({ eatingOut: 52_000 }) },
   { name: 'overspent', title: 'Wants is overspent', input: () => story({ eatingOut: 70_000 }) },
   { name: 'mismatch', title: 'Totals do not match the bank', input: () => story({ bankOff: -1_234 }) },
+  { name: 'catching-up', title: 'The bank is still catching up', input: () => story({ bankOff: -4_210, catchingUp: true }) },
   { name: 'payday', title: 'Payday is today', input: () => story({ today: '2026-10-16', allDone: true, statements: [] }) },
   { name: 'late', title: 'The paycheck is two days late', input: () => story({ today: '2026-10-18', allDone: true, statements: [] }) },
   { name: 'trouble', title: 'Bank needs a login, old card overdue', input: () => story({ needsLogin: true, statements: [OLD_CARD_OVERDUE] }) },

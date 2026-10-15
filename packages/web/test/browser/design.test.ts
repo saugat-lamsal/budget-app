@@ -8,7 +8,7 @@ import { ENGINES, IPHONE, IPHONE_INSETS, emulatePhone, openScenario, phone, show
 // phone's text size and reduced-motion settings, and money written one way.
 
 // Every screen state worth checking.
-const STATES = ['normal', 'mismatch', 'low', 'overspent', 'trouble', 'all-clear', 'not-set-up', 'error', 'big', 'took-back', 'bank-not-read'] as const;
+const STATES = ['normal', 'mismatch', 'catching-up', 'low', 'overspent', 'trouble', 'all-clear', 'not-set-up', 'error', 'big', 'took-back', 'bank-not-read'] as const;
 
 describe('design rules in the style sheets', () => {
   const css = (file: string): string => readFileSync(new URL(`../../src/ui/${file}`, import.meta.url), 'utf8');
