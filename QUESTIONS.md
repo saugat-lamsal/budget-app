@@ -767,6 +767,28 @@ A46. ANSWERED Oct 12 ("do all of that"), built (B216 to B221): the wording below
      Recommendation: as written.
 
 
+## Part A, added in Phase 7 (Oct 14).
+
+A47. ANSWERED Oct 14 ("can we do option A"; "Okay, I want to add the
+     webhooks and this change"), to build in the next session (handoff in
+     docs/later.txt, items 3 and 11). The "totals do not match" gaps of Oct 13
+     and 14 were the bank's timing, not the books (B230, B231). His choice:
+     option A, and Plaid's webhooks with it.
+     12.1  Bank side: checking + savings - everyday card. For checking and
+           savings, the balance the bank shows you (what is available), plus
+           any transfer between your accounts still pending (it counts once
+           it posts). If the bank does not give that balance, its posted
+           balance less pending charges. For the everyday card, what it
+           owes, including pending charges.
+     10.4  Totals do not match the bank: told once the difference has lasted
+           12 hours (a setting), then once a day at the daily review time
+           while it lasts. Until then Home says the bank is still catching
+           up.
+     Section 2, syncing: also as soon as Plaid says it has something new
+           (a webhook); the 60-minute timer stays.
+     The exact rulebook text is shown to him before it is committed.
+
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 WAITING FOR YOU TO CHECK (Oct 10, 2026, the end of Phase 4). Each was
@@ -2635,3 +2657,11 @@ B230. Oct 13, 9:34 AM: the "totals do not match" alert (10.4) for a gap
       had them pending, so the bank side was ahead by the difference. It
       clears when Plaid sends the posted items. Whether to tell such a gap
       only once it has lasted a few syncs is his call (docs/later.txt 3).
+
+B231. Oct 14: the second gap, the other way round. Every pending checking
+      item posted (Plaid sent them as posted), but the checking balance the
+      bank calls posted ("current") did not include them yet: it only takes
+      them in its overnight processing. Its "available" balance did, and with
+      it the books matched to the cent. The bank side counted them nowhere
+      (not pending any more, not in the balance yet), so it came out high by
+      their sum. This will happen most days things post. His fix: A47.

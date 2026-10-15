@@ -26,14 +26,12 @@ FIXES FOUND ON CONNECTION DAY
    rule it reads as a refund. Added by hand on the day. To build: suggest
    it from the history (the same amount the other way, a day or so later).
 
-3. DECIDE. The "totals do not match" alert when Plaid lags (B230).
-   Oct 13 morning: the everyday card's balance at the bank already showed
-   the card payment, but Plaid's list of transactions still had it pending,
-   so the self-check was off and the alert went out (rule 10.4 tells it at
-   once). It clears by itself when Plaid sends the posted transactions.
-   Options: keep as is; or tell it only once a gap has lasted a few syncs
-   in a row (3, say), so timing gaps never reach the phone. A rulebook
-   change (10.4), his call after a few days of seeing how often it happens.
+3. NEXT (decided Oct 14, QUESTIONS.md A47). The "totals do not match"
+   gaps that were the bank's timing (B230, B231). Checking and savings are
+   checked against the balance the bank shows him (available) plus any
+   transfer between his accounts still pending; the alert waits until a
+   gap has lasted 12 hours (a setting); Home says the bank is still
+   catching up until then. Built in the next session with item 11.
 
 4. FIX if it comes back. The split paycheck (B228).
    His employer sent part of each paycheck to savings and part to checking;
@@ -74,7 +72,7 @@ HIS STEPS
 
 IDEAS FOR AFTER PHASE 7
 
-11. LATER. Plaid webhooks: Plaid tells the app the moment it has new data,
+11. NEXT (his call, Oct 14, with item 3). Plaid webhooks: Plaid tells the app the moment it has new data,
     so it syncs then instead of waiting for the hourly timer (the timer
     stays as a backup). Free. About a day of work: a signed address for
     Plaid to call, the check of Plaid's signature, one setting call to
@@ -115,3 +113,20 @@ SMALL THINGS NOTICED
 17. Syncing every 15 minutes instead of 60 is allowed and harmless but
     gains little (Plaid's own schedule decides when new items appear). Left
     at 60.
+
+
+IDEAS ADDED OCT 14
+
+18. NEXT, recommended with 3 and 11. "Why it doesn't match": tapping the
+    gap's banner opens a sheet with each account: what the bank shows, what
+    the books expect, the difference, the items still on their way, and
+    when the gap started. Then he can see which account is off without
+    anyone reading the server. Each sync's balances kept in a small table on
+    the server for it (never in the log).
+
+19. Small, with the next session. The rehearsal's connect card wording
+    (item 16).
+
+20. LATER. A weekly statement check for Phase 7: pick an account and a date
+    range, and the app lists what it counted, to tick off against the bank
+    statement.
