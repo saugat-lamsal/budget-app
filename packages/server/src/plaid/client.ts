@@ -1,6 +1,7 @@
 import { hideSecrets, type Log } from '../log.js';
 import { PLAID_URLS, SandboxOnlyError, plaidLock, tokenEnvironment, type PlaidEnvironment, type PlaidKeys } from './sandbox-lock.js';
 import type {
+  WebhookKeyResponse,
   AccountsGetResponse,
   ItemGetResponse,
   LiabilitiesGetResponse,
@@ -37,6 +38,11 @@ export const ENDPOINTS = {
   // 1.1 and 1.3: a key for the bank's own login screen (Plaid Link), to
   // connect, or to log in again on the same connection. It reads nothing.
   linkTokenCreate: '/link/token/create',
+  // Section 2 (A47), Plaid's webhooks: the public key that checks a
+  // webhook's signature, and the address Plaid sends a connection's webhooks
+  // to. Configuration, never money.
+  webhookVerificationKeyGet: '/webhook_verification_key/get',
+  itemWebhookUpdate: '/item/webhook/update',
   // The test bank only: make a connection without screens, add test
   // transactions, and pretend the bank wants a new login.
   sandboxPublicTokenCreate: '/sandbox/public_token/create',
@@ -172,17 +178,34 @@ export class PlaidClient {
   }
 
   // 1.1: a key for the bank's own login screen (Plaid Link), for a new
-  // connection: transactions and card statements, 90 days of history (A44).
-  // 1.3: with `updateKey`, logging in again on that same connection (Plaid's
-  // update mode), where he can also add an account that is missing. It never
-  // makes a connection itself; Link does, once he logs in.
-  async createLinkToken(input: { readonly clientUserId: string; readonly updateKey?: BankKey }): Promise<string> {
+  // connection: transactions and card statements, 90 days of history (A44),
+  // and (section 2, A47) the address Plaid sends its webhooks to, when there
+  // is one. 1.3: with `updateKey`, logging in again on that same connection
+  // (Plaid's update mode, where a webhook address has no effect: the
+  // connection keeps its own), where he can also add an account that is
+  // missing. It never makes a connection itself; Link does, once he logs in.
+  async createLinkToken(input: { readonly clientUserId: string; readonly updateKey?: BankKey; readonly webhook?: string | null }): Promise<string> {
     const body: Record<string, unknown> = { client_name: 'Budget App', language: 'en', country_codes: ['US'], user: { client_user_id: input.clientUserId } };
-    if (input.updateKey === undefined) Object.assign(body, { products: ['transactions', 'liabilities'], transactions: { days_requested: HISTORY_DAYS } });
+    if (input.updateKey === undefined) Object.assign(body, { products: ['transactions', 'liabilities'], transactions: { days_requested: HISTORY_DAYS }, ...(input.webhook === undefined || input.webhook === null ? {} : { webhook: input.webhook }) });
     else Object.assign(body, { access_token: input.updateKey.reveal(), update: { account_selection_enabled: true } });
     const reply = await this.#post<{ link_token?: unknown }>(ENDPOINTS.linkTokenCreate, body, input.updateKey);
     if (typeof reply.link_token !== 'string' || reply.link_token === '') throw new Error('Plaid sent no link key');
     return reply.link_token;
+  }
+
+  // Section 2 (A47): the public key Plaid signs webhooks with, by its id. No
+  // bank key is sent.
+  getWebhookVerificationKey(kid: string): Promise<WebhookKeyResponse> {
+    return this.#post(ENDPOINTS.webhookVerificationKeyGet, { key_id: kid });
+  }
+
+  // Section 2 (A47): the address Plaid sends this connection's webhooks to.
+  // The same connection: nothing new is made, and nothing is read.
+  async updateWebhook(key: BankKey, webhook: string): Promise<{ readonly itemId: string }> {
+    const reply = await this.#post<{ item?: { item_id?: unknown } }>(ENDPOINTS.itemWebhookUpdate, { access_token: key.reveal(), webhook }, key);
+    const itemId = reply.item?.item_id;
+    if (typeof itemId !== 'string' || itemId === '') throw new Error('Plaid did not say which connection');
+    return { itemId };
   }
 
   // The test bank's way to connect without screens. With the username

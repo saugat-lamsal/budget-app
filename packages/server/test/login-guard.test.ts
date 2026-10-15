@@ -113,13 +113,15 @@ describe('login: every route on the real server needs a login', () => {
   // would never be in NEEDS_LOGIN, so nothing below would try it. Phase 6
   // adds one: /health, for the uptime monitor, which says only "ok". A43 adds
   // two: /health/backups, for the second monitor, and the beat Litestream sends
-  // it from the same machine (taken only from there).
-  it('login Phase 6 A43 the only addresses open without a login are the login page and its own requests, and the health addresses', () => {
+  // it from the same machine (taken only from there). A47 adds Plaid's
+  // webhooks, each checked by Plaid's own signature (plaid-webhook.test.ts).
+  it("login Phase 6 A43 A47 the only addresses open without a login are the login page and its own requests, the health addresses, and Plaid's webhooks", () => {
     expect(ROUTES.filter((r) => !r.login).map((r) => `${r.method} ${r.path}`)).toEqual([
       'GET /login',
       'GET /health',
       'GET /health/backups',
       'GET /health/backups/beat',
+      'POST /plaid/webhook',
       'GET /api/auth',
       'POST /api/auth/login/options',
       'POST /api/auth/login',

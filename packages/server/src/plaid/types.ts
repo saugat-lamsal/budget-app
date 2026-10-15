@@ -113,3 +113,19 @@ export interface SandboxTransaction {
   readonly description: string;
   readonly iso_currency_code?: string;
 }
+
+// Section 2 (A47): /webhook_verification_key/get.
+export interface WebhookKeyResponse {
+  readonly key: {
+    readonly alg: string;
+    readonly crv: string;
+    readonly kid: string;
+    readonly kty: string;
+    readonly use?: string;
+    readonly x: string;
+    readonly y: string;
+    readonly created_at: number;
+    readonly expired_at: number | null;
+  };
+  readonly request_id?: string;
+}

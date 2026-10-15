@@ -2361,15 +2361,15 @@
   {
     "section": "sync",
     "file": "packages/server/src/serve/serving.ts",
-    "find": "    clock: input.clock,",
-    "replace": "    clock: { setTimeout: () => 0, clearTimeout: () => undefined },",
+    "find": "    syncer: { syncDueIn: () => keeper.syncDueIn(), sync: () => keeper.sync(bank) },\n    clock: input.clock,",
+    "replace": "    syncer: { syncDueIn: () => keeper.syncDueIn(), sync: () => keeper.sync(bank) },\n    clock: { setTimeout: () => 0, clearTimeout: () => undefined },",
     "why": "[pay-period] section 2 the timer npm run serve starts is never woken by its clock"
   },
   {
     "section": "sync",
     "file": "packages/server/src/serve/serving.ts",
-    "find": "const server = keeper.server(input.webRoot, input.origin, input.onError, { ...(input.backups === undefined ? {} : { backups: input.backups }), bank });",
-    "replace": "const server = keeper.server(input.webRoot, () => 'http://localhost:1', input.onError, { ...(input.backups === undefined ? {} : { backups: input.backups }), bank });",
+    "find": "const server = keeper.server(input.webRoot, input.origin, input.onError, { ...(input.backups === undefined ? {} : { backups: input.backups }), bank, webhook: webhooks });",
+    "replace": "const server = keeper.server(input.webRoot, () => 'http://localhost:1', input.onError, { ...(input.backups === undefined ? {} : { backups: input.backups }), bank, webhook: webhooks });",
     "why": "[pay-period] Step 2 the server npm run serve starts checks requests against the wrong address"
   },
   {
@@ -2424,8 +2424,8 @@
   {
     "section": "alerts",
     "file": "packages/server/src/alerts/plan.ts",
-    "find": "return { ...ledger, nextEvening: addDays(check.date, 1), given, lasting };",
-    "replace": "return { ...ledger, nextEvening: addDays(check.date, 2), given, lasting };",
+    "find": "return { ...ledger, nextEvening: addDays(check.date, 1), given, lasting, payPeriod };",
+    "replace": "return { ...ledger, nextEvening: addDays(check.date, 2), given, lasting, payPeriod };",
     "why": "[alerts] 10.3 every other evening is skipped"
   },
   {
@@ -4275,5 +4275,439 @@
     "find": "available: { checking: availableOf('checking'), savings: availableOf('savings') },",
     "replace": "available: { checking: null, savings: null },",
     "why": "[why] the available balances never reach the sheet"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "    if (ledger.payPeriod !== null) give(paydayFacts(world));",
+    "replace": "    if (ledger.payPeriod === null) give(paydayFacts(world));",
+    "why": "[a49] 10.14 a paycheck counted is not told"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  if (ledger.payPeriod === null || period > ledger.payPeriod) {",
+    "replace": "  if (ledger.payPeriod === null || period >= ledger.payPeriod) {",
+    "why": "[a49] 10.14 the same pay period noted again at every look"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "given: [], cleared: [], payPeriod: world.book.period().number };",
+    "replace": "given: [], cleared: [], payPeriod: 0 };",
+    "why": "[a49] 10.14 a paycheck counted before the alerts started is told"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "toSavings: transfer?.stillToMove ?? null",
+    "replace": "toSavings: transfer?.shouldBeInSavings ?? null",
+    "why": "[a49] 10.14 3.8 all that should be in savings, not what is still to move"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "extraInSavings: transfer?.extraInSavings ?? 0",
+    "replace": "extraInSavings: 0",
+    "why": "[a49] 10.14 3.8 the extra in savings not said"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "oldCard: countdown.on ? countdown.perPayday : null };",
+    "replace": "oldCard: countdown.on ? countdown.owed : null };",
+    "why": "[a49] 10.14 9.5 all the old card owes, not this payday's share"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "oldCard: countdown.on ? countdown.perPayday : null };",
+    "replace": "oldCard: countdown.on ? countdown.perPayday : 0 };",
+    "why": "[a49] 10.14 9.5 the old card said with the countdown off"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  const { number: period, startDate: date } = book.period();",
+    "replace": "  const { number: period } = book.period();\n  const date = todayIn(world.zone, world.now);",
+    "why": "[a49] 10.14 B53 the day it was counted, not the paycheck's day"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "      return f.period === book.period().number;",
+    "replace": "      return true;",
+    "why": "[a49] 10.14 10.9 still true after the next paycheck"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  if (event.payPeriod !== undefined && ledger.payPeriod !== null && event.payPeriod <= ledger.payPeriod) throw new ReplayFailed(`the pay period ${event.payPeriod} is not newer than ${ledger.payPeriod}`);",
+    "replace": "",
+    "why": "[a49] 0.6 10.14 a payday alert for an old pay period replays"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  const payPeriod = event.payPeriod ?? ledger.payPeriod;",
+    "replace": "  const payPeriod = ledger.payPeriod;",
+    "why": "[a49] 10.14 the pay period told is not kept"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  if (given.length === 0 && cleared.length === 0 && payPeriod === undefined) return null;",
+    "replace": "  if (given.length === 0 && cleared.length === 0) return null;",
+    "why": "[a49] 10.14 a history from before never notes its pay period"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "      return `payday pay period ${f.period}`;",
+    "replace": "      return `payday ${f.date}`;",
+    "why": "[a49] 10.14 keyed by the day, not the paycheck"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "    case 'payday':\n      return '/payday';",
+    "replace": "    case 'payday':\n      return '/home';",
+    "why": "[a49] 10.14 a tap does not open Payday"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "      : f.toSavings > 0\n",
+    "replace": "      : f.toSavings >= 0\n",
+    "why": "[a49] 10.14 3.8 \"Move $0.00\" when nothing is to move"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "        : f.extraInSavings > 0\n",
+    "replace": "        : f.extraInSavings >= 0\n",
+    "why": "[a49] 10.14 3.8 an extra of $0.00 said"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "      return { title: 'Payday', body: amounts ? paydayAmounts(f) :",
+    "replace": "      return { title: 'Payday', body: true ? paydayAmounts(f) :",
+    "why": "[a49] 10.14 10.10 amounts on the lock screen with the setting off"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "f.oldCard > 0 ? `Old card:",
+    "replace": "f.oldCard >= 0 ? `Old card:",
+    "why": "[a49] 10.14 9.5 \"Old card: $0.00\" with nothing owed"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/alerts.ts",
+    "find": "`Open Payday to see what to move to savings${f.oldCard === null ? '' : ' and pay on the old card'}.`",
+    "replace": "'Open Payday to see what to move to savings.'",
+    "why": "[a49] 10.14 10.10 the old card left out of the words-only line"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "(ledger.payPeriod === null || event.payPeriod !== f.period)",
+    "replace": "(event.payPeriod !== f.period)",
+    "why": "[a49] 0.6 10.14 a payday alert replays in a history with no pay period known"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "    if (header.alg !== 'ES256') return refused('the JWT is not ES256');\n",
+    "replace": "",
+    "why": "[webhooks] A47 any alg is let through to the key"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "  if (age > WEBHOOK_MAX_AGE_SECONDS) return refused",
+    "replace": "  if (age > WEBHOOK_MAX_AGE_SECONDS + 1) return refused",
+    "why": "[webhooks] A47 a second older than 5 minutes is taken"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "  if (age < -WEBHOOK_AHEAD_SECONDS) return refused('the JWT was made ahead of this clock');\n",
+    "replace": "",
+    "why": "[webhooks] A47 a JWT made ahead of this clock is taken"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "  if (typeof iat !== 'number' || !Number.isFinite(iat)) return refused('the JWT does not say when it was made');\n",
+    "replace": "",
+    "why": "[webhooks] A47 a JWT that does not say when it was made is taken"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "  if (!timingSafeEqual(actual, Buffer.from(claimed, 'hex'))) return refused('the body is not the one Plaid signed');",
+    "replace": "  if (false) return refused('the body is not the one Plaid signed');",
+    "why": "[webhooks] A47 a tampered body is taken"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "/^[0-9a-f]{64}$/",
+    "replace": "/^[0-9a-fA-F]{64}$/",
+    "why": "[webhooks] A47 the body's hash in capitals is taken"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "  const actual = createHash('sha256').update(input.body).digest();",
+    "replace": "  const actual = createHash('sha256').update(JSON.stringify(JSON.parse(Buffer.from(input.body).toString('utf8') || 'null'))).digest();",
+    "why": "[webhooks] A47 the hash of the JSON written again, not of the exact bytes"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "    await jwtVerify(token, got.key, { algorithms: ['ES256'], currentDate: input.now });",
+    "replace": "    void got.key;",
+    "why": "[webhooks] A47 the signature is never checked"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "Object.entries(headers).filter(([key]) => key.toLowerCase() === name)",
+    "replace": "Object.entries(headers).filter(([key]) => key === name)",
+    "why": "[webhooks] A47 the header read in lower case only"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "value?.length === 1 ? value[0] : undefined",
+    "replace": "value?.[0]",
+    "why": "[webhooks] A47 two Plaid-Verification headers: the first taken"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "  if (expired !== null && expired * 1000 <= now) return refused('the key has expired');",
+    "replace": "  if (expired !== null && expired * 1000 < now) return refused('the key has expired');",
+    "why": "[webhooks] A47 a key still good the moment it expires"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "  if (expired !== null && expired * 1000 <= now) return refused('the key has expired');",
+    "replace": "  if (expired === null && expired !== null) return refused('the key has expired');",
+    "why": "[webhooks] A47 an expired key is used"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "    if (kept !== undefined && now - kept.at < this.#refreshMs) return usable(kept, now);",
+    "replace": "    if (kept !== undefined) return usable(kept, now);",
+    "why": "[webhooks] A47 a kept key is never asked for again"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "    if (this.#asked.length >= this.#perHour) return false;",
+    "replace": "    if (this.#asked.length >= this.#perHour * 100) return false;",
+    "why": "[webhooks] A47 strangers' kids make the app ask Plaid without end"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "    if (kept === undefined && said !== undefined && now - said < HOUR_MS) return refused('Plaid has no key with that kid');",
+    "replace": "",
+    "why": "[webhooks] A47 a kid Plaid does not know is asked about again at once"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "    if (key.kid !== kid || key.alg !== 'ES256'",
+    "replace": "    if (key.alg !== 'ES256'",
+    "why": "[webhooks] A47 a key for another kid is used"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "      return kept !== undefined ? usable(kept, now) : refused('the key could not be had from Plaid', 503);",
+    "replace": "      return kept !== undefined ? usable(kept, now) : refused('the key could not be had from Plaid');",
+    "why": "[webhooks] A47 Plaid out of reach answers 401, so Plaid does not try again"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "error.errorType === 'INVALID_INPUT') return { found: false };",
+    "replace": "error.errorType === 'API_ERROR') return { found: false };",
+    "why": "[webhooks] A47 Plaid's \"no such key\" taken as Plaid out of reach"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/webhook.ts",
+    "find": "reject(new Error('Plaid took too long to give the key')), limitMs);",
+    "replace": "reject(new Error('Plaid took too long to give the key')), limitMs * 1000);",
+    "why": "[webhooks] A47 the key is waited for past the 10 seconds Plaid waits"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/sync/webhook-desk.ts",
+    "find": "    if (this.#calls.length >= this.#perMinute) {",
+    "replace": "    if (this.#calls.length > this.#perMinute) {",
+    "why": "[webhooks] A47 31 calls a minute looked at"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/sync/webhook-desk.ts",
+    "find": "    if (mine === null || webhook.itemId !== mine) {",
+    "replace": "    if (mine === null) {",
+    "why": "[webhooks] A47 another connection's webhook is taken"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/sync/webhook-desk.ts",
+    "find": "    if (this.#seen.has(id)) {",
+    "replace": "    if (false) {",
+    "why": "[webhooks] A47 the same signed call twice acts twice"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/sync/webhook-desk.ts",
+    "find": "    }, this.#gatherMs);",
+    "replace": "    }, 0);",
+    "why": "[webhooks] A47 the sync starts before the burst has come in"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/sync/webhook-desk.ts",
+    "find": "      this.#again = true;\n",
+    "replace": "",
+    "why": "[webhooks] A47 calls while a sync is on its way are lost"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/sync/webhook-desk.ts",
+    "find": "        if (onItsWay !== null) await onItsWay.catch(() => undefined);\n",
+    "replace": "",
+    "why": "[webhooks] A47 a webhook takes the timer's sync on its way as its own"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/sync/webhook-desk.ts",
+    "find": "  ITEM: ['ERROR', 'LOGIN_REPAIRED', 'PENDING_DISCONNECT', 'PENDING_EXPIRATION',",
+    "replace": "  ITEM: ['ERROR', 'LOGIN_REPAIRED', 'PENDING_EXPIRATION',",
+    "why": "[webhooks] A47 10.13 the 7-day warning does not read the bank"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/sync/webhook-desk.ts",
+    "find": "  LIABILITIES: ['DEFAULT_UPDATE'],\n",
+    "replace": "",
+    "why": "[webhooks] A47 new statements do not read the bank"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/sync/webhook-desk.ts",
+    "find": "  if (w.type === 'ITEM' && w.code === 'WEBHOOK_UPDATE_ACKNOWLEDGED') return 'note';",
+    "replace": "  if (w.type === 'ITEM' && w.code === 'WEBHOOK_UPDATE_ACKNOWLEDGED') return 'sync';",
+    "why": "[webhooks] A47 Plaid's confirmation of the address syncs"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/sync/webhook-desk.ts",
+    "find": "        this.#input.log.warn('webhook sync failed', { error: error instanceof Error ? error.message : String(error) });",
+    "replace": "        throw error;",
+    "why": "[webhooks] A47 a sync that fails stops the desk"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/http/server.ts",
+    "find": "async function takeWebhook(request: IncomingMessage, response: ServerResponse, webhook: WebhookHandler): Promise<void> {\n  if (request.method !== 'POST') {",
+    "replace": "async function takeWebhook(request: IncomingMessage, response: ServerResponse, webhook: WebhookHandler): Promise<void> {\n  if (false) {",
+    "why": "[webhooks] A47 a webhook by GET is looked at"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/http/server.ts",
+    "find": "  if (type !== 'application/json') {\n    send(response, 415, 'text/plain; charset=utf-8', 'JSON only.', 'no-store');\n    return;\n  }",
+    "replace": "  if (false) {\n    send(response, 415, 'text/plain; charset=utf-8', 'JSON only.', 'no-store');\n    return;\n  }",
+    "why": "[webhooks] A47 a webhook that is not JSON is looked at"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/http/server.ts",
+    "find": "    if (size > WEBHOOK_BODY_LIMIT) {",
+    "replace": "    if (size > WEBHOOK_BODY_LIMIT * 4) {",
+    "why": "[webhooks] A47 a webhook body over 8 KB is read"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/http/server.ts",
+    "find": "    if (path === WEBHOOK_PATH && options.webhook !== undefined) {",
+    "replace": "    if (path === WEBHOOK_PATH && options.webhook !== undefined && options.gate === undefined) {",
+    "why": "[webhooks] A47 Plaid's webhooks need a login"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/http/server.ts",
+    "find": "  { method: 'POST', path: WEBHOOK_PATH, login: false },",
+    "replace": "  { method: 'POST', path: WEBHOOK_PATH, login: true },",
+    "why": "[webhooks] A47 the webhook address listed as needing a login"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    return origin.startsWith('https://') ? `${origin}${WEBHOOK_PATH}` : null;",
+    "replace": "    return `${origin}${WEBHOOK_PATH}`;",
+    "why": "[webhooks] A47 an address Plaid cannot reach is given to it"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    return readConnection(this.#db)?.itemId ?? null;",
+    "replace": "    return null;",
+    "why": "[webhooks] A47 his own connection is not known"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/bank-desk.ts",
+    "find": "{ webhook: this.#input.webhook?.() ?? null }",
+    "replace": "{}",
+    "why": "[webhooks] A47 1.1 a new connection gets no webhook address"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/plaid/client.ts",
+    "find": "...(input.webhook === undefined || input.webhook === null ? {} : { webhook: input.webhook })",
+    "replace": "",
+    "why": "[webhooks] A47 1.1 the link key leaves the webhook address out"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/bank-webhook.ts",
+    "find": "  if (url.pathname !== WEBHOOK_PATH || url.search !== '' || url.hash !== '') return",
+    "replace": "  if (false) return",
+    "why": "[webhooks] A47 the connection pointed at another address of the app"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/bank-webhook.ts",
+    "find": "  if (address === null || !address.startsWith('https://')) return",
+    "replace": "  if (address === null) return",
+    "why": "[webhooks] A47 the connection pointed at an address Plaid cannot reach"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/bank-webhook.ts",
+    "find": "    if (itemId !== connection.itemId) return { ok: false, why: 'Plaid answered about another connection.' };",
+    "replace": "",
+    "why": "[webhooks] A47 Plaid's answer about another connection taken as done"
+  },
+  {
+    "section": "webhooks",
+    "file": "packages/server/src/serve/serving.ts",
+    "find": "    onItsWay: () => keeper.syncOnItsWay(),",
+    "replace": "    onItsWay: () => null,",
+    "why": "[webhooks] A47 npm run serve's webhooks take the timer's sync as their own"
   }
 ]

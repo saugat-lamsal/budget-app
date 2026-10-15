@@ -18,7 +18,8 @@ import { canonical, refuse, ChoiceDesk } from '../choices.js';
 import type { TokenBox } from '../crypto/token-box.js';
 import { statement, type Db } from '../db/database.js';
 import { logChange, readAccounts, readBankRules, readConnection, readItems, readStatements, saveBankRules, saveItem } from '../db/store.js';
-import { createAppServer, type Seen } from '../http/server.js';
+import { createAppServer, type Seen, type WebhookHandler } from '../http/server.js';
+import { WEBHOOK_PATH } from '../plaid/webhook.js';
 import { memoryLog, type Log } from '../log.js';
 import type { PlaidClient } from '../plaid/client.js';
 import { PushDesk } from '../push/push-desk.js';
@@ -465,6 +466,7 @@ export class Keeper {
       tracking: () => this.book() !== null,
       bookLines: () => this.book()?.changeLog().length ?? 0,
       sync: () => this.sync(bank),
+      webhook: () => this.webhookAddress(),
       changed: () => {
         this.reload();
         this.#changed();
@@ -516,6 +518,24 @@ export class Keeper {
     });
     this.#syncing = running;
     return running;
+  }
+
+  // Section 2 (A47): the sync on its way, if any, so a webhook that waits on
+  // it can start its own after it.
+  syncOnItsWay(): Promise<SyncResult> | null {
+    return this.#syncing;
+  }
+
+  // His connection's item_id (a webhook must be about it); null before there is one.
+  itemId(): string | null {
+    return readConnection(this.#db)?.itemId ?? null;
+  }
+
+  // Section 2 (A47): where Plaid sends its webhooks: the hosted server's own
+  // https address. Null on this computer, which Plaid cannot reach.
+  webhookAddress(): string | null {
+    const origin = this.#origin();
+    return origin.startsWith('https://') ? `${origin}${WEBHOOK_PATH}` : null;
   }
 
   // How long until the next sync is due, in milliseconds of real time: one
@@ -703,8 +723,9 @@ export class Keeper {
   // the app's own address, `origin`.
   // A43: hosted, `backups` watches Litestream's heartbeat for /health/backups.
   // 1.1 to 1.3: with `bank`, the Bank connection screen (the real server always has it).
-  server(webRoot: string, origin: () => string, onError?: (error: unknown) => void, extras: { readonly backups?: { readonly beat: () => void; readonly healthy: () => boolean }; readonly bank?: SyncBank } = {}): Server {
-    const { backups, bank } = extras;
+  // Section 2 (A47): with `webhook`, Plaid's webhooks (the real server always has it).
+  server(webRoot: string, origin: () => string, onError?: (error: unknown) => void, extras: { readonly backups?: { readonly beat: () => void; readonly healthy: () => boolean }; readonly bank?: SyncBank; readonly webhook?: WebhookHandler } = {}): Server {
+    const { backups, bank, webhook } = extras;
     const desk = bank === undefined ? null : this.bankDesk(bank);
     this.#origin = origin;
     const auth = this.#auth;
@@ -734,6 +755,7 @@ export class Keeper {
       alerts: () => this.alertsView(),
       health: () => this.healthy(),
       ...(backups === undefined ? {} : { backups }),
+      ...(webhook === undefined ? {} : { webhook }),
       ...(desk === null || bank === undefined
         ? {}
         : {

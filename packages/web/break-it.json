@@ -261,8 +261,8 @@
   {
     "section": "home",
     "file": "packages/server/src/http/server.ts",
-    "find": "if (type !== 'application/json') {",
-    "replace": "if (false) {",
+    "find": "if (type !== 'application/json') {\n    send(response, 415, 'text/plain; charset=utf-8', 'JSON only.', 'no-store');\n    return undefined;",
+    "replace": "if (false) {\n    send(response, 415, 'text/plain; charset=utf-8', 'JSON only.', 'no-store');\n    return undefined;",
     "why": "safety: seen takes a form post from another site"
   },
   {

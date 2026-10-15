@@ -34,6 +34,7 @@ describe('0.4 the app is read-only: the bank connection cannot move money', () =
       [
         '/accounts/get',
         '/item/get',
+        '/item/webhook/update',
         '/item/public_token/exchange',
         '/liabilities/get',
         '/link/token/create',
@@ -42,6 +43,7 @@ describe('0.4 the app is read-only: the bank connection cannot move money', () =
         '/sandbox/transactions/create',
         '/transactions/refresh',
         '/transactions/sync',
+        '/webhook_verification_key/get',
       ].sort(),
     );
     for (const endpoint of Object.values(ENDPOINTS)) {

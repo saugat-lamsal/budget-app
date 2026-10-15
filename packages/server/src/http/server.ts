@@ -4,6 +4,7 @@ import { extname, join, resolve, sep } from 'node:path';
 import type { Pot } from '@budget-app/money';
 import { randomBytes } from 'node:crypto';
 import { BACKUP_BEAT_PATH, BACKUP_HEALTH_PATH, fromThisMachine } from '../backup/backup-watch.js';
+import { WEBHOOK_BODY_LIMIT, WEBHOOK_PATH } from './webhook-path.js';
 import type { BankAnswer, BankConnectedRequest, BankConnectionView, BankLinkAnswer, BankLinkRequest, BankRolesRequest } from '../views/bank.js';
 import { parseRequest } from '../choices.js';
 import { POT_SLUGS, potOfSlug, type ActivityView } from '../views/activity.js';
@@ -99,6 +100,8 @@ export const ROUTES: readonly Route[] = [
   // A43: the backups' health, for a second monitor, and Litestream's beat (from this machine only).
   { method: 'GET', path: BACKUP_HEALTH_PATH, login: false },
   { method: 'GET', path: BACKUP_BEAT_PATH, login: false },
+  // Section 2 (A47): Plaid's webhooks. Plaid has no login: each call is checked by Plaid's own signature instead.
+  { method: 'POST', path: WEBHOOK_PATH, login: false },
   ...['home', 'buckets', 'review', 'settings', 'setup', 'payday', 'alerts', ...Object.keys(POT_SLUGS).map((slug) => `activity/${slug}`)].map((name): Route => ({ method: 'GET', path: `/api/${name}`, login: true })),
   { method: 'POST', path: '/api/choice', login: true },
   { method: 'POST', path: '/api/seen', login: true },
@@ -180,6 +183,13 @@ export interface AppServerOptions {
   // 1.1 to 1.3: the Bank connection screen. Without it (the demo, which has no
   // bank), its addresses are not there.
   readonly bank?: BankHandlers;
+  // Section 2 (A47): Plaid's webhooks, with the exact bytes of each body.
+  // Without it (the demo), the address is not there.
+  readonly webhook?: WebhookHandler;
+}
+
+export interface WebhookHandler {
+  readonly receive: (request: { readonly headers: IncomingMessage['headers']; readonly body: Buffer }) => Promise<{ readonly status: number; readonly text: string }>;
 }
 
 export interface BankHandlers {
@@ -264,6 +274,38 @@ async function readOwnJson(request: IncomingMessage, response: ServerResponse, l
     send(response, 400, 'text/plain; charset=utf-8', 'Not JSON.', 'no-store');
     return undefined;
   }
+}
+
+// A webhook: POST, JSON, at most WEBHOOK_BODY_LIMIT bytes, kept byte for
+// byte (its signature is over the exact body), then answered as the desk says.
+async function takeWebhook(request: IncomingMessage, response: ServerResponse, webhook: WebhookHandler): Promise<void> {
+  if (request.method !== 'POST') {
+    response.setHeader('Allow', 'POST');
+    send(response, 405, 'text/plain; charset=utf-8', 'Only POST.', 'no-store');
+    return;
+  }
+  const type = (request.headers['content-type'] ?? '').split(';')[0]?.trim().toLowerCase();
+  if (type !== 'application/json') {
+    send(response, 415, 'text/plain; charset=utf-8', 'JSON only.', 'no-store');
+    return;
+  }
+  const tooBig = (): void => {
+    response.setHeader('Connection', 'close');
+    send(response, 413, 'text/plain; charset=utf-8', 'Too big.', 'no-store');
+  };
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of request) {
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk));
+    size += bytes.length;
+    if (size > WEBHOOK_BODY_LIMIT) {
+      tooBig();
+      return;
+    }
+    chunks.push(bytes);
+  }
+  const answer = await webhook.receive({ headers: request.headers, body: Buffer.concat(chunks) });
+  send(response, answer.status, 'text/plain; charset=utf-8', answer.text, 'no-store');
 }
 
 async function markSeen(request: IncomingMessage, response: ServerResponse, seen: SeenHandler): Promise<void> {
@@ -427,6 +469,12 @@ export function createAppServer(options: AppServerOptions): Server {
       response.setHeader('Cache-Control', 'no-store');
       response.statusCode = 204;
       response.end();
+      return;
+    }
+    // Section 2 (A47): Plaid's webhooks, before the gate (Plaid has no login):
+    // each is checked by Plaid's signature over the exact bytes of its body.
+    if (path === WEBHOOK_PATH && options.webhook !== undefined) {
+      await takeWebhook(request, response, options.webhook);
       return;
     }
     if (options.gate !== undefined && (await atTheGate(options.gate, request, response, path))) return;

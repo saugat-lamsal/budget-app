@@ -44,6 +44,9 @@ export interface BankDeskInput {
   readonly bookLines: () => number;
   // Reads the bank (a sync), once all four are picked.
   readonly sync: () => Promise<unknown>;
+  // Section 2 (A47): where Plaid sends a new connection's webhooks (the hosted
+  // server's https address); null where Plaid cannot reach the app.
+  readonly webhook?: () => string | null;
   // The books read again, and the alerts told.
   readonly changed: () => void;
 }
@@ -104,7 +107,7 @@ export class BankDesk {
 
   async #linkToken(updateKey?: BankKey): Promise<BankLinkAnswer> {
     try {
-      const linkToken = await this.#input.plaid.createLinkToken({ clientUserId: CLIENT_USER_ID, ...(updateKey === undefined ? {} : { updateKey }) });
+      const linkToken = await this.#input.plaid.createLinkToken({ clientUserId: CLIENT_USER_ID, ...(updateKey === undefined ? { webhook: this.#input.webhook?.() ?? null } : { updateKey }) });
       return { ok: true, linkToken };
     } catch (error) {
       this.#input.log.warn('no link key from Plaid', { kind: kindOf(error) });

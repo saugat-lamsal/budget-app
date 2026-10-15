@@ -157,9 +157,9 @@ describe('Phase 6 hosted: https only, one address', () => {
     }
   });
 
-  it('Phase 6 A43 hosted, every screen and every /api address needs a login, except the login page, what it needs, /health, and the backups\' health and its beat', async () => {
+  it("Phase 6 A43 A47 hosted, every screen and every /api address needs a login, except the login page, what it needs, /health, the backups' health and its beat, and Plaid's webhooks", async () => {
     const r = await hosted();
-    expect(ROUTES.filter((route) => !route.login).map((route) => route.path)).toEqual([LOGIN_PATH, '/health', '/health/backups', '/health/backups/beat', '/api/auth', '/api/auth/login/options', '/api/auth/login', '/api/auth/code/options', '/api/auth/code']);
+    expect(ROUTES.filter((route) => !route.login).map((route) => route.path)).toEqual([LOGIN_PATH, '/health', '/health/backups', '/health/backups/beat', '/plaid/webhook', '/api/auth', '/api/auth/login/options', '/api/auth/login', '/api/auth/code/options', '/api/auth/code']);
     const needs = ROUTES.filter((route) => route.login);
     expect(needs.length).toBeGreaterThan(20);
     for (const route of needs) {
