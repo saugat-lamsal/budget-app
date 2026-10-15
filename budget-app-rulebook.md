@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 21)
+# Budget App Rulebook (draft 22)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -63,6 +63,8 @@ number so a test can point at it. Nothing gets coded until you approve this.
 - Quiet hours: 10:00 PM to 7:00 AM. No alert is sent then (10.8).
 - Bank not read: an alert after 24 hours without a good read of the bank
   (10.7).
+- Totals do not match: told after the difference has lasted 12 hours
+  (10.4).
 - Amounts on the lock screen: off (10.10).
 - Stay logged in: 30 days on a device, counted from the login. Logins, new
   passkeys and log outs are logged (13.5).
@@ -81,7 +83,14 @@ number so a test can point at it. Nothing gets coded until you approve this.
   always move to savings)
 - Old card promo end date: (you fill in)
 - Paycheck rule: how your pay shows up on the statement (set after first sync)
-- Pay schedule: every 14 days, counted from the last paycheck
+- Pay schedule: twice a month, on the 15th and on the last day of the
+  month; when that day is a Saturday or Sunday, the Friday before. The
+  other choice: every 14 days, counted from the last paycheck (the app
+  starts with this one; you pick on Settings). Twice a month, the next
+  payday is the one after the scheduled payday nearest the last paycheck
+  (halfway between two counts as the earlier), so a paycheck a few days
+  early or late does not move the next one. A change applies right away
+  (13.1).
 - Setup day looks back 10 days for transfers with only one side showing
   (14.2). You can change it on the Setup day screen.
 - Mom rule: her name as it appears on transfers (you enter it in the app)
@@ -308,8 +317,10 @@ number so a test can point at it. Nothing gets coded until you approve this.
       second alert. Still empty when a new pay period starts, the alert
       comes again (B50).
 10.3  Daily review: sent at the review time, only if something is unsorted.
-10.4  Totals do not match the bank (section 12). Told when it starts, then
-      once a day at the daily review time while it lasts.
+10.4  Totals do not match the bank (section 12): told once the difference
+      has lasted 12 hours (a setting), then once a day at the daily review
+      time while it lasts. Until then Home and Buckets say the bank is
+      still catching up, with the difference.
 10.5  Bank connection needs you to log in again. Told the same way as 10.4.
 10.6  The bank took back a transaction the app had counted (4.10). Once,
       when it happens. On Home it stays in Needs attention until you mark it
@@ -364,9 +375,13 @@ number so a test can point at it. Nothing gets coded until you approve this.
 
 ## 12. Daily self-check
 
-12.1  Bank side: checking + savings - everyday card balance, including
-      pending charges (they already count in the buckets under 4.6),
-      savings ones too (4.9).
+12.1  Bank side: checking + savings - everyday card. For checking and
+      savings, the balance the bank shows as available, plus what is still
+      pending that the app counts only once it posts (a transfer between
+      your accounts, a payment to a person, money leaving savings). If the
+      bank gives no available balance, its posted balance less pending
+      charges. For the everyday card, what it owes, including pending
+      charges (they already count in the buckets under 4.6).
 12.2  App side: savings + needs + wants + mom reserve + held for others
       + unsorted money in - unsorted spending.
       Unsorted money in: deposits and refunds waiting in review
@@ -715,3 +730,16 @@ b.  When the bank gives the date its permission to read your accounts runs
     out, Settings shows it, and you are told 7 days before (10.13, A45).
 c.  Connecting the bank, which account is which, and logging in to the
     bank again (1.1 to 1.3, QUESTIONS.md A46).
+
+
+## 34. Answers in Phase 7 (Oct 14, 2026)
+
+a.  The pay schedule can be twice a month: the 15th and the last day of
+    the month, the Friday before when that day is a Saturday or Sunday.
+    Every 14 days stays as the other choice. Days to payday (11.2) and the
+    payoff countdown (9.5) follow it (section 2, QUESTIONS.md A48).
+b.  The bank side of the daily check uses the balance the bank shows as
+    available for checking and savings, with what is pending that the app
+    counts only once it posts put back. A difference is told only once it
+    has lasted 12 hours; until then the bank is still catching up (12.1,
+    10.4, section 2, QUESTIONS.md A47, B230, B231).

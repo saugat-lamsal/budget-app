@@ -58,12 +58,14 @@ describe('section 2 reading what the phone sent: a settings change', () => {
       leftoverAtPayday: { needs: 'roll-over', wants: 'move-to-savings' },
       oldCardPromoEndDate: '2027-03-31',
       paycheckRule: { contains: 'MADE UP EMPLOYER' },
+      paySchedule: 'twice-a-month',
       payScheduleDays: 7,
       momRule: null,
       earlyPaycheckDays: 5,
       homeTimeZone: 'America/Chicago',
       quietHours: { from: '23:00', to: '06:00' },
       bankNotReadAlertHours: 36,
+      totalsMismatchAlertHours: 6,
       amountsOnLockScreen: true,
       bankPermissionWarnDays: 10,
     };
@@ -110,6 +112,7 @@ describe('section 2 reading what the phone sent: a settings change', () => {
     ['a preview key that is not text', { id: 'abcdefgh', settings: { payScheduleDays: 7 }, seen: 5 }],
     ['a preview key that is not one', { id: 'abcdefgh', settings: { payScheduleDays: 7 }, seen: 'not a key' }],
     ['something more', { id: 'abcdefgh', settings: { payScheduleDays: 7 }, also: 1 }],
+    ['section 2 a pay schedule that is not one of the two', { id: 'abcdefgh', settings: { paySchedule: 'monthly' } }],
   ])('2 refuses %s', (_why, value) => {
     expect(parseSettingsRequest(value)).toBeNull();
     expect(parseRequest(value)).toBeNull();
@@ -160,6 +163,13 @@ describe('13.1 a change to the split or the mom reserve, from Settings', () => {
     const r = done(desk.settings(settings({ payScheduleDays: 7 })));
     expect(r.done).toEqual({ changed: ['payScheduleDays'], fromNextPaycheck: false, rechecked: [] });
     expect(book.settings().payScheduleDays).toBe(7);
+  });
+
+  it('section 2 A48 the pay schedule, twice a month, through the desk: right away, and logged', () => {
+    const { book, desk } = setup();
+    expect(done(desk.settings(settings({ paySchedule: 'twice-a-month' }))).done).toEqual({ changed: ['paySchedule'], fromNextPaycheck: false, rechecked: [] });
+    expect(book.settings().paySchedule).toBe('twice-a-month');
+    expect(book.changeLog().at(-1)).toMatchObject({ kind: 'settings-changed', changes: { paySchedule: 'twice-a-month' }, before: { paySchedule: 'every-n-days' } });
   });
 
   it('13.1 the reserve and its cap together: only the one that changed is changed and logged', () => {
@@ -226,6 +236,8 @@ describe('0.2 a setting the money math refuses changes nothing and says why', ()
     [{ momReserveCap: -1 }, 'Mom reserve cap must be whole cents, zero or more. Nothing was changed.'],
     [{ momMonthlyTarget: { low: 300_000, high: 200_000 } }, 'Mom monthly target low end must not be above the high end. Nothing was changed.'],
     [{ lowBucketAlertPercent: 101 }, 'Low-bucket alert must be a whole percent from 0 to 100. Nothing was changed.'],
+    [{ totalsMismatchAlertHours: 0 }, 'The totals-do-not-match alert must be a whole number of hours from 1 to 168. Nothing was changed.'],
+    [{ totalsMismatchAlertHours: 169 }, 'The totals-do-not-match alert must be a whole number of hours from 1 to 168. Nothing was changed.'],
     [{ cardReminderDaysBefore: [7, -1] }, 'Card reminder days must be whole days, zero or more. Nothing was changed.'],
     [{ dailyReviewTime: '25:00' }, 'Daily review time must be HH:MM. Nothing was changed.'],
     [{ oldCardPromoEndDate: '2027-02-30' }, 'Old card promo end date must be a real date. Nothing was changed.'],

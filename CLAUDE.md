@@ -71,6 +71,10 @@ long). It replaces running everything before every commit:
 - Break-it runs only for the functions you changed.
 - Long simulations only when the money math or the simulator changes.
 - A commit with only docs or notes gets [skip ci].
+- Updates to the live app (his rule, Oct 14, 2026: "only test things we
+  added"): tests for what is new or changed only, break-it only the new
+  breaks judged with --only by their own tests, no long simulations unless
+  the money math changes, and CI's run stands for the full suite.
 - The full break-it run and the 2,000 lives are skipped for Phase 5 (his
   call). Before Phase 7 too, only the breaks new or changed on the branch
   were run, not the full list (his call, Oct 12).
@@ -153,7 +157,7 @@ long). It replaces running everything before every commit:
 
 ## Status
 
-- Rulebook: draft 21. Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 22 (section 34, Oct 14: the pay schedule, A48). Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
@@ -1689,12 +1693,60 @@ long). It replaces running everything before every commit:
     events).
   - Nothing from his real accounts is in the repo; the notes above use no
     numbers of his.
-  - Still to do: B226 and B227 as tests and fixes; his iPhone (a new code
-    and passkey, the old passkey deleted, notifications on); the second
-    UptimeRobot monitor on /health/backups; the first payday Oct 14 (answered
-    in review if it arrives split). The old volume budget_data and the old
-    backup folder "budget" are his to delete later (the way back, until
-    then). The "[hosting-linux]" breaks only judge on Linux (CI runs
-    38291820227 and 38324734468).
-- Waiting on: the promo end date for the old card (only the payoff countdown,
-  rule 9.5, depends on it), and his check of part B (the list at its top).
+  - His iPhone is set up again (new passkey, notifications on), and he
+    entered the old card's promo end date on Oct 13 (the payoff countdown,
+    9.5, is on).
+  - Oct 13, 9:34 AM: the first "totals do not match" alert, a Plaid timing
+    gap (B230): the card's balance at the bank already showed the payment,
+    Plaid's transactions did not yet. Looked at read-only on the machine
+    with his OK; nothing to fix in the books.
+  - Everything still to do, fixes and ideas alike, is in docs/later.txt (his
+    ask, Oct 13): B226, B227, B230 (his call), the split paycheck, his steps,
+    and the ideas for after Phase 7 (webhooks, bucket suggestions, moving
+    money to savings). The "[hosting-linux]" breaks only judge on Linux (CI
+    runs 38291820227 and 38324734468).
+- Accuracy and webhooks, branch accuracy-and-webhooks (Oct 14, 2026), one
+  pull request, from handoff-accuracy-and-webhooks.md (not in git). Not
+  deployed.
+  - Item 1, the pay schedule (A48): Settings.paySchedule, 'every-n-days'
+    (the start, as before) or 'twice-a-month' (the 15th and the last day,
+    the Friday before a weekend); payday.ts paydaysAfter (the payday after
+    the scheduled one nearest the last paycheck), nextPayday, the payoff
+    countdown (9.5), Setup day, Settings (Pay schedule sheet), the
+    simulator (switches now and then, its own arithmetic). A setup day
+    saved before the setting opens as every N days (history-db.ts
+    savedSetup). Tests: money 2-pay-schedule, worked example money 42,
+    server history-check, choices-settings, views-setup, web settings-text,
+    browser settings. 100 simulated lives of 3 years passed. Break-it
+    "[a48]": 27 of 27 caught (one needed a new test: five days early in
+    February).
+  - Item 2, the bank side (A47), built: 12.1 from the available balance
+    plus pending items the books count once posted (bank/balances.ts
+    BankView.counted; Setup day the same), the made-up bank's lags (B230,
+    B231: fake-plaid notInCurrentYet, addPosted heldBack, holdAvailable,
+    noAvailable), 10.4 told only once a difference has lasted 12 hours
+    (Settings.totalsMismatchAlertHours; database step 10 bank_gap, noted by
+    the Keeper after each sync and at open; alerts/plan.ts due at that
+    moment), "The bank is still catching up" on Home and Buckets (views
+    catchingUp, demo life catching-up). Rulebook 12.1, 10.4, section 2 and
+    34b (his OK). Tests: bank-side-available, totals-catching-up,
+    alerts-plan, the alert simulations (12 hours on), worked examples bank
+    16 and 2. Break-it "[a47]" and the older breaks pointed again: all
+    caught (10, then 28).
+  - Item 3, the deploy check (A50a): npm run deploy-check
+    (scripts/deploy-check-lib.mjs: fly deploy --build-only --push, then
+    fly console --image on a new machine with no volume and no ports
+    running node /app/serve/restore-check.mjs, then any machine left from
+    that image destroyed). test/deploy-check.test.ts against a stand-in
+    for fly. Not yet run against Fly.
+  - Item 4 (A50b, B232): sync/plan.ts, only a posted purchase replaces
+    its pending one. pending-posted-readings.test.ts. Break "[a50b]".
+  - Item 9: the Bank screen and the connect question say a test-bank
+    connection is free (bank-desk.ts connectQuestion).
+  - Item 6, "why it doesn't match": Home's check sheet shows each account
+    as the bank last gave it (posted, available, counted) and when the
+    difference began (HomeView safeToSpend.detail, Keeper #bankDetail,
+    BankView.available). Breaks "[why]": 5 of 5, and 5 older ones pointed
+    again, all caught.
+- Waiting on: his check of part B (the list at its top), and the items in
+  docs/later.txt marked DECIDE.

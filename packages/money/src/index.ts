@@ -14,15 +14,17 @@ export { addDays, assertIsoDate, daysBetween, monthOf, type IsoDate } from './da
 export {
   DEFAULT_SETTINGS,
   FROM_NEXT_PAYCHECK,
+  PAY_SCHEDULES,
   changeSettings,
   matchesTextRule,
   validateSettings,
   type LeftoverChoice,
+  type PaySchedule,
   type Settings,
   type TextRule,
 } from './settings.js';
 export { ACCOUNTS, type AccountId } from './accounts.js';
-export { nextPayday, splitPaycheck, type PaycheckSplit, type SplitSettings } from './payday.js';
+export { nextPayday, paydaysAfter, splitPaycheck, type PaycheckSplit, type PayScheduleSettings, type SplitSettings } from './payday.js';
 export type {
   BankTransaction,
   CardCharge,

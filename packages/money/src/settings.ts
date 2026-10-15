@@ -7,6 +7,12 @@ import { MoneyError } from './errors.js';
 
 export type LeftoverChoice = 'ask' | 'roll-over' | 'move-to-savings';
 
+// Section 2 (A48): every so many days from the last paycheck
+// (payScheduleDays), or twice a month, on the 15th and the last day of the
+// month (the Friday before when that day is a Saturday or Sunday).
+export type PaySchedule = 'every-n-days' | 'twice-a-month';
+export const PAY_SCHEDULES: readonly PaySchedule[] = ['every-n-days', 'twice-a-month'];
+
 // Matches a bank description that contains this text, ignoring case.
 export interface TextRule {
   readonly contains: string;
@@ -26,6 +32,8 @@ export interface Settings {
   readonly oldCardPromoEndDate: IsoDate | null;
   // How a paycheck shows up on the statement. Set after the first sync.
   readonly paycheckRule: TextRule | null;
+  readonly paySchedule: PaySchedule;
+  // Days between paychecks, for the every-n-days pay schedule.
   readonly payScheduleDays: number;
   // Mom's name as it appears on transfers.
   readonly momRule: TextRule | null;
@@ -43,6 +51,10 @@ export interface Settings {
   // Rule 10.7: an alert once the last good read of the bank is this many
   // hours old.
   readonly bankNotReadAlertHours: number;
+  // Rule 10.4 (A47): totals that do not match the bank are told once the
+  // difference has lasted this many hours. Until then the bank is still
+  // catching up.
+  readonly totalsMismatchAlertHours: number;
   // Rule 10.10: whether an alert shows its amounts on the phone's lock
   // screen. The money math only keeps these three, for the server that sends
   // the alerts.
@@ -63,12 +75,14 @@ export const DEFAULT_SETTINGS: Settings = deepFreeze({
   leftoverAtPayday: { needs: 'ask', wants: 'ask' },
   oldCardPromoEndDate: null,
   paycheckRule: null,
+  paySchedule: 'every-n-days',
   payScheduleDays: 14,
   momRule: null,
   earlyPaycheckDays: 10,
   homeTimeZone: 'America/New_York',
   quietHours: { from: '22:00', to: '07:00' },
   bankNotReadAlertHours: 24,
+  totalsMismatchAlertHours: 12,
   amountsOnLockScreen: false,
   bankPermissionWarnDays: 7,
 });
@@ -112,11 +126,13 @@ export function validateSettings(settings: Settings): Settings {
   }
   checkTextRule(s.paycheckRule, 'paycheck rule');
   checkTextRule(s.momRule, 'mom rule');
+  check(PAY_SCHEDULES.includes(s.paySchedule), 'pay schedule must be every so many days or twice a month');
   check(isWholeInRange(s.payScheduleDays, 1, Infinity), 'pay schedule must be a whole number of days, at least 1');
   check(isWholeInRange(s.earlyPaycheckDays, 0, Infinity), 'early paycheck days must be a whole number, zero or more');
   check(isTimeZone(s.homeTimeZone), 'home time zone must be the name of a time zone, such as America/New_York');
   check(typeof s.quietHours === 'object' && s.quietHours !== null && isClockTime(s.quietHours.from) && isClockTime(s.quietHours.to), 'quiet hours must be two times, HH:MM');
   check(isWholeInRange(s.bankNotReadAlertHours, 1, 168), 'the bank-not-read alert must be a whole number of hours from 1 to 168');
+  check(isWholeInRange(s.totalsMismatchAlertHours, 1, 168), 'the totals-do-not-match alert must be a whole number of hours from 1 to 168');
   check(typeof s.amountsOnLockScreen === 'boolean', 'amounts on the lock screen must be on or off');
   check(isWholeInRange(s.bankPermissionWarnDays, 1, 60), 'the warning before the bank permission runs out must be a whole number of days from 1 to 60');
   return deepFreeze(copySettings(s));

@@ -46,12 +46,14 @@ export const SETTING_NAMES: Readonly<Record<keyof Settings, string>> = {
   leftoverAtPayday: 'Leftover at payday',
   oldCardPromoEndDate: 'Old card promo end date',
   paycheckRule: 'Paycheck rule',
-  payScheduleDays: 'Pay schedule',
+  paySchedule: 'Pay schedule',
+  payScheduleDays: 'Days between paychecks',
   momRule: 'Mom rule',
   earlyPaycheckDays: 'Early paycheck check',
   homeTimeZone: 'Home time zone',
   quietHours: 'Quiet hours',
   bankNotReadAlertHours: 'Bank not read',
+  totalsMismatchAlertHours: 'Totals do not match',
   amountsOnLockScreen: 'Amounts on the lock screen',
   bankPermissionWarnDays: 'Bank permission ending',
 };
@@ -95,6 +97,11 @@ export function reminderText(days: readonly number[]): string {
 
 export function daysText(days: number): string {
   return `${days} ${days === 1 ? 'day' : 'days'}`;
+}
+
+// Section 2 (A48): the pay schedule in words.
+export function payScheduleText(s: Pick<Settings, 'paySchedule' | 'payScheduleDays'>): string {
+  return s.paySchedule === 'twice-a-month' ? 'Twice a month, the 15th and the last day' : `Every ${daysText(s.payScheduleDays)}`;
 }
 
 // Step 3: "60 minutes", "1,440 minutes".
@@ -161,6 +168,8 @@ export function settingValueText<K extends keyof Settings>(key: K, value: Settin
     case 'paycheckRule':
     case 'momRule':
       return textRuleText(v as Settings['paycheckRule']);
+    case 'paySchedule':
+      return v === 'twice-a-month' ? 'Twice a month, the 15th and the last day' : 'Every so many days';
     case 'payScheduleDays':
       return `Every ${daysText(v as number)}`;
     case 'earlyPaycheckDays':
@@ -170,6 +179,7 @@ export function settingValueText<K extends keyof Settings>(key: K, value: Settin
     case 'quietHours':
       return quietHoursText(v as Settings['quietHours']);
     case 'bankNotReadAlertHours':
+    case 'totalsMismatchAlertHours':
       return notReadText(v as number);
     case 'amountsOnLockScreen':
       return lockAmountsText(v as boolean);

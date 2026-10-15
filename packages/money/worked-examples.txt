@@ -1291,3 +1291,32 @@ Oct 16. The paycheck, 3,200.00, with the new split. The mom reserve would
 Check: starting money 8,079.44 | first payday savings 6,000.00 | first payday needs 1,667.66 | first payday wants 1,106.93
 Check: lowered needs question 1,156.16 | after the questions savings 6,771.78 | after the questions wants 288.95
 Check: last savings 9,202.77 | last needs 595.00 | last wants 394.17 | last mom reserve 3,000.00 | old card debt 2,711.95
+
+
+EXAMPLE 42. Paid twice a month: the next payday and the payoff countdown (section 2, rules 9.5, 11.2; QUESTIONS.md A48)
+
+Made-up numbers. The pay schedule is twice a month: the 15th and the last
+day of the month, and a Saturday or Sunday is paid the Friday before.
+The last paycheck came Thu, Oct 15, 2026. Today is Fri, Oct 16.
+
+The paydays after it:
+  Oct 31 is a Saturday, so Fri, Oct 30.
+  Nov 15 is a Sunday, so Fri, Nov 13.
+  Nov 30 is a Monday: Nov 30.
+  Dec 15 is a Tuesday: Dec 15.
+  Dec 31 is a Thursday: Dec 31.
+  Jan 15, 2027 is a Friday: Jan 15.
+Next payday Oct 30, in 14 days (11.2).
+
+The old card owes 2,345.67 and the promo ends Sun, Jan 10, 2027. The
+paydays after today and before Jan 10 are Oct 30, Nov 13, Nov 30, Dec 15
+and Dec 31: 5 of them (9.5). 2,345.67 / 5 = 469.134, rounded up to the
+cent: 469.14 a payday.
+
+Every 14 days instead, from Oct 15: Oct 29, Nov 12, Nov 26, Dec 10,
+Dec 24 and Jan 7: 6 paydays. 2,345.67 / 6 = 390.945, rounded up: 390.95.
+
+If the Oct 30 paycheck comes a day early, on Thu, Oct 29, the payday it is
+nearest is still Oct 30, so the next one is still Nov 13.
+
+Check: twice a month share 469.14 | every fourteen days share 390.95

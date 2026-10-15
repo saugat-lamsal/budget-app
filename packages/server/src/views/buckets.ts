@@ -13,6 +13,8 @@ export interface BucketsInput {
   // (12.1). Null when the bank could not be read.
   readonly bank: BankBalances | null;
   readonly madeUpData: boolean;
+  // 10.4 (A47): the difference with the bank is younger than the setting's hours.
+  readonly catchingUp?: boolean;
 }
 
 export type BucketsView =
@@ -26,7 +28,7 @@ export type BucketsView =
       // 0.5: Buckets says so too when the totals do not match the bank.
       readonly check:
         | { readonly state: 'matches' }
-        | { readonly state: 'does-not-match'; readonly difference: Cents }
+        | { readonly state: 'does-not-match'; readonly difference: Cents; readonly catchingUp: boolean }
         | { readonly state: 'bank-not-read' };
       readonly needs: BucketBar;
       readonly wants: BucketBar;
@@ -72,7 +74,7 @@ export function bucketsView(input: BucketsInput): BucketsView {
   if (bank === null) check = { state: 'bank-not-read' };
   else {
     const self = book.selfCheck(bank);
-    check = self.ok ? { state: 'matches' } : { state: 'does-not-match', difference: self.difference };
+    check = self.ok ? { state: 'matches' } : { state: 'does-not-match', difference: self.difference, catchingUp: input.catchingUp ?? false };
   }
 
   const month = book.momSentInMonth(monthOf(today));

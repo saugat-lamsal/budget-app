@@ -148,7 +148,18 @@ describe('0.5 Home when the totals do not match the bank', () => {
       shown: false,
       why: 'totals-do-not-match',
       check: { bankSide: 50_001, inTransit: 0, appSide: 50_000, difference: 1, ok: false },
+      catchingUp: false,
+      detail: null,
     });
+  });
+
+  it('10.4 A47 a difference younger than the setting hours says the bank is still catching up', () => {
+    const book = openTestBook({ pots: { wants: 50_000 } });
+    const bank = matchingBank(book);
+    const view = tracking(homeView(input(book, { bank: { ...bank, checking: bank.checking - 4_210 }, catchingUp: true })));
+    expect(view.safeToSpend).toMatchObject({ shown: false, why: 'totals-do-not-match', check: { difference: -4_210 }, catchingUp: true });
+    // A matching bank is never catching up: the number is shown.
+    expect(tracking(homeView(input(book, { bank, catchingUp: true }))).safeToSpend).toEqual({ shown: true, amount: 50_000 });
   });
 
   it('0.5 the bank showing less is a negative difference (12.3)', () => {

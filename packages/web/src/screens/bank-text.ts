@@ -30,6 +30,8 @@ export const BANK_WORDS = {
   noneTest: "Plaid's test bank, with made-up accounts. Nothing here is real money.",
   noneReal: 'The app reads your Bank of America accounts through Plaid. It never moves money.',
   slots: 'Connecting uses 1 of the 10 connections Plaid allows, and one that is removed never comes back.',
+  // The rehearsal: test-bank connections cost nothing.
+  slotsTest: "Connecting to Plaid's test bank is free: it does not use any of your 10 real connections.",
   computer: 'Best done on a computer: the bank’s own login opens in a window of its own.',
   connect: 'Connect the bank',
   connecting: 'Connecting…',

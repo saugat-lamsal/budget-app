@@ -1,6 +1,6 @@
 import type { SelfCheck } from '@budget-app/money';
-import type { Attention, HomeView } from '@budget-app/server/views';
-import { useState } from 'react';
+import type { Attention, BankDetail, HomeView } from '@budget-app/server/views';
+import { Fragment, useState } from 'react';
 import { markTakeBackSeen, type Load, type Reload } from '../app/api.js';
 import { pathOf, setupPath } from '../app/routes.js';
 import { Banner, BottomSheet, BucketBar, Button, Card, LinkButton, ListRow, MadeUpPill, Money, Skeleton, StateMessage, StatusLabel } from '../ui/blocks.js';
@@ -93,6 +93,20 @@ function HomeReady({ view, onChanged }: { readonly view: Tracking; readonly onCh
           <Money cents={safeToSpend.amount} hero testId="safe-to-spend" />
           {paydayLine}
         </section>
+      ) : safeToSpend.why === 'totals-do-not-match' && safeToSpend.catchingUp ? (
+        // 10.4 (A47): a difference younger than the setting's hours, said calmly, with the amount.
+        <Banner tone="warning" icon="clock" title="The bank is still catching up" testId="catching-up">
+          <p className="banner__big">
+            Off by <Money cents={Math.abs(safeToSpend.check.difference)} testId="mismatch-amount" /> for now
+          </p>
+          <p className="banner__body">
+            The bank shows {safeToSpend.check.difference > 0 ? 'more' : 'less'} than your buckets add up to. This usually clears within a few hours; you get an alert if it lasts. Safe to spend is hidden until they match.
+          </p>
+          <Button variant="secondary" onClick={() => setSheet('check')} testId="see-check">
+            See the numbers
+          </Button>
+          {paydayLine}
+        </Banner>
       ) : safeToSpend.why === 'totals-do-not-match' ? (
         <Banner tone="danger" icon="alert" title="Totals do not match the bank" testId="mismatch">
           <p className="banner__big">
@@ -151,7 +165,7 @@ function HomeReady({ view, onChanged }: { readonly view: Tracking; readonly onCh
 
       {!safeToSpend.shown && safeToSpend.why === 'totals-do-not-match' && (
         <BottomSheet open={sheet === 'check'} title="The daily check" onClose={close} testId="check-sheet">
-          <CheckFigures check={safeToSpend.check} />
+          <CheckFigures check={safeToSpend.check} detail={safeToSpend.detail} timeZone={view.timeZone} />
         </BottomSheet>
       )}
       {savings !== undefined && savings.kind === 'move-to-savings' && (
@@ -248,7 +262,9 @@ function TakeBackSheet({ item, open, onClose, onSeen }: { readonly item: TakeBac
 }
 
 // 12.3: bank side plus money in transit, minus app side.
-function CheckFigures({ check }: { readonly check: SelfCheck }) {
+const ACCOUNT_WORDS = { checking: 'Checking', savings: 'Savings', 'everyday-card': 'Everyday card owes' } as const;
+
+function CheckFigures({ check, detail, timeZone }: { readonly check: SelfCheck; readonly detail: BankDetail | null; readonly timeZone: string }) {
   return (
     <>
       <div className="card">
@@ -272,6 +288,43 @@ function CheckFigures({ check }: { readonly check: SelfCheck }) {
         </dl>
       </div>
       <p className="sheet__note">The bank plus money on its way should equal your buckets to the cent. Something the app has not seen, or has counted wrong, makes the difference.</p>
+      {detail !== null && (
+        // "Why it doesn't match" (docs/later.txt 18): each account as the bank gave it (12.1).
+        <>
+          <div className="card" data-testid="check-accounts">
+            <dl className="figures">
+              {detail.accounts.map((a) => (
+                <Fragment key={a.account}>
+                  <dt>{ACCOUNT_WORDS[a.account]}, posted</dt>
+                  <dd>
+                    <Money cents={a.posted} testId={`check-${a.account}-posted`} />
+                  </dd>
+                  {a.available !== null && (
+                    <>
+                      <dt>{ACCOUNT_WORDS[a.account]}, available</dt>
+                      <dd>
+                        <Money cents={a.available} testId={`check-${a.account}-available`} />
+                      </dd>
+                    </>
+                  )}
+                  <dt className="figures__total">{ACCOUNT_WORDS[a.account]}, counted</dt>
+                  <dd className="figures__total">
+                    <Money cents={a.counted} testId={`check-${a.account}-counted`} />
+                  </dd>
+                </Fragment>
+              ))}
+            </dl>
+          </div>
+          <p className="sheet__note">
+            Checking and savings count what the bank shows as available, with transfers and payments still pending put back; the card counts what it owes plus pending charges. The bank's posted balance can lag its own transactions for hours.
+          </p>
+          {detail.since !== null && (
+            <p className="sheet__note" data-testid="check-since">
+              The difference began {asOfText(detail.since, timeZone)}.
+            </p>
+          )}
+        </>
+      )}
     </>
   );
 }

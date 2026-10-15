@@ -339,6 +339,8 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
   // The bank's drift as it is at the bank, and as the server last read it.
   let driftAtBank: Cents = 0;
   let driftRead: Cents = 0;
+  // 10.4 (A47): the good read that first showed the difference; null while it matches.
+  let mismatchSince: Date | null = null;
   let needsLogin = false;
   // The card statements set at the bank, and those a good read has brought.
   let atBank: Partial<Record<Card, CardStatement>> = {};
@@ -452,14 +454,23 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
     needsLogin = false;
     known = { ...atBank };
     driftRead = driftAtBank;
-    if (driftRead !== 0 && !mismatch.on) {
-      mismatch.on = true;
-      mismatch.times += 1;
-      mismatch.lastDay = today();
-      outcome.mismatches += 1;
-      expectAlert({ kind: 'totals-mismatch', time: mismatch.times, difference: driftRead, day: today(), again: false }, clock.now, clock.now);
+    if (driftRead !== 0 && mismatchSince === null) mismatchSince = new Date(clock.now);
+    if (driftRead === 0) {
+      mismatchSince = null;
+      mismatch.on = false;
     }
-    if (driftRead === 0) mismatch.on = false;
+  };
+  // 10.4 (A47): told once the difference has lasted the setting's hours from
+  // the read that first showed it, due then; not while the bank wants a login.
+  const mismatchDue = (): Date | null => (mismatch.on || mismatchSince === null || driftRead === 0 || needsLogin ? null : new Date(mismatchSince.getTime() + settings.totalsMismatchAlertHours * HOUR));
+  const tellMismatch = (givenAt: Date): void => {
+    const due = mismatchDue();
+    if (due === null || due.getTime() > givenAt.getTime()) return;
+    mismatch.on = true;
+    mismatch.times += 1;
+    mismatch.lastDay = todayIn(zone, givenAt);
+    outcome.mismatches += 1;
+    expectAlert({ kind: 'totals-mismatch', time: mismatch.times, difference: driftRead, day: todayIn(zone, givenAt), again: false }, due, givenAt);
   };
 
   try {
@@ -515,10 +526,12 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
       for (;;) {
         const evening = running ? at(nextEvening, reviewTime) : null;
         const stale = running ? notReadDue() : null;
-        const next = [evening, stale].filter((t): t is Date => t !== null && t.getTime() <= moment.getTime()).sort((a, b) => a.getTime() - b.getTime())[0];
+        const gap = running ? mismatchDue() : null;
+        const next = [evening, stale, gap].filter((t): t is Date => t !== null && t.getTime() <= moment.getTime()).sort((a, b) => a.getTime() - b.getTime())[0];
         if (next === undefined) break;
         await clockTo(next);
         if (stale !== null && stale.getTime() === next.getTime()) tellNotRead(next);
+        if (gap !== null && gap.getTime() === next.getTime()) tellMismatch(next);
         if (evening !== null && evening.getTime() === next.getTime()) {
           const date = nextEvening;
           nextEvening = addDays(nextEvening, 1);
@@ -550,6 +563,7 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
       }
       catchUp(clock.now);
       tellNotRead(clock.now);
+      tellMismatch(clock.now);
       const serving = serveBooks({ keeper, bank, clock: fakeClock, webRoot: 'C:/made-up/no-screens/', origin: () => '', sender });
       alerts = serving.alerts;
       alerts.start();
@@ -580,6 +594,7 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
       if (ok) {
         toGive = [];
         readGood();
+        tellMismatch(clock.now);
       } else if (wantsLogin) {
         // 10.5: told when it starts.
         needsLogin = true;

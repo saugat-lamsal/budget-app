@@ -2164,6 +2164,8 @@ class Life {
     if (r.chance(1, 4)) patch.momReserveCap = r.pick([300_000, 400_000]);
     if (r.chance(1, 4)) patch.lowBucketAlertPercent = r.pick([10, 20, 25]);
     if (r.chance(1, 8)) patch.payScheduleDays = this.#settings.payScheduleDays === 14 ? 15 : 14;
+    // Section 2 (A48): now and then the schedule is twice a month, or back.
+    if (r.chance(1, 4)) patch.paySchedule = this.#settings.paySchedule === 'twice-a-month' ? 'every-n-days' : 'twice-a-month';
     if (r.chance(1, 4)) {
       const choices: readonly LeftoverChoice[] = ['ask', 'ask', 'roll-over', 'move-to-savings'];
       patch.leftoverAtPayday = { needs: r.pick(choices), wants: r.pick(choices) };
@@ -2442,7 +2444,7 @@ class Life {
     }
     // 11.1, 11.2 and 0.5: safe to spend is wants left minus unsorted
     // spending, with the days to the next payday from the pay schedule.
-    const nextPayday = addDays(this.#lastPaycheckDate, this.#settings.payScheduleDays);
+    const nextPayday = this.#settings.paySchedule === 'twice-a-month' ? twiceAMonthNextPayday(this.#lastPaycheckDate) : addDays(this.#lastPaycheckDate, this.#settings.payScheduleDays);
     const safe = book.checkedSafeToSpend(this.#date, bank);
     if (!safe.ok || safe.safeToSpend.amount !== pots.wants - pots.unsortedOut) {
       throw new CheckFailed('11.1 safe to spend', `${JSON.stringify(safe)} with wants ${pots.wants} and unsorted spending ${pots.unsortedOut}`);
@@ -2622,4 +2624,26 @@ export function describeFailure(result: Extract<LifeResult, { ok: false }>, year
     'Last things that happened:',
     ...result.recent.map((line) => `  ${line}`),
   ].join('\n');
+}
+
+// Section 2 (A48), the simulator's own way: a twice-a-month payday is the
+// last weekday on or before the 15th or the last day of the month. The next
+// payday is the one after the payday nearest the last paycheck (halfway
+// counts as the earlier one).
+function twiceAMonthNextPayday(last: IsoDate): IsoDate {
+  const paydays: IsoDate[] = [];
+  const first = new Date(`${last}T00:00:00Z`);
+  for (let m = -2; m <= 3; m++) {
+    const year = first.getUTCFullYear();
+    const month = first.getUTCMonth() + m;
+    for (const target of [new Date(Date.UTC(year, month, 15)), new Date(Date.UTC(year, month + 1, 0))]) {
+      while (target.getUTCDay() === 0 || target.getUTCDay() === 6) target.setUTCDate(target.getUTCDate() - 1);
+      paydays.push(target.toISOString().slice(0, 10));
+    }
+  }
+  let nearest = 0;
+  for (let i = 1; i < paydays.length; i++) {
+    if (Math.abs(daysBetween(last, paydays[i]!)) < Math.abs(daysBetween(last, paydays[nearest]!))) nearest = i;
+  }
+  return paydays[nearest + 1]!;
 }

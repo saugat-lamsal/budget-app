@@ -327,7 +327,11 @@ class Planner {
       else stored.status = 'waiting';
       return;
     }
-    if (item.pendingTransactionId !== null && item.amount > 0) {
+    // A50b, B226: only a posted purchase replaces its pending one. One the
+    // bank rules read as something else (a card payment, a payment to a
+    // person) is that; the pending purchase is dropped when the bank removes
+    // it (A2), so the books end as if only the posted item had come.
+    if (item.pendingTransactionId !== null && item.amount > 0 && reading.kind === 'purchase') {
       const pending = this.#item(item.pendingTransactionId);
       if (
         pending !== undefined &&

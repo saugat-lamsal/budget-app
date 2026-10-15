@@ -93,22 +93,22 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      pendingCharges.push({ account: role, amount: item.amountCents });",
+    "find": "      if (item.kind === 'purchase') pendingCharges.push({ account: role, amount: item.amountCents });",
     "replace": "      void role;",
     "why": "12.1 leave pending charges out of the bank side"
   },
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined) continue;",
-    "replace": "if (!item.pending || item.removed || item.replacedBy !== null || role === undefined) continue;",
+    "find": "      if (item.amountCents === null || item.amountCents <= 0) continue;\n      pendingOut.set(role, [...(pendingOut.get(role) ?? []), item.amountCents]);\n      if (item.kind === 'purchase')",
+    "replace": "      if (item.amountCents === null) continue;\n      if (item.amountCents > 0) pendingOut.set(role, [...(pendingOut.get(role) ?? []), item.amountCents]);\n      if (item.kind === 'purchase' || item.amountCents < 0)",
     "why": "B36 count pending money in and pending transfers in the bank side"
   },
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase'",
-    "replace": "if (!item.pending || item.replacedBy !== null || item.kind !== 'purchase'",
+    "find": "      if (!item.pending || item.removed || item.replacedBy !== null || role === undefined) continue;",
+    "replace": "      if (!item.pending || item.replacedBy !== null || role === undefined) continue;",
     "why": "4.6 keep counting a pending charge the bank removed"
   },
   {
@@ -324,8 +324,8 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined) continue;",
-    "replace": "      if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined || role === 'savings') continue;",
+    "find": "      if (item.kind === 'purchase') pendingCharges.push({ account: role, amount: item.amountCents });",
+    "replace": "      if (item.kind === 'purchase' && role !== 'savings') pendingCharges.push({ account: role, amount: item.amountCents });",
     "why": "12.1 leave a charge pending on savings out of the bank side (A16)"
   },
   {
@@ -618,8 +618,8 @@
   {
     "section": "review",
     "file": "packages/server/src/views/buckets.ts",
-    "find": "difference: self.difference }",
-    "replace": "difference: -self.difference }",
+    "find": "difference: self.difference, catchingUp: input.catchingUp ?? false }",
+    "replace": "difference: -self.difference, catchingUp: input.catchingUp ?? false }",
     "why": "[review] 12.3 the difference is the wrong way round"
   },
   {
@@ -1661,8 +1661,8 @@
   {
     "section": "history",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "if (connection === null || connection.needsLogin) return null;",
-    "replace": "if (connection === null) return null;",
+    "find": "    if (connection === null || connection.needsLogin) return null;\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    return view.ok ? view.view.withPending : null;",
+    "replace": "    if (connection === null) return null;\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    return view.ok ? view.view.withPending : null;",
     "why": "[keeper] 0.5 read the bank while it wants a new login"
   },
   {
@@ -2480,8 +2480,8 @@
   {
     "section": "alerts",
     "file": "packages/server/src/alerts/plan.ts",
-    "find": "if (now && !state.on) give(facts(state.times + 1));",
-    "replace": "if (now && !state.on) give(facts(state.times + 2));",
+    "find": "if (now && !state.on) give(facts(state.times + 1), dueAt);",
+    "replace": "if (now && !state.on) give(facts(state.times + 2), dueAt);",
     "why": "[alerts] 10.4 10.5 a lasting alert is numbered out of turn"
   },
   {
@@ -2501,7 +2501,7 @@
   {
     "section": "alerts",
     "file": "packages/server/src/alerts/plan.ts",
-    "find": "lasting('totals-mismatch', check === null ? null : !check.ok,",
+    "find": "lasting('totals-mismatch', check === null ? null : lasted,",
     "replace": "lasting('totals-mismatch', check === null ? null : check.ok,",
     "why": "[alerts] 10.4 the mismatch alert comes when the totals match"
   },
@@ -2655,15 +2655,15 @@
   {
     "section": "outbox",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "        if (result.changed || lastSeqOf(this.#db) !== this.#lastSeq) this.reload();\n        this.#changed();",
-    "replace": "        if (result.changed || lastSeqOf(this.#db) !== this.#lastSeq) this.reload();",
+    "find": "        this.#noteGap();\n        this.#changed();",
+    "replace": "        this.#noteGap();",
     "why": "[outbox] the alerts are not looked at right after a sync"
   },
   {
     "section": "outbox",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "    return book === null ? null : nextDueIn({ book, zone: this.timeZone(), now: this.#now(), lastRead: this.lastRead() }, this.#state.alerts);",
-    "replace": "    return book === null ? null : (nextDueIn({ book, zone: this.timeZone(), now: this.#now(), lastRead: this.lastRead() }, this.#state.alerts) ?? 0) + 60_000;",
+    "find": "    return book === null ? null : nextDueIn({ book, zone: this.timeZone(), now: this.#now(), lastRead: this.lastRead(), mismatchSince: this.mismatchSince() }, this.#state.alerts);",
+    "replace": "    return book === null ? null : (nextDueIn({ book, zone: this.timeZone(), now: this.#now(), lastRead: this.lastRead(), mismatchSince: this.mismatchSince() }, this.#state.alerts) ?? 0) + 60_000;",
     "why": "[outbox] 10.3 the timer wakes a minute after the evening"
   },
   {
@@ -4069,8 +4069,8 @@
   {
     "section": "sync",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "lastRead: this.lastRead(), permissionEnds: connection?.permissionEnds ?? null };",
-    "replace": "lastRead: this.lastRead(), permissionEnds: null };",
+    "find": "permissionEnds: connection?.permissionEnds ?? null, mismatchSince: this.mismatchSince() };",
+    "replace": "permissionEnds: null, mismatchSince: this.mismatchSince() };",
     "why": "[a45] 10.13 the alerts never see the date"
   },
   {
@@ -4093,5 +4093,187 @@
     "find": "    if (error instanceof PlaidError && error.errorCode !== 'ITEM_LOGIN_REQUIRED') return undefined;\n",
     "replace": "    if (error instanceof PlaidError && error.errorCode !== 'ITEM_LOGIN_REQUIRED') return null;\n",
     "why": "[a45] 10.13 the date kept is dropped when the bank cannot say it"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history-db.ts",
+    "find": "settings: { ...input.settings, paySchedule: 'every-n-days' } }",
+    "replace": "settings: { ...input.settings, paySchedule: 'twice-a-month' } }",
+    "why": "[a48] 0.6 a setup day saved before the pay schedule setting reads as twice a month"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history-db.ts",
+    "find": "        ? { kind: 'setup', input: savedSetup(payload as SetupInput) }",
+    "replace": "        ? { kind: 'setup', input: payload as SetupInput }",
+    "why": "[a48] 0.6 a setup day saved before the pay schedule setting does not open"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "paySchedule: (v) => ((PAY_SCHEDULES as readonly unknown[]).includes(v) ? (v as PaySchedule) : undefined),",
+    "replace": "paySchedule: (v) => (typeof v === 'string' ? (v as PaySchedule) : undefined),",
+    "why": "[a48] section 2 the desk takes any text as a pay schedule"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-view.ts",
+    "find": "nextPayday(answers.lastPaycheckDate, settings, today)",
+    "replace": "nextPayday(answers.lastPaycheckDate, settings.payScheduleDays, today)",
+    "why": "[a48] 11.2 Setup day's next payday ignores twice a month"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "      return addCents(available, ...(pendingOut.get(role) ?? []));",
+    "replace": "      return posted(role);",
+    "why": "[a47] 12.1 B231 checking and savings from the bank's current balance, not the available one"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "      return addCents(available, ...(pendingOut.get(role) ?? []));",
+    "replace": "      return available;",
+    "why": "[a47] 12.1 the available balance without putting back what is pending"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "      if (item.kind === 'purchase') pendingCharges.push({ account: role, amount: item.amountCents });",
+    "replace": "      pendingCharges.push({ account: role, amount: item.amountCents });",
+    "why": "[a47] 12.1 a pending transfer or payment to a person counted as a pending charge"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "      if (item.amountCents === null || item.amountCents <= 0) continue;\n      pendingOut.set",
+    "replace": "      if (item.amountCents === null) continue;\n      pendingOut.set",
+    "why": "[a47] 12.1 pending money in counted as if it were available"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "      if (available === null) return posted(role);",
+    "replace": "      if (available === null) return 0;",
+    "why": "[a47] 12.1 no available balance read as nothing"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-history.ts",
+    "find": "posted: view.view.counted, oldCardBalance",
+    "replace": "posted: view.view.posted, oldCardBalance",
+    "why": "[a47] 14.1 12.1 setup day reads the bank's current balance while the daily check reads the available one"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  const lasted = check !== null && !check.ok && mismatchDue !== null && mismatchDue <= world.now.getTime();",
+    "replace": "  const lasted = check !== null && !check.ok && mismatchDue !== null && mismatchDue <= world.now.getTime() + 3_600_000;",
+    "why": "[a47] 10.4 a difference told an hour before it has lasted 12 hours"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  const lasted = check !== null && !check.ok && mismatchDue !== null && mismatchDue <= world.now.getTime();",
+    "replace": "  const lasted = check !== null && !check.ok;",
+    "why": "[a47] 10.4 a difference told at once, not after 12 hours"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "lasted ? new Date(mismatchDue).toISOString() : undefined);",
+    "replace": "undefined);",
+    "why": "[a47] 10.4 10.9 a difference told late says it was due when the server looked"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  return since === null ? null : Date.parse(since) + world.book.settings().totalsMismatchAlertHours * HOUR;",
+    "replace": "  return since === null ? null : Date.parse(since) + world.book.settings().bankNotReadAlertHours * HOUR;",
+    "why": "[a47] 10.4 the wait read from the bank-not-read setting"
+  },
+  {
+    "section": "alerts",
+    "file": "packages/server/src/alerts/plan.ts",
+    "find": "  if (!ledger.lasting['totals-mismatch'].on && mismatch !== null && mismatch > now) next = Math.min(next, mismatch - now);\n",
+    "replace": "",
+    "why": "[a47] 10.4 the timer does not wake at the 12 hours"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    if (matches && since !== null) saveGapSince(this.#db, null);\n",
+    "replace": "",
+    "why": "[a47] 10.4 a read that matches does not clear when the gap began"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    if (!matches && since === null) saveGapSince(",
+    "replace": "    if (!matches) saveGapSince(",
+    "why": "[a47] 10.4 each read with a difference moves when the gap began"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "        this.#noteGap();\n        this.#changed();",
+    "replace": "        this.#changed();",
+    "why": "[a47] 10.4 a sync does not note when the gap began"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    keeper.reload();\n    keeper.#noteGap();",
+    "replace": "    keeper.reload();",
+    "why": "[a47] 10.4 books from before the update do not note a gap already there when they open"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    return this.#now().getTime() < Date.parse(since) + book.settings().totalsMismatchAlertHours * 3_600_000;",
+    "replace": "    return false;",
+    "why": "[a47] 10.4 never still catching up"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/views/home.ts",
+    "find": "catchingUp: input.catchingUp ?? false, detail: input.bankDetail ?? null };",
+    "replace": "catchingUp: false, detail: input.bankDetail ?? null };",
+    "why": "[a47] 10.4 Home never says the bank is still catching up"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "catchingUp: input.catchingUp ?? false };",
+    "replace": "catchingUp: false };",
+    "why": "[a47] 10.4 Buckets never says the bank is still catching up"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/plan.ts",
+    "find": "    if (item.pendingTransactionId !== null && item.amount > 0 && reading.kind === 'purchase') {",
+    "replace": "    if (item.pendingTransactionId !== null && item.amount > 0) {",
+    "why": "[a50b] 4.6 B226 a posted card payment or payment to a person linked to a pending purchase stays that purchase"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "since: since === null ? null : timeIn(this.timeZone(), new Date(since)),",
+    "replace": "since,",
+    "why": "[why] the difference's start in UTC, not his home time zone"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/views/home.ts",
+    "find": "catchingUp: input.catchingUp ?? false, detail: input.bankDetail ?? null };",
+    "replace": "catchingUp: input.catchingUp ?? false, detail: null };",
+    "why": "[why] Home's sheet never gets the figures behind a difference"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "available: { checking: availableOf('checking'), savings: availableOf('savings') },",
+    "replace": "available: { checking: null, savings: null },",
+    "why": "[why] the available balances never reach the sheet"
   }
 ]

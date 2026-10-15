@@ -1,4 +1,4 @@
-import type { AccountId, Cents, IsoDate, SelfCheck, StartingPots } from '@budget-app/money';
+import type { AccountId, Cents, IsoDate, PaySchedule, SelfCheck, StartingPots } from '@budget-app/money';
 import type { BankRule } from '../bank/reading.js';
 import type { SuggestionLine } from './bank-rules.js';
 
@@ -84,6 +84,7 @@ export interface SetupReadyView {
   readonly startingMoney: Cents;
   // Step 4, B42: his last paycheck, and the payday it gives (11.2).
   readonly lastPaycheck: { readonly date: IsoDate; readonly nextPayday: IsoDate; readonly daysToPayday: number } | null;
+  readonly paySchedule: PaySchedule;
   readonly payScheduleDays: number;
   // Step 5, 14.2: what he has given each bucket, and what is left.
   readonly assignment: StartingPots;

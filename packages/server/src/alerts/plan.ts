@@ -97,6 +97,9 @@ export interface AlertWorld {
   // 10.13: when the bank's permission to read his accounts runs out, as an
   // instant, when the bank gave it.
   readonly permissionEnds?: string | null;
+  // 10.4 (A47): when the totals stopped matching the bank, as an instant (the
+  // read that first showed it); null while they match, or when not known.
+  readonly mismatchSince?: string | null;
 }
 
 const HOUR = 3_600_000;
@@ -182,12 +185,23 @@ export function nextAlertsEvent(world: AlertWorld, ledger: AlertLedger): AlertsE
 // Milliseconds until the next alert comes due by the clock alone: the next
 // evening, or the bank's last good read becoming too old (10.7). 0 or less
 // when one is due; null before the start.
-export function nextDueIn(world: Pick<AlertWorld, 'book' | 'zone' | 'now' | 'lastRead'>, ledger: AlertLedger): number | null {
+export function nextDueIn(world: Pick<AlertWorld, 'book' | 'zone' | 'now' | 'lastRead' | 'mismatchSince'>, ledger: AlertLedger): number | null {
   if (!ledger.started || ledger.nextEvening === null) return null;
   const now = world.now.getTime();
   let next = eveningAt(world, ledger.nextEvening).getTime() - now;
   if (!ledger.lasting['bank-not-read'].on && world.lastRead !== null) next = Math.min(next, Date.parse(world.lastRead) + world.book.settings().bankNotReadAlertHours * HOUR - now);
+  // 10.4 (A47): the moment a difference has lasted the setting's hours.
+  const mismatch = mismatchDueAt(world);
+  if (!ledger.lasting['totals-mismatch'].on && mismatch !== null && mismatch > now) next = Math.min(next, mismatch - now);
   return next;
+}
+
+// 10.4 (A47): when a difference with the bank is told: once it has lasted
+// the setting's hours from the read that first showed it. Null when there is
+// no difference known.
+function mismatchDueAt(world: Pick<AlertWorld, 'book' | 'mismatchSince'>): number | null {
+  const since = world.mismatchSince ?? null;
+  return since === null ? null : Date.parse(since) + world.book.settings().totalsMismatchAlertHours * HOUR;
 }
 
 // Which alerts are one kind, of which only the newest goes when several
@@ -335,14 +349,17 @@ function changeEvent(world: AlertWorld, ledger: AlertLedger, at: string): Alerts
   // 10.4 and 10.5: told when they start, cleared when they stop.
   const today = todayIn(world.zone, world.now);
   const cleared: LastingKind[] = [];
-  const lasting = (kind: 'totals-mismatch' | 'bank-login', now: boolean | null, facts: (time: number) => AlertFacts): void => {
+  const lasting = (kind: 'totals-mismatch' | 'bank-login', now: boolean | null, facts: (time: number) => AlertFacts, dueAt?: string): void => {
     if (now === null) return;
     const state = ledger.lasting[kind];
-    if (now && !state.on) give(facts(state.times + 1));
+    if (now && !state.on) give(facts(state.times + 1), dueAt);
     if (!now && state.on) cleared.push(kind);
   };
   const check = world.bank === null ? null : book.selfCheck(world.bank);
-  lasting('totals-mismatch', check === null ? null : !check.ok, (time) => ({ kind: 'totals-mismatch', time, difference: check?.difference ?? 0, day: today, again: false }));
+  // 10.4 (A47): told once the difference has lasted the setting's hours, due at that moment.
+  const mismatchDue = mismatchDueAt(world);
+  const lasted = check !== null && !check.ok && mismatchDue !== null && mismatchDue <= world.now.getTime();
+  lasting('totals-mismatch', check === null ? null : lasted, (time) => ({ kind: 'totals-mismatch', time, difference: check?.difference ?? 0, day: today, again: false }), lasted ? new Date(mismatchDue).toISOString() : undefined);
   lasting('bank-login', world.needsLogin, (time) => ({ kind: 'bank-login', time, day: today, again: false }));
   // 10.7: once, when the last good read is the setting's hours old; cleared by a newer read.
   const notRead = ledger.lasting['bank-not-read'];

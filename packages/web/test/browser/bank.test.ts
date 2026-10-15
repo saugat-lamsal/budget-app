@@ -120,7 +120,9 @@ window.Plaid = { create(config) { return { open() {
       await waitOrReport(page, '[data-testid="bank-connect-card"]');
       expect(await page.locator('meta[name="plaid-link"]').getAttribute('content')).toBe(LINK_SCRIPT);
       expect(await page.locator('meta[name="plaid-nonce"]').getAttribute('content')).toMatch(/^[A-Za-z0-9+/=]{22,}$/);
-      expect(await textAt(page, 'bank-connect-card')).toContain('1 of the 10 connections Plaid allows');
+      // On the test bank (the rehearsal), connecting is free.
+      expect(await textAt(page, 'bank-connect-card')).toContain("Connecting to Plaid's test bank is free: it does not use any of your 10 real connections.");
+      expect(await textAt(page, 'bank-connect-card')).not.toContain('1 of the 10 connections Plaid allows');
       expect(await textAt(page, 'bank-connect-card')).toContain("Plaid's test bank");
       // Leaving it, the next page is a page of its own again, with the strict rules.
       await page.getByTestId('back').click();
@@ -138,7 +140,7 @@ window.Plaid = { create(config) { return { open() {
       const page = await open(r, '/bank');
       await page.getByTestId('bank-connect').click();
       await waitOrReport(page, '[data-testid="bank-ask"]');
-      expect(await textAt(page, 'bank-ask')).toContain('1 of the 10 connections Plaid allows, and one that is removed never comes back');
+      expect(await textAt(page, 'bank-ask')).toContain("Connecting to Plaid's test bank is free: it uses none of your 10 real connections.");
       expect(await page.evaluate(() => (window as { __linkOpened?: number }).__linkOpened ?? 0)).toBe(0);
       expect(readConnection(r.db)).toBeNull();
       await page.getByTestId('bank-ask-yes').click();

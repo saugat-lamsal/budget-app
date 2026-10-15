@@ -20,7 +20,7 @@ describe('the database', () => {
     const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[]).map(
       (t) => t.name,
     );
-    expect(tables).toEqual(['accounts', 'attention', 'bank_items', 'bank_reads', 'book_events', 'change_log', 'connection', 'decisions', 'last_checked', 'login_codes', 'outbox', 'passkeys', 'push_stopped', 'push_subscriptions', 'sessions', 'settings', 'statements', 'syncs']);
+    expect(tables).toEqual(['accounts', 'attention', 'bank_gap', 'bank_items', 'bank_reads', 'book_events', 'change_log', 'connection', 'decisions', 'last_checked', 'login_codes', 'outbox', 'passkeys', 'push_stopped', 'push_subscriptions', 'sessions', 'settings', 'statements', 'syncs']);
     expect(db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION);
     expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
     db.close();
@@ -212,6 +212,18 @@ describe('the database', () => {
     expect(db.prepare('SELECT item_id, sealed_key, permission_ends FROM connection').all()).toEqual([{ item_id: 'item-made-up', sealed_key: 'v1.sealed', permission_ends: null }]);
     db.prepare("UPDATE connection SET permission_ends = '2027-10-12T15:00:00Z'").run();
     expect(db.prepare('SELECT permission_ends FROM connection').get()).toEqual({ permission_ends: '2027-10-12T15:00:00Z' });
+    db.close();
+  });
+
+  it('step 10 (10.4, A47) starts with no gap; one row at most, with when it began', () => {
+    const path = tempFile();
+    const old = openDatabase(path, { upTo: 9 });
+    old.close();
+    const db = openDatabase(path);
+    expect(db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION);
+    expect(db.prepare('SELECT * FROM bank_gap').all()).toEqual([]);
+    db.prepare("INSERT INTO bank_gap (id, since) VALUES (1, '2026-10-14T13:00:00.000Z')").run();
+    expect(() => db.prepare("INSERT INTO bank_gap (id, since) VALUES (2, '2026-10-14T14:00:00.000Z')").run()).toThrow();
     db.close();
   });
 

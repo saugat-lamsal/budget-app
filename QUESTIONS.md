@@ -767,6 +767,80 @@ A46. ANSWERED Oct 12 ("do all of that"), built (B216 to B221): the wording below
      Recommendation: as written.
 
 
+## Part A, added in Phase 7 (Oct 14).
+
+A47. ANSWERED Oct 14 ("can we do option A"; "Okay, I want to add the
+     webhooks and this change"), to build in the next session (handoff in
+     docs/later.txt, items 3 and 11). The "totals do not match" gaps of Oct 13
+     and 14 were the bank's timing, not the books (B230, B231). His choice:
+     option A, and Plaid's webhooks with it.
+     12.1  Bank side: checking + savings - everyday card. For checking and
+           savings, the balance the bank shows you (what is available), plus
+           any transfer between your accounts still pending (it counts once
+           it posts). If the bank does not give that balance, its posted
+           balance less pending charges. For the everyday card, what it
+           owes, including pending charges.
+     10.4  Totals do not match the bank: told once the difference has lasted
+           12 hours (a setting), then once a day at the daily review time
+           while it lasts. Until then Home says the bank is still catching
+           up.
+     Section 2, syncing: also as soon as Plaid says it has something new
+           (a webhook); the 60-minute timer stays.
+     The exact rulebook text is shown to him before it is committed.
+     His OK to the text, Oct 14 ("I am okay with both"), with one change
+     from the note above: besides transfers, a pending payment to a person
+     and money leaving savings are put back too (the books count them once
+     posted). In the rulebook as 12.1, 10.4, section 2 and 34b (draft 22).
+
+A48. ANSWERED Oct 14 ("add the twice a month"): his pay comes twice a
+     month, on the 15th and on the last day of the month, on the Friday
+     before when that is a Saturday or Sunday (every paycheck since July
+     says so). The pay schedule becomes a setting with that choice; every
+     14 days stays as the other choice. Days to payday (11.2), the payoff
+     countdown (9.5) and Payday read it. A bank holiday can still move a
+     payday by a day: the app shows it late until the money comes (B35).
+     His pay now lands all in checking (his change, Oct 14).
+     BUILT Oct 14 (branch accuracy-and-webhooks; rulebook draft 22, section
+     2 and 34). One change to the wording he OK'd: the next payday is the
+     one after the scheduled payday NEAREST the last paycheck, not the first
+     one more than a week after it. In February the 15th and a last day
+     moved back to Friday can be 11 days apart (Feb 15 and Feb 26, 2027),
+     so "more than a week" would skip a payday when the 15th's pay came 4
+     or more days late. The app starts with every 14 days; he picks twice a
+     month on Settings, Pay schedule. A history saved before the setting
+     existed opens as every 14 days (as it then was). 3.7's 10 days still
+     let the shortest twice-a-month gap (11 days) through. His OK to the
+     nearest-payday wording, Oct 14.
+
+A49. ANSWERED Oct 14 ("yes lets do that"): a payday alert. When a paycheck is
+     counted, he is told the amount to move to savings (3.8) and, with the
+     payoff countdown on, the amount for the old card this payday (9.5).
+     At once, quiet hours apply (10.8).
+
+A50. ADDED Oct 14 on Claude's recommendation (his to strike): (a) before
+     every deploy, the new image rebuilds the real books from the backup on
+     a throwaway machine and replays every event (0.6), so an update can
+     never stop the app from starting; it serves as the roadmap's real
+     history test without the data leaving his own server and backup.
+     (b) Items read one way while pending and another once posted (a
+     purchase that posts as a transfer, and the other way round): tested,
+     and fixed if the books do not end right. (c) A read-only look, with his
+     OK at the time, that both cards' statements (balance, minimum, due
+     date) came through, which the reminders depend on.
+     BUILT Oct 14: (a) npm run deploy-check, first run at the next deploy;
+     (b) one fix (B232). (c) waits for his OK at the time.
+
+B232. Found by A50b's tests (Oct 14): a posted item linked to a pending
+     purchase (pending_transaction_id) always replaced it as a purchase,
+     even when the bank rules read the posted words as a card payment or a
+     payment to a person. A card payment whose pending words no rule knew
+     stayed counted as spending, with its arriving half left in transit.
+     Now only a posted purchase replaces its pending one; anything else is
+     what the bank rules read, and the pending purchase is dropped when the
+     bank removes it (A2). Reading: as if the bank had sent only the posted
+     item.
+
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 WAITING FOR YOU TO CHECK (Oct 10, 2026, the end of Phase 4). Each was
@@ -2627,3 +2701,19 @@ B229. The mom rule is "Zelle payment to Mom", not "Mom": the rule matches
       text anywhere in a payment to a person's description, ignoring capitals,
       so the longer text cannot catch another name or a confirmation code
       that happens to contain the word.
+
+B230. Oct 13, 9:34 AM: the "totals do not match" alert (10.4) for a gap
+      that was Plaid's timing, not the books. The everyday card's balance at
+      the bank already showed the card payment and some charges as posted,
+      while Plaid's list of transactions (unchanged since connecting) still
+      had them pending, so the bank side was ahead by the difference. It
+      clears when Plaid sends the posted items. Whether to tell such a gap
+      only once it has lasted a few syncs is his call (docs/later.txt 3).
+
+B231. Oct 14: the second gap, the other way round. Every pending checking
+      item posted (Plaid sent them as posted), but the checking balance the
+      bank calls posted ("current") did not include them yet: it only takes
+      them in its overnight processing. Its "available" balance did, and with
+      it the books matched to the cent. The bank side counted them nowhere
+      (not pending any more, not in the balance yet), so it came out high by
+      their sum. This will happen most days things post. His fix: A47.

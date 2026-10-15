@@ -1,0 +1,175 @@
+THINGS TO COME BACK TO (started Oct 13, 2026)
+
+One list of every fix, change and idea that came up on and after
+connection day, so nothing is lost. Each is done the usual way: his OK where
+the rulebook changes, a test first, then the code. No numbers from his real
+accounts are written here; "nnnn" stands for an account's last digits.
+
+Marked: FIX (the app does something wrong or unhelpful), DECIDE (needs his
+call first), HIS (a step only he can do), LATER (an idea for after Phase 7).
+
+
+FIXES FOUND ON CONNECTION DAY
+
+1. FIX. Setup day and pending card payments (QUESTIONS.md B226).
+   A card payment still pending is worded differently by the bank
+   ("PAYMENT TO ACCT #nnnn ON mm/dd VIA WEB") from the posted one ("Mobile
+   Banking payment to CRD nnnn Confirmation#"). No bank rule fit it, so it
+   was read as a purchase and the starting money came out low by its
+   amount. Fixed on the day with two bank rules. To build: setup day points
+   out a pending item the bank labels as a card payment or transfer that is
+   being read as a purchase, and offers a rule for its wording.
+
+2. FIX. Suggestions for the arriving side of card payments (B227).
+   The suggestions covered money leaving checking for each card, but not
+   the same money arriving on the card ("PAYMENT FROM CHK nnnn"); without a
+   rule it reads as a refund. Added by hand on the day. To build: suggest
+   it from the history (the same amount the other way, a day or so later).
+
+3. NEXT (decided Oct 14, QUESTIONS.md A47). The "totals do not match"
+   gaps that were the bank's timing (B230, B231). Checking and savings are
+   checked against the balance the bank shows him (available) plus any
+   transfer between his accounts still pending; the alert waits until a
+   gap has lasted 12 hours (a setting); Home says the bank is still
+   catching up until then. Built in the next session with item 11.
+   PART BUILT Oct 14 (branch accuracy-and-webhooks): the bank side from the
+   available balance plus pending items the books count once posted
+   (12.1), Setup day reading the same, the made-up bank's lags (B230,
+   B231), worked example bank 16; and the setting (totalsMismatchAlertHours,
+   12, on Settings as "Totals do not match"). BUILT the same evening: the
+   12-hour wait (database step 10, bank_gap; alerts/plan.ts; nextDueIn)
+   and "The bank is still catching up" on Home and Buckets. Rulebook 12.1,
+   10.4, section 2 and 34b with his OK (Oct 14). Not deployed.
+
+4. FIX if it comes back. The split paycheck (B228).
+   His employer sent part of each paycheck to savings and part to checking;
+   the app knows one deposit per paycheck. He moved all of it to checking.
+   If a split payday still comes: the checking part "This is my paycheck",
+   the savings part "Other income". Only if he ever wants the split again:
+   teach the app that two deposits the same day are one paycheck (option A
+   of that day: the mom reserve once, then the split of the whole).
+
+
+HIS STEPS
+
+5. HIS. The paycheck rule: set it in Settings once his pay lands all in
+   checking (the employer words from the deposit's description, nothing
+   that changes). Until then each paycheck waits in Review: "This is my
+   paycheck".
+
+6. HIS. Check the old card's pending payment wording at the next $35
+   payment (early November): the rule "PAYMENT TO ACCT #nnnn" on checking
+   is a guess from the everyday card's wording. If the app reads it as a
+   purchase, add a rule for the words the bank shows.
+
+7. HIS. The second UptimeRobot monitor on /health/backups (every 5
+   minutes), if not done yet.
+
+8. HIS. Delete the test bank's leftovers when sure they are not needed:
+   the Fly volume budget_data and the R2 folder "budget" (about $0.15 a
+   month until then). They are the way back to the test bank's books.
+
+9. HIS, optional. Bank rules for money moved from savings back to
+   checking (none happened in the 90 days before setup). Without them such
+   a move waits in Review, where "Transfer between my accounts" fixes it.
+
+10. HIS, weekly through Phase 7. Compare the app with the bank statements;
+    any difference becomes a test before it is fixed. Phase 7's finish
+    line: 30 days in a row with no self-check mismatch and no surprises.
+
+
+IDEAS FOR AFTER PHASE 7
+
+11. NEXT (his call, Oct 14, with item 3). Plaid webhooks: Plaid tells the app the moment it has new data,
+    so it syncs then instead of waiting for the hourly timer (the timer
+    stays as a backup). Free. About a day of work: a signed address for
+    Plaid to call, the check of Plaid's signature, one setting call to
+    point the existing connection at it (not a new connection), a line in
+    rulebook section 2. It does not make a card swipe appear instantly:
+    Plaid still fetches from the bank a few times a day.
+
+12. LATER. Bucket suggestions in Review. Stage 1: each waiting item comes
+    with a picked bucket and a reason, one tap to accept; first from
+    Plaid's own category labels (free, nothing sent anywhere new), then an
+    AI model (Claude Haiku) for the unclear ones. Stage 2, only if stage 1
+    matches his picks nearly always for a month: sort the obvious ones by
+    itself, each re-sortable with one tap. A rulebook change first (4.2
+    says only his rules sort). Sends transaction descriptions to an
+    outside service: needs his OK. Each pick is saved as an answer, so the
+    history still replays exactly (0.6).
+
+13. LATER. Moving money to savings on payday. Not from the app (the app
+    stays read-only, rule 0.4; Plaid's money moving is for businesses and
+    would end the free Trial). Either a "Move it" button on Payday that
+    copies the amount and opens Bank of America, or, simpler, a recurring
+    transfer set up in Bank of America on paydays if his pay is the same
+    every time. Decide after the first payday shows the real amount.
+
+14. LATER. Where the permanent test made from his real history lives (the
+    roadmap's Phase 7 step): never in this repo while it is public.
+
+
+SMALL THINGS NOTICED
+
+15. "Sent to mom this month" counts only from setup day: a payment to her
+    before it does not show for October. Expected, not a bug.
+
+16. The rehearsal's connect card says connecting uses 1 of the 10, which is
+    not true on the test bank (test-bank connections are free). Wording
+    only; the real day's card is right.
+    BUILT Oct 14: on the test bank the card and the question say it is free.
+
+17. Syncing every 15 minutes instead of 60 is allowed and harmless but
+    gains little (Plaid's own schedule decides when new items appear). Left
+    at 60.
+
+
+IDEAS ADDED OCT 14
+
+18. NEXT, recommended with 3 and 11. "Why it doesn't match": tapping the
+    gap's banner opens a sheet with each account: what the bank shows, what
+    the books expect, the difference, the items still on their way, and
+    when the gap started. Then he can see which account is off without
+    anyone reading the server. Each sync's balances kept in a small table on
+    the server for it (never in the log).
+    BUILT Oct 14 (simpler than planned): Home's "See the numbers" sheet
+    shows each account as the bank last gave it (posted, available, what
+    the check counts) and when the difference began. No table of past
+    balances: the latest read is enough for the sheet.
+
+19. Small, with the next session. The rehearsal's connect card wording
+    (item 16).
+
+20. LATER. A weekly statement check for Phase 7: pick an account and a date
+    range, and the app lists what it counted, to tick off against the bank
+    statement.
+
+21. NEXT (his call, Oct 14, QUESTIONS.md A48). The pay schedule as a
+    setting: twice a month (the 15th and the last day, the Friday before a
+    weekend), or every 14 days. His pay is twice a month.
+    BUILT Oct 14 (branch accuracy-and-webhooks, rulebook draft 22). After
+    the deploy he picks "Twice a month" on Settings, Pay schedule.
+
+22. NEXT (his yes, Oct 14, A49). A payday alert: the amount to move to
+    savings, and the old card's share this payday.
+
+23. HIS. A recurring transfer in Bank of America on paydays for the amount
+    to move to savings, if his pay stays the same each time. The Payday
+    screen then shows $0 left to move, or the small difference.
+
+24. NEXT (A50a). The deploy check: before every deploy, the new image's
+    restore check on a throwaway machine, against the real backup.
+    BUILT Oct 14: npm run deploy-check (scripts/deploy-check-lib.mjs, tested
+    against a stand-in for fly; docs/phase-7-connection-day.txt, "Every
+    deploy"). Not yet run against Fly: its first run is this pull request's
+    deploy, at his word.
+
+25. NEXT (A50b). Pending and posted read differently: tests, and fixes if
+    needed.
+    BUILT Oct 14: one fix. A posted item linked to a pending purchase was
+    kept a purchase even when the bank rules read it as a card payment or
+    a payment to a person; now only a posted purchase replaces its pending
+    one, and the pending one is dropped when the bank removes it (A2).
+    Tests: pending-posted-readings (linked and not).
+
+26. NEXT (A50c, his OK at the time). Both cards' statements came through.

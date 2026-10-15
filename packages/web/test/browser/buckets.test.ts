@@ -151,6 +151,15 @@ describe.each(ENGINES)('Buckets in %s', (_name, engine) => {
     await page.context().close();
   });
 
+  it('10.4 A47 a difference younger than 12 hours: the bank is still catching up, with the difference', async () => {
+    const page = await openScenario(await browser().newContext(phone()), base(), 'catching-up', '/buckets');
+    expect(await page.getByTestId('mismatch').count()).toBe(0);
+    expect(await centsAt(page, 'mismatch-amount')).toBe(4_210);
+    expect(await textAt(page, 'catching-up')).toContain('The bank is still catching up');
+    expect(await page.getByTestId('catching-up').locator('[data-icon="clock"]').count()).toBe(1);
+    await page.context().close();
+  });
+
   it('0.5 totals that do not match the bank: a banner that cannot be missed, with the difference (12.3)', async () => {
     const { book, bank } = life('mismatch');
     const check = book.selfCheck(bank);

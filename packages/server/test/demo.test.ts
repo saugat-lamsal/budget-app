@@ -30,8 +30,8 @@ describe('the made-up lives', () => {
       const input = s.input();
       expect(input.madeUpData, s.name).toBe(true);
       expect(homeView(input).madeUpData, s.name).toBe(true);
-      // Every one but "mismatch" agrees with its made-up bank (12.3).
-      if (input.book !== null && input.bank !== null) expect(input.book.selfCheck(input.bank).ok, s.name).toBe(s.name !== 'mismatch');
+      // Every one but "mismatch" and "catching-up" agrees with its made-up bank (12.3).
+      if (input.book !== null && input.bank !== null) expect(input.book.selfCheck(input.bank).ok, s.name).toBe(s.name !== 'mismatch' && s.name !== 'catching-up');
     }
   });
 
@@ -42,7 +42,8 @@ describe('the made-up lives', () => {
     expect(viewOf('low').buckets.wants.level).toBe('low');
     expect(viewOf('overspent').buckets.wants.level).toBe('empty');
     expect(viewOf('overspent').buckets.wants.left).toBeLessThan(0);
-    expect(viewOf('mismatch').safeToSpend).toMatchObject({ shown: false, why: 'totals-do-not-match', check: { difference: -1_234 } });
+    expect(viewOf('mismatch').safeToSpend).toMatchObject({ shown: false, why: 'totals-do-not-match', check: { difference: -1_234 }, catchingUp: false });
+    expect(viewOf('catching-up').safeToSpend).toMatchObject({ shown: false, why: 'totals-do-not-match', check: { difference: -4_210 }, catchingUp: true });
     expect(viewOf('payday').payday.days).toBe(0);
     expect(viewOf('late').payday.days).toBe(-2);
     expect(viewOf('trouble').attention.slice(0, 2).map((a) => a.kind)).toEqual(['bank-login', 'card-overdue']);

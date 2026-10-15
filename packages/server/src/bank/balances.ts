@@ -14,11 +14,31 @@ import { centsFromPlaid } from './amounts.js';
 // purchases count, savings ones included (4.9): they are the only pending
 // items the book counts (4.6).
 // Pending money in, and pending transfers and payments, count once they post.
+//
+// Checking and savings (A47, his call, Oct 14, 2026): the bank's available
+// balance, plus what is still pending that the books count only once it
+// posts (a transfer between his accounts, a payment to a person, money
+// leaving savings). Bank of America's "current" leaves out items Plaid
+// already sends as posted until the bank's overnight processing, and its
+// "available" is current less the pending items and those (B231). So the
+// available balance, with the pending items the books do not count yet put
+// back, is what the books hold; pending charges are already out of it, as
+// the books count them (4.6). When the bank gives no available balance:
+// the posted one, as before. The everyday card stays what it owes: its
+// available is the limit less what it owes and says nothing about pending
+// (B230).
 export interface BankView {
-  // The posted balances of checking, savings and the everyday card.
+  // The posted balances of checking, savings and the everyday card, as the bank gives them.
   readonly posted: BankBalances;
+  // What the self-check starts from, before pending charges: for checking
+  // and savings the available balance plus every pending item going out
+  // (the posted balance when the bank gives no available one); the
+  // everyday card's posted balance.
+  readonly counted: BankBalances;
+  // The available balances of checking and savings as the bank gave them; null when it gave none.
+  readonly available: { readonly checking: Cents | null; readonly savings: Cents | null };
   readonly pendingCharges: readonly PendingCharge[];
-  // Posted plus pending charges: what the self-check compares.
+  // Counted, less pending charges: what the self-check compares (12.1).
   readonly withPending: BankBalances;
   // What the old card owes, posted and with its pending charges. Not part
   // of the self-check (12.4); the book tracks it as debt.
@@ -41,21 +61,36 @@ export function bankView(accounts: readonly StoredAccount[], items: ReadonlyMap<
     };
     for (const a of accounts) if (a.role !== null) roles.set(a.plaidAccountId, a.role);
     const pendingCharges: PendingCharge[] = [];
+    const pendingOut = new Map<AccountId, Cents[]>();
     for (const item of items.values()) {
       const role = roles.get(item.accountId);
-      if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined) continue;
+      if (!item.pending || item.removed || item.replacedBy !== null || role === undefined) continue;
       if (item.amountCents === null || item.amountCents <= 0) continue;
-      pendingCharges.push({ account: role, amount: item.amountCents });
+      pendingOut.set(role, [...(pendingOut.get(role) ?? []), item.amountCents]);
+      if (item.kind === 'purchase') pendingCharges.push({ account: role, amount: item.amountCents });
     }
+    // 12.1 (A47): checking and savings from the available balance, when the bank gives one.
+    const availableOf = (role: 'checking' | 'savings'): Cents | null => {
+      const available = accounts.find((a) => a.role === role)?.raw.balances.available ?? null;
+      return available === null ? null : centsFromPlaid(available, `the ${role} available balance`);
+    };
+    const counted = (role: 'checking' | 'savings'): Cents => {
+      const available = availableOf(role);
+      if (available === null) return posted(role);
+      return addCents(available, ...(pendingOut.get(role) ?? []));
+    };
     const balances: BankBalances = { checking: posted('checking'), savings: posted('savings'), everydayCard: posted('everyday-card') };
+    const countedBalances: BankBalances = { checking: counted('checking'), savings: counted('savings'), everydayCard: balances.everydayCard };
     const oldCardPosted = posted('old-card');
     const oldCardPending = pendingCharges.filter((c) => c.account === 'old-card').map((c) => c.amount);
     return {
       ok: true,
       view: {
         posted: balances,
+        counted: countedBalances,
+        available: { checking: availableOf('checking'), savings: availableOf('savings') },
         pendingCharges,
-        withPending: withPendingCharges(balances, pendingCharges),
+        withPending: withPendingCharges(countedBalances, pendingCharges),
         oldCardPosted,
         oldCardWithPending: addCents(oldCardPosted, ...oldCardPending),
       },

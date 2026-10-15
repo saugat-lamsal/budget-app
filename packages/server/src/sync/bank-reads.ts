@@ -22,6 +22,18 @@ export function readLastRead(db: Db): string | null {
   return row?.at ?? null;
 }
 
+// 10.4 (A47): when the totals stopped matching the bank (an instant), or
+// null while they match. Read each minute by the alert timer: prepared once.
+export function readGapSince(db: Db): string | null {
+  const row = statement(db, 'SELECT since FROM bank_gap WHERE id = 1').get() as { since: string } | undefined;
+  return row?.since ?? null;
+}
+
+export function saveGapSince(db: Db, since: string | null): void {
+  if (since === null) db.prepare('DELETE FROM bank_gap').run();
+  else db.prepare('INSERT INTO bank_gap (id, since) VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET since = excluded.since').run(since);
+}
+
 export function saveBankRead(db: Db, read: { readonly at: string; readonly changed: boolean }): void {
   db.prepare('INSERT INTO bank_reads (at, changed) VALUES (?, ?)').run(read.at, read.changed ? 1 : 0);
 }

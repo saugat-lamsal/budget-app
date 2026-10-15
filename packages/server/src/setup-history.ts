@@ -98,7 +98,7 @@ function readHistory(bank: BankHistory): History {
     const charge = { id: item.transactionId, date: read.item.day, amount: read.item.amount, description: read.item.description, pending: true };
     pendingCharges.push(role === 'savings' ? { ...charge, kind: 'savings-withdrawal', account: role } : { ...charge, kind: 'purchase', account: role });
   }
-  return { items: bank.items, roles, rules, posted: view.view.posted, oldCardBalance: view.view.oldCardPosted, pendingCharges, reread };
+  return { items: bank.items, roles, rules, posted: view.view.counted, oldCardBalance: view.view.oldCardPosted, pendingCharges, reread };
 }
 
 function halfOf(item: StoredItem, roles: Map<string, AccountId>, rules: readonly BankRule[]): HalfInTransit | null {

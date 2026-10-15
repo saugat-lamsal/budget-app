@@ -828,8 +828,8 @@
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "daysBetween(payday, end) > 0;",
-    "replace": "daysBetween(payday, end) >= 0;",
+    "find": "    if (daysBetween(payday, end) <= 0) break;",
+    "replace": "    if (daysBetween(payday, end) < 0) break;",
     "why": "9.5 count a payday on the promo end date"
   },
   {
@@ -849,8 +849,8 @@
   {
     "section": "9",
     "file": "packages/money/src/reminders.ts",
-    "find": "const { oldCardPromoEndDate: end, payScheduleDays: every } = book.settings();",
-    "replace": "const { oldCardPromoEndDate: end } = book.settings();\n  const every = 14;",
+    "find": "for (const payday of paydaysAfter(book.lastPaycheckDate(), settings)) {",
+    "replace": "for (const payday of paydaysAfter(book.lastPaycheckDate(), 14)) {",
     "why": "9.5 hard-code 14 days instead of using the pay schedule"
   },
   {
@@ -905,7 +905,7 @@
   {
     "section": "11",
     "file": "packages/money/src/book.ts",
-    "find": "...nextPayday(this.#lastPaycheckDate, this.#settings.payScheduleDays, today),",
+    "find": "...nextPayday(this.#lastPaycheckDate, this.#settings, today),",
     "replace": "...nextPayday(this.#lastPaycheckDate, 14, today),",
     "why": "11.2 hard-code 14 days instead of using the setting"
   },
@@ -3509,8 +3509,8 @@
   {
     "section": "11",
     "file": "packages/money/src/payday.ts",
-    "find": "const next = addDays(lastPaycheckDate, payScheduleDays);",
-    "replace": "const next = addDays(today, payScheduleDays);",
+    "find": "const next = paydaysAfter(lastPaycheckDate, schedule).next().value as IsoDate;",
+    "replace": "const next = paydaysAfter(today, schedule).next().value as IsoDate;",
     "why": "[setup] 11.2 count the pay schedule from today, not from the last paycheck"
   },
   {
@@ -3687,5 +3687,117 @@
     "find": "  bankPermissionWarnDays: 7,\n",
     "replace": "  bankPermissionWarnDays: 5,\n",
     "why": "[a45] 10.13 section 2 the warning starts at 5 days"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/dates.ts",
+    "find": "+ 4) % 7",
+    "replace": "+ 3) % 7",
+    "why": "[a48] section 2 take every day for the day before it (Jan 1, 1970 a Wednesday)"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/dates.ts",
+    "find": "Date.UTC(year, m, 0)",
+    "replace": "Date.UTC(year, m - 1, 28)",
+    "why": "[a48] section 2 every month ends on the 28th"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/payday.ts",
+    "find": "return day === 6 ? addDays(date, -1) : day === 0 ? addDays(date, -2) : date;",
+    "replace": "return day === 6 ? addDays(date, 2) : day === 0 ? addDays(date, 1) : date;",
+    "why": "[a48] section 2 a weekend payday moves to the Monday after, not the Friday before"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/payday.ts",
+    "find": "return day === 6 ? addDays(date, -1) : day === 0 ? addDays(date, -2) : date;",
+    "replace": "return day === 6 ? addDays(date, -1) : day === 0 ? addDays(date, -1) : date;",
+    "why": "[a48] section 2 a Sunday payday moves to the Saturday"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/payday.ts",
+    "find": "return day === 6 ? addDays(date, -1) : day === 0 ? addDays(date, -2) : date;",
+    "replace": "return date;",
+    "why": "[a48] section 2 a payday on a weekend stays there"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/payday.ts",
+    "find": "yield onAWeekday(`${month}-15`);",
+    "replace": "yield onAWeekday(`${month}-14`);",
+    "why": "[a48] section 2 pay on the 14th, not the 15th"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/payday.ts",
+    "find": "let month = m === 1 ? `${year - 1}-12` : `${year}-${String(m - 1).padStart(2, '0')}`;",
+    "replace": "let month = monthOf(date);",
+    "why": "[a48] section 2 start from the paycheck's own month, missing the payday just before it"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/payday.ts",
+    "find": "return m === 12 ? `${year + 1}-01` : `${year}-${String(m + 1).padStart(2, '0')}`;",
+    "replace": "return m === 12 ? `${year + 1}-02` : `${year}-${String(m + 1).padStart(2, '0')}`;",
+    "why": "[a48] section 2 after December comes February"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/payday.ts",
+    "find": "  if (daysBetween(before, lastPaycheckDate) > daysBetween(lastPaycheckDate, after)) after = scheduled.next().value as IsoDate;",
+    "replace": "  if (daysBetween(before, lastPaycheckDate) >= daysBetween(lastPaycheckDate, after)) after = scheduled.next().value as IsoDate;",
+    "why": "[a48] section 2 halfway between two paydays counts as the later one"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/payday.ts",
+    "find": "  if (daysBetween(before, lastPaycheckDate) > daysBetween(lastPaycheckDate, after)) after = scheduled.next().value as IsoDate;\n",
+    "replace": "",
+    "why": "[a48] section 2 a paycheck a day early makes its own payday the next one"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/payday.ts",
+    "find": "  while (daysBetween(lastPaycheckDate, after) < 0)",
+    "replace": "  while (daysBetween(lastPaycheckDate, after) < -7)",
+    "why": "[a48] section 2 a paycheck up to a week late counts as early for the payday before it"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/payday.ts",
+    "find": "typeof schedule === 'number' ? { paySchedule: 'every-n-days', payScheduleDays: schedule }",
+    "replace": "typeof schedule === 'number' ? { paySchedule: 'twice-a-month', payScheduleDays: schedule }",
+    "why": "[a48] 11.2 a number of days read as twice a month"
+  },
+  {
+    "section": "11",
+    "file": "packages/money/src/payday.ts",
+    "find": "if (paySchedule === 'every-n-days') {",
+    "replace": "if (paySchedule !== 'twice-a-month' && payScheduleDays !== 14) {",
+    "why": "[a48] section 2 every 14 days read as twice a month"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "check(PAY_SCHEDULES.includes(s.paySchedule),",
+    "replace": "check(true,",
+    "why": "[a48] section 2 take any pay schedule"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "  paySchedule: 'every-n-days',\n  payScheduleDays: 14,",
+    "replace": "  paySchedule: 'twice-a-month',\n  payScheduleDays: 14,",
+    "why": "[a48] section 2 start as twice a month"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "isWholeInRange(s.totalsMismatchAlertHours, 1, 168)",
+    "replace": "isWholeInRange(s.totalsMismatchAlertHours, 0, 169)",
+    "why": "[a47] 10.4 take 0 or 169 hours for the wait"
   }
 ]

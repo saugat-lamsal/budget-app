@@ -111,9 +111,11 @@ describe.each(ENGINES)('Settings in %s', (_name, engine) => {
     ['10.8 quiet hours', 'row-quiet-hours', { 'field-quiet-from': '23:00', 'field-quiet-to': '06:30' }, { quietHours: { from: '23:00', to: '06:30' } }],
     ['10.8 no quiet hours, the same time twice', 'row-quiet-hours', { 'field-quiet-from': '07:00', 'field-quiet-to': '07:00' }, { quietHours: { from: '07:00', to: '07:00' } }],
     ['10.7 the bank-not-read alert', 'row-not-read', { 'field-not-read': '36' }, { bankNotReadAlertHours: 36 }],
+    ['10.4 A47 how long a difference with the bank may last before it is told', 'row-mismatch-wait', { 'field-mismatch-wait': '6' }, { totalsMismatchAlertHours: 6 }],
     ['10.10 amounts on the lock screen', 'row-lock-amounts', { 'field-lock-amounts': 'on' }, { amountsOnLockScreen: true }],
     ['the leftover at payday, each bucket on its own', 'row-leftover', { 'field-leftover-needs': 'roll-over', 'field-leftover-wants': 'move-to-savings' }, { leftoverAtPayday: { needs: 'roll-over', wants: 'move-to-savings' } }],
     ['the pay schedule', 'row-pay-schedule', { 'field-pay-schedule': '7' }, { payScheduleDays: 7 }],
+    ['section 2 A48 the pay schedule, twice a month', 'row-pay-schedule', { 'field-pay-schedule-kind': 'twice-a-month' }, { paySchedule: 'twice-a-month' }],
     ['the 10 days of rule 3.7', 'row-early-days', { 'field-early-days': '12' }, { earlyPaycheckDays: 12 }],
   ];
   it.each(EACH)('0.2 %s, and the screen then shows what the twin has', async (_what, row, fields, patch) => {
@@ -125,6 +127,22 @@ describe.each(ENGINES)('Settings in %s', (_name, engine) => {
     expect(JSON.parse(watch.posts[0]?.postData() ?? '{}').settings).toEqual(patch);
     twin.book.changeSettings(patch, twin.today);
     await expectSameAs(page, twin, row);
+    await page.context().close();
+  });
+
+  it('section 2 A48 twice a month, then back to every so many days: the sheet sends the schedule and the days', async () => {
+    const twin = life('normal');
+    const page = await openSettings(await browser().newContext(phone()), base(), 'normal');
+    const watch = watchChoices(page);
+    await change(page, 'row-pay-schedule', { 'field-pay-schedule-kind': 'twice-a-month' });
+    await saved(page);
+    expect(await textAt(page, 'value-pay-schedule')).toBe('Twice a month, the 15th and the last day');
+    await change(page, 'row-pay-schedule', { 'field-pay-schedule-kind': 'every-n-days', 'field-pay-schedule': '10' });
+    await saved(page);
+    expect(JSON.parse(watch.posts[1]?.postData() ?? '{}').settings).toEqual({ paySchedule: 'every-n-days', payScheduleDays: 10 });
+    twin.book.changeSettings({ paySchedule: 'twice-a-month' }, twin.today);
+    twin.book.changeSettings({ paySchedule: 'every-n-days', payScheduleDays: 10 }, twin.today);
+    await expectSameAs(page, twin, 'and back');
     await page.context().close();
   });
 

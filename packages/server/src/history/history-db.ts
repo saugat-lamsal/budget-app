@@ -29,13 +29,20 @@ interface Row {
   totals: string | null;
 }
 
+// Section 2 (A48): setup days saved before the pay schedule setting existed
+// (Oct 14, 2026) were paid every so many days, as the app then counted.
+function savedSetup(input: SetupInput): SetupInput {
+  const settings = input.settings as Partial<SetupInput['settings']>;
+  return settings.paySchedule === undefined ? { ...input, settings: { ...input.settings, paySchedule: 'every-n-days' } } : input;
+}
+
 export function readHistory(db: Db): StoredEvent[] {
   const rows = db.prepare('SELECT seq, sync, kind, date, payload, totals FROM book_events ORDER BY seq').all() as Row[];
   return rows.map((row) => {
     const payload = JSON.parse(row.payload) as unknown;
     const event: HistoryEvent =
       row.kind === 'setup'
-        ? { kind: 'setup', input: payload as SetupInput }
+        ? { kind: 'setup', input: savedSetup(payload as SetupInput) }
         : row.kind === 'receive'
           ? { kind: 'receive', txn: payload as BankTransaction }
           : row.kind === 'alerts'

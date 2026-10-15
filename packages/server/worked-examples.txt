@@ -99,13 +99,16 @@ Checking, posted balance                         1,000.00
 Savings                                              0.00
 Everyday card, owed                                  0.00
 
-Plaid's "available" balance takes off pending money out and adds pending
-money in: 1,000.00 - 30.00 + 200.00 = 1,170.00. The app does not use it.
+What the bank shows as available takes off pending money going out; money
+coming in is not available until it posts: 1,000.00 - 30.00 = 970.00.
 
-Bank side (12.1): pending charges count, pending money in does not until it
-posts: 1,000.00 - 30.00 + 0.00 - 0.00 = 970.00
+Bank side (12.1, A47): the available balance, plus what is pending going
+out that the books count only once it posts (nothing here: the charge is
+counted now, 4.6). Pending money in counts once it posts:
+970.00 + 0.00 - 0.00 = 970.00. The same as the posted balance less pending
+charges: 1,000.00 - 30.00 = 970.00.
 
-Check: bank side 970.00 | available 1,170.00
+Check: bank side 970.00 | available 970.00
 
 
 ========================================================================
@@ -550,3 +553,30 @@ reminder. 2 alerts go, not 8. Settings: "8 alerts, 2 sent".
 
 Times: review due 8:00 PM EDT | review sent 9:03 PM EDT | reminder due 8:00 PM EDT | reminder sent 9:03 PM EDT
 Check: shop 12.00 | statement balance 450.00 | minimum 35.00 | alerts kept 8.00 | alerts sent 2.00 | reminder days left when sent 2.00
+
+
+EXAMPLE 16. The bank side from the available balance (12.1; QUESTIONS.md A47, B231)
+
+Made-up numbers. Checking held 3,000.00 on setup day. On Oct 2:
+  A grocer, 42.10, posted (Plaid sends it as posted), but the bank's
+  overnight processing has not run, so its "current" balance still says
+  3,000.00 (B231).
+  A cafe, 6.50, pending.
+  A transfer to savings, 500.00, pending.
+
+What the bank shows as available: current less everything pending and
+less what is posted but not processed:
+  3,000.00 - 42.10 - 6.50 - 500.00 = 2,451.40.
+
+The bank side for checking (12.1): the available balance, plus what is
+still pending that the books count only once it posts (the transfer),
+less nothing else: the cafe is pending and the books already count it
+(4.6), and it is already out of the available balance.
+  2,451.40 + 500.00 = 2,951.40.
+What the books hold for checking: 3,000.00 - 42.10 (posted) - 6.50 (the
+pending cafe) = 2,951.40. The same.
+
+The old way, posted less pending charges, used the bank's current balance:
+  3,000.00 - 6.50 = 2,993.50, high by the grocer's 42.10 until the night.
+
+Check: available 2,451.40 | checking side 2,951.40 | old way 2,993.50

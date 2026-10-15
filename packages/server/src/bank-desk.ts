@@ -50,6 +50,13 @@ export interface BankDeskInput {
 
 const refuse = (code: BankRefusal['code'], why: string): BankRefusal => ({ ok: false, code, why });
 
+// 1.1: what connecting asks first. On the test bank (the rehearsal) a
+// connection uses none of the 10.
+export function connectQuestion(bank: 'test' | 'real'): string {
+  const slots = bank === 'test' ? "Connecting to Plaid's test bank is free: it uses none of your 10 real connections." : 'Connecting uses 1 of the 10 connections Plaid allows, and one that is removed never comes back.';
+  return `${slots} Connect the bank?`;
+}
+
 export class BankDesk {
   readonly #input: BankDeskInput;
   // A connection on its way: a second answer from Link meanwhile is never exchanged.
@@ -88,7 +95,7 @@ export class BankDesk {
     const connection = readConnection(db);
     if (request.mode === 'connect') {
       if (connection !== null) return refuse('connected-already', 'The bank is connected already. The app never makes a second connection.');
-      if (!request.yes) return refuse('needs-yes', 'Connecting uses 1 of the 10 connections Plaid allows, and one that is removed never comes back. Connect the bank?');
+      if (!request.yes) return refuse('needs-yes', connectQuestion(this.#bank));
       return this.#linkToken();
     }
     if (connection === null) return refuse('not-connected', 'There is no bank connection yet. Connect the bank first.');

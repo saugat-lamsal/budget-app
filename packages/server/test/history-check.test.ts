@@ -56,6 +56,23 @@ describe('the replay check: the history must replay to the totals saved with it'
     }
   });
 
+  it('0.6 section 2 a history saved before the pay schedule setting existed (Oct 14, 2026) opens, as every 14 days, and replays the same', async () => {
+    const life = await aFewDays();
+    try {
+      const row = life.h.db.prepare("SELECT seq, payload FROM book_events WHERE kind = 'setup'").get() as { seq: number; payload: string };
+      const saved = JSON.parse(row.payload) as { settings: Record<string, unknown> };
+      expect(saved.settings['paySchedule']).toBe('every-n-days');
+      delete saved.settings['paySchedule'];
+      life.h.db.prepare('UPDATE book_events SET payload = ? WHERE seq = ?').run(JSON.stringify(saved), row.seq);
+      const again = life.reopen();
+      expect(again.keeper.book()?.settings()).toMatchObject({ paySchedule: 'every-n-days', payScheduleDays: 14 });
+      expect(everything(again.keeper.book()!)).toEqual(everything(life.keeper.book()!));
+      again.close();
+    } finally {
+      life.done();
+    }
+  });
+
   it('a rule changed on purpose (sorting to wants lands in needs) is caught: the books do not open, and it says at which event', async () => {
     const life = await aFewDays();
     try {

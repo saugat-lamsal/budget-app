@@ -1,6 +1,6 @@
 import type { RecheckedItem } from '@budget-app/money';
 import { describe, expect, it } from 'vitest';
-import { SETTING_NAMES, ZONE_CHOICES, daysText, leftoverText, lockAmountsText, notReadText, permissionWarnText, quietHoursText, recheckedText, reminderText, ruleDoneText, ruleText, settingValueText, settingsDoneText, splitText, textRuleText, timeText, zoneText } from '../src/screens/settings-text.js';
+import { SETTING_NAMES, ZONE_CHOICES, daysText, leftoverText, lockAmountsText, notReadText, payScheduleText, permissionWarnText, quietHoursText, recheckedText, reminderText, ruleDoneText, ruleText, settingValueText, settingsDoneText, splitText, textRuleText, timeText, zoneText } from '../src/screens/settings-text.js';
 
 // The words on the Settings screen. Every value comes from the money math;
 // these only write it, and must write it right.
@@ -85,6 +85,13 @@ describe('section 2 how each setting is written', () => {
     expect(settingValueText('oldCardPromoEndDate', null)).toBe('Not entered');
     expect(settingValueText('oldCardPromoEndDate', '2027-06-30')).toBe('Jun 30, 2027');
     expect(settingValueText('payScheduleDays', 14)).toBe('Every 14 days');
+    expect(settingValueText('paySchedule', 'twice-a-month')).toBe('Twice a month, the 15th and the last day');
+    expect(settingValueText('paySchedule', 'every-n-days')).toBe('Every so many days');
+    expect(SETTING_NAMES.paySchedule).toBe('Pay schedule');
+    expect(SETTING_NAMES.totalsMismatchAlertHours).toBe('Totals do not match');
+    expect(settingValueText('totalsMismatchAlertHours', 12)).toBe('After 12 hours');
+    expect(payScheduleText({ paySchedule: 'twice-a-month', payScheduleDays: 14 })).toBe('Twice a month, the 15th and the last day');
+    expect(payScheduleText({ paySchedule: 'every-n-days', payScheduleDays: 1 })).toBe('Every 1 day');
     expect(settingValueText('earlyPaycheckDays', 1)).toBe('1 day');
     expect(settingValueText('paycheckRule', null)).toBe('Not set');
     expect(settingValueText('split', { savings: 40, needs: 40, wants: 20 })).toBe('40 / 40 / 20');

@@ -21,8 +21,12 @@ interface Looked {
   readonly ledger: AlertLedger;
 }
 
+// 10.4 (A47): a difference is told once it has lasted 12 hours (the
+// setting). Unless a test says when its gap began, it began exactly 12 hours
+// before the look, so it is due at the look itself.
 function world(book: Book, now: string, extra: Partial<AlertWorld> = {}): AlertWorld {
-  return { book, now: new Date(now), zone: ZONE, bank: BANK_OK(book), needsLogin: false, statements: [], lastRead: null, ...extra };
+  const since = new Date(Date.parse(now) - book.settings().totalsMismatchAlertHours * 3_600_000).toISOString();
+  return { book, now: new Date(now), zone: ZONE, bank: BANK_OK(book), needsLogin: false, statements: [], lastRead: null, mismatchSince: since, ...extra };
 }
 
 // Everything due at this moment, as the server makes it: one event at a time.
@@ -374,6 +378,71 @@ describe('9.1 to 9.4 card reminders and the overdue alert, at the review time (A
     b.receive(transfer('pay2', '2026-10-20', 6_000, 'checking', 'old-card'));
     // The 7-day reminders came on Oct 16, before these payments; back at noon on Oct 22.
     expect(keys(look(world(b, '2026-10-22T16:00:00Z', { statements: [everyday, old] }), ledger))).toEqual([]);
+  });
+});
+
+describe('10.4 A47 a difference is told once it has lasted 12 hours; until then the bank is still catching up', () => {
+  const b = book();
+  const off: BankBalances = { ...BANK_OK(b), checking: BANK_OK(b).checking - 4_210 };
+  // The gap began with the read at 9:00 AM on Oct 2 (13:00 UTC).
+  const SINCE = '2026-10-02T13:00:00.000Z';
+  const at = (now: string, extra: Partial<AlertWorld> = {}) => world(b, now, { bank: off, mismatchSince: SINCE, ...extra });
+
+  it('10.4 A47 not told before 12 hours; told at 12 hours, due then, and once each evening after', () => {
+    // 4:00 PM on Oct 2 (the evening of Oct 1 is handled first, with nothing to give).
+    const first = look(at('2026-10-02T20:00:00Z'), started(b));
+    expect(keys(first)).toEqual([]);
+    let ledger = first.ledger;
+    // 8:00 PM on Oct 2: not on yet, so no evening repeat either.
+    let l = look(at('2026-10-03T00:00:00Z'), ledger);
+    expect(keys(l)).toEqual([]);
+    ledger = l.ledger;
+    expect(look(at('2026-10-03T00:59:00Z'), ledger).events).toEqual([]);
+    // 9:00 PM on Oct 2: 12 hours.
+    l = look(at('2026-10-03T01:00:00Z'), ledger);
+    expect(given(l).map((g) => [g.key, g.dueAt, g.facts])).toEqual([['totals-mismatch 1', '2026-10-03T01:00:00.000Z', { kind: 'totals-mismatch', time: 1, difference: -4_210, day: '2026-10-02', again: false }]]);
+    ledger = l.ledger;
+    expect(keys(look(at('2026-10-04T00:00:00Z'), ledger))).toEqual(['totals-mismatch 1 again 2026-10-03']);
+  });
+
+  it('10.4 A47 a gap that closes before 12 hours is never told', () => {
+    const ledger = look(at('2026-10-02T20:00:00Z'), started(b)).ledger;
+    const closed = look(world(b, '2026-10-02T23:00:00Z', { mismatchSince: null }), ledger);
+    expect(closed.events).toEqual([]);
+    expect(keys(look(world(b, '2026-10-03T13:00:00Z', { mismatchSince: null }), closed.ledger))).toEqual([]);
+  });
+
+  it('10.4 A47 a gap that closes and opens again counts its 12 hours from when it opened again', () => {
+    const ledger = look(at('2026-10-02T20:00:00Z'), started(b)).ledger;
+    const again = (now: string) => at(now, { mismatchSince: '2026-10-02T22:00:00.000Z' });
+    expect(keys(look(again('2026-10-03T01:00:00Z'), ledger))).toEqual([]);
+    expect(given(look(again('2026-10-03T10:00:00Z'), ledger)).map((g) => [g.key, g.dueAt])).toEqual([['totals-mismatch 1', '2026-10-03T10:00:00.000Z']]);
+  });
+
+  it('10.4 A47 the hours are a setting', () => {
+    const b3 = book({ settings: { totalsMismatchAlertHours: 3 } });
+    const off3: BankBalances = { ...BANK_OK(b3), savings: 1 };
+    const ledger = started(b3);
+    expect(keys(look(world(b3, '2026-10-02T15:59:00Z', { bank: off3, mismatchSince: SINCE }), ledger))).toEqual([]);
+    expect(keys(look(world(b3, '2026-10-02T16:00:00Z', { bank: off3, mismatchSince: SINCE }), ledger))).toEqual(['totals-mismatch 1']);
+  });
+
+  it('10.4 10.9 A47 the server down over the 12 hours: told when it is back, due at the 12 hours', () => {
+    const l = look(at('2026-10-03T13:00:00Z'), started(b));
+    expect(given(l).map((g) => [g.key, g.dueAt])).toEqual([['totals-mismatch 1', '2026-10-03T01:00:00.000Z']]);
+  });
+
+  it('10.4 A47 the timer wakes at the 12 hours', () => {
+    // 8:30 PM on Oct 2, after the evening: the 12 hours come first, at 9:00 PM.
+    const ledger = look(at('2026-10-03T00:30:00Z'), started(b)).ledger;
+    expect(nextDueIn(at('2026-10-03T00:30:00Z'), ledger)).toBe(30 * 60_000);
+    // Once told, nothing to wake for but the evening.
+    const told = look(at('2026-10-03T01:00:00Z'), ledger).ledger;
+    expect(nextDueIn(at('2026-10-03T01:00:00Z'), told)).toBe(23 * 3_600_000);
+  });
+
+  it('10.4 A47 no gap known (null) is never told, even with balances that differ', () => {
+    expect(keys(look(at('2026-10-04T13:00:00Z', { mismatchSince: null }), started(b)))).toEqual([]);
   });
 });
 

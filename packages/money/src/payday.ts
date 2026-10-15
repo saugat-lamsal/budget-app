@@ -1,5 +1,5 @@
 import { assertCents, assertPositiveCents, percentOf, subtractCents, type Cents } from './cents.js';
-import { addDays, daysBetween, type IsoDate } from './dates.js';
+import { addDays, assertIsoDate, dayOfWeek, daysBetween, lastDayOfMonth, monthOf, type IsoDate } from './dates.js';
 import type { Settings } from './settings.js';
 
 export interface PaycheckSplit {
@@ -47,10 +47,58 @@ export function splitPaycheck(amount: Cents, momReserveNow: Cents, settings: Spl
   };
 }
 
+export type PayScheduleSettings = Pick<Settings, 'paySchedule' | 'payScheduleDays'>;
+
+// Section 2 (A48): twice a month, the 15th and the last day of the month;
+// a Saturday or Sunday moves to the Friday before.
+function onAWeekday(date: IsoDate): IsoDate {
+  const day = dayOfWeek(date);
+  return day === 6 ? addDays(date, -1) : day === 0 ? addDays(date, -2) : date;
+}
+
+function nextMonth(month: string): string {
+  const [year = 0, m = 0] = month.split('-').map(Number);
+  return m === 12 ? `${year + 1}-01` : `${year}-${String(m + 1).padStart(2, '0')}`;
+}
+
+// The twice-a-month paydays in order, from the month before `date` on.
+function* twiceAMonthFrom(date: IsoDate): Generator<IsoDate> {
+  const [year = 0, m = 0] = monthOf(date).split('-').map(Number);
+  let month = m === 1 ? `${year - 1}-12` : `${year}-${String(m - 1).padStart(2, '0')}`;
+  for (;;) {
+    yield onAWeekday(`${month}-15`);
+    yield onAWeekday(lastDayOfMonth(month));
+    month = nextMonth(month);
+  }
+}
+
+// The paydays after the last paycheck, in order, without end. Every so many
+// days: the last paycheck plus that many days at a time. Twice a month: the
+// scheduled paydays after the one nearest the last paycheck (halfway
+// between two counts as the earlier, a late paycheck), so a paycheck a few
+// days early or late does not move the next one.
+export function* paydaysAfter(lastPaycheckDate: IsoDate, schedule: number | PayScheduleSettings): Generator<IsoDate> {
+  assertIsoDate(lastPaycheckDate, 'last paycheck date');
+  const { paySchedule, payScheduleDays } = typeof schedule === 'number' ? { paySchedule: 'every-n-days', payScheduleDays: schedule } : schedule;
+  if (paySchedule === 'every-n-days') {
+    for (let payday = addDays(lastPaycheckDate, payScheduleDays); ; payday = addDays(payday, payScheduleDays)) yield payday;
+  }
+  const scheduled = twiceAMonthFrom(lastPaycheckDate);
+  let before = scheduled.next().value as IsoDate;
+  let after = scheduled.next().value as IsoDate;
+  while (daysBetween(lastPaycheckDate, after) < 0) [before, after] = [after, scheduled.next().value as IsoDate];
+  // before is the last scheduled payday before the paycheck, after the first on or after it.
+  if (daysBetween(before, lastPaycheckDate) > daysBetween(lastPaycheckDate, after)) after = scheduled.next().value as IsoDate;
+  for (;;) {
+    yield after;
+    after = scheduled.next().value as IsoDate;
+  }
+}
+
 // 11.2: the next payday from the pay schedule, counted from the last
 // paycheck, and the days to it from today. Once it has passed with no
 // paycheck the days go negative instead of jumping ahead (B35).
-export function nextPayday(lastPaycheckDate: IsoDate, payScheduleDays: number, today: IsoDate): { readonly nextPayday: IsoDate; readonly daysToPayday: number } {
-  const next = addDays(lastPaycheckDate, payScheduleDays);
+export function nextPayday(lastPaycheckDate: IsoDate, schedule: number | PayScheduleSettings, today: IsoDate): { readonly nextPayday: IsoDate; readonly daysToPayday: number } {
+  const next = paydaysAfter(lastPaycheckDate, schedule).next().value as IsoDate;
   return { nextPayday: next, daysToPayday: daysBetween(today, next) };
 }

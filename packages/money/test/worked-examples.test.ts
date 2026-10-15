@@ -757,6 +757,18 @@ const examples: Record<number, () => Record<string, Cents>> = {
       'old card debt': day('2026-10-16')['debt'] ?? -1,
     };
   },
+
+  42: () => {
+    const twice = { paySchedule: 'twice-a-month', payScheduleDays: 14 } as const;
+    expect(nextPayday('2026-10-15', twice, '2026-10-16')).toEqual({ nextPayday: '2026-10-30', daysToPayday: 14 });
+    expect(nextPayday('2026-10-29', twice, '2026-10-29').nextPayday).toBe('2026-11-13');
+    const share = (paySchedule: 'twice-a-month' | 'every-n-days') => {
+      const book = openTestBook({ date: '2026-10-15', lastPaycheckDate: '2026-10-15', oldCardDebt: 234_567, settings: { paySchedule, oldCardPromoEndDate: '2027-01-10' } });
+      const countdown = payoffCountdown(book, '2026-10-16');
+      return countdown.on ? countdown.perPayday : -1;
+    };
+    return { 'twice a month share': share('twice-a-month'), 'every fourteen days share': share('every-n-days') };
+  },
 };
 
 describe('worked examples (worked-examples.txt)', () => {

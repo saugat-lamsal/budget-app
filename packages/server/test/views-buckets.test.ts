@@ -100,8 +100,9 @@ describe('0.5 the daily check, shown on Buckets too', () => {
 
   it('0.5 12.3 when they do not, it says by how much (the bank side plus in transit, minus the app side)', () => {
     const book = openTestBook({ pots: { savings: 100_000 } });
-    expect(view(book, { bank: { checking: 98_766, savings: 0, everydayCard: 0 } }).check).toEqual({ state: 'does-not-match', difference: -1_234 });
-    expect(view(book, { bank: { checking: 100_001, savings: 0, everydayCard: 0 } }).check).toEqual({ state: 'does-not-match', difference: 1 });
+    expect(view(book, { bank: { checking: 98_766, savings: 0, everydayCard: 0 } }).check).toEqual({ state: 'does-not-match', difference: -1_234, catchingUp: false });
+    expect(view(book, { bank: { checking: 100_001, savings: 0, everydayCard: 0 } }).check).toEqual({ state: 'does-not-match', difference: 1, catchingUp: false });
+    expect(view(book, { bank: { checking: 100_001, savings: 0, everydayCard: 0 }, catchingUp: true }).check).toEqual({ state: 'does-not-match', difference: 1, catchingUp: true });
   });
 
   it('12.5 money on its way between accounts is not a mismatch', () => {
