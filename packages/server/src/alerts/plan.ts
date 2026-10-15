@@ -1,4 +1,4 @@
-import { addDays, bucketLevel, cardDue, cardNotices, type BankBalances, type Book, type CardStatement, type IsoDate } from '@budget-app/money';
+import { addDays, bucketLevel, cardDue, cardNotices, payoffCountdown, type BankBalances, type Book, type CardStatement, type IsoDate } from '@budget-app/money';
 import { ReplayFailed } from '../history/history.js';
 import { instantIn, timeIn, todayIn } from '../history/today.js';
 import { alertRecord, type AlertFacts, type AlertRecord, type LastingKind } from './alerts.js';
@@ -27,7 +27,9 @@ import { alertRecord, type AlertFacts, type AlertRecord, type LastingKind } from
 //   back (10.6, once), the totals not matching the bank (10.4) and the bank
 //   wanting a new login (10.5) when they start, and the bank not read for the
 //   hours of the setting (10.7, A38), due at the moment the last good read
-//   became that old. Made only when it gives or clears something.
+//   became that old, and a paycheck counted since the last look (10.14, A49,
+//   once per pay period). Made only when it gives or clears something, or
+//   notes the pay period of a history kept before the payday alert.
 // Quiet hours (10.8, A35) and the lock screen (10.10, A39) are about sending:
 // the alerts are kept at the moment they come due all the same (keeper.ts).
 
@@ -46,6 +48,10 @@ export interface AlertsEvent {
   // Lasting alerts that stopped being true (10.4, 10.5, 10.7): told again only
   // after this.
   readonly cleared: readonly LastingKind[];
+  // 10.14: the newest pay period known after this event, when it changed: at
+  // the start, with a payday alert, or noted in a history kept before the
+  // payday alert. Left out otherwise (and in every event kept before).
+  readonly payPeriod?: number;
 }
 
 // A lasting alert (10.4, 10.5, 10.7): whether it is told and still true, how
@@ -67,6 +73,10 @@ export interface AlertLedger {
   // Take-backs already there at the start: no alert for them.
   readonly known: ReadonlySet<string>;
   readonly lasting: Readonly<Record<LastingKind, LastingState>>;
+  // 10.14: the newest pay period the alerts know of (told, or there when they
+  // started); a paycheck that begins a newer one is told. Null in a history
+  // kept before the payday alert, until its first look notes it.
+  readonly payPeriod: number | null;
 }
 
 const OFF: LastingState = { on: false, times: 0, lastDay: null, about: null };
@@ -77,6 +87,7 @@ export const NO_ALERTS: AlertLedger = {
   given: new Set(),
   known: new Set(),
   lasting: { 'totals-mismatch': OFF, 'bank-login': OFF, 'bank-not-read': OFF },
+  payPeriod: null,
 };
 
 // What is known at the moment the server looks.
@@ -138,19 +149,27 @@ export function applyAlerts(ledger: AlertLedger, event: AlertsEvent): AlertLedge
     if (!lasting[kind].on) throw new ReplayFailed(`${kind} was cleared without being on`);
     lasting[kind] = { ...lasting[kind], on: false, about: null };
   }
+  // 10.14: a payday alert only for a pay period newer than the one known,
+  // given with it; the pay period known only ever moves on.
+  for (const alert of event.given) {
+    const f = alert.facts;
+    if (f.kind === 'payday' && (ledger.payPeriod === null || event.payPeriod !== f.period)) throw new ReplayFailed(`the alert "${alert.key}" is out of turn`);
+  }
+  if (event.payPeriod !== undefined && ledger.payPeriod !== null && event.payPeriod <= ledger.payPeriod) throw new ReplayFailed(`the pay period ${event.payPeriod} is not newer than ${ledger.payPeriod}`);
+  const payPeriod = event.payPeriod ?? ledger.payPeriod;
   const check = event.check;
   switch (check.kind) {
     case 'start':
       if (ledger.started) throw new ReplayFailed('alerts started twice');
-      return { ...ledger, started: true, nextEvening: check.eveningsFrom, given, known: new Set(check.known), lasting };
+      return { ...ledger, started: true, nextEvening: check.eveningsFrom, given, known: new Set(check.known), lasting, payPeriod };
     case 'evening': {
       const first = check.from ?? check.date;
       if (!ledger.started || first !== ledger.nextEvening || check.date < first) throw new ReplayFailed(`the evening of ${check.date} is out of turn (next is ${ledger.nextEvening ?? 'none'})`);
-      return { ...ledger, nextEvening: addDays(check.date, 1), given, lasting };
+      return { ...ledger, nextEvening: addDays(check.date, 1), given, lasting, payPeriod };
     }
     case 'change':
       if (!ledger.started) throw new ReplayFailed('alerts given before they started');
-      return { ...ledger, given, lasting };
+      return { ...ledger, given, lasting, payPeriod };
   }
 }
 
@@ -169,7 +188,8 @@ export function nextAlertsEvent(world: AlertWorld, ledger: AlertLedger): AlertsE
     const known = world.book
       .changeLog()
       .flatMap((line) => (line.kind === 'bank-took-back' ? [line.id] : []));
-    return { at, check: { kind: 'start', eveningsFrom, known }, given: [], cleared: [] };
+    // 10.14: the pay period of this moment is known; only a newer one is told.
+    return { at, check: { kind: 'start', eveningsFrom, known }, given: [], cleared: [], payPeriod: world.book.period().number };
   }
   const from = ledger.nextEvening;
   if (from !== null && eveningAt(world, from).getTime() <= world.now.getTime()) {
@@ -322,7 +342,21 @@ export function stillTrueNow(world: AlertWorld, ledger: AlertLedger, f: AlertFac
       return true;
     case 'bank-permission':
       return permissionStillTrue(world, f);
+    // 10.14: its pay period still lasts.
+    case 'payday':
+      return f.period === book.period().number;
   }
+}
+
+// 10.14: the paycheck that began the pay period now: what is still to move
+// into the savings account (3.8, as Payday shows it), and the old card's share
+// this payday (9.5, as Home shows it).
+function paydayFacts(world: AlertWorld): AlertFacts {
+  const { book } = world;
+  const transfer = world.bank === null ? null : book.savingsTransfer(world.bank.savings);
+  const countdown = payoffCountdown(book, todayIn(world.zone, world.now));
+  const { number: period, startDate: date } = book.period();
+  return { kind: 'payday', period, date, toSavings: transfer?.stillToMove ?? null, extraInSavings: transfer?.extraInSavings ?? 0, oldCard: countdown.on ? countdown.perPayday : null };
 }
 
 function changeEvent(world: AlertWorld, ledger: AlertLedger, at: string): AlertsEvent | null {
@@ -372,6 +406,13 @@ function changeEvent(world: AlertWorld, ledger: AlertLedger, at: string): Alerts
       give({ kind: 'bank-not-read', time: notRead.times + 1, hours, lastRead: world.lastRead, lastReadLocal: timeIn(world.zone, new Date(world.lastRead)) }, new Date(due).toISOString());
     }
   }
-  if (given.length === 0 && cleared.length === 0) return null;
-  return { at, check: { kind: 'change' }, given, cleared };
+  // 10.14: a paycheck counted since the last look, once per pay period; in a
+  // history kept before the payday alert, the pay period now is only noted.
+  let payPeriod: number | undefined;
+  if (ledger.payPeriod === null || period > ledger.payPeriod) {
+    payPeriod = period;
+    if (ledger.payPeriod !== null) give(paydayFacts(world));
+  }
+  if (given.length === 0 && cleared.length === 0 && payPeriod === undefined) return null;
+  return { at, check: { kind: 'change' }, given, cleared, ...(payPeriod === undefined ? {} : { payPeriod }) };
 }

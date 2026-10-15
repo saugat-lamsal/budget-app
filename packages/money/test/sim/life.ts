@@ -142,7 +142,11 @@ export type ExpectedAlert =
   | { readonly kind: 'bank-took-back'; readonly id: string; readonly date: IsoDate; readonly description: string; readonly amount: Cents }
   | { readonly kind: 'daily-review'; readonly waiting: number }
   | { readonly kind: 'card-reminder'; readonly card: Card; readonly dueDate: IsoDate; readonly daysBefore: number; readonly minimumPayment: Cents; readonly statementBalance: Cents | null }
-  | { readonly kind: 'card-overdue'; readonly card: Card; readonly dueDate: IsoDate; readonly minimumPayment: Cents };
+  | { readonly kind: 'card-overdue'; readonly card: Card; readonly dueDate: IsoDate; readonly minimumPayment: Cents }
+  // 10.14: once per paycheck, when it is counted: what is still to move to
+  // savings (3.8) and the old card's share (9.5; this life never enters a
+  // promo end date, so none).
+  | { readonly kind: 'payday'; readonly period: number; readonly date: IsoDate; readonly toSavings: Cents; readonly extraInSavings: Cents; readonly oldCard: null };
 
 // Phase 5: the day as the real server lives it, in order, each step with the
 // alerts due right after it: setup day itself; a part of the bank's activity
@@ -473,6 +477,10 @@ class Life {
   // Purchases the person sorted by hand to one bucket, which they may re-sort.
   readonly #handSorted: { readonly id: string; to: 'needs' | 'wants' }[] = [];
   readonly #alertsGiven = new Set<string>();
+  // 10.14: the paychecks counted by the last event point, and the transfers
+  // the bank showed as something else that the person has not marked yet (5.6).
+  #paychecksTold = 0;
+  readonly #notMarkedYet = new Set<string>();
   // Phase 5: today's steps as the real server lives them, how far the feed
   // was at the last one, how many answers today, whether the evening's review
   // has begun, the statements that closed today, and each card's latest.
@@ -932,6 +940,10 @@ class Life {
     }
     this.#lastPaycheckDate = date;
     this.#paychecksSeen++;
+    // 10.14: a paycheck from review (6.1) or from setting the paycheck rule
+    // (13.2) was counted by an answer, whose step is already made: the payday
+    // alert is due at it. One the bank sent is told at the next sync's step.
+    if (fromReview) this.#paydayAtTheAnswer();
     this.#periodSplit = this.#settings.split;
     this.#stats.paychecks++;
     const month = date.slice(0, 7);
@@ -1300,6 +1312,7 @@ class Life {
   #markAsTransfer(txn: Purchase | SavingsWithdrawal | Deposit, other: OwnAccount): void {
     const r = this.#random;
     const before = this.#book.pots();
+    this.#notMarkedYet.add(txn.id);
     const outcome = this.#receive(txn);
     const item = this.#book.reviewItems().find((i) => i.id === txn.id);
     const reason = txn.kind === 'deposit' ? 'deposit' : txn.kind === 'savings-withdrawal' ? 'from-savings' : 'no-rule';
@@ -1314,6 +1327,7 @@ class Life {
       this.#expectRefused(() => this.#book.sort(txn.id, { transfer: wrong }, this.#date), this.#book.pots(), txn.id, `marking ${txn.id} as a transfer with ${wrong} (5.6)`);
     }
     this.#book.sort(txn.id, { transfer: other }, this.#date);
+    this.#notMarkedYet.delete(txn.id);
     this.#note(`mark ${txn.id} as a transfer with ${other}`);
     this.#expectChange(before, {}, '5.6 a transfer between your accounts changes no bucket', txn.id);
     if (this.#book.reviewItems().some((i) => i.id === txn.id)) throw new CheckFailed('5.6 a marked transfer leaves review', txn.id);
@@ -2546,7 +2560,30 @@ class Life {
       throw new CheckFailed('10.1 and 10.2 low and empty alerts', `due ${JSON.stringify(due)}, given ${JSON.stringify(given)}, with needs ${pots.needs} and wants ${pots.wants} after starting at ${JSON.stringify(started)}`);
     }
     if (this.#tookBack.length > 0) throw new CheckFailed('10.6 the take-back alert', `no alert for ${JSON.stringify(this.#tookBack)}`);
+    // 10.14: a paycheck counted since the last point, once; setup day is not one.
+    if (this.#paychecksSeen > this.#paychecksTold) given.push(this.#paydayAlert());
+    this.#paychecksTold = this.#paychecksSeen;
     return given;
+  }
+
+  #paydayAtTheAnswer(): void {
+    const last = this.#steps.at(-1);
+    if (last?.kind !== 'answer') throw new CheckFailed('10.14 the payday alert', `a paycheck from review with no answer step before it (${last?.kind ?? 'none'})`);
+    this.#steps[this.#steps.length - 1] = { ...last, alerts: [...last.alerts, this.#paydayAlert()] };
+    this.#paychecksTold = this.#paychecksSeen;
+  }
+
+  // 10.14 with 3.8, worked out here: the savings bucket and the mom reserve
+  // should be in the savings account; money on its way there counts as moved
+  // (B46), once the book knows it is a transfer (one the bank showed as
+  // spending counts only once the person has marked it, 5.6); anything over
+  // is shown on its own.
+  #paydayAlert(): ExpectedAlert {
+    if (this.#settings.oldCardPromoEndDate !== null) throw new CheckFailed('10.14 the payday alert', 'this life has no payoff countdown to work out');
+    const pots = this.#book.pots();
+    const onItsWay = this.#bank.halvesShowing().reduce((sum, h) => sum + (h.kind === 'transfer-sent' && h.to === 'savings' && !this.#notMarkedYet.has(h.id) ? h.amount : 0), 0);
+    const gap = pots.savings + pots.momReserve - (this.#bank.posted.savings + onItsWay);
+    return { kind: 'payday', period: this.#paychecksSeen, date: this.#lastPaycheckDate, toSavings: Math.max(0, gap), extraInSavings: Math.max(0, -gap), oldCard: null };
   }
 
   // The evening, at the daily review time: the daily review only when

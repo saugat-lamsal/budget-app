@@ -273,8 +273,8 @@ export async function throughTheServer(seed: number, years: number, way: Way): P
     }
     return hm >= from && hm < to ? instantIn(zone, date, to) : null;
   };
-  // B201: a tap opens the screen an alert is about: Review for the daily review, the bucket's own list for low and empty, Home for the rest.
-  const screenOf = (f: AlertFacts): string => (f.kind === 'daily-review' ? '/review' : f.kind === 'low-bucket' || f.kind === 'empty-bucket' ? `/buckets/${f.bucket}` : '/home');
+  // B201: a tap opens the screen an alert is about: Review for the daily review, the bucket's own list for low and empty, Payday for the payday alert (10.14), Home for the rest.
+  const screenOf = (f: AlertFacts): string => (f.kind === 'daily-review' ? '/review' : f.kind === 'low-bucket' || f.kind === 'empty-bucket' ? `/buckets/${f.bucket}` : f.kind === 'payday' ? '/payday' : '/home');
   // B185: "Was due 2:30 AM." (his answer, Oct 11: not "Due" again), with the day when it was another day; nothing when sent in the minute it came due.
   const dueWordsOf = (dueAt: string, shownAt: string): string | null => {
     const due = timeIn(zone, new Date(dueAt));
