@@ -787,6 +787,13 @@ A47. ANSWERED Oct 14 ("can we do option A"; "Okay, I want to add the
      Section 2, syncing: also as soon as Plaid says it has something new
            (a webhook); the 60-minute timer stays.
      The exact rulebook text is shown to him before it is committed.
+     WEBHOOKS BUILT Oct 15 (branch webhooks-and-payday): POST /plaid/webhook,
+     every call checked by Plaid's signature (jose 6.2.12, added WAITING ON
+     HIS OK: Plaid's own advice is a vetted JWT library), a sync after each
+     one that says something new, the 60-minute timer kept. Section 2's sync
+     line and 34d in the rulebook (draft 23) WAITING ON HIS OK. His existing
+     connection gets the address with one call on the machine, at his word,
+     after the deploy (docs/phase-7-connection-day.txt). B236 to B240.
      His OK to the text, Oct 14 ("I am okay with both"), with one change
      from the note above: besides transfers, a pending payment to a person
      and money leaving savings are put back too (the books count them once
@@ -816,6 +823,10 @@ A49. ANSWERED Oct 14 ("yes lets do that"): a payday alert. When a paycheck is
      counted, he is told the amount to move to savings (3.8) and, with the
      payoff countdown on, the amount for the old card this payday (9.5).
      At once, quiet hours apply (10.8).
+     BUILT Oct 15 (branch webhooks-and-payday) as rule 10.14, with the text
+     he wrote in his handoff (shown to him Oct 14). He was away all day, so
+     the text went in the rulebook (draft 23, 10.14 and 34c) WAITING ON HIS
+     OK before the pull request is merged. B233 to B235.
 
 A50. ADDED Oct 14 on Claude's recommendation (his to strike): (a) before
      every deploy, the new image rebuilds the real books from the backup on
@@ -2717,3 +2728,70 @@ B231. Oct 14: the second gap, the other way round. Every pending checking
       it the books matched to the cent. The bank side counted them nowhere
       (not pending any more, not in the balance yet), so it came out high by
       their sum. This will happen most days things post. His fix: A47.
+
+B233. The payday alert (10.14) is once per paycheck: keyed by the pay period
+      the paycheck began, and given at the first look after it is counted
+      (the sync that brought it, "this is my paycheck" in review, or setting
+      the paycheck rule while it waited). Two paychecks counted before one
+      look: one alert, for the newer. A paycheck taken back (4.10) keeps its
+      pay period, so nothing more is told. Its amounts are what Payday and
+      Home show at that moment: what is still to move to savings (3.8, money
+      on its way counting as moved), the extra when the account holds more,
+      and the old card's share as the payoff countdown says then (9.5). With
+      the bank not readable, it says to open Payday once the bank can be read.
+
+B234. A history kept before the payday alert existed (his real books): the
+      first look after the deploy notes the pay period then and tells
+      nothing, so a paycheck counted before the deploy never gets a late
+      payday alert. The next paycheck is told.
+
+B235. Words, lock screen and app (10.10): the title is "Payday". With
+      amounts: "Move $1,234.56 to savings. Old card: $600.00 this payday."
+      ("Nothing to move to savings." or "... it holds $X more than it
+      should." when nothing is to move; "Nothing is owed on the old card."
+      when the countdown is on and nothing is owed). Without: "Open Payday to
+      see what to move to savings and pay on the old card." A tap opens
+      Payday. Of payday alerts that waited for the phone, only the newest goes
+      while its pay period lasts (10.9).
+
+B236. Webhooks are a trigger only (A47): the app syncs and reads from the
+      bank itself; nothing in a webhook is taken as money. What syncs:
+      TRANSACTIONS SYNC_UPDATES_AVAILABLE; ITEM ERROR, LOGIN_REPAIRED,
+      PENDING_DISCONNECT, PENDING_EXPIRATION, USER_PERMISSION_REVOKED,
+      USER_ACCOUNT_REVOKED, NEW_ACCOUNTS_AVAILABLE (the sync reads the login
+      state, 10.5, and /item/get's permission end date, 10.13); LIABILITIES
+      DEFAULT_UPDATE (new statements). WEBHOOK_UPDATE_ACKNOWLEDGED is noted in
+      the log. TRANSACTIONS' older codes (INITIAL_UPDATE and the rest) and any
+      other type do nothing: the app reads with /transactions/sync only.
+
+B237. A burst of webhooks makes one sync: the sync starts 2 seconds after the
+      first, so the rest of the burst is in it. Webhooks while a sync is on its
+      way make exactly one more after it. One that waits on the timer's sync
+      starts its own after it, so what Plaid has now is read. Never two syncs
+      at once (the books' lock).
+
+B238. What is refused, and how: no or a bad signature, too old (over 5
+      minutes) or made over a minute ahead of the server's clock, a body that
+      is not the one signed: 401. Another connection's webhook, or one before
+      there is a connection: 403. Plaid's key not to be had (Plaid out of
+      reach, or more than 10 unknown key ids asked about this hour): 503, so
+      Plaid tries again later. More than 30 calls a minute: 429. Not POST:
+      405; not JSON: 415; over 8 KB: 413. The same signed call again within
+      its 5 minutes: 200, and nothing more is done. Plaid stops sending after
+      24 hours of failures; the hourly sync goes on regardless.
+
+B239. Plaid's keys are kept by key id; one kept a day is asked for again, so
+      a key Plaid has since let expire is seen to be. A key id Plaid says it
+      never made is not asked about again for an hour.
+
+B240. Where webhooks go: a new connection's link key carries the hosted
+      address (https only; on this computer none, Plaid cannot reach it).
+      Logging in again (1.3) keeps the connection's own address. His existing
+      connection is pointed at it once, at his word, with
+      fly ssh console -C "node /app/serve/webhook-address.mjs": one
+      /item/webhook/update call on the same connection, nothing new made,
+      nothing read; refused unless the address is the hosted https one ending
+      in /plaid/webhook. Checked against Plaid's real test bank
+      (live/webhooks.live.ts): an unknown key id is Plaid's INVALID_INPUT
+      (INVALID_WEBHOOK_VERIFICATION_KEY_ID), and the address is taken for the
+      same connection.

@@ -33,9 +33,10 @@ export interface FakeTransactionInput {
 
 type Change = { readonly type: 'added' | 'modified'; readonly tx: PlaidTransaction } | { readonly type: 'removed'; readonly id: string; readonly account: string };
 
+// What beforeCall can make the bank answer instead: an error, or (A47) any other answer.
 interface FakeError {
   readonly status: number;
-  readonly body: { readonly error_type: string; readonly error_code: string; readonly error_message: string };
+  readonly body: { readonly error_type: string; readonly error_code: string; readonly error_message: string } | Readonly<Record<string, unknown>>;
 }
 
 export const dollars = (cents: Cents): number => Number((cents / 100).toFixed(2));

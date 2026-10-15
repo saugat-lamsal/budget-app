@@ -157,7 +157,9 @@ long). It replaces running everything before every commit:
 
 ## Status
 
-- Rulebook: draft 22 (section 34, Oct 14: the pay schedule, A48). Section 15 confirmed (a to j), section 17 changes
+- Rulebook: draft 23 (section 34c and 34d, Oct 15: the payday alert 10.14 and
+  the webhook sync line in section 2, both WAITING ON HIS OK; draft 22,
+  section 34, Oct 14: the pay schedule, A48). Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
   QUESTIONS.md part B now in the rules, section 20 his answers to the
@@ -1748,5 +1750,52 @@ long). It replaces running everything before every commit:
     difference began (HomeView safeToSpend.detail, Keeper #bankDetail,
     BankView.available). Breaks "[why]": 5 of 5, and 5 older ones pointed
     again, all caught.
-- Waiting on: his check of part B (the list at its top), and the items in
-  docs/later.txt marked DECIDE.
+- Webhooks and the payday alert, branch webhooks-and-payday (Oct 15, 2026),
+  one pull request, from handoff-webhooks-and-payday.md (not in git). He was
+  away all day: the rule texts and jose went in WAITING ON HIS OK (the PR
+  says so). Not deployed.
+  - Item 1, the payday alert (A49, rule 10.14): alerts/alerts.ts (kind
+    'payday', key "payday pay period N", words with and without amounts,
+    alertScreen /payday), alerts/plan.ts (the ledger's payPeriod, the event's
+    payPeriod; the start knows the pay period then; a history kept before it
+    notes its pay period at the first look and tells nothing, B234; stillTrueNow
+    while the pay period lasts). The simulator expects it at each paycheck with
+    its own arithmetic (life.ts #paydayAlert; a paycheck from an answer is due
+    at that answer's step). Found by the alert simulations, the simulator's own
+    mistakes, not the app's: a transfer the bank showed as spending counted as
+    on its way before it was marked (5.6), and a paycheck from an answer noted
+    one step late. Tests: payday-alert (plan, words, replay), payday-alert-timer
+    (quiet hours, the lock screen, a tap opens Payday), the alert simulations
+    (1 + 1 lives, then 8 more lives of restarts, seeds 1000 to 1007). Break-it
+    "[a49]": 20 of 20 caught (one break of a redundant check now makes a real
+    mistake; one that loops the alert check 100,000 times, writing each time,
+    is judged by payday-alert.test.ts alone: with the timer test in the same
+    file a worker reached 23 GB and was stopped).
+  - Item 2, Plaid's webhooks (A47): POST /plaid/webhook (http/webhook-path.ts
+    names it, so the demo loads no bank code), open without a login, before
+    the gate (login-guard and hosted list it). plaid/webhook.ts checks every
+    call (jose 6.2.12: alg exactly ES256, the key by kid from
+    /webhook_verification_key/get, kept a day, no good once expired_at passes,
+    at most 10 unknown kids an hour; iat within 5 minutes and not over a
+    minute ahead; SHA-256 of the exact body bytes, constant time).
+    sync/webhook-desk.ts (WebhookDesk): his item_id only, 30 calls a minute,
+    the same signed call again does nothing, a burst gathers 2 s into one
+    sync, calls during a sync make one more after it, one that waits on the
+    timer's sync (Keeper.syncOnItsWay) starts its own after. Actions:
+    webhookAction (B236). serveBooks makes it (Serving.webhooks; stop it with
+    the server). New link keys carry the hosted address (Keeper.webhookAddress,
+    https only); his connection gets it with fly ssh console -C "node
+    /app/serve/webhook-address.mjs" (bank-webhook.ts pointWebhooks), at his
+    word after the deploy (docs/phase-7-connection-day.txt). Client:
+    getWebhookVerificationKey, updateWebhook (ENDPOINTS). Tests:
+    plaid-webhook (signer: test/fake-plaid-webhooks.ts, a made-up key pair),
+    webhook-address, serving, live/webhooks.live.ts against the real test bank
+    (an unknown kid is INVALID_INPUT; the address is taken for the same
+    connection). The rehearsal server answered the new address (401, 405,
+    415). Break-it "[webhooks]": 42 of 42 caught, each by its own test file.
+  - Plaid's MCP build_guidance was read before the Plaid code changed; its
+    acceptance checklist was read only (nothing submitted, his rule).
+- Waiting on: his OK on rule 10.14, the section 2 sync line (34c, 34d) and
+  jose; then the deploy and the webhook command, at his word; A50c (the read
+  of both cards' statements, his OK at the time); his check of part B (the
+  list at its top), and the items in docs/later.txt marked DECIDE.

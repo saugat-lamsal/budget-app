@@ -135,3 +135,17 @@ EVERY DEPLOY FROM NOW ON (QUESTIONS.md A50a, Oct 14, 2026)
    says ok, fly logs shows the server listening and Litestream copying, and
    the restore check on the machine:
      fly ssh console -C "node /app/serve/restore-check.mjs"
+
+ONCE, AFTER THE DEPLOY THAT BRINGS PLAID'S WEBHOOKS (QUESTIONS.md A47)
+
+4. At his word: point his connection's webhooks at the app.
+     fly ssh console -C "node /app/serve/webhook-address.mjs"
+   One /item/webhook/update call on the same connection: nothing new is
+   made (it uses none of the 10), nothing is read. It prints "Plaid now
+   sends this connection's webhooks to
+   https://budget-app-x7q2.fly.dev/plaid/webhook."
+5. Watch fly logs for "webhook address confirmed by Plaid" (Plaid's
+   WEBHOOK_UPDATE_ACKNOWLEDGED, sent to the new address), then the first
+   real webhook ("webhook" with type TRANSACTIONS, code
+   SYNC_UPDATES_AVAILABLE) followed by "sync done". Any "webhook refused"
+   line says why. The hourly sync goes on as before either way.
