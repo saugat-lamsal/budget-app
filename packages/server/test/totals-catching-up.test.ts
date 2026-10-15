@@ -43,6 +43,16 @@ describe('10.4 A47 through the books: still catching up, then told after 12 hour
       expect(life.keeper.mismatchSince()).toBe('2026-10-02T13:00:00.000Z');
       expect(homeSays(life)).toBe('catching up -4210');
       expect(bucketsSay(life)).toBe('catching up -4210');
+      // Why it doesn't match (docs/later.txt 18): each account as the bank gave it, and when it began.
+      const home = life.keeper.home();
+      if (home.state !== 'tracking' || home.safeToSpend.shown || home.safeToSpend.why !== 'totals-do-not-match') throw new Error('no difference shown');
+      const detail = home.safeToSpend.detail;
+      expect(detail?.since).toBe('2026-10-02T09:00:00-04:00');
+      const checking = detail?.accounts.find((a) => a.account === 'checking');
+      const posted = 300_000 - 4_210;
+      expect(checking).toEqual({ account: 'checking', posted, available: posted, counted: posted });
+      expect(detail?.accounts.map((a) => a.account)).toEqual(['checking', 'savings', 'everyday-card']);
+      expect(detail?.accounts.find((a) => a.account === 'everyday-card')?.available).toBeNull();
       life.keeper.checkAlerts();
       expect(mismatchKeys(life)).toEqual([]);
       // The timer wakes at 9:00 PM at the latest (the evening is first, at 8:00 PM).

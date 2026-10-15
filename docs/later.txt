@@ -132,6 +132,10 @@ IDEAS ADDED OCT 14
     when the gap started. Then he can see which account is off without
     anyone reading the server. Each sync's balances kept in a small table on
     the server for it (never in the log).
+    BUILT Oct 14 (simpler than planned): Home's "See the numbers" sheet
+    shows each account as the bank last gave it (posted, available, what
+    the check counts) and when the difference began. No table of past
+    balances: the latest read is enough for the sheet.
 
 19. Small, with the next session. The rehearsal's connect card wording
     (item 16).

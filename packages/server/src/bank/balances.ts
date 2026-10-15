@@ -35,6 +35,8 @@ export interface BankView {
   // (the posted balance when the bank gives no available one); the
   // everyday card's posted balance.
   readonly counted: BankBalances;
+  // The available balances of checking and savings as the bank gave them; null when it gave none.
+  readonly available: { readonly checking: Cents | null; readonly savings: Cents | null };
   readonly pendingCharges: readonly PendingCharge[];
   // Counted, less pending charges: what the self-check compares (12.1).
   readonly withPending: BankBalances;
@@ -68,10 +70,14 @@ export function bankView(accounts: readonly StoredAccount[], items: ReadonlyMap<
       if (item.kind === 'purchase') pendingCharges.push({ account: role, amount: item.amountCents });
     }
     // 12.1 (A47): checking and savings from the available balance, when the bank gives one.
-    const counted = (role: 'checking' | 'savings'): Cents => {
+    const availableOf = (role: 'checking' | 'savings'): Cents | null => {
       const available = accounts.find((a) => a.role === role)?.raw.balances.available ?? null;
+      return available === null ? null : centsFromPlaid(available, `the ${role} available balance`);
+    };
+    const counted = (role: 'checking' | 'savings'): Cents => {
+      const available = availableOf(role);
       if (available === null) return posted(role);
-      return addCents(centsFromPlaid(available, `the ${role} available balance`), ...(pendingOut.get(role) ?? []));
+      return addCents(available, ...(pendingOut.get(role) ?? []));
     };
     const balances: BankBalances = { checking: posted('checking'), savings: posted('savings'), everydayCard: posted('everyday-card') };
     const countedBalances: BankBalances = { checking: counted('checking'), savings: counted('savings'), everydayCard: balances.everydayCard };
@@ -82,6 +88,7 @@ export function bankView(accounts: readonly StoredAccount[], items: ReadonlyMap<
       view: {
         posted: balances,
         counted: countedBalances,
+        available: { checking: availableOf('checking'), savings: availableOf('savings') },
         pendingCharges,
         withPending: withPendingCharges(countedBalances, pendingCharges),
         oldCardPosted,

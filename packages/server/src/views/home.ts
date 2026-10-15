@@ -31,6 +31,24 @@ export interface HomeInput {
   // 10.4 (A47): the difference with the bank is younger than the setting's
   // hours, so the bank is still catching up. False when not known.
   readonly catchingUp?: boolean;
+  // docs/later.txt 18, "why it doesn't match": each account as the bank
+  // shows it, and when the difference began. Null when not known (the demo).
+  readonly bankDetail?: BankDetail | null;
+}
+
+// Each account as the bank gave it: posted, available (null when the bank
+// gave none), and what the daily check counts for it (12.1). And when the
+// difference began, as a time with its offset in his home time zone.
+export interface BankDetail {
+  readonly accounts: readonly BankAccountFigures[];
+  readonly since: string | null;
+}
+
+export interface BankAccountFigures {
+  readonly account: 'checking' | 'savings' | 'everyday-card';
+  readonly posted: Cents;
+  readonly available: Cents | null;
+  readonly counted: Cents;
 }
 
 export interface CheckedAt {
@@ -70,7 +88,7 @@ export type SafeToSpendView =
   // the self-check is shown instead (12.3, B37).
   // 10.4 (A47): catchingUp while the difference is younger than the
   // setting's hours: the screen says the bank is still catching up.
-  | { readonly shown: false; readonly why: 'totals-do-not-match'; readonly check: SelfCheck; readonly catchingUp: boolean }
+  | { readonly shown: false; readonly why: 'totals-do-not-match'; readonly check: SelfCheck; readonly catchingUp: boolean; readonly detail: BankDetail | null }
   // The bank could not be read, so today's number cannot be checked. The
   // last one that was checked is shown greyed, with when (B82).
   | { readonly shown: false; readonly why: 'bank-not-read'; readonly lastChecked: LastChecked | null };
@@ -133,7 +151,7 @@ export function homeView(input: HomeInput): HomeView {
   else {
     // 0.5: only a number the self-check backs up is shown.
     const checked = book.checkedSafeToSpend(today, bank);
-    safeToSpend = checked.ok ? { shown: true, amount: checked.safeToSpend.amount } : { shown: false, why: 'totals-do-not-match', check: book.selfCheck(bank), catchingUp: input.catchingUp ?? false };
+    safeToSpend = checked.ok ? { shown: true, amount: checked.safeToSpend.amount } : { shown: false, why: 'totals-do-not-match', check: book.selfCheck(bank), catchingUp: input.catchingUp ?? false, detail: input.bankDetail ?? null };
   }
 
   const cards = input.statements.flatMap((statement) => cardDue(today, statement, book.cardPayments(statement.card), settings) ?? []);

@@ -236,6 +236,13 @@ describe.each(ENGINES)('Home in %s', (_name, engine) => {
     await page.getByTestId('see-check').click();
     await expect.poll(() => page.getByTestId('check-sheet').isVisible()).toBe(true);
     expect(await centsAt(page, 'check-bank')).toBe(check.bankSide);
+    // Why it doesn't match: each account as the made-up bank gave it, and when it began.
+    expect(await centsAt(page, 'check-checking-posted')).toBe(bank.checking + 4_210);
+    expect(await centsAt(page, 'check-checking-available')).toBe(bank.checking);
+    expect(await centsAt(page, 'check-checking-counted')).toBe(bank.checking);
+    expect(await centsAt(page, 'check-everyday-card-counted')).toBe(bank.everydayCard);
+    expect(await page.getByTestId('check-everyday-card-available').count()).toBe(0);
+    expect(await textAt(page, 'check-since')).toMatch(/^The difference began .*9:41 AM\.$/);
     await page.context().close();
   });
 

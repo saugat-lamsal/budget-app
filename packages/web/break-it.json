@@ -79,7 +79,7 @@
   {
     "section": "home",
     "file": "packages/server/src/views/home.ts",
-    "find": "safeToSpend = checked.ok ? { shown: true, amount: checked.safeToSpend.amount } : { shown: false, why: 'totals-do-not-match', check: book.selfCheck(bank), catchingUp: input.catchingUp ?? false };",
+    "find": "safeToSpend = checked.ok ? { shown: true, amount: checked.safeToSpend.amount } : { shown: false, why: 'totals-do-not-match', check: book.selfCheck(bank), catchingUp: input.catchingUp ?? false, detail: input.bankDetail ?? null };",
     "replace": "safeToSpend = { shown: true, amount: plain.amount };",
     "why": "0.5 show safe to spend even when the totals do not match"
   },
@@ -2280,5 +2280,19 @@
     "find": "    case 'bankNotReadAlertHours':\n    case 'totalsMismatchAlertHours':\n",
     "replace": "    case 'bankNotReadAlertHours':\n",
     "why": "[a47] 13.5 the change log cannot write the wait"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "                  {a.available !== null && (",
+    "replace": "                  {(",
+    "why": "[why] the card shows an available balance it does not have"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "          {detail.since !== null && (",
+    "replace": "          {false && (",
+    "why": "[why] the sheet does not say when the difference began"
   }
 ]

@@ -1661,8 +1661,8 @@
   {
     "section": "history",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "if (connection === null || connection.needsLogin) return null;",
-    "replace": "if (connection === null) return null;",
+    "find": "    if (connection === null || connection.needsLogin) return null;\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    return view.ok ? view.view.withPending : null;",
+    "replace": "    if (connection === null) return null;\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    return view.ok ? view.view.withPending : null;",
     "why": "[keeper] 0.5 read the bank while it wants a new login"
   },
   {
@@ -4125,15 +4125,15 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      return addCents(centsFromPlaid(available, `the ${role} available balance`), ...(pendingOut.get(role) ?? []));",
+    "find": "      return addCents(available, ...(pendingOut.get(role) ?? []));",
     "replace": "      return posted(role);",
     "why": "[a47] 12.1 B231 checking and savings from the bank's current balance, not the available one"
   },
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      return addCents(centsFromPlaid(available, `the ${role} available balance`), ...(pendingOut.get(role) ?? []));",
-    "replace": "      return centsFromPlaid(available, `the ${role} available balance`);",
+    "find": "      return addCents(available, ...(pendingOut.get(role) ?? []));",
+    "replace": "      return available;",
     "why": "[a47] 12.1 the available balance without putting back what is pending"
   },
   {
@@ -4237,8 +4237,8 @@
   {
     "section": "history",
     "file": "packages/server/src/views/home.ts",
-    "find": "catchingUp: input.catchingUp ?? false };",
-    "replace": "catchingUp: false };",
+    "find": "catchingUp: input.catchingUp ?? false, detail: input.bankDetail ?? null };",
+    "replace": "catchingUp: false, detail: input.bankDetail ?? null };",
     "why": "[a47] 10.4 Home never says the bank is still catching up"
   },
   {
@@ -4254,5 +4254,26 @@
     "find": "    if (item.pendingTransactionId !== null && item.amount > 0 && reading.kind === 'purchase') {",
     "replace": "    if (item.pendingTransactionId !== null && item.amount > 0) {",
     "why": "[a50b] 4.6 B226 a posted card payment or payment to a person linked to a pending purchase stays that purchase"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "since: since === null ? null : timeIn(this.timeZone(), new Date(since)),",
+    "replace": "since,",
+    "why": "[why] the difference's start in UTC, not his home time zone"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/views/home.ts",
+    "find": "catchingUp: input.catchingUp ?? false, detail: input.bankDetail ?? null };",
+    "replace": "catchingUp: input.catchingUp ?? false, detail: null };",
+    "why": "[why] Home's sheet never gets the figures behind a difference"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "available: { checking: availableOf('checking'), savings: availableOf('savings') },",
+    "replace": "available: { checking: null, savings: null },",
+    "why": "[why] the available balances never reach the sheet"
   }
 ]

@@ -345,6 +345,17 @@ function story(s: Story): HomeInput {
     lastChecked: s.bankNotRead === true ? { amount: checkedThisMorning, at: LAST_CHECKED_AT } : null,
     // Step 3: when the made-up bank was last read: this morning.
     catchingUp: s.catchingUp ?? false,
+    bankDetail:
+      s.bankOff === undefined || s.bankOff === 0
+        ? null
+        : {
+            accounts: [
+              { account: 'checking', posted: subtractCents(bank.checking, s.bankOff), available: bank.checking, counted: bank.checking },
+              { account: 'savings', posted: bank.savings, available: bank.savings, counted: bank.savings },
+              { account: 'everyday-card', posted: bank.everydayCard, available: null, counted: bank.everydayCard },
+            ],
+            since: timeIn(book.settings().homeTimeZone, new Date(`${s.today ?? DEMO_TODAY}T13:41:00Z`)),
+          },
     checkedAt: { at: s.bankNotRead === true ? LAST_CHECKED_AT : timeIn(book.settings().homeTimeZone, new Date(`${s.today ?? DEMO_TODAY}T13:41:00Z`)), timeZone: book.settings().homeTimeZone },
   };
 }

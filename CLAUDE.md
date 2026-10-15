@@ -1743,5 +1743,10 @@ long). It replaces running everything before every commit:
     its pending one. pending-posted-readings.test.ts. Break "[a50b]".
   - Item 9: the Bank screen and the connect question say a test-bank
     connection is free (bank-desk.ts connectQuestion).
+  - Item 6, "why it doesn't match": Home's check sheet shows each account
+    as the bank last gave it (posted, available, counted) and when the
+    difference began (HomeView safeToSpend.detail, Keeper #bankDetail,
+    BankView.available). Breaks "[why]": 5 of 5, and 5 older ones pointed
+    again, all caught.
 - Waiting on: his check of part B (the list at its top), and the items in
   docs/later.txt marked DECIDE.

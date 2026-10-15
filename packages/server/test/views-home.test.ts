@@ -149,6 +149,7 @@ describe('0.5 Home when the totals do not match the bank', () => {
       why: 'totals-do-not-match',
       check: { bankSide: 50_001, inTransit: 0, appSide: 50_000, difference: 1, ok: false },
       catchingUp: false,
+      detail: null,
     });
   });
 

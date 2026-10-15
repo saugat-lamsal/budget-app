@@ -35,7 +35,7 @@ import { activityView, type ActivityView } from '../views/activity.js';
 import type { BankRuleRequest, BankRuleResponse } from '../views/bank-rules.js';
 import { bucketsView, type BucketsView } from '../views/buckets.js';
 import type { ChoiceRequest, ChoiceResponse, MoveRequest, MoveResponse, RuleRequest, RuleResponse, SettingsRequest, SettingsResponse, SetupRequest, SetupResponse } from '../views/choice.js';
-import { homeView, type CheckedAt, type HomeView } from '../views/home.js';
+import { homeView, type BankDetail, type CheckedAt, type HomeView } from '../views/home.js';
 import { paydayView, type PaydayView } from '../views/payday.js';
 import { reviewView, type ReviewView } from '../views/review.js';
 import { settingsView, type SettingsView } from '../views/settings.js';
@@ -170,6 +170,25 @@ export class Keeper {
     if (!matches && since === null) saveGapSince(this.#db, this.lastRead() ?? this.#now().toISOString());
   }
 
+  // "Why it doesn't match" (docs/later.txt 18): each account as the bank
+  // last gave it, and when the difference began. Null when the bank cannot be read.
+  #bankDetail(): BankDetail | null {
+    const connection = readConnection(this.#db);
+    if (connection === null || connection.needsLogin) return null;
+    const view = bankView(readAccounts(this.#db), readItems(this.#db));
+    if (!view.ok) return null;
+    const v = view.view;
+    const since = readGapSince(this.#db);
+    return {
+      accounts: [
+        { account: 'checking', posted: v.posted.checking, available: v.available.checking, counted: v.withPending.checking },
+        { account: 'savings', posted: v.posted.savings, available: v.available.savings, counted: v.withPending.savings },
+        { account: 'everyday-card', posted: v.posted.everydayCard, available: null, counted: v.withPending.everydayCard },
+      ],
+      since: since === null ? null : timeIn(this.timeZone(), new Date(since)),
+    };
+  }
+
   // 10.4 (A47): when the totals stopped matching the bank; null while they match.
   mismatchSince(): string | null {
     return readGapSince(this.#db);
@@ -284,6 +303,7 @@ export class Keeper {
       lastChecked: readLastChecked(this.#db),
       checkedAt: this.#checkedAt(),
       catchingUp: this.#catchingUp(),
+      bankDetail: this.#bankDetail(),
     });
     // 0.5, B82: the last safe to spend the bank backed up, and when.
     if (view.state === 'tracking' && view.safeToSpend.shown) saveLastChecked(this.#db, { amount: view.safeToSpend.amount, at: timeIn(this.timeZone(), this.#now()) });
