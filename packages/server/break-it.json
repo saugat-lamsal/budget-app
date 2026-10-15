@@ -93,22 +93,22 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      pendingCharges.push({ account: role, amount: item.amountCents });",
+    "find": "      if (item.kind === 'purchase') pendingCharges.push({ account: role, amount: item.amountCents });",
     "replace": "      void role;",
     "why": "12.1 leave pending charges out of the bank side"
   },
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined) continue;",
-    "replace": "if (!item.pending || item.removed || item.replacedBy !== null || role === undefined) continue;",
+    "find": "      if (item.amountCents === null || item.amountCents <= 0) continue;\n      pendingOut.set(role, [...(pendingOut.get(role) ?? []), item.amountCents]);\n      if (item.kind === 'purchase')",
+    "replace": "      if (item.amountCents === null) continue;\n      if (item.amountCents > 0) pendingOut.set(role, [...(pendingOut.get(role) ?? []), item.amountCents]);\n      if (item.kind === 'purchase' || item.amountCents < 0)",
     "why": "B36 count pending money in and pending transfers in the bank side"
   },
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase'",
-    "replace": "if (!item.pending || item.replacedBy !== null || item.kind !== 'purchase'",
+    "find": "      if (!item.pending || item.removed || item.replacedBy !== null || role === undefined) continue;",
+    "replace": "      if (!item.pending || item.replacedBy !== null || role === undefined) continue;",
     "why": "4.6 keep counting a pending charge the bank removed"
   },
   {
@@ -324,8 +324,8 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined) continue;",
-    "replace": "      if (!item.pending || item.removed || item.replacedBy !== null || item.kind !== 'purchase' || role === undefined || role === 'savings') continue;",
+    "find": "      if (item.kind === 'purchase') pendingCharges.push({ account: role, amount: item.amountCents });",
+    "replace": "      if (item.kind === 'purchase' && role !== 'savings') pendingCharges.push({ account: role, amount: item.amountCents });",
     "why": "12.1 leave a charge pending on savings out of the bank side (A16)"
   },
   {
@@ -4093,5 +4093,75 @@
     "find": "    if (error instanceof PlaidError && error.errorCode !== 'ITEM_LOGIN_REQUIRED') return undefined;\n",
     "replace": "    if (error instanceof PlaidError && error.errorCode !== 'ITEM_LOGIN_REQUIRED') return null;\n",
     "why": "[a45] 10.13 the date kept is dropped when the bank cannot say it"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history-db.ts",
+    "find": "settings: { ...input.settings, paySchedule: 'every-n-days' } }",
+    "replace": "settings: { ...input.settings, paySchedule: 'twice-a-month' } }",
+    "why": "[a48] 0.6 a setup day saved before the pay schedule setting reads as twice a month"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history-db.ts",
+    "find": "        ? { kind: 'setup', input: savedSetup(payload as SetupInput) }",
+    "replace": "        ? { kind: 'setup', input: payload as SetupInput }",
+    "why": "[a48] 0.6 a setup day saved before the pay schedule setting does not open"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "paySchedule: (v) => ((PAY_SCHEDULES as readonly unknown[]).includes(v) ? (v as PaySchedule) : undefined),",
+    "replace": "paySchedule: (v) => (typeof v === 'string' ? (v as PaySchedule) : undefined),",
+    "why": "[a48] section 2 the desk takes any text as a pay schedule"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-view.ts",
+    "find": "nextPayday(answers.lastPaycheckDate, settings, today)",
+    "replace": "nextPayday(answers.lastPaycheckDate, settings.payScheduleDays, today)",
+    "why": "[a48] 11.2 Setup day's next payday ignores twice a month"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "      return addCents(centsFromPlaid(available, `the ${role} available balance`), ...(pendingOut.get(role) ?? []));",
+    "replace": "      return posted(role);",
+    "why": "[a47] 12.1 B231 checking and savings from the bank's current balance, not the available one"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "      return addCents(centsFromPlaid(available, `the ${role} available balance`), ...(pendingOut.get(role) ?? []));",
+    "replace": "      return centsFromPlaid(available, `the ${role} available balance`);",
+    "why": "[a47] 12.1 the available balance without putting back what is pending"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "      if (item.kind === 'purchase') pendingCharges.push({ account: role, amount: item.amountCents });",
+    "replace": "      pendingCharges.push({ account: role, amount: item.amountCents });",
+    "why": "[a47] 12.1 a pending transfer or payment to a person counted as a pending charge"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "      if (item.amountCents === null || item.amountCents <= 0) continue;\n      pendingOut.set",
+    "replace": "      if (item.amountCents === null) continue;\n      pendingOut.set",
+    "why": "[a47] 12.1 pending money in counted as if it were available"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "      if (available === null) return posted(role);",
+    "replace": "      if (available === null) return 0;",
+    "why": "[a47] 12.1 no available balance read as nothing"
+  },
+  {
+    "section": "setup",
+    "file": "packages/server/src/setup-history.ts",
+    "find": "posted: view.view.counted, oldCardBalance",
+    "replace": "posted: view.view.posted, oldCardBalance",
+    "why": "[a47] 14.1 12.1 setup day reads the bank's current balance while the daily check reads the available one"
   }
 ]

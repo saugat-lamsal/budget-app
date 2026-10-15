@@ -32,6 +32,18 @@ export function addDays(date: IsoDate, days: number): IsoDate {
   return new Date((dayNumber(date, 'date') + days) * MS_PER_DAY).toISOString().slice(0, 10);
 }
 
+// The day of the week: 0 Sunday, 1 Monday, ... 6 Saturday. Day 0 of the
+// count, Jan 1, 1970, was a Thursday.
+export function dayOfWeek(date: IsoDate): number {
+  return (((dayNumber(date, 'date') + 4) % 7) + 7) % 7;
+}
+
+// The last day of a month, as a date ("2027-02" gives "2027-02-28").
+export function lastDayOfMonth(month: string): IsoDate {
+  const [year = 0, m = 0] = month.split('-').map(Number);
+  return new Date(Date.UTC(year, m, 0)).toISOString().slice(0, 10);
+}
+
 // The calendar month of a date, as "YYYY-MM".
 export function monthOf(date: IsoDate): string {
   assertIsoDate(date);

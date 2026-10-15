@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 21)
+# Budget App Rulebook (draft 22)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -81,7 +81,14 @@ number so a test can point at it. Nothing gets coded until you approve this.
   always move to savings)
 - Old card promo end date: (you fill in)
 - Paycheck rule: how your pay shows up on the statement (set after first sync)
-- Pay schedule: every 14 days, counted from the last paycheck
+- Pay schedule: twice a month, on the 15th and on the last day of the
+  month; when that day is a Saturday or Sunday, the Friday before. The
+  other choice: every 14 days, counted from the last paycheck (the app
+  starts with this one; you pick on Settings). Twice a month, the next
+  payday is the one after the scheduled payday nearest the last paycheck
+  (halfway between two counts as the earlier), so a paycheck a few days
+  early or late does not move the next one. A change applies right away
+  (13.1).
 - Setup day looks back 10 days for transfers with only one side showing
   (14.2). You can change it on the Setup day screen.
 - Mom rule: her name as it appears on transfers (you enter it in the app)
@@ -715,3 +722,11 @@ b.  When the bank gives the date its permission to read your accounts runs
     out, Settings shows it, and you are told 7 days before (10.13, A45).
 c.  Connecting the bank, which account is which, and logging in to the
     bank again (1.1 to 1.3, QUESTIONS.md A46).
+
+
+## 34. Answers in Phase 7 (Oct 14, 2026)
+
+a.  The pay schedule can be twice a month: the 15th and the last day of
+    the month, the Friday before when that day is a Saturday or Sunday.
+    Every 14 days stays as the other choice. Days to payday (11.2) and the
+    payoff countdown (9.5) follow it (section 2, QUESTIONS.md A48).

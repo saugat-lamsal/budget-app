@@ -816,7 +816,7 @@ export class Book {
     assertIsoDate(today, 'today');
     return {
       amount: subtractCents(this.#totals.wants, this.#totals.unsortedOut),
-      ...nextPayday(this.#lastPaycheckDate, this.#settings.payScheduleDays, today),
+      ...nextPayday(this.#lastPaycheckDate, this.#settings, today),
     };
   }
 

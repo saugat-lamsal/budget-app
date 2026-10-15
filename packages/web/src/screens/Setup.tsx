@@ -475,7 +475,12 @@ function PaycheckStep({ view, sender }: { readonly view: SetupReadyView; readonl
       </Hero>
       <Card title="Your last paycheck" testId="paycheck">
         <ListRow title="Day it came in" detail={last === null ? 'Not entered yet' : dayWithYear(last.date)} onClick={() => setOpen(true)} testId="last-paycheck" />
-        <p className="card__note">Paydays are every {view.payScheduleDays} days, counted from your last paycheck, until the next one comes in. It can be today, not after.</p>
+        <p className="card__note">
+          {view.paySchedule === 'twice-a-month'
+            ? 'Paydays are twice a month, on the 15th and the last day of the month (the Friday before when that is a weekend), counted from your last paycheck, until the next one comes in.'
+            : `Paydays are every ${view.payScheduleDays} days, counted from your last paycheck, until the next one comes in.`}{' '}
+          It can be today, not after.
+        </p>
       </Card>
       {open && <DateSheet view={view} sender={sender} onClose={() => setOpen(false)} />}
     </>

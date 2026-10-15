@@ -32,6 +32,14 @@ FIXES FOUND ON CONNECTION DAY
    transfer between his accounts still pending; the alert waits until a
    gap has lasted 12 hours (a setting); Home says the bank is still
    catching up until then. Built in the next session with item 11.
+   PART BUILT Oct 14 (branch accuracy-and-webhooks): the bank side from the
+   available balance plus pending items the books count once posted
+   (12.1), Setup day reading the same, the made-up bank's lags (B230,
+   B231), worked example bank 16; and the setting (totalsMismatchAlertHours,
+   12, on Settings as "Totals do not match"). STILL TO DO: the 12-hour wait
+   itself (alerts/plan.ts, the gap's start kept in the database, nextDueIn),
+   and "still catching up" on Home and Buckets. The rulebook text for 12.1
+   and 10.4 waits on his OK (shown to him Oct 14).
 
 4. FIX if it comes back. The split paycheck (B228).
    His employer sent part of each paycheck to savings and part to checking;
@@ -134,6 +142,8 @@ IDEAS ADDED OCT 14
 21. NEXT (his call, Oct 14, QUESTIONS.md A48). The pay schedule as a
     setting: twice a month (the 15th and the last day, the Friday before a
     weekend), or every 14 days. His pay is twice a month.
+    BUILT Oct 14 (branch accuracy-and-webhooks, rulebook draft 22). After
+    the deploy he picks "Twice a month" on Settings, Pay schedule.
 
 22. NEXT (his yes, Oct 14, A49). A payday alert: the amount to move to
     savings, and the old card's share this payday.

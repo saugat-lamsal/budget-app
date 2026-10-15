@@ -5,6 +5,7 @@ import {
   FROM_NEXT_PAYCHECK,
   MOVABLE_POTS,
   MoneyError,
+  PAY_SCHEDULES,
   RULE_CHOICES,
   addCents,
   formatDollars,
@@ -16,6 +17,7 @@ import {
   type IsoDate,
   type LeftoverAnswer,
   type LeftoverChoice,
+  type PaySchedule,
   type PickTo,
   type Pot,
   type ResortDetail,
@@ -283,6 +285,7 @@ const SETTING_READERS: { readonly [K in keyof Settings]: (value: unknown) => Set
   },
   oldCardPromoEndDate: (v) => (v === null || (typeof v === 'string' && v.length <= 10) ? v : undefined),
   paycheckRule: textRule,
+  paySchedule: (v) => ((PAY_SCHEDULES as readonly unknown[]).includes(v) ? (v as PaySchedule) : undefined),
   payScheduleDays: whole,
   momRule: textRule,
   earlyPaycheckDays: whole,
@@ -295,6 +298,7 @@ const SETTING_READERS: { readonly [K in keyof Settings]: (value: unknown) => Set
     return typeof from === 'string' && from.length <= 5 && typeof to === 'string' && to.length <= 5 ? { from, to } : undefined;
   },
   bankNotReadAlertHours: whole,
+  totalsMismatchAlertHours: whole,
   amountsOnLockScreen: (v) => (typeof v === 'boolean' ? v : undefined),
   bankPermissionWarnDays: whole,
 };

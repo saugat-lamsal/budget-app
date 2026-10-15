@@ -796,6 +796,16 @@ A48. ANSWERED Oct 14 ("add the twice a month"): his pay comes twice a
      countdown (9.5) and Payday read it. A bank holiday can still move a
      payday by a day: the app shows it late until the money comes (B35).
      His pay now lands all in checking (his change, Oct 14).
+     BUILT Oct 14 (branch accuracy-and-webhooks; rulebook draft 22, section
+     2 and 34). One change to the wording he OK'd: the next payday is the
+     one after the scheduled payday NEAREST the last paycheck, not the first
+     one more than a week after it. In February the 15th and a last day
+     moved back to Friday can be 11 days apart (Feb 15 and Feb 26, 2027),
+     so "more than a week" would skip a payday when the 15th's pay came 4
+     or more days late. The app starts with every 14 days; he picks twice a
+     month on Settings, Pay schedule. A history saved before the setting
+     existed opens as every 14 days (as it then was). 3.7's 10 days still
+     let the shortest twice-a-month gap (11 days) through.
 
 A49. ANSWERED Oct 14 ("yes lets do that"): a payday alert. When a paycheck is
      counted, he is told the amount to move to savings (3.8) and, with the

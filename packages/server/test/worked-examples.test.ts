@@ -20,6 +20,7 @@ import { PlaidClient } from '../src/plaid/client.js';
 import { plaidKeysFromEnv } from '../src/plaid/sandbox-lock.js';
 import { setUpTracking, setupPreview } from '../src/setup-day.js';
 import { bankStatus } from '../src/status.js';
+import { bankView } from '../src/bank/balances.js';
 import { SyncTimer } from '../src/serve/sync-timer.js';
 import { syncBank } from '../src/sync/sync.js';
 import { FakeClock } from './fake-clock.js';
@@ -737,4 +738,30 @@ describe('worked examples: the alerts (Phase 5)', () => {
       life.done();
     }
   }, 60_000);
+});
+
+describe('worked examples: the bank side (Phase 7)', () => {
+  it('example 16, the bank side from the available balance (12.1, A47)', async () => {
+    const checks = checksOf(16);
+    const life = await lifeInAFile();
+    try {
+      setUpThroughTheDesk(life);
+      life.now = noonInNewYork('2026-10-02');
+      const fake = life.h.fake;
+      fake.addPosted({ id: 'grocer', account: ACCOUNT_IDS.checking, amount: 4_210, date: '2026-10-02', description: 'MADE UP GROCER' });
+      fake.notInCurrentYet(ACCOUNT_IDS.checking, 4_210);
+      fake.addPending({ id: 'cafe', account: ACCOUNT_IDS.checking, amount: 650, date: '2026-10-02', description: 'MADE UP CAFE' });
+      fake.addPending({ id: 'to-sav', account: ACCOUNT_IDS.checking, amount: 50_000, date: '2026-10-02', description: 'Online transfer to SAV 2222' });
+      await life.sync();
+      const checking = readAccounts(life.h.db).find((a) => a.role === 'checking');
+      expect(checking?.raw.balances.current).toBe(3000);
+      const view = bankView(readAccounts(life.h.db), readItems(life.h.db));
+      if (!view.ok) throw new Error(view.why);
+      expect(parseDollars(String(checking?.raw.balances.available?.toFixed(2)))).toBe(checks.get('available'));
+      expect(view.view.withPending.checking).toBe(checks.get('checking side'));
+      expect(view.view.posted.checking - 650).toBe(checks.get('old way'));
+    } finally {
+      life.done();
+    }
+  });
 });

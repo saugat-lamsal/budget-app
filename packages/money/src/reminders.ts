@@ -1,7 +1,8 @@
 import { addCents, assertCents, assertCentsAtLeastZero, type Cents } from './cents.js';
-import { addDays, assertIsoDate, daysBetween, type IsoDate } from './dates.js';
+import { assertIsoDate, daysBetween, type IsoDate } from './dates.js';
 import { MoneyError } from './errors.js';
 import type { Settings } from './settings.js';
+import { paydaysAfter } from './payday.js';
 
 // Rulebook section 9: what the card reminders say, and when. Sending them
 // to the phone is Phase 5; this only works out what is due on a given day.
@@ -140,12 +141,14 @@ export type PayoffCountdown =
 
 export function payoffCountdown(book: { settings(): Settings; oldCardDebt(): Cents; lastPaycheckDate(): IsoDate }, today: IsoDate): PayoffCountdown {
   assertIsoDate(today, 'today');
-  const { oldCardPromoEndDate: end, payScheduleDays: every } = book.settings();
+  const settings = book.settings();
+  const end = settings.oldCardPromoEndDate;
   if (end === null) return { on: false, reason: 'no-promo-end-date' };
   const owed = book.oldCardDebt();
   assertCents(owed, 'old card debt');
   let paydaysLeft = 0;
-  for (let payday = addDays(book.lastPaycheckDate(), every); daysBetween(payday, end) > 0; payday = addDays(payday, every)) {
+  for (const payday of paydaysAfter(book.lastPaycheckDate(), settings)) {
+    if (daysBetween(payday, end) <= 0) break;
     if (daysBetween(today, payday) > 0) paydaysLeft += 1;
   }
   let perPayday: Cents;

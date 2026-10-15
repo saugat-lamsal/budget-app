@@ -55,6 +55,13 @@ describe('14 the Setup day view', () => {
     expect(done.selfCheck).toEqual({ ok: true, bankSide: 130_000, inTransit: 5_000, appSide: 135_000, difference: 0 });
   });
 
+  it("11.2 section 2 A48 Setup day's next payday follows a twice-a-month schedule", () => {
+    const twice = { ...DEFAULT_SETTINGS, paySchedule: 'twice-a-month' as const };
+    const v = view({ lastPaycheckDate: '2026-09-30' }, { settings: twice });
+    expect(v.lastPaycheck).toMatchObject({ date: '2026-09-30', nextPayday: '2026-10-15', daysToPayday: 8 });
+    expect(v.paySchedule).toBe('twice-a-month');
+  });
+
   it('14.3 the key names exactly what is shown: the same answers give the same key, any change a new one', () => {
     const a = view({ lastPaycheckDate: '2026-10-02' });
     expect(view({ lastPaycheckDate: '2026-10-02' }).key).toBe(a.key);

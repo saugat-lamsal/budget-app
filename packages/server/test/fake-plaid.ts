@@ -62,6 +62,10 @@ export class FakePlaid {
   // Cursors handed out with has_more, and how many changes there were then.
   readonly #midPage = new Map<string, number>();
   #requestCount = 0;
+  readonly #heldBack: Change[] = [];
+  readonly #notInCurrent = new Map<string, Cents>();
+  readonly #availableHold = new Map<string, Cents>();
+  readonly #noAvailable = new Set<string>();
 
   constructor(accounts: readonly FakeAccountInput[]) {
     for (const input of accounts) this.accounts.set(input.id, { input, posted: input.posted });
@@ -69,11 +73,42 @@ export class FakePlaid {
 
   // ----- The bank -----
 
-  addPosted(input: FakeTransactionInput): PlaidTransaction {
+  // heldBack (B230): the bank's balance moves at once, but /transactions/sync
+  // sends the item only after sendHeldBack(), as the everyday card's balance
+  // took posted items a few hours before Plaid sent them.
+  addPosted(input: FakeTransactionInput, options: { heldBack?: boolean } = {}): PlaidTransaction {
     const tx = this.#transaction(input, false, null);
     this.#post(tx);
-    this.#change({ type: 'added', tx });
+    if (options.heldBack === true) this.#heldBack.push({ type: 'added', tx });
+    else this.#change({ type: 'added', tx });
     return tx;
+  }
+
+  sendHeldBack(): void {
+    for (const change of this.#heldBack.splice(0)) this.#change(change);
+  }
+
+  // B231: Bank of America's "current" balance leaves out posted items until
+  // the bank's overnight processing; its available balance does not (it is
+  // current less pending items and these). This much money out of the
+  // account is posted, sent by /transactions/sync, and not yet in current.
+  notInCurrentYet(accountId: string, cents: Cents): void {
+    this.#notInCurrent.set(accountId, (this.#notInCurrent.get(accountId) ?? 0) + cents);
+  }
+
+  overnightProcessing(): void {
+    this.#notInCurrent.clear();
+  }
+
+  // Some banks give no available balance; Plaid then sends null.
+  noAvailable(accountId: string): void {
+    this.#noAvailable.add(accountId);
+  }
+
+  // A deposit hold: the available balance is this much lower than the
+  // posted money allows, until it is released (0).
+  holdAvailable(accountId: string, cents: Cents): void {
+    this.#availableHold.set(accountId, cents);
   }
 
   addPending(input: FakeTransactionInput): PlaidTransaction {
@@ -257,14 +292,16 @@ export class FakePlaid {
 
   #accountList(): PlaidAccount[] {
     return [...this.accounts.values()].map(({ input, posted }) => {
-      const pendingOut = [...this.transactions.values()].filter((t) => t.account_id === input.id && t.pending).reduce((sum, t) => sum + Math.round(t.amount * 100), 0);
+      // Money in still pending is not available yet; only money going out is taken off.
+      const pendingOut = [...this.transactions.values()].filter((t) => t.account_id === input.id && t.pending && t.amount > 0).reduce((sum, t) => sum + Math.round(t.amount * 100), 0);
       const credit = input.kind === 'credit card';
-      const available = credit ? (input.limit === undefined ? null : input.limit - posted - pendingOut) : posted - pendingOut;
+      const available = credit ? (input.limit === undefined ? null : input.limit - posted - pendingOut) : posted - pendingOut - (this.#availableHold.get(input.id) ?? 0);
+      const current = credit ? posted : posted + (this.#notInCurrent.get(input.id) ?? 0);
       return {
         account_id: input.id,
         balances: {
-          available: available === null ? null : dollars(available),
-          current: dollars(posted),
+          available: available === null || this.#noAvailable.has(input.id) ? null : dollars(available),
+          current: dollars(current),
           iso_currency_code: 'USD',
           limit: input.limit === undefined ? null : dollars(input.limit),
           unofficial_currency_code: null,

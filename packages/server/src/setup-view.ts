@@ -101,7 +101,7 @@ export function setupView(input: SetupViewInput): SetupView {
     onItsWay.map((h) => h.id),
   ).startingMoney;
   const { assigned, leftToAssign } = checkAssignment(money, answers.assignment);
-  const lastPaycheck = answers.lastPaycheckDate === null ? null : { date: answers.lastPaycheckDate, ...nextPayday(answers.lastPaycheckDate, settings.payScheduleDays, today) };
+  const lastPaycheck = answers.lastPaycheckDate === null ? null : { date: answers.lastPaycheckDate, ...nextPayday(answers.lastPaycheckDate, settings, today) };
 
   const missing: SetupMissing[] = [];
   if (unansweredSuggestions > 0) missing.push('suggestions');
@@ -145,6 +145,7 @@ export function setupView(input: SetupViewInput): SetupView {
     inTransit: addCents(...onItsWay.map((h) => h.effect)),
     startingMoney: money,
     lastPaycheck,
+    paySchedule: settings.paySchedule,
     payScheduleDays: settings.payScheduleDays,
     assignment: answers.assignment,
     assigned,
