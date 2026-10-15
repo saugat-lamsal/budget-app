@@ -65,6 +65,18 @@ export const SETUP_SUGGEST: MadeUpBank = {
   ],
 };
 
+// B226: the same, with a payment to the everyday card still pending, worded
+// the way the bank words a pending payment ("PAYMENT TO ACCT"), unlike the
+// posted ones: no bank rule fits it, so it is read as a purchase, and Setup
+// day points it out with a rule for its wording.
+export const SETUP_PENDING_PAYMENT: MadeUpBank = {
+  ...SETUP_SUGGEST,
+  items: [
+    ...SETUP_SUGGEST.items,
+    { id: 'sp-card-pending', account: 'checking', amount: 6_000, date: '2026-10-08', description: 'PAYMENT TO ACCT #3333 ON 10/08 VIA WEB', pending: true, label: 'LOAN_PAYMENTS_CREDIT_CARD_PAYMENT' },
+  ],
+};
+
 // The everyday card owes more than checking and savings hold, so the
 // starting money is below zero (B43).
 export const SETUP_OWES_MORE: MadeUpBank = {

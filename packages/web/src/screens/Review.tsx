@@ -1,10 +1,10 @@
 import type { PickTo, ReviewDetail } from '@budget-app/money';
 import type { KeyedDetail, ReviewView } from '@budget-app/server/views';
 import { newDecisionId, type Load, type Reload } from '../app/api.js';
-import { Button, ButtonRow, Card, Decision, Hero, HeroCount, MadeUpPill, Money, Skeleton, StateMessage } from '../ui/blocks.js';
+import { Button, ButtonRow, Card, Decision, Hero, HeroCount, LinkButton, MadeUpPill, Money, Skeleton, StateMessage } from '../ui/blocks.js';
 import { longDate, shortDate } from '../ui/dates.js';
 import { ChoiceSheet, LeftoverDecision, LikelyPurchases, SaidNotice, askFor, subjectOfReview, useChoiceFlow, type Choose, type Kind, type Pending, type Target } from './choose.js';
-import { ACCOUNT_NAMES, changedWords, groupTitle, pickLabel, reasonText, titleOf } from './review-text.js';
+import { ACCOUNT_NAMES, changedWords, groupTitle, labeledText, pickLabel, reasonText, titleOf } from './review-text.js';
 
 // Review: everything waiting for him to decide, one tap each. Every choice
 // shown is one the money math offers for that kind of item (the server sends
@@ -222,6 +222,18 @@ function ItemCard({
         }
       >
         {item.type === 'money-in' && subject !== null && (subject.refund || subject.likely.length > 0) && <LikelyPurchases subject={subject} busy={busy} onChoose={onChoose} />}
+        {detail.labeled !== undefined && (
+          <>
+            <p className="decision__detail" data-testid="item-labeled">
+              <span>{labeledText(detail.labeled)}</span>
+            </p>
+            <ButtonRow>
+              <LinkButton href="/settings" variant="secondary" testId="item-labeled-settings">
+                Bank rules on Settings
+              </LinkButton>
+            </ButtonRow>
+          </>
+        )}
       </Decision>
     );
   }

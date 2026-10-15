@@ -2305,8 +2305,8 @@
   {
     "section": "sync",
     "file": "packages/server/src/views/review.ts",
-    "find": "    .map(keyed);",
-    "replace": "",
+    "find": "      return hint === undefined ? keyed(detail) : { ...keyed(detail), labeled: hint };",
+    "replace": "      return hint === undefined ? detail : { ...detail, labeled: hint };",
     "why": "[a31] Review sends no keys"
   },
   {
@@ -4709,5 +4709,103 @@
     "find": "    onItsWay: () => keeper.syncOnItsWay(),",
     "replace": "    onItsWay: () => null,",
     "why": "[webhooks] A47 npm run serve's webhooks take the timer's sync as their own"
+  },
+  {
+    "section": "bank-rules",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "    const misread = l.pending && readBankItemWithRule(l.account, l.amount, l.description, rules).reading.kind === 'purchase';",
+    "replace": "    const misread = readBankItemWithRule(l.account, l.amount, l.description, rules).reading.kind === 'purchase';",
+    "why": "[b226] a posted item is pointed out too"
+  },
+  {
+    "section": "bank-rules",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "    const misread = l.pending && readBankItemWithRule(l.account, l.amount, l.description, rules).reading.kind === 'purchase';",
+    "replace": "    const misread = l.pending;",
+    "why": "[b226] a pending item his rules read right is pointed out"
+  },
+  {
+    "section": "bank-rules",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "    const texts = newest === undefined ? sharedTexts(group.descriptions) : [wordingOf(newest.description)];",
+    "replace": "    const texts = sharedTexts(group.descriptions);",
+    "why": "[b226] the rule is for the whole description, not its wording"
+  },
+  {
+    "section": "bank-rules",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "    const newest = group.misread.toSorted((a, b) => daysBetween(a.date, b.date))[0];",
+    "replace": "    const newest = group.misread.toSorted((a, b) => daysBetween(b.date, a.date))[0];",
+    "why": "[b226] the oldest pending item named, not the newest"
+  },
+  {
+    "section": "bank-rules",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "        pending: newest === undefined ? null : { description: newest.description, amount: newest.amount, date: newest.date },",
+    "replace": "        pending: null,",
+    "why": "[b226] nothing is pointed out"
+  },
+  {
+    "section": "bank-rules",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "misread ? `wording ${wordingOf(l.description).toLowerCase()}` : unknown",
+    "replace": "misread ? `wording ${l.description.toLowerCase()}` : unknown",
+    "why": "[b226] two pending payments worded alike make two suggestions"
+  },
+  {
+    "section": "bank-rules",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "  const changing = /(^|\\s)\\S*[0-9#]/.exec(text);",
+    "replace": "  const changing = /(^|\\s)\\S*[0-9]/.exec(text);",
+    "why": "[b226] the wording stops at a digit but not at #"
+  },
+  {
+    "section": "bank-rules",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "  return words === '' ? text : words;",
+    "replace": "  return words;",
+    "why": "[b226] a description that starts with a number has no wording"
+  },
+  {
+    "section": "bank-rules",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "  const words = changing === null ? text : text.slice(0, changing.index).trim();",
+    "replace": "  const words = changing === null ? text : text.slice(0, changing.index).trim().replace(/\\s+/g, ' ');",
+    "why": "[b226] the wording loses the description's own spacing"
+  },
+  {
+    "section": "bank-rules",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "    if (meaning === null || !l.pending || readBankItemWithRule(l.account, l.amount, l.description, rules).reading.kind !== 'purchase') continue;",
+    "replace": "    if (meaning === null || readBankItemWithRule(l.account, l.amount, l.description, rules).reading.kind !== 'purchase') continue;",
+    "why": "[b226] Review: a posted item gets the hint"
+  },
+  {
+    "section": "bank-rules",
+    "file": "packages/server/src/bank-rules.ts",
+    "find": "    if (meaning === null || !l.pending || readBankItemWithRule(l.account, l.amount, l.description, rules).reading.kind !== 'purchase') continue;",
+    "replace": "    if (meaning === null || !l.pending) continue;",
+    "why": "[b226] Review: an item his rules read right gets the hint"
+  },
+  {
+    "section": "bank-rules",
+    "file": "packages/server/src/views/review.ts",
+    "find": "      const hint = detail.item.type === 'spending' && detail.pending ? input.labeled?.get(detail.item.id) : undefined;",
+    "replace": "      const hint = undefined as BankRuleHint | undefined;",
+    "why": "[b226] Review never shows the hint"
+  },
+  {
+    "section": "bank-rules",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    return reviewView({ today: this.today(), book: this.book(), madeUpData: false, labeled });",
+    "replace": "    return reviewView({ today: this.today(), book: this.book(), madeUpData: false });",
+    "why": "[b226] the real server leaves the hints out of Review"
+  },
+  {
+    "section": "bank-rules",
+    "file": "packages/server/src/setup-view.ts",
+    "find": "matches: s.matches, status, ruleId: added ? answer.ruleId : null, pending: s.pending };",
+    "replace": "matches: s.matches, status, ruleId: added ? answer.ruleId : null, pending: null };",
+    "why": "[b226] Setup day leaves out the pending item it was made for"
   }
 ]

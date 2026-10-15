@@ -1,5 +1,5 @@
 import type { AccountId, Cents, PickTo, ReviewDetail, SortedNow, SpendingSort, TransferOutcome } from '@budget-app/money';
-import type { ChoiceOf, Done } from '@budget-app/server/views';
+import type { BankRuleHint, ChoiceOf, Done } from '@budget-app/server/views';
 import { moneyText } from '../ui/money-format.js';
 import { POT_NAMES } from '../ui/names.js';
 
@@ -190,3 +190,13 @@ export function doneText(label: string, kind: 'money-in' | 'spending' | 'leftove
   if (done.sticks === false) text += ' The text only matches how it looked after it posted, so a new one may still wait while it is pending.';
   return text;
 }
+
+// B226: a pending item the bank labels as a transfer or a payment to a
+// person, which no bank rule reads as one: the rule for its wording.
+export function labeledText(h: BankRuleHint): string {
+  const rule = `A bank rule for “${h.contains}” on ${ACCOUNT_PHRASES[h.account]} reads the next ones right: add it on Settings, Bank rules.`;
+  if (h.means === 'payment-to-person') return `Your bank labels this a payment to a person, but no bank rule reads it as one, so it counts as a purchase. ${rule}`;
+  return `Your bank labels this a transfer between your accounts (a card payment is one), but no bank rule reads it as one, so it counts as spending while it is pending. ${rule} This one you can mark “Transfer between my accounts” once it posts.`;
+}
+
+const ACCOUNT_PHRASES: Readonly<Record<AccountId, string>> = { checking: 'checking', savings: 'savings', 'everyday-card': 'the everyday card', 'old-card': 'the old card' };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bankRuleDoneText, matchesText, meaningsOn, movesOf, moveText, othersOf, overlapText, statusText, suggestionText } from '../src/screens/bank-rules-text.js';
+import { bankRuleDoneText, matchesText, meaningsOn, movesOf, moveText, othersOf, overlapText, pendingMisreadText, statusText, suggestionText } from '../src/screens/bank-rules-text.js';
 
 // The words for bank rules (rulebook section 2, 20a, 24c). Every count comes
 // from the server; these only name things. Made-up names.
@@ -15,11 +15,18 @@ describe('section 2 20a 24c the words for bank rules', () => {
   });
 
   it('20a a suggestion in a sentence, and one whose other account is to pick', () => {
-    const base = { id: 's', label: 'X', matches: matches(1), status: 'open' as const, ruleId: null };
+    const base = { id: 's', label: 'X', matches: matches(1), status: 'open' as const, ruleId: null, pending: null };
     expect(suggestionText({ ...base, account: 'checking', contains: 'Online payment to CRD 4444', means: 'transfer', other: null })).toBe(
       '“Online payment to CRD 4444” on checking: a transfer between checking and another of your accounts. Pick which.',
     );
     expect(suggestionText({ ...base, account: 'everyday-card', contains: 'LATE FEE', means: 'card-fee', other: null })).toBe('“LATE FEE” on the everyday card: a card fee');
+  });
+
+  it('B226 the pending item a suggestion was made for, read as a purchase now, in words', () => {
+    expect(pendingMisreadText({ description: 'PAYMENT TO ACCT #3333 ON 10/08 VIA WEB', amount: 6_000, date: '2026-10-08' })).toBe(
+      'Pending now, and read as a purchase until a rule fits it: “PAYMENT TO ACCT #3333 ON 10/08 VIA WEB”, $60.00, Thu, Oct 8. This rule reads its wording, so the next one is read right too.',
+    );
+    expect(pendingMisreadText({ description: 'X', amount: 123_456_78, date: '2026-12-31' })).toContain('$123,456.78');
   });
 
   it('20a 24c how many it matches: zero, one, many; in the history or lately', () => {

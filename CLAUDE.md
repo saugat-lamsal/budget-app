@@ -1795,6 +1795,17 @@ long). It replaces running everything before every commit:
     415). Break-it "[webhooks]": 42 of 42 caught, each by its own test file.
   - Plaid's MCP build_guidance was read before the Plaid code changed; its
     acceptance checklist was read only (nothing submitted, his rule).
+  - Item 4, B226 (B241): a pending item the bank labels as a card payment, a
+    transfer or a payment to a person, read as a purchase by his bank rules.
+    bank-rules.ts: suggestBankRules points it out (BankRuleSuggestion and
+    SuggestionLine pending), with a rule for its wording (wordingOf);
+    misreadHints for Review (Keeper.review, KeyedDetail labeled). Screens:
+    Setup day's suggestion card (suggestion-pending, pendingMisreadText) and
+    Review's card (item-labeled, labeledText, a link to Settings). Demo life
+    setup-pending-payment. The made-up bank can carry labels
+    (FakeTransactionInput label). Tests: pending-misread, bank-rules-text,
+    review-text, browser bank-rules and review (Chromium). Break-it "[b226]":
+    18 of 18 caught, and "[a31] Review sends no keys" pointed again, caught.
 - Waiting on: his OK on rule 10.14, the section 2 sync line (34c, 34d) and
   jose; then the deploy and the webhook command, at his word; A50c (the read
   of both cards' statements, his OK at the time); his check of part B (the

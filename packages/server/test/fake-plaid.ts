@@ -29,6 +29,8 @@ export interface FakeTransactionInput {
   readonly description: string;
   readonly authorizedDate?: string;
   readonly currency?: string;
+  // B226: Plaid's detailed label (personal_finance_category); none when left out.
+  readonly label?: string;
 }
 
 type Change = { readonly type: 'added' | 'modified'; readonly tx: PlaidTransaction } | { readonly type: 'removed'; readonly id: string; readonly account: string };
@@ -344,7 +346,7 @@ export class FakePlaid {
       original_description: input.description,
       pending,
       pending_transaction_id: pendingId,
-      personal_finance_category: null,
+      personal_finance_category: input.label === undefined ? null : { primary: input.label.split('_').slice(0, 2).join('_'), detailed: input.label },
       transaction_id: input.id,
     };
   }

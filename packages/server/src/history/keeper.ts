@@ -11,7 +11,7 @@ import { Auth } from '../auth/auth.js';
 import { answerAuth, loginViewOf } from '../auth/http.js';
 import { BankRulesDesk } from '../bank-rules-desk.js';
 import { bankLinesIn, bankRuleLogIn, saveBankRuleLine } from '../bank-rules-db.js';
-import { RECENT_DAYS } from '../bank-rules.js';
+import { RECENT_DAYS, bankLinesOf, misreadHints } from '../bank-rules.js';
 import { bankView } from '../bank/balances.js';
 import { cardStatement } from '../bank/statements.js';
 import { canonical, refuse, ChoiceDesk } from '../choices.js';
@@ -323,7 +323,9 @@ export class Keeper {
   }
 
   review(): ReviewView {
-    return reviewView({ today: this.today(), book: this.book(), madeUpData: false });
+    // B226: pending items the bank labels otherwise than his bank rules read them.
+    const labeled = misreadHints(bankLinesOf({ accounts: readAccounts(this.#db), items: readItems(this.#db) }), readBankRules(this.#db));
+    return reviewView({ today: this.today(), book: this.book(), madeUpData: false, labeled });
   }
 
   activity(pot: Pot): ActivityView {

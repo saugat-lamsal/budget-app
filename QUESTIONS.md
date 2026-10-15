@@ -2691,6 +2691,7 @@ B226. Found on setup day: a card payment still pending was read as a
       a test first: setup day should point out a pending item the bank
       labels as a card payment or a transfer that is being read as a
       purchase, and offer a rule for its wording.
+      BUILT Oct 15 (branch webhooks-and-payday): B241.
 
 B227. The suggestions covered the leaving side of each card payment but not
       the arriving side ("PAYMENT FROM CHK nnnn" on each card, money in): the
@@ -2795,3 +2796,21 @@ B240. Where webhooks go: a new connection's link key carries the hosted
       (live/webhooks.live.ts): an unknown key id is Plaid's INVALID_INPUT
       (INVALID_WEBHOOK_VERIFICATION_KEY_ID), and the address is taken for the
       same connection.
+
+B241. B226 as built. A pending item the bank labels as a card payment or a
+      transfer (or a payment to a person), which his bank rules read as a
+      purchase now, is pointed out on Setup day: its suggestion is for the
+      item's wording (the words before the first one holding a digit or #,
+      with its own spacing: "PAYMENT TO ACCT"; all of it when it starts with
+      a number), and the card says "Pending now, and read as a purchase until
+      a rule fits it" with its description, amount and day. Two pending ones
+      worded alike make one suggestion, naming the newest. Its other account
+      is the one the history shows the other side on, and a pending payment
+      usually has none yet, so he picks it ("Change it first"), as for any
+      such suggestion. In Review, such an item says what the bank's label is,
+      names the bank rule for its wording, and links to Settings, Bank rules
+      (the rule is added there, as any other; it is not added from Review);
+      this one he marks "Transfer between my accounts" once it posts (5.6:
+      not while pending). Posted items, and items his rules already read
+      right, are as before. Demo life setup-pending-payment.
+

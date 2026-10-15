@@ -17,7 +17,7 @@ import { checkBankRules, type BankRule } from '../bank/reading.js';
 import { timeIn } from '../history/today.js';
 import type { HomeInput } from '../views/home.js';
 import type { MadeUpBank } from './made-up-bank.js';
-import { SETUP_OWES_MORE, SETUP_PENDING, SETUP_SUGGEST } from './setup-lives.js';
+import { SETUP_OWES_MORE, SETUP_PENDING, SETUP_PENDING_PAYMENT, SETUP_SUGGEST } from './setup-lives.js';
 
 // Made-up lives for the demo (npm run demo) and the browser tests. Every
 // name, amount, and date here is invented. Each one is played through the
@@ -411,6 +411,7 @@ export const SETUP_SCENARIOS: readonly DemoScenario[] = [
   { name: 'setup-day', title: 'Setup day: charges still pending, a card payment on its way, bank rules already set', input: notSetUp, setup: () => SETUP_PENDING },
   { name: 'setup-suggest', title: 'Setup day from the start: bank rules suggested from the bank’s labels', input: notSetUp, setup: () => SETUP_SUGGEST },
   { name: 'setup-owes-more', title: 'Setup day: the everyday card owes more than checking and savings hold', input: notSetUp, setup: () => SETUP_OWES_MORE },
+  { name: 'setup-pending-payment', title: 'Setup day: a card payment still pending, worded so no rule fits it (B226)', input: notSetUp, setup: () => SETUP_PENDING_PAYMENT },
 ];
 
 export function demoScenario(name: string): DemoScenario | undefined {

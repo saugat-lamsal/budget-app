@@ -8,7 +8,7 @@ import { dayWithYear, shortDate } from '../ui/dates.js';
 import { Icon } from '../ui/Icon.js';
 import { POT_NAMES } from '../ui/names.js';
 import { BankRuleRows, BankRuleSheet, Matches, type Editing, type Send } from './bank-rules.js';
-import { statusText, suggestionText } from './bank-rules-text.js';
+import { pendingMisreadText, statusText, suggestionText } from './bank-rules-text.js';
 import { paydayText } from './home-text.js';
 import { ACCOUNT_NAMES, answerText, bankRuleText, effectLead, halfText, lookBackText, missingText, readDays, stepCount } from './setup-text.js';
 
@@ -337,6 +337,11 @@ function SuggestionDecision({ s, sender, onChange }: { readonly s: SuggestionLin
         )
       }
     >
+      {s.pending !== null && (
+        <p className="decision__detail" data-testid="suggestion-pending">
+          <span>{pendingMisreadText(s.pending)}</span>
+        </p>
+      )}
       <Matches matches={s.matches} recentDays={null} testId="suggestion-matches" />
       {toPick && !added && (
         <p className="decision__detail" data-testid="suggestion-pick">

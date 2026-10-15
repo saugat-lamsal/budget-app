@@ -1,4 +1,4 @@
-import type { AccountId } from '@budget-app/money';
+import { formatDollars, type AccountId } from '@budget-app/money';
 import type { BankMeaning, BankRule, BankRuleChange, BankRulePreview, MatchExample, RuleMatches, SuggestionLine } from '@budget-app/server/views';
 import { shortDate } from '../ui/dates.js';
 import { ACCOUNT_NAMES, accountPhrase, bankRuleText } from './setup-text.js';
@@ -64,6 +64,11 @@ export function overlapText(m: RuleMatches): string | null {
   if (m.readFirstByEarlier > 0) parts.push(`${m.readFirstByEarlier === 1 ? '1 of them is' : `${m.readFirstByEarlier} of them are`} read first by a bank rule before it, so this one changes nothing for ${m.readFirstByEarlier === 1 ? 'it' : 'them'}.`);
   if (m.takenFromLater > 0) parts.push(`It would read ${items(m.takenFromLater)} that a bank rule after it reads now.`);
   return parts.length === 0 ? null : parts.join(' ');
+}
+
+// B226: the pending item a suggestion was made for, read as a purchase now.
+export function pendingMisreadText(p: NonNullable<SuggestionLine['pending']>): string {
+  return `Pending now, and read as a purchase until a rule fits it: “${p.description}”, ${formatDollars(p.amount)}, ${shortDate(p.date)}. This rule reads its wording, so the next one is read right too.`;
 }
 
 export function exampleDetail(e: MatchExample): string {

@@ -11,7 +11,9 @@ call first), HIS (a step only he can do), LATER (an idea for after Phase 7).
 
 FIXES FOUND ON CONNECTION DAY
 
-1. FIX. Setup day and pending card payments (QUESTIONS.md B226).
+1. BUILT Oct 15 (branch webhooks-and-payday; QUESTIONS.md B241): Setup day
+   points it out with a rule for its wording, and Review says it too.
+   Was: FIX. Setup day and pending card payments (QUESTIONS.md B226).
    A card payment still pending is worded differently by the bank
    ("PAYMENT TO ACCT #nnnn ON mm/dd VIA WEB") from the posted one ("Mobile
    Banking payment to CRD nnnn Confirmation#"). No bank rule fit it, so it

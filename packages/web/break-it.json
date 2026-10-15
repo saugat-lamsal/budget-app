@@ -2294,5 +2294,33 @@
     "find": "          {detail.since !== null && (",
     "replace": "          {false && (",
     "why": "[why] the sheet does not say when the difference began"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/review-text.ts",
+    "find": "  if (h.means === 'payment-to-person') return",
+    "replace": "  if (h.means === 'transfer') return",
+    "why": "[b226] a transfer said to be a payment to a person"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/bank-rules-text.ts",
+    "find": "“${p.description}”, ${formatDollars(p.amount)}, ${shortDate(p.date)}.",
+    "replace": "“${p.description}”, ${shortDate(p.date)}.",
+    "why": "[b226] the pending item's amount left out of the words"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Setup.tsx",
+    "find": "      {s.pending !== null && (",
+    "replace": "      {false && (",
+    "why": "[b226] Setup day never shows the pending item it was made for"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Review.tsx",
+    "find": "        {detail.labeled !== undefined && (",
+    "replace": "        {false && (",
+    "why": "[b226] Review never shows the hint"
   }
 ]
