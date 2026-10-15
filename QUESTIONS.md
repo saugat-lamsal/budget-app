@@ -788,6 +788,20 @@ A47. ANSWERED Oct 14 ("can we do option A"; "Okay, I want to add the
            (a webhook); the 60-minute timer stays.
      The exact rulebook text is shown to him before it is committed.
 
+A48. ANSWERED Oct 14 ("add the twice a month"): his pay comes twice a
+     month, on the 15th and on the last day of the month, on the Friday
+     before when that is a Saturday or Sunday (every paycheck since July
+     says so). The pay schedule becomes a setting with that choice; every
+     14 days stays as the other choice. Days to payday (11.2), the payoff
+     countdown (9.5) and Payday read it. A bank holiday can still move a
+     payday by a day: the app shows it late until the money comes (B35).
+     His pay now lands all in checking (his change, Oct 14).
+
+A49. OPEN, recommended (Oct 14): a payday alert. When a paycheck is
+     counted, he is told the amount to move to savings (3.8) and, with the
+     payoff countdown on, the amount for the old card this payday (9.5).
+     At once, quiet hours apply (10.8). Ask him before building it.
+
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
