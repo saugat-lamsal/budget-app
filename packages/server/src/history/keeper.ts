@@ -36,7 +36,7 @@ import { activityView, type ActivityView } from '../views/activity.js';
 import type { BankRuleRequest, BankRuleResponse } from '../views/bank-rules.js';
 import { bucketsView, type BucketsView } from '../views/buckets.js';
 import type { ChoiceRequest, ChoiceResponse, MoveRequest, MoveResponse, RuleRequest, RuleResponse, SettingsRequest, SettingsResponse, SetupRequest, SetupResponse } from '../views/choice.js';
-import { homeView, type BankDetail, type CardRemindersOff, type CheckedAt, type HomeView } from '../views/home.js';
+import { homeView, type BankDetail, type CardRemindersOff, type CheckedAt, type HomeView, type PendingMoneyIn } from '../views/home.js';
 import { paydayView, type PaydayView } from '../views/payday.js';
 import { reviewView, type ReviewView } from '../views/review.js';
 import { settingsView, type SettingsView } from '../views/settings.js';
@@ -49,6 +49,8 @@ import { timeIn, todayIn } from './today.js';
 interface BankNow {
   readonly version: string;
   readonly bank: BankBalances | null;
+  // 11.4: none while the bank cannot be read.
+  readonly pendingIn: readonly PendingMoneyIn[];
   readonly statements: CardStatement[];
   readonly cardsOff: CardRemindersOff[];
 }
@@ -284,15 +286,15 @@ export class Keeper {
     const { changes } = statement(this.#db, 'SELECT total_changes() AS changes').get() as { changes: number };
     const { data_version: written } = statement(this.#db, 'PRAGMA data_version').get() as { data_version: number };
     const version = `${changes} ${written}`;
-    if (this.#bankRead?.version !== version) this.#bankRead = { version, bank: this.#readBank(), ...this.#readStatements() };
+    if (this.#bankRead?.version !== version) this.#bankRead = { version, ...this.#readBank(), ...this.#readStatements() };
     return this.#bankRead;
   }
 
-  #readBank(): BankBalances | null {
+  #readBank(): { readonly bank: BankBalances | null; readonly pendingIn: readonly PendingMoneyIn[] } {
     const connection = readConnection(this.#db);
-    if (connection === null || connection.needsLogin) return null;
+    if (connection === null || connection.needsLogin) return { bank: null, pendingIn: [] };
     const view = bankView(readAccounts(this.#db), readItems(this.#db));
-    return view.ok ? view.view.withPending : null;
+    return view.ok ? { bank: view.view.withPending, pendingIn: view.view.pendingIn } : { bank: null, pendingIn: [] };
   }
 
   // Each card's statement as the bank sent it, read with the days from
@@ -332,6 +334,7 @@ export class Keeper {
       checkedAt: this.#checkedAt(),
       catchingUp: this.#catchingUp(),
       bankDetail: this.#bankDetail(),
+      pendingIn: this.#bankNow().pendingIn,
     });
     // 0.5, B82: the last safe to spend the bank backed up, and when.
     if (view.state === 'tracking' && view.safeToSpend.shown) saveLastChecked(this.#db, { amount: view.safeToSpend.amount, at: timeIn(this.timeZone(), this.#now()) });

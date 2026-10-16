@@ -1,4 +1,4 @@
-import type { CardRemindersOff } from '@budget-app/server/views';
+import type { CardRemindersOff, OnItsWayIn } from '@budget-app/server/views';
 
 // Words on Home.
 
@@ -7,6 +7,11 @@ export function paydayText(days: number): string {
   if (days === 0) return 'Payday is today';
   if (days < 0) return `Paycheck is ${-days} ${-days === 1 ? 'day' : 'days'} late`;
   return `${days} ${days === 1 ? 'day' : 'days'} to payday`;
+}
+
+// 11.4 (A56): money still pending at the bank, which counts once it posts.
+export function onItsWayInText(item: OnItsWayIn): { readonly title: string; readonly detail: string } {
+  return { title: item.paycheck ? 'Paycheck on its way' : 'Money on its way in', detail: `To ${item.account}, counted when it posts` };
 }
 
 // 10.3

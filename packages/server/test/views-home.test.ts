@@ -553,3 +553,45 @@ describe('Step 3: "Checked at", when the bank was last read', () => {
     for (const at of ['2026-10-09T15:05:00', 'soon', '2026-10-09']) expect(() => homeView(input(openTestBook(), { checkedAt: { at, timeZone: 'America/New_York' } })), at).toThrow();
   });
 });
+
+describe('11.4 money on its way in', () => {
+  const pending = (account: 'checking' | 'savings', amount: Cents, date: IsoDate, description: string) => ({ account, amount, date, description });
+
+  it('11.4 money still pending in is listed oldest first, checking before savings on one day, as a paycheck when the paycheck rule matches', () => {
+    const book = openTestBook({ settings: { paycheckRule: { contains: 'made up payroll' } } });
+    const view = tracking(
+      homeView(
+        input(book, {
+          pendingIn: [
+            pending('savings', 40_000, '2026-10-02', 'MADE UP PAYROLL'),
+            pending('checking', 2_500, '2026-10-03', 'MADE UP FRIEND'),
+            pending('checking', 180_000, '2026-10-02', 'MADE UP PAYROLL DIRECT DEP'),
+            pending('checking', 1, '2026-10-01', 'MADE UP REFUND'),
+          ],
+        }),
+      ),
+    );
+    expect(view.onItsWayIn).toEqual([
+      { account: 'checking', amount: 1, date: '2026-10-01', paycheck: false },
+      { account: 'checking', amount: 180_000, date: '2026-10-02', paycheck: true },
+      { account: 'savings', amount: 40_000, date: '2026-10-02', paycheck: true },
+      { account: 'checking', amount: 2_500, date: '2026-10-03', paycheck: false },
+    ]);
+  });
+
+  it('11.4 with no paycheck rule nothing is called a paycheck; none pending, or none given, is an empty list', () => {
+    const book = openTestBook({ settings: { paycheckRule: null } });
+    expect(tracking(homeView(input(book, { pendingIn: [pending('checking', 180_000, '2026-10-02', 'MADE UP PAYROLL')] }))).onItsWayIn).toEqual([
+      { account: 'checking', amount: 180_000, date: '2026-10-02', paycheck: false },
+    ]);
+    expect(tracking(homeView(input(book, { pendingIn: [] }))).onItsWayIn).toEqual([]);
+    expect(tracking(homeView(input(book))).onItsWayIn).toEqual([]);
+  });
+
+  it('11.4 money on its way in changes nothing else on Home: safe to spend, the buckets, what needs attention', () => {
+    const book = openTestBook({ pots: { needs: 50_000, wants: 30_000 } });
+    const without = tracking(homeView(input(book)));
+    const withIt = tracking(homeView(input(book, { pendingIn: [pending('checking', 180_000, '2026-10-02', 'MADE UP PAYROLL')] })));
+    expect({ ...withIt, onItsWayIn: [] }).toEqual(without);
+  });
+});

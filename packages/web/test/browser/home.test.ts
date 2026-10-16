@@ -227,6 +227,30 @@ describe.each(ENGINES)('Home in %s', (_name, engine) => {
     await page.context().close();
   });
 
+  it('11.4 money still pending in shows on Home, oldest first: the paycheck on its way and other money, each with its amount and where; safe to spend is unchanged', async () => {
+    const input = demoScenario('paycheck-pending')?.input?.();
+    if (input === undefined || input.book === null) throw new Error('no made-up life called paycheck-pending');
+    const pending = input.pendingIn ?? [];
+    expect(pending.map((p) => p.date)).toEqual(['2026-10-16', '2026-10-15', '2026-10-16']);
+    const page = await openScenario(await browser().newContext(phone()), base(), 'paycheck-pending');
+    expect(await textAt(page, 'payday')).toContain('Payday is today');
+    const rows = await page.getByTestId('on-its-way-in').locator('[data-testid^="on-its-way-in-"]:not([data-testid$="-amount"])').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
+    expect(rows).toEqual(['on-its-way-in-0', 'on-its-way-in-1', 'on-its-way-in-2']);
+    expect(await textAt(page, 'on-its-way-in-0')).toMatch(/^Money on its way in To checking, counted when it posts \$/);
+    expect(await textAt(page, 'on-its-way-in-1')).toMatch(/^Paycheck on its way To checking, counted when it posts \$/);
+    expect(await textAt(page, 'on-its-way-in-2')).toMatch(/^Paycheck on its way To savings, counted when it posts \$/);
+    const byDay = (day: string, account: string): number => pending.find((p) => p.date === day && p.account === account)?.amount ?? NaN;
+    expect(await centsAt(page, 'on-its-way-in-0-amount')).toBe(byDay('2026-10-15', 'checking'));
+    expect(await centsAt(page, 'on-its-way-in-1-amount')).toBe(byDay('2026-10-16', 'checking'));
+    expect(await centsAt(page, 'on-its-way-in-2-amount')).toBe(byDay('2026-10-16', 'savings'));
+    // It counts nowhere until it posts.
+    expect(await centsAt(page, 'safe-to-spend')).toBe(input.book.safeToSpend(input.today).amount);
+    // Nothing pending in: no card.
+    await showScenario(page, base(), 'payday');
+    expect(await page.getByTestId('on-its-way-in').count()).toBe(0);
+    await page.context().close();
+  });
+
   it('Home with nothing to do says so', async () => {
     const page = await openScenario(await browser().newContext(phone()), base(), 'all-clear');
     expect(await textAt(page, 'all-clear')).toBe('Nothing needs you right now');

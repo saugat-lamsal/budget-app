@@ -1,4 +1,4 @@
-import { assertCents, bucketLevel, cardDue, type BankBalances, type Book, type BucketLevel, type CardStatement, type Cents, type IsoDate, type SelfCheck } from '@budget-app/money';
+import { assertCents, bucketLevel, cardDue, matchesTextRule, type BankBalances, type Book, type BucketLevel, type CardStatement, type Cents, type IsoDate, type SelfCheck, type TextRule } from '@budget-app/money';
 import { onItsWayToSavings } from './payday.js';
 
 // What the Home screen shows, worked out on the server from the book. The
@@ -37,6 +37,26 @@ export interface HomeInput {
   // docs/later.txt 18, "why it doesn't match": each account as the bank
   // shows it, and when the difference began. Null when not known (the demo).
   readonly bankDetail?: BankDetail | null;
+  // 11.4 (A56): money still pending into checking or savings, as the bank
+  // last showed it. None when the bank cannot be read, or left out.
+  readonly pendingIn?: readonly PendingMoneyIn[];
+}
+
+// 11.4: a deposit still pending at the bank, which the books count only
+// once it posts (12.1). The amount is above zero.
+export interface PendingMoneyIn {
+  readonly account: 'checking' | 'savings';
+  readonly amount: Cents;
+  readonly date: IsoDate;
+  readonly description: string;
+}
+
+// 11.4: what Home shows of it: paycheck when the paycheck rule matches it.
+export interface OnItsWayIn {
+  readonly account: 'checking' | 'savings';
+  readonly amount: Cents;
+  readonly date: IsoDate;
+  readonly paycheck: boolean;
 }
 
 // Each account as the bank gave it: posted, available (null when the bank
@@ -90,6 +110,9 @@ export type HomeView =
       readonly checkedAt: CheckedAt | null;
       // His home time zone (section 2): the times on Home are shown in it.
       readonly timeZone: string;
+      // 11.4: money still pending in, oldest first, checking before savings
+      // on the same day. Counted nowhere until it posts.
+      readonly onItsWayIn: readonly OnItsWayIn[];
     };
 
 export type SafeToSpendView =
@@ -218,7 +241,19 @@ export function homeView(input: HomeInput): HomeView {
     waitingInReview,
     checkedAt: checkedCheckedAt(input.checkedAt ?? null),
     timeZone: settings.homeTimeZone,
+    onItsWayIn: onItsWayIn(input.pendingIn ?? [], settings.paycheckRule),
   };
+}
+
+// 11.4: "Paycheck on its way" when the paycheck rule matches it (3.1).
+function onItsWayIn(pending: readonly PendingMoneyIn[], paycheckRule: TextRule | null): OnItsWayIn[] {
+  const order = (p: PendingMoneyIn): string => `${p.date} ${p.account === 'checking' ? 0 : 1}`;
+  return [...pending]
+    .sort((a, b) => (order(a) < order(b) ? -1 : order(a) > order(b) ? 1 : 0))
+    .map((p) => {
+      assertCents(p.amount, 'money on its way in');
+      return { account: p.account, amount: p.amount, date: p.date, paycheck: matchesTextRule(paycheckRule, p.description) };
+    });
 }
 
 // An ISO time with its offset, such as 2026-10-07T07:15:00-05:00.
