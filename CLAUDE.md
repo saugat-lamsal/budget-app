@@ -1924,6 +1924,15 @@ long). It replaces running everything before every commit:
   - QUESTIONS.md A53, A54, B246 to B248 (B248: the minimum his bank sends
     looks like what is left after payments; watch). docs/later.txt 4
     (the split paycheck came back), 26 to 31.
+- PR #37 merged and deployed Oct 16, 2026 (1:49 AM), at his word: the
+  deploy check on the branch's tree (63 events, every one replays, "The
+  backup works."), main's tree after the merge checked to be the same, then
+  that exact image (deploy-check-20261016t053421z). /health and
+  /health/backups ok, /api 401, http sent to https, the webhook address
+  refuses an unsigned call; the restore check on the machine: 63 events,
+  "The backup works." The payday difference cleared when the books opened
+  (no gap noted, no alert waiting). The way back is the image
+  deploy-check-20261016t041248z.
 - Waiting on: each card's statement closing day (his, on Settings, from a
   statement, before the old card's November reminders); Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);
