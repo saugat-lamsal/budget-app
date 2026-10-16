@@ -958,6 +958,24 @@ A56. ADDED Oct 16 (docs/later.txt 30, from the payday "Off by" of A54):
      ANSWERED Oct 16 (his OK to all of the recommended changes, before
      he went to sleep): rulebook draft 27, 11.4 and 38a.
 
+A57. ADDED Oct 16 (his ask, "Layer 1": the app explains itself, with no AI
+     and nothing sent anywhere new). Three things confused him that day:
+     the paycheck pending on payday morning, a black screen for 16 minutes
+     while the host restarted, and "The bank is still catching up, off by"
+     a few dollars, which a read-only look found was Bank of America's
+     balances moving before Plaid sent the transactions (a card charge
+     posted at the bank but still pending in Plaid, so counted twice, and a
+     rise in checking's available balance with no transaction yet).
+     Recommended, four pieces: lines that add up to the difference and say
+     why, from the bank's balances kept with each read (12.6); "pending
+     since" and "usually posts within" on money on its way in (11.4); a
+     status page (0.7); a plain page when the server cannot be reached
+     (0.8). Nothing about money changes. The fixed numbers in them (3
+     examples, three in four of the last 10, 15 seconds) are not settings,
+     like 4.5's five and 10.12's 500.
+     ANSWERED Oct 16 (his OK to the text as written, "OK, build it"):
+     rulebook draft 28, 0.7, 0.8, 11.4, 12.6 and section 39.
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 WAITING FOR YOU TO CHECK (Oct 10, 2026, the end of Phase 4). Each was
@@ -3052,3 +3070,76 @@ B250. A56 as built (11.4). "On its way in" is a card on Home under
       cannot be read (10.5). Nothing about money changes: 12.1 already takes
       pending money in out of the bank side (A54), and the item counts once
       it posts, as before.
+
+
+## Part B, added with the app explaining itself (A57, Oct 16). Tell me if any is wrong.
+
+B251. A57 as built (12.6). Each read of the bank keeps, in the sync's own
+      transaction (database step 11, bank_reads.bank and .difference), each
+      account's posted and available balances, what the check counted for it,
+      the bank's own transactions on it that the books count added up (posted
+      ones and pending charges, in Plaid's sign), the pending items Plaid
+      listed, and the check after the read. The read that matched is the last
+      one whose check was 0; starting tracking marks the last read before it
+      as one (14.3: the check passed then). For each account, its part of the difference is what
+      its figure moved since, beyond its own transactions: checking and
+      savings what they counted plus their transactions' change, the card the
+      opposite (it is taken away in the bank side). What the three accounts
+      do not account for is "the rest" (the books moving otherwise than the
+      bank's transactions, such as an item waiting for his decision); so the
+      lines add up to the difference by construction, and a test with random
+      lags through the real books checks there is never a rest when the books
+      follow the bank. A cause is named only when the parts of some pending
+      items add up exactly to an account's move: the fewest of them, the
+      oldest first among as few, every way tried up to 12 items, beyond that
+      up to 4 at once or all of them. On the card (and checking or savings
+      with no available balance) each pending item listed now: the bank
+      posted it. On checking or savings: a posted item since with a pending
+      one of the same amount still listed, a pending item whose amount Plaid
+      changed since, and a pending item listed since; an account read one way
+      then and the other now names none. The lines are worked out each time
+      Home or Buckets is read; nothing about them is kept. Reads kept before
+      the update have no bank: until a read after it matches, the sheet says
+      no earlier read that matched is kept. Worked example bank 18.
+B252. A57 as built (11.4). Pending since: the read that saved the sync that
+      first brought the item (database step 11, bank_reads.sync). Reads kept
+      before the update get their sync from the order of the reads that saved
+      something, but only when every sync kept was saved with a read (true on
+      a server that only syncs through its timer and webhooks, as his does);
+      otherwise, and for anything first seen in a sync with no read, the day
+      the bank dated it. Shown like "Checked at": the time today, the day and
+      time before today. Usually posts within: examples are posted deposits
+      into checking or savings (not transfers arriving, not refunds on a
+      card) with their pending one, the bank's link or, with none, the
+      pending one dropped in the same read for the same amount on the same
+      account; timed from the read that first saw the pending one to the read
+      that first saw the posted one; a posted one seen before its pending one
+      is no example. The kind (a paycheck or other money in) is read with the
+      paycheck rule as it is now, so setting it changes which examples count.
+      The last 10 by when they posted; three in four of them: the
+      ceil(3/4 x n)-th quickest. Worked example bank 19.
+B253. A57 as built (0.7). The Status row is on Settings' Bank card, on the
+      real server only, before setup day too. "Server started" is when it
+      began serving the books, just after they opened (opening them never
+      asks the clock, 0.6). How the last sync went is kept in memory: after a restart
+      the page says none since the server started until the next sync (the
+      last good read is kept in the database and always shown). A sync that
+      was never tried (the four accounts not picked yet, 1.2) is not one.
+      Backups (hosted only): copying while /health/backups is ok, with the
+      last heartbeat. Alerts waiting: worked out, not sent, and not marked
+      "not sent" (10.9). At the top: "All working", or how many things need a
+      look; each says so in words and with a warning icon.
+B254. A57 as built (0.8). The service worker answers page navigations to the
+      app's own screens only (never /api, /health, /plaid or /sw.js, never
+      another site, never a request a screen makes): it passes each on to the
+      server as it is, and answers with the fixed page when the request fails,
+      no answer comes within 15 seconds, or the answer is 502, 503 or 504. The
+      page is 503, not kept (no-store), with its own security policy (no
+      script, nothing from anywhere); Try again opens the same address again.
+      The background part is now set up each time the app opens from its
+      https address (and still when notifications are turned on), not on this
+      computer's address, so the screens' tests run without it. A screen
+      that opens but cannot get its numbers still shows its own error state,
+      as before. Not seen on his iPhone yet: a home-screen app opened while
+      the server is down (the next Fly restart, or a stopped machine, would
+      show it).

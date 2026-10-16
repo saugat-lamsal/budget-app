@@ -1,4 +1,6 @@
+import type { IsoDate } from '@budget-app/money';
 import type { CardRemindersOff, OnItsWayIn } from '@budget-app/server/views';
+import { checkedAtText, shortDate } from '../ui/dates.js';
 
 // Words on Home.
 
@@ -10,8 +12,13 @@ export function paydayText(days: number): string {
 }
 
 // 11.4 (A56): money still pending at the bank, which counts once it posts.
-export function onItsWayInText(item: OnItsWayIn): { readonly title: string; readonly detail: string } {
-  return { title: item.paycheck ? 'Paycheck on its way' : 'Money on its way in', detail: `To ${item.account}, counted when it posts` };
+// A57: since when the app saw it pending (in his home time zone; the day the
+// bank dated it when that is not known), and how long earlier ones usually
+// took, when the server has the figure.
+export function onItsWayInText(item: OnItsWayIn, today: IsoDate, timeZone: string): { readonly title: string; readonly detail: string } {
+  const since = 'at' in item.since ? checkedAtText(item.since.at, today, timeZone) : shortDate(item.since.day);
+  const usually = item.usually === null ? '' : ` Usually posts within ${item.usually.within} ${item.usually.unit === 'hours' ? (item.usually.within === 1 ? 'hour' : 'hours') : 'days'}.`;
+  return { title: item.paycheck ? 'Paycheck on its way' : 'Money on its way in', detail: `To ${item.account}, counted when it posts. Pending since ${since}.${usually}` };
 }
 
 // 10.3

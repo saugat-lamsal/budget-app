@@ -15,7 +15,9 @@ import {
 } from '@budget-app/money';
 import { checkBankRules, type BankRule } from '../bank/reading.js';
 import { timeIn } from '../history/today.js';
-import type { CardRemindersOff, HomeInput, PendingMoneyIn } from '../views/home.js';
+import type { PostingExample } from '../bank/posting-times.js';
+import { whyItDoesNotMatch, type BankAtRead, type PendingItemNow } from '../bank/why.js';
+import type { CardRemindersOff, HomeInput, PendingMoneyIn, WhyLine } from '../views/home.js';
 import type { MadeUpBank } from './made-up-bank.js';
 import { SETUP_OWES_MORE, SETUP_PENDING, SETUP_PENDING_PAYMENT, SETUP_SUGGEST } from './setup-lives.js';
 
@@ -38,6 +40,11 @@ const RULES: readonly SortingRule[] = [
 ];
 
 const SETUP_DAY: IsoDate = '2026-09-19';
+
+const HOUR = 3_600_000;
+
+// 12.6: a coffee still pending on the everyday card in the why-counted-twice life.
+const PENDING_COFFEE: Cents = 575;
 
 // What each made-up life's bank sent its book, by book.
 const FEEDS = new WeakMap<Book, readonly BankTransaction[]>();
@@ -88,8 +95,14 @@ interface Story {
   readonly eatingOut?: Cents;
   // Sort what waits in review, pay the card in full, and move the money to savings.
   readonly allDone?: boolean;
-  // The bank shows this much more (or, negative, less) than the app (0.5).
+  // The bank shows this much more (or, negative, less) than the app (0.5),
+  // in checking's balance, with no transaction for it yet (12.6).
   readonly bankOff?: Cents;
+  // 12.6 (A57): the bank posted the pending coffee on the everyday card while
+  // Plaid still lists it as pending, so the check counts it twice.
+  readonly coffeePostedAtBank?: boolean;
+  // 12.6: no earlier read that matched is kept to compare with.
+  readonly noMatchKept?: boolean;
   // 10.4 (A47): the difference is younger than the setting's hours.
   readonly catchingUp?: boolean;
   readonly needsLogin?: boolean;
@@ -142,6 +155,8 @@ interface Story {
   readonly ruleOffer?: boolean;
   // 11.4: money still pending at the bank, not in the books until it posts.
   readonly pendingIn?: readonly PendingMoneyIn[];
+  // 11.4 (A57): earlier deposits seen going from pending to posted.
+  readonly postingExamples?: readonly PostingExample[];
 }
 
 // When the bank was last read and matched, in the "bank-not-read" life:
@@ -175,6 +190,8 @@ function story(s: Story): HomeInput {
 
   buy('2026-09-22', 6_412, 'GROCERY OUTLET #12', 'checking');
   buy('2026-09-26', 575, 'BLUE DOOR COFFEE');
+  // 12.6: a coffee still pending, which the bank has posted (counted twice for now).
+  if (s.coffeePostedAtBank === true) buy(DEMO_TODAY, PENDING_COFFEE, 'BLUE DOOR COFFEE', 'everyday-card', true);
   if (busy) {
     book.changeSettings({ cardReminderDaysBefore: [10, 3], dailyReviewTime: '21:00' }, '2026-09-27');
     book.addRule({ id: 'pharmacy', for: 'purchase', contains: 'PHARMACY', bucket: 'needs' }, '2026-09-28');
@@ -216,7 +233,7 @@ function story(s: Story): HomeInput {
   }
   // What the extras take out of the savings account and put on the everyday card.
   let savingsOut = 0;
-  let cardExtra = 0;
+  let cardExtra = s.coffeePostedAtBank === true ? PENDING_COFFEE : 0;
   if (s.bucketsBusy === true) {
     // A roommate's share of the rent, held until he passes it on (7.1).
     feed({ kind: 'deposit', id: 'busy-roommate', account: 'checking', date: '2026-10-05', amount: x(12_000), description: 'ZELLE FROM MADE UP ROOMMATE' });
@@ -345,7 +362,8 @@ function story(s: Story): HomeInput {
         : subtractCents(subtractCents(shouldBeInSavings, x(135_000)), x(savingsOut));
   const appSide = subtractCents(addCents(pots.savings, pots.needs, pots.wants, pots.momReserve, pots.heldForOthers, pots.unsortedIn), pots.unsortedOut);
   const checking = addCents(subtractCents(subtractCents(appSide, book.inTransit().total), savings), everydayCardOwes, s.bankOff ?? 0);
-  const bank: BankBalances = { checking, savings, everydayCard: everydayCardOwes };
+  const cardPending = s.coffeePostedAtBank === true ? x(PENDING_COFFEE) : 0;
+  const bank: BankBalances = { checking, savings, everydayCard: addCents(everydayCardOwes, cardPending) };
 
   return {
     today: s.today ?? DEMO_TODAY,
@@ -357,22 +375,44 @@ function story(s: Story): HomeInput {
     seenTakeBacks: new Set(),
     ...(s.cardsOff === undefined ? {} : { cardsOff: s.cardsOff }),
     ...(s.pendingIn === undefined || s.bankNotRead === true ? {} : { pendingIn: s.pendingIn }),
+    ...(s.postingExamples === undefined ? {} : { postingExamples: s.postingExamples }),
     lastChecked: s.bankNotRead === true ? { amount: checkedThisMorning, at: LAST_CHECKED_AT } : null,
     // Step 3: when the made-up bank was last read: this morning.
     catchingUp: s.catchingUp ?? false,
     bankDetail:
-      s.bankOff === undefined || s.bankOff === 0
+      (s.bankOff ?? 0) === 0 && cardPending === 0
         ? null
         : {
             accounts: [
-              { account: 'checking', posted: subtractCents(bank.checking, s.bankOff), available: bank.checking, counted: bank.checking },
+              { account: 'checking', posted: subtractCents(bank.checking, s.bankOff ?? 0), available: bank.checking, counted: bank.checking },
               { account: 'savings', posted: bank.savings, available: bank.savings, counted: bank.savings },
-              { account: 'everyday-card', posted: bank.everydayCard, available: null, counted: bank.everydayCard },
+              { account: 'everyday-card', posted: subtractCents(bank.everydayCard, cardPending), available: null, counted: bank.everydayCard },
             ],
             since: timeIn(book.settings().homeTimeZone, new Date(`${s.today ?? DEMO_TODAY}T13:41:00Z`)),
+            why: demoWhy(bank, s.bankOff ?? 0, cardPending, s.noMatchKept === true),
           },
     checkedAt: { at: s.bankNotRead === true ? LAST_CHECKED_AT : timeIn(book.settings().homeTimeZone, new Date(`${s.today ?? DEMO_TODAY}T13:41:00Z`)), timeZone: book.settings().homeTimeZone },
   };
+}
+
+// 12.6: why the made-up bank does not match, worked out by the app's own
+// rule from a made-up read that matched: checking's balance moved by bankOff
+// with no transaction, and the card's by the pending coffee the bank posted
+// (coffee: its amount; 0 when there is none).
+function demoWhy(bank: BankBalances, bankOff: Cents, coffee: Cents, noMatchKept: boolean): WhyLine[] {
+  const pendingNow: PendingItemNow[] = coffee === 0 ? [] : [{ id: 'demo-pending-coffee', account: 'everyday-card', amount: coffee, description: 'BLUE DOOR COFFEE', purchase: true }];
+  const read = (checking: Cents, cardPosted: Cents): BankAtRead => ({
+    accounts: {
+      checking: { posted: checking, available: checking, counted: checking, items: 0 },
+      savings: { posted: bank.savings, available: bank.savings, counted: bank.savings, items: 0 },
+      'everyday-card': { posted: cardPosted, available: null, counted: addCents(cardPosted, coffee), items: coffee },
+    },
+    pending: pendingNow.map((p) => ({ id: p.id, account: p.account, amount: p.amount })),
+    syncs: 1,
+  });
+  const cardPosted = subtractCents(bank.everydayCard, coffee);
+  const then = read(subtractCents(bank.checking, bankOff), subtractCents(cardPosted, coffee));
+  return whyItDoesNotMatch({ difference: subtractCents(bankOff, coffee), then: noMatchKept ? null : then, now: read(bank.checking, cardPosted), pendingNow, postedSince: [] });
 }
 
 // Home before setup day: no book yet.
@@ -399,6 +439,12 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   { name: 'overspent', title: 'Wants is overspent', input: () => story({ eatingOut: 70_000 }) },
   { name: 'mismatch', title: 'Totals do not match the bank', input: () => story({ bankOff: -1_234 }) },
   { name: 'catching-up', title: 'The bank is still catching up', input: () => story({ bankOff: -4_210, catchingUp: true }) },
+  {
+    name: 'why-counted-twice',
+    title: 'Still catching up: the bank posted a coffee Plaid still says is pending (counted twice), and checking went up with no transaction (12.6)',
+    input: () => story({ bankOff: 2_750, coffeePostedAtBank: true, catchingUp: true }),
+  },
+  { name: 'why-no-match-kept', title: 'Totals do not match, with no earlier read that matched kept to compare with (12.6)', input: () => story({ bankOff: -1_234, noMatchKept: true }) },
   { name: 'payday', title: 'Payday is today', input: () => story({ today: '2026-10-16', allDone: true, statements: [] }) },
   {
     name: 'paycheck-pending',
@@ -408,10 +454,22 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
         today: '2026-10-16',
         allDone: true,
         statements: [],
+        // A57: the paycheck parts first seen at 6:12 this morning; the money
+        // from a friend before the app kept the times of its reads (so the
+        // day the bank dated it).
         pendingIn: [
-          { account: 'checking', amount: 162_540, date: '2026-10-16', description: `${EMPLOYER} DIRECT DEP` },
+          { account: 'checking', amount: 162_540, date: '2026-10-16', description: `${EMPLOYER} DIRECT DEP`, firstSeen: '2026-10-16T06:12:00-04:00' },
           { account: 'checking', amount: 2_500, date: '2026-10-15', description: 'ZELLE FROM MADE UP FRIEND' },
-          { account: 'savings', amount: 40_000, date: '2026-10-16', description: `${EMPLOYER} DIRECT DEP` },
+          { account: 'savings', amount: 40_000, date: '2026-10-16', description: `${EMPLOYER} DIRECT DEP`, firstSeen: '2026-10-16T06:12:00-04:00' },
+        ],
+        // Three earlier paychecks into checking, posted 20, 22 and 21 hours
+        // after first seen pending; only two into savings, too few to say.
+        postingExamples: [
+          { account: 'checking', description: `${EMPLOYER} DIRECT DEP`, ms: 20 * HOUR, postedAt: '2026-09-16T08:00:00.000Z' },
+          { account: 'checking', description: `${EMPLOYER} DIRECT DEP`, ms: 22 * HOUR, postedAt: '2026-09-30T10:00:00.000Z' },
+          { account: 'checking', description: `${EMPLOYER} DIRECT DEP`, ms: 21 * HOUR, postedAt: '2026-10-15T09:00:00.000Z' },
+          { account: 'savings', description: `${EMPLOYER} DIRECT DEP`, ms: 20 * HOUR, postedAt: '2026-09-30T10:00:00.000Z' },
+          { account: 'savings', description: `${EMPLOYER} DIRECT DEP`, ms: 21 * HOUR, postedAt: '2026-10-15T09:00:00.000Z' },
         ],
       }),
   },

@@ -5,6 +5,7 @@ import { BankDataError } from '../errors.js';
 import type { PendingMoneyIn } from '../views/home.js';
 import { centsFromPlaid } from './amounts.js';
 import { readPlaidItem } from './plaid-item.js';
+import type { BankAtRead, CheckAccount, PendingItemNow, PostedItemSince } from './why.js';
 
 // Rule 12.1, the bank side of the self-check: checking + savings - everyday
 // card balance, including pending charges.
@@ -50,8 +51,15 @@ export interface BankView {
   readonly oldCardPosted: Cents;
   readonly oldCardWithPending: Cents;
   // 11.4 (A56): deposits still pending into checking or savings, which the
-  // books count only once they post, for Home.
-  readonly pendingIn: readonly PendingMoneyIn[];
+  // books count only once they post, for Home; with the sync that first
+  // brought each (A57: pending since).
+  readonly pendingIn: readonly (PendingMoneyIn & { readonly firstSync: number })[];
+  // 12.6 (A57): for each account in the check, the bank's own transactions on
+  // it that the books count, added up in Plaid's sign (money out, or onto the
+  // card, above zero): the posted ones, and the pending charges (4.6).
+  readonly items: Readonly<Record<CheckAccount, Cents>>;
+  // 12.6: every pending item Plaid lists on those accounts, in the order first seen.
+  readonly pending: readonly PendingItemNow[];
 }
 
 export type BankViewResult = { readonly ok: true; readonly view: BankView } | { readonly ok: false; readonly why: string };
@@ -69,18 +77,32 @@ export function bankView(accounts: readonly StoredAccount[], items: ReadonlyMap<
     };
     for (const a of accounts) if (a.role !== null) roles.set(a.plaidAccountId, a.role);
     const pendingCharges: PendingCharge[] = [];
-    const pendingIn: PendingMoneyIn[] = [];
+    const pendingIn: (PendingMoneyIn & { readonly firstSync: number })[] = [];
+    const counts: Record<CheckAccount, Cents> = { checking: 0, savings: 0, 'everyday-card': 0 };
+    const pending: PendingItemNow[] = [];
     // Plaid's sign: money going out is above zero, money coming in below.
     const pendingItems = new Map<AccountId, Cents[]>();
     for (const item of items.values()) {
       const role = roles.get(item.accountId);
-      if (!item.pending || item.removed || item.replacedBy !== null || role === undefined) continue;
-      if (item.amountCents === null || item.amountCents === 0) continue;
+      if (role === undefined || item.removed || item.amountCents === null || item.amountCents === 0) continue;
+      const checked = checkAccountOf(role);
+      // 12.6: a posted transaction is counted by the books once it comes.
+      if (!item.pending) {
+        if (checked !== null) counts[checked] = addCents(counts[checked], item.amountCents);
+        continue;
+      }
+      if (item.replacedBy !== null) continue;
       pendingItems.set(role, [...(pendingItems.get(role) ?? []), item.amountCents]);
-      if (item.kind === 'purchase' && item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });
+      const charge = item.kind === 'purchase' && item.amountCents > 0;
+      if (charge) pendingCharges.push({ account: role, amount: item.amountCents });
+      if (checked !== null) {
+        if (charge) counts[checked] = addCents(counts[checked], item.amountCents);
+        const read = readPlaidItem(item.raw);
+        pending.push({ id: item.transactionId, account: checked, amount: item.amountCents, description: read.ok ? read.item.description : '', purchase: charge });
+      }
       if (item.kind === 'deposit' && item.amountCents < 0 && (role === 'checking' || role === 'savings')) {
         const read = readPlaidItem(item.raw);
-        if (read.ok) pendingIn.push({ account: role, amount: -item.amountCents, date: read.item.date, description: read.item.description });
+        if (read.ok) pendingIn.push({ account: role, amount: -item.amountCents, date: read.item.date, description: read.item.description, firstSync: item.firstSync });
       }
     }
     // 12.1 (A47): checking and savings from the available balance, when the bank gives one.
@@ -108,10 +130,50 @@ export function bankView(accounts: readonly StoredAccount[], items: ReadonlyMap<
         oldCardPosted,
         oldCardWithPending: addCents(oldCardPosted, ...oldCardPending),
         pendingIn,
+        items: counts,
+        pending,
       },
     };
   } catch (error) {
     if (error instanceof BankDataError) return { ok: false, why: error.message };
     throw error;
   }
+}
+
+function checkAccountOf(role: AccountId): CheckAccount | null {
+  return role === 'checking' || role === 'savings' || role === 'everyday-card' ? role : null;
+}
+
+// 12.6 (A57): what a read of the bank keeps, from the bank as it is then.
+// syncs: the last sync saved by then.
+export function bankAtRead(view: BankView, syncs: number): BankAtRead {
+  const figures = (account: CheckAccount): BankAtRead['accounts'][CheckAccount] => {
+    const key = account === 'everyday-card' ? 'everydayCard' : account;
+    return {
+      posted: view.posted[key],
+      available: account === 'everyday-card' ? null : view.available[account],
+      counted: view.withPending[key],
+      items: view.items[account],
+    };
+  };
+  return {
+    accounts: { checking: figures('checking'), savings: figures('savings'), 'everyday-card': figures('everyday-card') },
+    pending: view.pending.map((p) => ({ id: p.id, account: p.account, amount: p.amount })),
+    syncs,
+  };
+}
+
+// 12.6: the posted items on the accounts in the check first seen after a
+// sync, in the order first seen.
+export function postedSince(accounts: readonly StoredAccount[], items: ReadonlyMap<string, StoredItem>, afterSync: number): PostedItemSince[] {
+  const roles = new Map(accounts.flatMap((a) => (a.role === null ? [] : [[a.plaidAccountId, a.role] as const])));
+  const posted: PostedItemSince[] = [];
+  for (const item of items.values()) {
+    const role = roles.get(item.accountId);
+    const account = role === undefined ? null : checkAccountOf(role);
+    if (account === null || item.pending || item.removed || item.firstSync <= afterSync || item.amountCents === null || item.amountCents === 0) continue;
+    const read = readPlaidItem(item.raw);
+    posted.push({ id: item.transactionId, account, amount: item.amountCents, description: read.ok ? read.item.description : '' });
+  }
+  return posted;
 }

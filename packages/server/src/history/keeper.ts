@@ -12,7 +12,10 @@ import { answerAuth, loginViewOf } from '../auth/http.js';
 import { BankRulesDesk } from '../bank-rules-desk.js';
 import { bankLinesIn, bankRuleLogIn, saveBankRuleLine } from '../bank-rules-db.js';
 import { RECENT_DAYS, bankLinesOf, misreadHints } from '../bank-rules.js';
-import { bankView } from '../bank/balances.js';
+import { bankAtRead, bankView, postedSince, type BankView } from '../bank/balances.js';
+import type { StoredAccount } from '../bank/stored-account.js';
+import { postingExamples, type PostingExample } from '../bank/posting-times.js';
+import { whyItDoesNotMatch } from '../bank/why.js';
 import { cardStatement } from '../bank/statements.js';
 import { canonical, refuse, ChoiceDesk } from '../choices.js';
 import type { TokenBox } from '../crypto/token-box.js';
@@ -27,8 +30,8 @@ import type { PushKeys } from '../push/push-keys.js';
 import { saveServerLine, serverLinesIn } from '../server-log.js';
 import { SetupDesk } from '../setup-desk.js';
 import { NO_ANSWERS, SETUP_LOOK_BACK_DAYS, type SetupAnswers } from '../setup-view.js';
-import { FEWEST_MINUTES, MOST_MINUTES, readGapSince, readLastRead, saveGapSince, saveSyncEveryMinutes, syncEveryMinutes } from '../sync/bank-reads.js';
-import type { Plan, PlanInput } from '../sync/plan.js';
+import { FEWEST_MINUTES, MOST_MINUTES, markSetupRead, readGapSince, readLastMatchingRead, readLastRead, readSyncTimes, saveGapSince, saveSyncEveryMinutes, syncEveryMinutes } from '../sync/bank-reads.js';
+import type { Plan, PlanInput, StoredItem } from '../sync/plan.js';
 import { syncBank, type SyncResult } from '../sync/sync.js';
 import type { AlertSender, OutgoingAlert } from '../serve/alert-timer.js';
 import { ALERTS_SHOWN, type AlertsView } from '../views/alerts.js';
@@ -36,21 +39,29 @@ import { activityView, type ActivityView } from '../views/activity.js';
 import type { BankRuleRequest, BankRuleResponse } from '../views/bank-rules.js';
 import { bucketsView, type BucketsView } from '../views/buckets.js';
 import type { ChoiceRequest, ChoiceResponse, MoveRequest, MoveResponse, RuleRequest, RuleResponse, SettingsRequest, SettingsResponse, SetupRequest, SetupResponse } from '../views/choice.js';
-import { homeView, type BankDetail, type CardRemindersOff, type CheckedAt, type HomeView, type PendingMoneyIn } from '../views/home.js';
+import { homeView, type BankDetail, type CardRemindersOff, type CheckedAt, type HomeView, type PendingMoneyIn, type WhyLine } from '../views/home.js';
 import { paydayView, type PaydayView } from '../views/payday.js';
 import { reviewView, type ReviewView } from '../views/review.js';
 import { settingsView, type SettingsView } from '../views/settings.js';
 import type { SetupView } from '../views/setup.js';
+import type { StatusView } from '../views/status.js';
 import { recorderOf, totalsOf, type Answer, type Recorder, type SavedSetupAnswers } from './history.js';
 import { appendEvent, lastSeqOf, readDecision, readHistory, readLastChecked, replayHistory, saveDecision, saveLastChecked, sealHistory, type DeskName } from './history-db.js';
 import { timeIn, todayIn } from './today.js';
+
+// 0.7: how many events the books' history holds.
+function countEvents(db: Db): number {
+  return (statement(db, 'SELECT COUNT(*) AS n FROM book_events').get() as { n: number }).n;
+}
 
 // The bank's balances and the card statements as the database has them.
 interface BankNow {
   readonly version: string;
   readonly bank: BankBalances | null;
-  // 11.4: none while the bank cannot be read.
+  // 11.4: none while the bank cannot be read. A57: firstSeen as an instant (ISO, UTC).
   readonly pendingIn: readonly PendingMoneyIn[];
+  // 11.4 (A57): earlier deposits seen going from pending to posted.
+  readonly postingExamples: readonly PostingExample[];
   readonly statements: CardStatement[];
   readonly cardsOff: CardRemindersOff[];
 }
@@ -138,6 +149,13 @@ export class Keeper {
   #onChange: (() => void) | null = null;
   // The bank's balances and statements last read from the database (#bankNow).
   #bankRead: BankNow | null = null;
+  // 0.7 (A57): when the server began serving the books (noted then, not when
+  // they open: opening never asks the clock, 0.6), how many events the
+  // history had when they opened (every one replayed to its totals), and how
+  // the last sync since went.
+  #startedAt: Date | null = null;
+  #eventsWhenOpened = 0;
+  #lastSync: { readonly at: Date; readonly result: 'new' | 'nothing-new' | 'needs-login' | 'failed' } | null = null;
 
   private constructor(input: KeeperInput) {
     this.#db = input.db;
@@ -163,6 +181,7 @@ export class Keeper {
   static open(input: KeeperInput): Keeper {
     const keeper = new Keeper(input);
     keeper.reload();
+    keeper.#eventsWhenOpened = countEvents(input.db);
     keeper.#noteGap();
     return keeper;
   }
@@ -182,11 +201,14 @@ export class Keeper {
   }
 
   // "Why it doesn't match" (docs/later.txt 18): each account as the bank
-  // last gave it, and when the difference began. Null when the bank cannot be read.
+  // last gave it, when the difference began, and why (12.6). Null when the
+  // bank cannot be read.
   #bankDetail(): BankDetail | null {
     const connection = readConnection(this.#db);
     if (connection === null || connection.needsLogin) return null;
-    const view = bankView(readAccounts(this.#db), readItems(this.#db));
+    const accounts = readAccounts(this.#db);
+    const items = readItems(this.#db);
+    const view = bankView(accounts, items);
     if (!view.ok) return null;
     const v = view.view;
     const since = readGapSince(this.#db);
@@ -197,7 +219,30 @@ export class Keeper {
         { account: 'everyday-card', posted: v.posted.everydayCard, available: null, counted: v.withPending.everydayCard },
       ],
       since: since === null ? null : timeIn(this.timeZone(), new Date(since)),
+      why: this.#why(v, accounts, items),
     };
+  }
+
+  // 12.6 (A57): why the totals do not match, from the last read that matched
+  // and the bank now; none while they match, or before setup day.
+  #why(view: BankView, accounts: readonly StoredAccount[], items: ReadonlyMap<string, StoredItem>): WhyLine[] {
+    const book = this.book();
+    if (book === null) return [];
+    const difference = book.selfCheck(view.withPending).difference;
+    if (difference === 0) return [];
+    const then = readLastMatchingRead(this.#db)?.bank ?? null;
+    return whyItDoesNotMatch({
+      difference,
+      then,
+      now: bankAtRead(view, 0),
+      pendingNow: view.pending,
+      postedSince: then === null ? [] : postedSince(accounts, items, then.syncs),
+    });
+  }
+
+  // 12.6: the lines for Buckets' sheet; null when the bank cannot be read.
+  #whyNow(): WhyLine[] | null {
+    return this.#bankDetail()?.why.slice() ?? null;
   }
 
   // 10.4 (A47): when the totals stopped matching the bank; null while they match.
@@ -290,11 +335,17 @@ export class Keeper {
     return this.#bankRead;
   }
 
-  #readBank(): { readonly bank: BankBalances | null; readonly pendingIn: readonly PendingMoneyIn[] } {
+  #readBank(): { readonly bank: BankBalances | null; readonly pendingIn: readonly PendingMoneyIn[]; readonly postingExamples: readonly PostingExample[] } {
     const connection = readConnection(this.#db);
-    if (connection === null || connection.needsLogin) return { bank: null, pendingIn: [] };
-    const view = bankView(readAccounts(this.#db), readItems(this.#db));
-    return view.ok ? { bank: view.view.withPending, pendingIn: view.view.pendingIn } : { bank: null, pendingIn: [] };
+    if (connection === null || connection.needsLogin) return { bank: null, pendingIn: [], postingExamples: [] };
+    const accounts = readAccounts(this.#db);
+    const items = readItems(this.#db);
+    const view = bankView(accounts, items);
+    if (!view.ok) return { bank: null, pendingIn: [], postingExamples: [] };
+    // 11.4 (A57): when each was first seen pending, from the read that saved its sync.
+    const times = readSyncTimes(this.#db);
+    const pendingIn = view.view.pendingIn.map(({ firstSync, ...p }) => ({ ...p, firstSeen: times.get(firstSync) ?? null }));
+    return { bank: view.view.withPending, pendingIn, postingExamples: postingExamples(accounts, items, times) };
   }
 
   // Each card's statement as the bank sent it, read with the days from
@@ -334,7 +385,9 @@ export class Keeper {
       checkedAt: this.#checkedAt(),
       catchingUp: this.#catchingUp(),
       bankDetail: this.#bankDetail(),
-      pendingIn: this.#bankNow().pendingIn,
+      // 11.4 (A57): first seen as a time in his home time zone.
+      pendingIn: this.#bankNow().pendingIn.map((p) => ({ ...p, firstSeen: p.firstSeen === null || p.firstSeen === undefined ? null : timeIn(this.timeZone(), new Date(p.firstSeen)) })),
+      postingExamples: this.#bankNow().postingExamples,
     });
     // 0.5, B82: the last safe to spend the bank backed up, and when.
     if (view.state === 'tracking' && view.safeToSpend.shown) saveLastChecked(this.#db, { amount: view.safeToSpend.amount, at: timeIn(this.timeZone(), this.#now()) });
@@ -349,7 +402,7 @@ export class Keeper {
   }
 
   buckets(): BucketsView {
-    return bucketsView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false, catchingUp: this.#catchingUp() });
+    return bucketsView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false, catchingUp: this.#catchingUp(), why: this.#whyNow() });
   }
 
   review(): ReviewView {
@@ -451,6 +504,8 @@ export class Keeper {
       for (const item of started.items) saveItem(this.#db, item);
       logChange(this.#db, today, 'setup day', { startingMoney: started.startingMoney, assignment: started.input.assignment, inTransit: (started.input.transfersInTransit ?? []).map((h) => h.id) });
       saveDecision(this.#db, { ...decision, seq });
+      // 12.6: the books start out matching the bank as the last read left it.
+      markSetupRead(this.#db);
     });
     this.reload();
     this.#changed();
@@ -541,11 +596,19 @@ export class Keeper {
         this.#changed();
       },
     })
-      .then((result) => {
-        // 10.5: the bank wants a new login; the sync saved only that.
-        if (result.needsLogin) this.#changed();
-        return result;
-      })
+      .then(
+        (result) => {
+          // 0.7: how it went.
+          this.#lastSync = { at: this.#now(), result: result.needsLogin ? 'needs-login' : result.changed ? 'new' : 'nothing-new' };
+          // 10.5: the bank wants a new login; the sync saved only that.
+          if (result.needsLogin) this.#changed();
+          return result;
+        },
+        (error: unknown) => {
+          this.#lastSync = { at: this.#now(), result: 'failed' };
+          throw error;
+        },
+      )
       .finally(() => {
       this.#syncing = null;
     });
@@ -742,6 +805,29 @@ export class Keeper {
     };
   }
 
+  // 0.7 (A57): the status page, in his home time zone. No amounts. backups:
+  // the watch on Litestream's heartbeat, hosted only.
+  statusView(backups?: { readonly healthy: () => boolean; readonly lastBeat: number | null }): StatusView {
+    const zone = this.timeZone();
+    const local = (at: Date | string | number): string => timeIn(zone, new Date(at));
+    const lastRead = this.lastRead();
+    const since = this.mismatchSince();
+    const started = this.#startedAt;
+    if (started === null) throw new Error('the status page is only for books being served (Keeper.server)');
+    return {
+      state: this.book() === null ? 'not-set-up' : 'tracking',
+      today: this.today(),
+      timeZone: zone,
+      lastRead: lastRead === null ? null : local(lastRead),
+      lastSync: this.#lastSync === null ? null : { at: local(this.#lastSync.at), result: this.#lastSync.result },
+      backups: backups === undefined ? null : { copying: backups.healthy(), lastBeat: backups.lastBeat === null ? null : local(backups.lastBeat) },
+      started: local(started),
+      history: { whenOpened: this.#eventsWhenOpened, now: countEvents(this.#db) },
+      mismatchSince: since === null ? null : local(since),
+      alertsWaiting: outboxCounts(this.#db).notSent,
+    };
+  }
+
   // Phase 6, /health: the books can be read now. Says nothing of what is in them.
   healthy(): boolean {
     try {
@@ -757,10 +843,16 @@ export class Keeper {
   // A43: hosted, `backups` watches Litestream's heartbeat for /health/backups.
   // 1.1 to 1.3: with `bank`, the Bank connection screen (the real server always has it).
   // Section 2 (A47): with `webhook`, Plaid's webhooks (the real server always has it).
-  server(webRoot: string, origin: () => string, onError?: (error: unknown) => void, extras: { readonly backups?: { readonly beat: () => void; readonly healthy: () => boolean }; readonly bank?: SyncBank; readonly webhook?: WebhookHandler } = {}): Server {
+  server(
+    webRoot: string,
+    origin: () => string,
+    onError?: (error: unknown) => void,
+    extras: { readonly backups?: { readonly beat: () => void; readonly healthy: () => boolean; readonly lastBeat: number | null }; readonly bank?: SyncBank; readonly webhook?: WebhookHandler } = {},
+  ): Server {
     const { backups, bank, webhook } = extras;
     const desk = bank === undefined ? null : this.bankDesk(bank);
     this.#origin = origin;
+    this.#startedAt ??= this.#now();
     const auth = this.#auth;
     return createAppServer({
       webRoot,
@@ -786,6 +878,7 @@ export class Keeper {
       seen: (_request, what) => this.seen(what),
       syncEvery: (_request, minutes) => this.changeSyncEvery(minutes),
       alerts: () => this.alertsView(),
+      status: () => this.statusView(backups),
       health: () => this.healthy(),
       ...(backups === undefined ? {} : { backups }),
       ...(webhook === undefined ? {} : { webhook }),

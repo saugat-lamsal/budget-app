@@ -143,6 +143,9 @@ IDEAS ADDED OCT 14
     shows each account as the bank last gave it (posted, available, what
     the check counts) and when the difference began. No table of past
     balances: the latest read is enough for the sheet.
+    Then BUILT Oct 16 (rule 12.6, A57, branch layer1-explains-itself): each
+    read keeps what it saw, and the sheet (Home and Buckets) lists why, in
+    lines that add up to the difference, from the last read that matched.
 
 19. Small, with the next session. The rehearsal's connect card wording
     (item 16).
@@ -217,3 +220,10 @@ FOUND IN THE LOOK AT HIS LIVE BOOKS (Oct 16, his OK, read-only)
 
 31. HIS, still to do on Oct 16: Pay schedule "Twice a month" (item 21).
     The paycheck rule waits on item 4.
+
+32. BUILT Oct 16 (A57, branch layer1-explains-itself), the app explains
+    itself, with no AI and nothing leaving the server: why the totals do
+    not match (12.6, item 18), pending since and usually posts within on
+    Home (11.4), a status page (0.7), and a plain page when the app cannot
+    be reached (0.8). To see on his iPhone: the plain page while the server
+    is down (the next restart).

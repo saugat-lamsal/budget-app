@@ -616,3 +616,68 @@ Home and Settings would say "Card reminders are off for the old card"
 
 Dates: statement date 2026-10-30 | first reminder 2026-11-18 | second reminder 2026-11-23 | short month statement date 2027-02-28
 Check: minimum 40.00 | counted at the first reminder 25.00 | still to pay 15.00 | counted at the second reminder 45.00
+
+
+EXAMPLE 18. Why it does not match: the bank ahead of Plaid (12.6, 12.1, 4.6; QUESTIONS.md A57)
+
+Made-up numbers. The read of the bank at 9:00 AM matched (the books and the
+bank agreed to the cent):
+  Checking, available                              3,000.00   nothing pending
+  Everyday card, owed (posted)                       450.00
+    pending: COFFEE CART                              25.00   counted at once (4.6)
+  What the check counted for the card: 450.00 + 25.00 = 475.00.
+
+The read at 10:00 AM:
+  Checking, available                              3,027.50   still no transaction from Plaid
+  Everyday card, owed (posted)                       475.00   the bank posted the coffee
+    pending: COFFEE CART                              25.00   Plaid still lists it as pending
+  What the check counts for the card now: 475.00 + 25.00 = 500.00. The
+  coffee is in both: counted twice for now.
+
+Nothing new reached the books, so the difference is all the bank side's move:
+  checking 3,027.50 - 3,000.00 = +27.50
+  card 500.00 - 475.00 = 25.00 more owed, so the bank side is 25.00 lower
+  difference: 27.50 - 25.00 = +2.50 (the bank shows more than the buckets).
+
+The lines (12.6), each the account's move less what its transactions account
+for (none came between the two reads):
+  "Checking's available balance went up $27.50 with no transaction from the
+  bank yet."                                                    +27.50
+  "Everyday card: COFFEE CART. Posted at the bank, Plaid still says pending:
+  counted twice for now." The card's move, -25.00, is exactly the pending
+  coffee, so it is named.                                       -25.00
+  Together: 27.50 - 25.00 = 2.50, the difference to the cent.
+
+When Plaid sends the posted coffee (it replaces the pending one, 4.6) and the
+deposit behind the 27.50 (which waits in review as money in), they match
+again and the lines go.
+
+Check: checking line 27.50 | card line -25.00 | difference 2.50
+
+
+EXAMPLE 19. When pending money in usually posts (11.4; QUESTIONS.md A57)
+
+Made-up times, in New York. Three earlier paychecks into checking, each from
+when the app first saw it pending to when it first saw it posted (the times
+of the reads that brought each):
+  Oct 2: seen pending 6:00 AM, posted 11:00 AM          5 hours
+  Oct 17: seen pending 6:00 AM, posted 3:00 PM           9 hours
+  Nov 1: seen pending 6:00 AM, posted 1:00 PM            7 hours
+
+"Usually posts within": the time within which at least three in four of the
+last 10 posted. Of three, three in four is all three (3 x 3/4 = 2.25, so 3),
+the longest: 9 hours.
+
+A fourth that took 30 hours: of four, three in four is three (4 x 3/4 = 3),
+so the third quickest of 5, 7, 9, 30: still 9 hours.
+
+Ten of 1 to 10 hours: three in four of ten is eight (10 x 3/4 = 7.5, so 8),
+so the eighth quickest: 8 hours.
+
+Rounded up to the hour: 7 hours and 1 minute is 8 hours. From 2 days, to
+the day: 47 hours and 1 minute rounds up to 48 hours, which is 2 days.
+
+With only two earlier ones, Home says "Pending since 6:12 AM." and nothing
+about when it should post.
+
+Hours: three 9 | four 9 | ten 8 | seven and a minute 8 | forty-seven and a minute in days 2

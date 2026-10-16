@@ -306,6 +306,30 @@ const STEPS: readonly string[] = [
     since TEXT NOT NULL
   );
   `,
+  `
+  -- Step 11 (12.6 and 11.4, QUESTIONS.md A57): what each read of the bank
+  -- found, saved in the sync's own transaction. sync: the sync the read
+  -- saved, when it brought anything new (NULL otherwise); bank: the bank as
+  -- the read left it (bank/why.ts BankAtRead, as JSON: each account's
+  -- balances, what the check counted for it, its transactions added up, and
+  -- the pending items); difference: the check after the read (12.3), in
+  -- cents, 0 when it matched; NULL before setup day, or when the bank's
+  -- balances could not be worked out.
+  ALTER TABLE bank_reads ADD COLUMN sync INTEGER;
+  ALTER TABLE bank_reads ADD COLUMN bank TEXT;
+  ALTER TABLE bank_reads ADD COLUMN difference INTEGER;
+  -- Reads kept before this step get their sync: a read that brought
+  -- something new saved exactly one sync, in the same transaction, so the
+  -- n-th such read saved the n-th sync. Only when every sync kept was saved
+  -- with a read (a sync made without one, as at connecting the test bank,
+  -- would shift them); otherwise none is known.
+  WITH
+    reads AS (SELECT id, ROW_NUMBER() OVER (ORDER BY id) AS n FROM bank_reads WHERE changed = 1),
+    saved AS (SELECT id, ROW_NUMBER() OVER (ORDER BY id) AS n FROM syncs)
+  UPDATE bank_reads SET sync = (SELECT saved.id FROM reads JOIN saved ON saved.n = reads.n WHERE reads.id = bank_reads.id)
+  WHERE changed = 1 AND (SELECT COUNT(*) FROM reads) = (SELECT COUNT(*) FROM saved);
+  CREATE INDEX bank_reads_sync ON bank_reads (sync) WHERE sync IS NOT NULL;
+  `,
 ];
 
 // Steps that make a table again, which SQLite does with foreign keys off

@@ -26,18 +26,32 @@ interface Note {
 const ORIGIN = 'https://budget.example';
 
 // The built worker in a world of its own: what it showed, what it opened.
-function builtWorker(windows: { url: string }[] = []): {
+// 0.8: what the network does with a request the worker passes on: answer, fail, or never answer.
+type Network = (request: { readonly url: string }) => Promise<Response>;
+
+function builtWorker(
+  windows: { url: string }[] = [],
+  network: Network = () => Promise.reject(new TypeError('no network in this test')),
+): {
   readonly notes: Note[];
   readonly opened: string[];
   readonly moved: string[];
+  // Requests the worker passed on to the network.
+  readonly asked: string[];
+  // Timers the worker set, to run by hand (no real time passes here).
+  readonly timers: { readonly ms: number; readonly run: () => void }[];
   push(text: string | null): Promise<void>;
   tap(note: Note): Promise<void>;
   swipe(note: Note): void;
+  // A request from a page: whether the worker answered it, and with what (null when it left it to the browser).
+  request(url: string, mode: 'navigate' | 'cors' | 'no-cors' | 'same-origin'): { readonly taken: boolean; readonly answer: Promise<Response> | null };
 } {
   const listeners = new Map<string, ((event: unknown) => void)[]>();
   const notes: Note[] = [];
   const opened: string[] = [];
   const moved: string[] = [];
+  const asked: string[] = [];
+  const timers: { ms: number; run: () => void }[] = [];
   const self = {
     addEventListener: (type: string, fn: (event: unknown) => void) => listeners.set(type, [...(listeners.get(type) ?? []), fn]),
     skipWaiting: async () => undefined,
@@ -57,7 +71,13 @@ function builtWorker(windows: { url: string }[] = []): {
       openWindow: async (url: string) => opened.push(url),
     },
   };
-  runInNewContext(readFileSync(join(WEB_ROOT, 'sw.js'), 'utf8'), { self, URL, console });
+  const fetch = (request: { readonly url: string }): Promise<Response> => {
+    asked.push(request.url);
+    return network(request);
+  };
+  const setTimeout = (run: () => void, ms: number): number => timers.push({ ms, run });
+  const clearTimeout = (): void => undefined;
+  runInNewContext(readFileSync(join(WEB_ROOT, 'sw.js'), 'utf8'), { self, URL, console, fetch, Response, setTimeout, clearTimeout });
   const fire = async (type: string, event: object): Promise<void> => {
     const waits: Promise<unknown>[] = [];
     for (const fn of listeners.get(type) ?? []) fn({ ...event, waitUntil: (p: Promise<unknown>) => waits.push(p) });
@@ -67,6 +87,13 @@ function builtWorker(windows: { url: string }[] = []): {
     notes,
     opened,
     moved,
+    asked,
+    timers,
+    request: (url, mode) => {
+      let answer: Promise<Response> | null = null;
+      for (const fn of listeners.get('fetch') ?? []) fn({ request: { url, mode }, respondWith: (p: Promise<Response>) => void (answer = p) });
+      return { taken: answer !== null, answer };
+    },
     push: (text) => fire('push', { data: text === null ? null : { text: () => text } }),
     // Closed by the worker, it leaves the screen, as on a phone.
     tap: (note) => fire('notificationclick', { notification: { data: note.data, close: () => void notes.splice(notes.indexOf(note) >>> 0, notes.includes(note) ? 1 : 0) } }),
@@ -78,12 +105,74 @@ function builtWorker(windows: { url: string }[] = []): {
 const alert = { id: 'low-bucket needs pay period 3', title: 'Needs is low', body: 'Open the app to see what is left this pay period.', due: 'Was due 3:10 AM.', screen: '/buckets/needs' };
 
 describe('the service worker as built', () => {
-  it('Phase 5 10.12 it listens for pushes and taps only: no fetch handler, so it never serves the app\'s numbers, and it keeps only the ids of the alerts it showed (A42)', () => {
+  it('Phase 5 10.12 0.8 it listens for pushes, taps, and page navigations only: it keeps no copy of anything the server sends, and only the ids of the alerts it showed (A42)', () => {
     const code = readFileSync(join(WEB_ROOT, 'sw.js'), 'utf8');
     const events = [...code.matchAll(/addEventListener\(\s*["'`](\w+)["'`]/g)].map((m) => m[1]).sort();
-    expect(events).toEqual(['activate', 'install', 'notificationclick', 'push']);
-    expect(code).not.toMatch(/\b(caches|localStorage|sessionStorage|fetch)\b/);
+    expect(events).toEqual(['activate', 'fetch', 'install', 'notificationclick', 'push']);
+    expect(code).not.toMatch(/\b(caches|localStorage|sessionStorage|CacheStorage)\b/);
+    // 0.8: one request of its own, the page navigation it passes on.
+    expect(code.match(/\bfetch\(/g)).toHaveLength(1);
     expect([...code.matchAll(/indexedDB\.open\(\s*["'`]([\w-]+)["'`]/g)].map((m) => m[1])).toEqual(['budget-alerts-shown']);
+  });
+
+  it('0.8 a screen opened while the server cannot be reached: the plain page instead of a blank one', async () => {
+    const w = builtWorker();
+    const { taken, answer } = w.request(`${ORIGIN}/home`, 'navigate');
+    expect(taken).toBe(true);
+    const page = await answer!;
+    expect(page.status).toBe(503);
+    const html = await page.text();
+    expect(html).toContain("Can't reach the app right now.");
+    expect(html).toContain('Your money is safe; the server is offline or restarting. Try again in a few minutes.');
+    expect(html).toContain('>Try again</a>');
+    expect(w.asked).toEqual([`${ORIGIN}/home`]);
+  });
+
+  it('0.8 the host saying the server is not running (502, 503, 504): the plain page; any other answer is the server\'s own, as it came', async () => {
+    for (const status of [502, 503, 504]) {
+      const w = builtWorker([], async () => new Response('the host says no', { status }));
+      expect(await (await w.request(`${ORIGIN}/buckets`, 'navigate').answer!).text(), String(status)).toContain("Can't reach the app right now.");
+    }
+    for (const status of [200, 404, 500]) {
+      const sent = new Response(`the server's own ${status}`, { status });
+      const w = builtWorker([], async () => sent);
+      const answer = await w.request(`${ORIGIN}/review`, 'navigate').answer!;
+      expect(answer, String(status)).toBe(sent);
+    }
+  });
+
+  it('0.8 no answer within 15 seconds: the plain page; an answer before then is shown as it came', async () => {
+    const w = builtWorker([], () => new Promise<Response>(() => undefined));
+    const { answer } = w.request(`${ORIGIN}/settings`, 'navigate');
+    expect(w.timers.map((t) => t.ms)).toEqual([15_000]);
+    w.timers[0]!.run();
+    expect(await (await answer!).text()).toContain("Can't reach the app right now.");
+    const sent = new Response('the app', { status: 200 });
+    const quick = builtWorker([], async () => sent);
+    expect(await quick.request(`${ORIGIN}/settings`, 'navigate').answer!).toBe(sent);
+  });
+
+  it('0.8 never for the numbers or anything else: what a screen asks for, the health checks, Plaid\'s webhook and other sites go to the network as if the worker were not there', () => {
+    const w = builtWorker();
+    for (const [url, mode] of [
+      [`${ORIGIN}/api/home`, 'cors'],
+      [`${ORIGIN}/api/home`, 'same-origin'],
+      [`${ORIGIN}/api/status`, 'navigate'],
+      [`${ORIGIN}/health`, 'navigate'],
+      [`${ORIGIN}/health/backups`, 'navigate'],
+      [`${ORIGIN}/plaid/webhook`, 'navigate'],
+      [`${ORIGIN}/assets/app.js`, 'no-cors'],
+      ['https://cdn.plaid.com/link/v2/stable/link.html', 'navigate'],
+    ] as const) {
+      expect(w.request(url, mode).taken, url).toBe(false);
+    }
+    expect(w.asked).toEqual([]);
+  });
+
+  it('0.8 the app registers its background part each time it opens from its https address, and only there', () => {
+    const main = readFileSync(new URL('../../src/main.tsx', import.meta.url), 'utf8');
+    expect(main).toMatch(/if \(window\.location\.protocol === 'https:' && 'serviceWorker' in navigator\) void navigator\.serviceWorker\.register\('\/sw\.js', \{ scope: '\/' \}\)/);
+    expect(main.match(/serviceWorker\.register\(/g)).toHaveLength(1);
   });
 
   it('Phase 5 an alert is shown with its id as its tag, its words and when it was due; the same id again is dropped', async () => {
@@ -151,7 +240,7 @@ const runs = ENGINES.some(([name]) => name === 'chromium');
 describe.runIf(runs)('the service worker registered in Chromium', () => {
   const { browser, base } = useEngine(chromium);
 
-  it('Phase 5 it never keeps or serves the app\'s numbers: with it in charge of the page, every request goes to the server', async () => {
+  it('Phase 5 0.8 it never keeps or serves the app\'s numbers: with it in charge of the page, every request a screen makes goes to the server, and only opening a screen passes through it', async () => {
     const context = await browser().newContext(phone());
     const page = await context.newPage();
     await page.goto(`${base()}/demo/normal`);
@@ -160,16 +249,24 @@ describe.runIf(runs)('the service worker registered in Chromium', () => {
       await navigator.serviceWorker.register('/sw.js', { scope: '/' });
       await navigator.serviceWorker.ready;
     });
-    const fromWorker: string[] = [];
+    const fromWorker: { url: string; type: string }[] = [];
+    const numbers: string[] = [];
     page.on('response', (r) => {
-      if (r.fromServiceWorker()) fromWorker.push(r.url());
+      if (r.fromServiceWorker()) fromWorker.push({ url: new URL(r.url()).pathname, type: r.request().resourceType() });
+      if (new URL(r.url()).pathname.startsWith('/api/')) numbers.push(`${new URL(r.url()).pathname} ${r.fromServiceWorker() ? 'worker' : 'server'}`);
     });
     await page.reload();
     await waitOrReport(page, 'main[aria-busy="false"]');
     expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
     await page.goto(`${base()}/buckets`);
     await waitOrReport(page, 'main[aria-busy="false"]');
-    expect(fromWorker).toEqual([]);
+    // The two screens opened, passed on to the server as they were; the numbers straight from the server.
+    expect(fromWorker).toEqual([
+      { url: '/home', type: 'document' },
+      { url: '/buckets', type: 'document' },
+    ]);
+    expect(numbers.length).toBeGreaterThan(0);
+    for (const n of numbers) expect(n).toMatch(/ server$/);
     expect(await page.evaluate(async () => (await caches.keys()).length)).toBe(0);
     await context.close();
   });

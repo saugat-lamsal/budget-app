@@ -7,6 +7,7 @@ import { Banner, BottomSheet, BucketBar, Button, Card, LinkButton, ListRow, Made
 import { asOfText, checkedAtText, longDate, shortDate } from '../ui/dates.js';
 import { Icon } from '../ui/Icon.js';
 import { cardsOffText, dueText, onItsWayInText, paydayText, stillToSetText, waitingText } from './home-text.js';
+import { WhyList } from './why.js';
 
 // Home: safe to spend is the one main number. Below it, what needs
 // attention, then needs and wants as compact bars.
@@ -152,7 +153,7 @@ function HomeReady({ view, onChanged }: { readonly view: Tracking; readonly onCh
         // 11.4: money still pending at the bank, counted when it posts.
         <Card title="On its way in" testId="on-its-way-in">
           {view.onItsWayIn.map((item, i) => {
-            const words = onItsWayInText(item);
+            const words = onItsWayInText(item, view.today, view.timeZone);
             return <ListRow key={`${item.date} ${item.account} ${i}`} icon="clock" title={words.title} detail={words.detail} trailing={<Money cents={item.amount} testId={`on-its-way-in-${i}-amount`} />} testId={`on-its-way-in-${i}`} />;
           })}
         </Card>
@@ -298,6 +299,10 @@ function CheckFigures({ check, detail, timeZone }: { readonly check: SelfCheck; 
         </dl>
       </div>
       <p className="sheet__note">The bank plus money on its way should equal your buckets to the cent. Something the app has not seen, or has counted wrong, makes the difference.</p>
+      {detail !== null && detail.why.length > 0 && (
+        // 12.6 (A57): why, in lines that add up to the difference.
+        <WhyList lines={detail.why} />
+      )}
       {detail !== null && (
         // "Why it doesn't match" (docs/later.txt 18): each account as the bank gave it (12.1).
         <>

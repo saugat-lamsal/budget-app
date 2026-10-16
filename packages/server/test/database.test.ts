@@ -227,6 +227,51 @@ describe('the database', () => {
     db.close();
   });
 
+  it('step 11 (12.6, 11.4, A57) keeps every read as it was, and gives each older read that brought something new its sync, when every sync was saved with a read', () => {
+    const path = tempFile();
+    const old = openDatabase(path, { upTo: 10 });
+    const sync = old.prepare("INSERT INTO syncs (id, today, added, modified, removed, sent, held) VALUES (?, '2026-10-12', 0, 0, 0, 0, 0)");
+    const read = old.prepare('INSERT INTO bank_reads (at, changed) VALUES (?, ?)');
+    for (const id of [1, 2, 3]) sync.run(id);
+    read.run('2026-10-12T20:00:00.000Z', 1);
+    read.run('2026-10-12T21:00:00.000Z', 0);
+    read.run('2026-10-12T22:00:00.000Z', 1);
+    read.run('2026-10-12T23:00:00.000Z', 0);
+    read.run('2026-10-13T00:00:00.000Z', 1);
+    old.close();
+    const db = openDatabase(path);
+    expect(db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION);
+    expect(db.prepare('SELECT at, changed, sync, bank, difference FROM bank_reads ORDER BY id').all()).toEqual([
+      { at: '2026-10-12T20:00:00.000Z', changed: 1, sync: 1, bank: null, difference: null },
+      { at: '2026-10-12T21:00:00.000Z', changed: 0, sync: null, bank: null, difference: null },
+      { at: '2026-10-12T22:00:00.000Z', changed: 1, sync: 2, bank: null, difference: null },
+      { at: '2026-10-12T23:00:00.000Z', changed: 0, sync: null, bank: null, difference: null },
+      { at: '2026-10-13T00:00:00.000Z', changed: 1, sync: 3, bank: null, difference: null },
+    ]);
+    db.close();
+  });
+
+  it('step 11 (A57) gives older reads no sync when some sync was saved without a read: which read saved which sync is not known then', () => {
+    const path = tempFile();
+    const old = openDatabase(path, { upTo: 10 });
+    const sync = old.prepare("INSERT INTO syncs (id, today, added, modified, removed, sent, held) VALUES (?, '2026-10-12', 0, 0, 0, 0, 0)");
+    // The first sync, at connecting, without a read.
+    for (const id of [1, 2]) sync.run(id);
+    old.prepare("INSERT INTO bank_reads (at, changed) VALUES ('2026-10-12T21:00:00.000Z', 1)").run();
+    old.close();
+    const db = openDatabase(path);
+    expect(db.prepare('SELECT sync FROM bank_reads').all()).toEqual([{ sync: null }]);
+    db.close();
+  });
+
+  it('step 11 (A57) with no reads and no syncs, nothing to fill in', () => {
+    const path = tempFile();
+    openDatabase(path, { upTo: 10 }).close();
+    const db = openDatabase(path);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM bank_reads').get()).toEqual({ n: 0 });
+    db.close();
+  });
+
   it('the history takes only what the bank sent, setup day, and his answers, each with its day; a decision number is used once and names its event', () => {
     const db = openDatabase(':memory:');
     const add = db.prepare('INSERT INTO book_events (sync, kind, date, payload, totals) VALUES (NULL, ?, ?, ?, ?)');

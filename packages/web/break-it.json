@@ -1059,8 +1059,8 @@
   {
     "section": "home",
     "file": "packages/web/src/app/routes.ts",
-    "find": "return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : route.screen === 'alerts' || route.screen === 'bank' ? 'settings' : 'buckets';",
-    "replace": "return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : route.screen === 'alerts' || route.screen === 'bank' ? 'settings' : 'home';",
+    "find": "route.screen === 'alerts' || route.screen === 'bank' || route.screen === 'status' ? 'settings' : 'buckets';",
+    "replace": "route.screen === 'alerts' || route.screen === 'bank' || route.screen === 'status' ? 'settings' : 'home';",
     "why": "[activity] B97 a bucket's screen lights the wrong tab"
   },
   {
@@ -2473,8 +2473,8 @@
   {
     "section": "settings",
     "file": "packages/web/src/screens/home-text.ts",
-    "find": "detail: `To ${item.account}, counted when it posts`",
-    "replace": "detail: 'Counted when it posts'",
+    "find": "detail: `To ${item.account}, counted when it posts. Pending since",
+    "replace": "detail: `Counted when it posts. Pending since",
     "why": "[a56] 11.4 the screen does not say which account"
   },
   {
@@ -2490,5 +2490,327 @@
     "find": "<Money cents={item.amount} testId={`on-its-way-in-${i}-amount`} />",
     "replace": "<Money cents={view.onItsWayIn[0]?.amount ?? 0} testId={`on-its-way-in-${i}-amount`} />",
     "why": "[a56] 11.4 every row shows the first amount"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/why-text.ts",
+    "find": "        detail: line.charge ? 'Posted at the bank, Plaid still says pending: counted twice for now.' : 'Posted at the bank, Plaid still says pending: counted once Plaid says it posted.',",
+    "replace": "        detail: 'Posted at the bank, Plaid still says pending: counted once Plaid says it posted.',",
+    "why": "[layer1] 12.6 a charge counted twice said as counted once"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/why-text.ts",
+    "find": "went ${line.went} ${formatDollars(line.by)}",
+    "replace": "went up ${formatDollars(line.by)}",
+    "why": "[layer1] 12.6 every balance said to have gone up"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/why-text.ts",
+    "find": "from ${formatDollars(line.was)} to ${formatDollars(line.now)}",
+    "replace": "from ${formatDollars(line.now)} to ${formatDollars(line.was)}",
+    "why": "[layer1] 12.6 a changed amount said the wrong way round"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/why-text.ts",
+    "find": "${line.balance === 'available' ? 'available balance' : 'balance'}",
+    "replace": "available balance",
+    "why": "[layer1] 12.6 a posted balance said to be the available one"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/why-text.ts",
+    "find": "  return `${NAMES[account]}: ${description === '' ? 'a pending item' : `“${description}”`}`;",
+    "replace": "  return `${NAMES[account]}: “${description}”`;",
+    "why": "[layer1] 12.6 an item with no words named as empty quotes"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/why.tsx",
+    "find": "trailing={<Money cents={line.amount} signed testId={`${testId}-${i}-amount`} />}",
+    "replace": "trailing={<Money cents={Math.abs(line.amount)} signed testId={`${testId}-${i}-amount`} />}",
+    "why": "[layer1] 12.6 a line's part of the difference shown without its sign"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/why.tsx",
+    "find": "        {lines.map((line, i) => {",
+    "replace": "        {lines.slice(0, 1).map((line, i) => {",
+    "why": "[layer1] 12.6 only the first line shown"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "      {detail !== null && detail.why.length > 0 && (",
+    "replace": "      {detail !== null && detail.why.length > 99 && (",
+    "why": "[layer1] 12.6 Home's check sheet does not say why"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Buckets.tsx",
+    "find": "    check.state === 'does-not-match' && check.why !== null && check.why.length > 0 ? (",
+    "replace": "    check.state === 'does-not-match' && check.why !== null && check.why.length > 99 ? (",
+    "why": "[layer1] 12.6 Buckets has no See why"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Buckets.tsx",
+    "find": "<Money cents={check.difference} signed testId=\"why-difference\" />",
+    "replace": "<Money cents={Math.abs(check.difference)} signed testId=\"why-difference\" />",
+    "why": "[layer1] 12.6 Buckets' sheet shows the difference without its sign"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/home-text.ts",
+    "find": "(item.usually.within === 1 ? 'hour' : 'hours')",
+    "replace": "'hours'",
+    "why": "[layer1] 11.4 1 hour said as 1 hours"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/home-text.ts",
+    "find": "checkedAtText(item.since.at, today, timeZone)",
+    "replace": "checkedAtText(item.since.at, today, 'UTC')",
+    "why": "[layer1] 11.4 pending since said in UTC"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/home-text.ts",
+    "find": "item.usually.unit === 'hours' ? (item.usually.within === 1 ? 'hour' : 'hours') : 'days'",
+    "replace": "(item.usually.within === 1 ? 'hour' : 'hours')",
+    "why": "[layer1] 11.4 days said as hours"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/home-text.ts",
+    "find": "const usually = item.usually === null ? '' :",
+    "replace": "const usually = item.usually !== null ? '' :",
+    "why": "[layer1] 11.4 usually posts within never said"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "const words = onItsWayInText(item, view.today, view.timeZone);",
+    "replace": "const words = onItsWayInText(item, view.today, 'UTC');",
+    "why": "[layer1] 11.4 Home says pending since in UTC"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/status-text.ts",
+    "find": "  failed: { words: 'it failed, so nothing changed. It is tried again at the next time.', look: true },",
+    "replace": "  failed: { words: 'it failed, so nothing changed. It is tried again at the next time.', look: false },",
+    "why": "[layer1] 0.7 a failed sync not marked as needing a look"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/status-text.ts",
+    "find": "      look: view.mismatchSince !== null,",
+    "replace": "      look: false,",
+    "why": "[layer1] 0.7 a difference with the bank not marked as needing a look"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/status-text.ts",
+    "find": "look: view.alertsWaiting > 0 },",
+    "replace": "look: false },",
+    "why": "[layer1] 0.7 alerts waiting not marked as needing a look"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/status-text.ts",
+    "find": "none confirmed since ${b.lastBeat === null ? 'the server started' : when(b.lastBeat)}.`, look: true };",
+    "replace": "none confirmed since ${b.lastBeat === null ? 'the server started' : when(b.lastBeat)}.`, look: false };",
+    "why": "[layer1] 0.7 backups not copying not marked as needing a look"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/status-text.ts",
+    "find": "  const when = (at: string): string => checkedAtText(at, view.today, view.timeZone);",
+    "replace": "  const when = (at: string): string => checkedAtText(at, view.today, 'UTC');",
+    "why": "[layer1] 0.7 the times said in UTC"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/status-text.ts",
+    "find": "  if (since === 0) return `${kept}. All ${whenOpened} replayed to their totals when the books opened.`;",
+    "replace": "",
+    "why": "[layer1] 0.7 0.6 none since the books opened said as some since"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/status-text.ts",
+    "find": "  const kept = `${now} ${now === 1 ? 'event' : 'events'} kept`;",
+    "replace": "  const kept = `${now} events kept`;",
+    "why": "[layer1] 0.7 1 event said as 1 events"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Status.tsx",
+    "find": "icon={l.look ? 'alert' : ICONS[l.id]}",
+    "replace": "icon={ICONS[l.id]}",
+    "why": "[layer1] 0.7 what needs a look has no warning icon"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Status.tsx",
+    "find": "{looks === 0 ? 'All working' : looks === 1 ? '1 thing needs a look' : `${looks} things need a look`}",
+    "replace": "{'All working'}",
+    "why": "[layer1] 0.7 the page says all working whatever it shows"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Status.tsx",
+    "find": "            .filter((l) => group.ids.includes(l.id))",
+    "replace": "            .filter((l) => group.ids.includes(l.id) && !l.look)",
+    "why": "[layer1] 0.7 what needs a look left off the page"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/app/routes.ts",
+    "find": "  if (path === '/status') return { screen: 'status' };\n",
+    "replace": "",
+    "why": "[layer1] 0.7 /status opens nothing"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/sync-card.tsx",
+    "find": "href=\"/status\" testId=\"row-status\"",
+    "replace": "href=\"/alerts\" testId=\"row-status\"",
+    "why": "[layer1] 0.7 the Status row opens the alerts"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "const NOT_RUNNING: ReadonlySet<number> = new Set([502, 503, 504]);",
+    "replace": "const NOT_RUNNING: ReadonlySet<number> = new Set([502, 504]);",
+    "why": "[layer1] 0.8 the host's 503 shown as it came"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "  return answer === 'failed' || answer === 'no-answer' || NOT_RUNNING.has(answer.status);",
+    "replace": "  return answer === 'failed' || (answer !== 'no-answer' && NOT_RUNNING.has(answer.status));",
+    "why": "[layer1] 0.8 no answer left blank"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "const NOT_SCREENS = /^\\/(api|health|plaid)(\\/|$)|^\\/sw\\.js$/;",
+    "replace": "const NOT_SCREENS = /^\\/(api|plaid)(\\/|$)|^\\/sw\\.js$/;",
+    "why": "[layer1] 0.8 the health checks answered with the plain page"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "const NOT_SCREENS = /^\\/(api|health|plaid)(\\/|$)|^\\/sw\\.js$/;",
+    "replace": "const NOT_SCREENS = /^\\/(health|plaid)(\\/|$)|^\\/sw\\.js$/;",
+    "why": "[layer1] 0.8 opening the numbers' address answered by the worker"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "  return url.origin === origin && !NOT_SCREENS.test(url.pathname);",
+    "replace": "  return !NOT_SCREENS.test(url.pathname);",
+    "why": "[layer1] 0.8 another site's page answered with the plain page"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "export const NO_ANSWER_MS = 15_000;",
+    "replace": "export const NO_ANSWER_MS = 60_000;",
+    "why": "[layer1] 0.8 a minute with no answer before the plain page"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "  body: 'Your money is safe; the server is offline or restarting. Try again in a few minutes.',",
+    "replace": "  body: 'Your money is safe.',",
+    "why": "[layer1] 0.8 the page leaves out what happened and what to do"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "<a href=\"\" data-testid=\"offline-again\">",
+    "replace": "<a href=\"/home\" data-testid=\"offline-again\">",
+    "why": "[layer1] 0.8 Try again opens Home, not the screen he opened"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "      'Content-Security-Policy': \"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'\",\n",
+    "replace": "",
+    "why": "[layer1] 0.8 the page without its own security policy"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "      'Cache-Control': 'no-store',\n",
+    "replace": "",
+    "why": "[layer1] 0.8 the page may be kept by the browser"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "    status: 503,",
+    "replace": "    status: 200,",
+    "why": "[layer1] 0.8 the plain page said to be the app answering"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "@media (prefers-color-scheme: dark) { :root { --bg: #000000; --surface: #1c1c1e; --text: #f5f5f7; --text-2: #a3a3aa; --accent: #6f9dff; --on-accent: #0a1430; } }\n",
+    "replace": "",
+    "why": "[layer1] 0.8 the plain page ignores dark mode"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "min-width: 44px; min-height: 44px; padding: 0.625rem 1.5rem;",
+    "replace": "padding: 0.125rem 0.25rem;",
+    "why": "[layer1] 0.8 Try again smaller than 44 points"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "@supports (font: -apple-system-body) { html { font: -apple-system-body; } }\n",
+    "replace": "",
+    "why": "[layer1] 0.8 the plain page ignores the phone's text size"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/sw.ts",
+    "find": "  if (event.request.mode !== 'navigate' || !handlesNavigation(new URL(event.request.url), self.location.origin)) return;",
+    "replace": "  if (!handlesNavigation(new URL(event.request.url), self.location.origin)) return;",
+    "why": "[layer1] 0.8 every request on the app's address taken, not only opening a screen"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/sw.ts",
+    "find": "    return showOffline(answer) ? offlinePage() : answer;",
+    "replace": "    return answer;",
+    "why": "[layer1] 0.8 the host saying the server is not running shown as it came"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/sw.ts",
+    "find": "  } catch {\n    return offlinePage();\n  } finally {",
+    "replace": "  } catch (error) {\n    throw error;\n  } finally {",
+    "why": "[layer1] 0.8 a request that fails left blank"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/sw.ts",
+    "find": "    timer = setTimeout(() => done('no-answer'), NO_ANSWER_MS);",
+    "replace": "    timer = undefined;\n    void done;",
+    "why": "[layer1] 0.8 waits for ever for an answer"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/main.tsx",
+    "find": "if (window.location.protocol === 'https:' && 'serviceWorker' in navigator) void navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => undefined);",
+    "replace": "if (window.location.protocol === 'https:' && 'serviceWorker' in navigator && Notification.permission === 'granted') void navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => undefined);",
+    "why": "[layer1] 0.8 the background part only where notifications are on"
   }
 ]

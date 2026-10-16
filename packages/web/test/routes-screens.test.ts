@@ -90,6 +90,18 @@ describe('10 the list of alerts sent has its own address', () => {
     // Going back from the other screens is as it was.
     expect(backTarget({ screen: 'payday' }, '/alerts')).toEqual({ screen: 'alerts' });
   });
+
+  it('0.7 the status page is at /status, on the Settings tab, and goes back to Settings', () => {
+    expect(pathOfRoute({ screen: 'status' })).toBe('/status');
+    expect(routeOf('/status')).toEqual({ screen: 'status' });
+    expect(routeOf('/status/')).toEqual({ screen: 'status' });
+    expect(routeOf('/status/extra')).toBeNull();
+    expect(tabOfRoute({ screen: 'status' })).toBe('settings');
+    expect(routeTitle({ screen: 'status' })).toBe('Status · Budget');
+    expect(backTarget({ screen: 'status' }, undefined)).toEqual({ screen: 'tab', tab: 'settings' });
+    expect(backTarget({ screen: 'status' }, '/status')).toEqual({ screen: 'tab', tab: 'settings' });
+    expect(backTarget({ screen: 'payday' }, '/status')).toEqual({ screen: 'status' });
+  });
 });
 
 describe('the server answers every one of them with the app', () => {

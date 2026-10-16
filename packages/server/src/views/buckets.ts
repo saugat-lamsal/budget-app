@@ -1,5 +1,5 @@
 import { bucketLevel, monthOf, type BankBalances, type Book, type Cents, type InTransitItem, type IsoDate, type OthersMoney } from '@budget-app/money';
-import type { BucketBar } from './home.js';
+import type { BucketBar, WhyLine } from './home.js';
 
 // What the Buckets screen shows, worked out on the server from the book. The
 // screen only formats it: every number here comes from the money math, in
@@ -15,6 +15,8 @@ export interface BucketsInput {
   readonly madeUpData: boolean;
   // 10.4 (A47): the difference with the bank is younger than the setting's hours.
   readonly catchingUp?: boolean;
+  // 12.6 (A57): why the totals do not match; null when not known (the bank cannot be read).
+  readonly why?: readonly WhyLine[] | null;
 }
 
 export type BucketsView =
@@ -28,7 +30,7 @@ export type BucketsView =
       // 0.5: Buckets says so too when the totals do not match the bank.
       readonly check:
         | { readonly state: 'matches' }
-        | { readonly state: 'does-not-match'; readonly difference: Cents; readonly catchingUp: boolean }
+        | { readonly state: 'does-not-match'; readonly difference: Cents; readonly catchingUp: boolean; readonly why: readonly WhyLine[] | null }
         | { readonly state: 'bank-not-read' };
       readonly needs: BucketBar;
       readonly wants: BucketBar;
@@ -74,7 +76,7 @@ export function bucketsView(input: BucketsInput): BucketsView {
   if (bank === null) check = { state: 'bank-not-read' };
   else {
     const self = book.selfCheck(bank);
-    check = self.ok ? { state: 'matches' } : { state: 'does-not-match', difference: self.difference, catchingUp: input.catchingUp ?? false };
+    check = self.ok ? { state: 'matches' } : { state: 'does-not-match', difference: self.difference, catchingUp: input.catchingUp ?? false, why: input.why ?? null };
   }
 
   const month = book.momSentInMonth(monthOf(today));

@@ -12,7 +12,10 @@ import { describe, expect, it } from 'vitest';
 // bank the app reads and which account is which, never money; the bank's own
 // login is Plaid's, and the bank key never comes to the phone). None of it
 // moves money at the bank. Nothing about money is kept on
-// the phone either.
+// the phone either. The service worker makes one request of its own (0.8,
+// QUESTIONS.md A57): opening a screen of the app, passed on to the server as
+// it is, so it can show a plain page when the server cannot be reached; it
+// keeps no copy of what comes back.
 const sourceDir = new URL('../src/', import.meta.url);
 
 function sourceFiles(): { name: string; text: string }[] {
@@ -47,7 +50,10 @@ describe('0.4 the screens never move money', () => {
     expect(calls.length).toBeGreaterThan(1);
     // The login's requests go to one of its own /api/auth addresses (AuthPath
     // in api.ts), and the Notifications card's to its three (PushPath).
-    for (const { name, call } of calls) expect(call, name).toMatch(/^fetch\( ?('\/api\/|path, |pushPath, |bankPath, )/);
+    for (const { name, call } of calls) {
+      if (name.replaceAll('\\', '/') === 'sw/sw.ts') expect(call, name).toBe('fetch(request)');
+      else expect(call, name).toMatch(/^fetch\( ?('\/api\/|path, |pushPath, |bankPath, )/);
+    }
     const api = sourceFiles().find(({ name }) => name.replaceAll('\\', '/') === 'app/api.ts')?.text ?? '';
     expect(api).toMatch(/type AuthPath = ('\/api\/auth\/[a-z/]+'( \| )?)+;/);
     expect(api).toContain("export type PushPath = '/api/push/on' | '/api/push/off' | '/api/push/test';");
@@ -66,11 +72,19 @@ describe('0.4 the screens never move money', () => {
     ]);
   });
 
-  it('0.4 every request is made in one place, app/api.ts, and the screens only call what it offers', () => {
+  it('0.4 every request is made in one place, app/api.ts, and the screens only call what it offers; 0.8 the service worker only passes on the screen being opened', () => {
     const makers = sourceFiles()
       .filter(({ text }) => /\bfetch\(/.test(text))
       .map(({ name }) => name.replaceAll('\\', '/'));
-    expect(makers).toEqual(['app/api.ts']);
+    expect(makers).toEqual(['app/api.ts', 'sw/sw.ts']);
+    const worker = sourceFiles().find(({ name }) => name.replaceAll('\\', '/') === 'sw/sw.ts')?.text ?? '';
+    expect(worker.match(/\bfetch\(/g)).toEqual(['fetch(']);
+    // Only for opening a screen, and only of the app.
+    expect(worker).toContain("if (event.request.mode !== 'navigate' || !handlesNavigation(new URL(event.request.url), self.location.origin)) return;");
+  });
+
+  it('0.4 0.8 nothing the server sends is kept anywhere on the phone: no cache, no stored copy', () => {
+    for (const { name, text } of sourceFiles()) expect(text.match(/\b(caches|CacheStorage|cache\.put|cache\.add)\b/)?.[0], name).toBeUndefined();
   });
 
   it('0.4 no other way to send anything, and nothing kept on the phone', () => {

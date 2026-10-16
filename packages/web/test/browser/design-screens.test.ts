@@ -235,8 +235,9 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
       // A row's title is not squeezed to a sliver to keep its amount on the same line (found on CI, where the
       // font is wider): the amount goes below it instead, and the title keeps the row's width, at least six
       // letters' worth, whatever the font.
+      // Rows on the screen only: a closed sheet's rows are not drawn (12.6's sheet on Buckets).
       const squeezed = await page.locator('.row--trailing .row__title').evaluateAll((els) =>
-        els.flatMap((e) => {
+        els.filter((e) => e.getClientRects().length > 0).flatMap((e) => {
           const width = e.getBoundingClientRect().width;
           const size = Number.parseFloat(getComputedStyle(e).fontSize);
           return width < 6 * size ? [`"${e.textContent ?? ''}" is only ${Math.round(width)}px wide`] : [];

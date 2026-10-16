@@ -93,22 +93,22 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (item.kind === 'purchase' && item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });",
-    "replace": "      void role;",
+    "find": "      if (charge) pendingCharges.push({ account: role, amount: item.amountCents });",
+    "replace": "      void charge;",
     "why": "12.1 leave pending charges out of the bank side"
   },
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (item.kind === 'purchase' && item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });",
+    "find": "      if (charge) pendingCharges.push({ account: role, amount: item.amountCents });",
     "replace": "      if (item.kind === 'purchase' || item.amountCents < 0) pendingCharges.push({ account: role, amount: item.amountCents });",
     "why": "B36 count pending money in and pending transfers in the bank side"
   },
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (!item.pending || item.removed || item.replacedBy !== null || role === undefined) continue;",
-    "replace": "      if (!item.pending || item.replacedBy !== null || role === undefined) continue;",
+    "find": "      if (role === undefined || item.removed || item.amountCents === null || item.amountCents === 0) continue;",
+    "replace": "      if (role === undefined || (item.removed && !item.pending) || item.amountCents === null || item.amountCents === 0) continue;",
     "why": "4.6 keep counting a pending charge the bank removed"
   },
   {
@@ -324,8 +324,8 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (item.kind === 'purchase' && item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });",
-    "replace": "      if (item.kind === 'purchase' && item.amountCents > 0 && role !== 'savings') pendingCharges.push({ account: role, amount: item.amountCents });",
+    "find": "      if (charge) pendingCharges.push({ account: role, amount: item.amountCents });",
+    "replace": "      if (charge && role !== 'savings') pendingCharges.push({ account: role, amount: item.amountCents });",
     "why": "12.1 leave a charge pending on savings out of the bank side (A16)"
   },
   {
@@ -618,8 +618,8 @@
   {
     "section": "review",
     "file": "packages/server/src/views/buckets.ts",
-    "find": "difference: self.difference, catchingUp: input.catchingUp ?? false }",
-    "replace": "difference: -self.difference, catchingUp: input.catchingUp ?? false }",
+    "find": "difference: self.difference, catchingUp: input.catchingUp ?? false, why: input.why ?? null }",
+    "replace": "difference: -self.difference, catchingUp: input.catchingUp ?? false, why: input.why ?? null }",
     "why": "[review] 12.3 the difference is the wrong way round"
   },
   {
@@ -856,8 +856,8 @@
   {
     "section": "review",
     "file": "packages/server/src/http/server.ts",
-    "find": "export const SCREEN_PATHS: readonly string[] = ['/payday', '/alerts', '/bank', ...",
-    "replace": "export const SCREEN_PATHS: readonly string[] = ['/alerts', '/bank', ...",
+    "find": "export const SCREEN_PATHS: readonly string[] = ['/payday', '/alerts', '/bank', '/status', ...",
+    "replace": "export const SCREEN_PATHS: readonly string[] = ['/alerts', '/bank', '/status', ...",
     "why": "[activity] B104 Payday has no address of its own"
   },
   {
@@ -1661,8 +1661,8 @@
   {
     "section": "history",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "    if (connection === null || connection.needsLogin) return { bank: null, pendingIn: [] };\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    return view.ok ? { bank: view.view.withPending, pendingIn: view.view.pendingIn } : { bank: null, pendingIn: [] };",
-    "replace": "    if (connection === null) return { bank: null, pendingIn: [] };\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    return view.ok ? { bank: view.view.withPending, pendingIn: view.view.pendingIn } : { bank: null, pendingIn: [] };",
+    "find": "    if (connection === null || connection.needsLogin) return { bank: null, pendingIn: [], postingExamples: [] };",
+    "replace": "    if (connection === null) return { bank: null, pendingIn: [], postingExamples: [] };",
     "why": "[keeper] 0.5 read the bank while it wants a new login"
   },
   {
@@ -2158,15 +2158,15 @@
   {
     "section": "sync",
     "file": "packages/server/src/sync/sync.ts",
-    "find": "  if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed });\n  if (!changed) return result;\n",
+    "find": "  if (!changed) {\n    if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed, sync: null, ...whatTheReadFound(db, book, sync - 1) });\n    return result;\n  }\n",
     "replace": "  if (!changed) return result;\n",
     "why": "[sync] B171 a sync with nothing new is not counted as a read"
   },
   {
     "section": "sync",
-    "file": "packages/server/src/sync/sync.ts",
-    "find": "  if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed });\n",
-    "replace": "",
+    "file": "packages/server/src/sync/bank-reads.ts",
+    "find": "  db.prepare('INSERT INTO bank_reads (at, changed, sync, bank, difference) VALUES (?, ?, ?, ?, ?)').run(",
+    "replace": "  if (read.at === '') db.prepare('INSERT INTO bank_reads (at, changed, sync, bank, difference) VALUES (?, ?, ?, ?, ?)').run(",
     "why": "[sync] B171 no read is ever noted"
   },
   {
@@ -4188,15 +4188,15 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (item.kind === 'purchase' && item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });",
+    "find": "      if (charge) pendingCharges.push({ account: role, amount: item.amountCents });",
     "replace": "      if (item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });",
     "why": "[a47] 12.1 a pending transfer or payment to a person counted as a pending charge"
   },
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (item.amountCents === null || item.amountCents === 0) continue;",
-    "replace": "      if (item.amountCents === null || item.amountCents <= 0) continue;",
+    "find": "      pendingItems.set(role, [...(pendingItems.get(role) ?? []), item.amountCents]);",
+    "replace": "      if (item.amountCents > 0) pendingItems.set(role, [...(pendingItems.get(role) ?? []), item.amountCents]);",
     "why": "[a47] [a54] 12.1 pending money in left in the available balance, counted as if the books had it"
   },
   {
@@ -4272,8 +4272,8 @@
   {
     "section": "history",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "    keeper.reload();\n    keeper.#noteGap();",
-    "replace": "    keeper.reload();",
+    "find": "    keeper.#eventsWhenOpened = countEvents(input.db);\n    keeper.#noteGap();",
+    "replace": "    keeper.#eventsWhenOpened = countEvents(input.db);",
     "why": "[a47] 10.4 books from before the update do not note a gap already there when they open"
   },
   {
@@ -4293,8 +4293,8 @@
   {
     "section": "history",
     "file": "packages/server/src/views/buckets.ts",
-    "find": "catchingUp: input.catchingUp ?? false };",
-    "replace": "catchingUp: false };",
+    "find": "catchingUp: input.catchingUp ?? false, why: input.why ?? null };",
+    "replace": "catchingUp: false, why: input.why ?? null };",
     "why": "[a47] 10.4 Buckets never says the bank is still catching up"
   },
   {
@@ -5014,8 +5014,8 @@
   {
     "section": "review",
     "file": "packages/server/src/views/home.ts",
-    "find": "paycheck: matchesTextRule(paycheckRule, p.description) };",
-    "replace": "paycheck: paycheckRule !== null };",
+    "find": "      const paycheck = matchesTextRule(paycheckRule, p.description);",
+    "replace": "      const paycheck = paycheckRule !== null;",
     "why": "[a56] 11.4 every deposit called a paycheck once the paycheck rule is set"
   },
   {
@@ -5035,22 +5035,533 @@
   {
     "section": "review",
     "file": "packages/server/src/views/home.ts",
-    "find": "onItsWayIn: onItsWayIn(input.pendingIn ?? [], settings.paycheckRule),",
+    "find": "onItsWayIn: onItsWayIn(input.pendingIn ?? [], settings.paycheckRule, input.postingExamples ?? []),",
     "replace": "onItsWayIn: [],",
     "why": "[a56] 11.4 nothing pending in reaches Home"
   },
   {
     "section": "bank",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "    if (connection === null || connection.needsLogin) return { bank: null, pendingIn: [] };\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    return view.ok ? { bank: view.view.withPending, pendingIn: view.view.pendingIn } : { bank: null, pendingIn: [] };",
-    "replace": "    if (connection === null) return { bank: null, pendingIn: [] };\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    if (connection.needsLogin) return { bank: null, pendingIn: view.ok ? view.view.pendingIn : [] };\n    return view.ok ? { bank: view.view.withPending, pendingIn: view.view.pendingIn } : { bank: null, pendingIn: [] };",
+    "find": "    if (connection === null || connection.needsLogin) return { bank: null, pendingIn: [], postingExamples: [] };\n    const accounts = readAccounts(this.#db);",
+    "replace": "    if (connection === null) return { bank: null, pendingIn: [], postingExamples: [] };\n    if (connection.needsLogin) {\n      const v = bankView(readAccounts(this.#db), readItems(this.#db));\n      return { bank: null, pendingIn: v.ok ? v.view.pendingIn : [], postingExamples: [] };\n    }\n    const accounts = readAccounts(this.#db);",
     "why": "[a56] 11.4 0.5 money on its way in shown while the bank cannot be read"
   },
   {
     "section": "bank",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "      pendingIn: this.#bankNow().pendingIn,\n",
+    "find": "      pendingIn: this.#bankNow().pendingIn.map((p) => ({ ...p, firstSeen: p.firstSeen === null || p.firstSeen === undefined ? null : timeIn(this.timeZone(), new Date(p.firstSeen)) })),\n",
     "replace": "",
     "why": "[a56] 11.4 the Keeper leaves money on its way in off Home"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "    const move = addCents(account === 'everyday-card' ? -counted : counted, subtractCents(after.items, before.items));",
+    "replace": "    const move = addCents(counted, subtractCents(after.items, before.items));",
+    "why": "[layer1] 12.6 the card's move taken the same way as a bank account's"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "    const move = addCents(account === 'everyday-card' ? -counted : counted, subtractCents(after.items, before.items));",
+    "replace": "    const move = account === 'everyday-card' ? -counted : counted;",
+    "why": "[layer1] 12.6 an account's own transactions left out of its move"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "  if (taken.length === size) return taken.reduce((total, i) => total + parts[i]!, 0) === target ? taken : null;",
+    "replace": "  if (taken.length === size) return taken.reduce((total, i) => total + parts[i]!, 0) !== 0 ? taken : null;",
+    "why": "[layer1] 12.6 a cause named that does not account for the move to the cent"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "  for (let size = 1; size <= largest; size += 1) {",
+    "replace": "  for (let size = largest; size >= 1; size -= 1) {",
+    "why": "[layer1] 12.6 the most items that add up, not the fewest"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "  if (rest !== 0) lines.push({ kind: 'rest', amount: rest });",
+    "replace": "  if (rest > 0) lines.push({ kind: 'rest', amount: rest });",
+    "why": "[layer1] 12.6 a rest below zero left out, so the lines do not add up"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "  if (then === null) return [{ kind: 'no-match-kept', amount: difference }];",
+    "replace": "  if (then === null) return [{ kind: 'rest', amount: difference }];",
+    "why": "[layer1] 12.6 no read that matched is not said"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "  if (difference === 0) return [];",
+    "replace": "  if (difference === 0 && then === null) return [];",
+    "why": "[layer1] 12.6 totals that match still get lines"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "charge: p.purchase && p.amount > 0, amount: -p.amount }));",
+    "replace": "charge: false, amount: -p.amount }));",
+    "why": "[layer1] 12.6 a charge the bank posted said as counted once, not twice"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "charge: p.purchase && p.amount > 0, amount: -p.amount }));",
+    "replace": "charge: p.purchase && p.amount > 0, amount: p.amount }));",
+    "why": "[layer1] 12.6 a pending item the bank posted taken with the bank's sign"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "    const twin = pending.find((p) => p.amount === posted.amount && !paired.has(p.id));",
+    "replace": "    const twin = pending.find((p) => !paired.has(p.id));",
+    "why": "[layer1] 12.6 any pending item taken for a posted one's twin"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "amount: subtractCents(p.amount, was) });",
+    "replace": "amount: subtractCents(was, p.amount) });",
+    "why": "[layer1] 12.6 a changed amount's part the wrong way round"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "  const listedThen = new Map(then.pending.filter((p) => p.account === account).map((p) => [p.id, p.amount]));",
+    "replace": "  const listedThen = new Map<string, Cents>();",
+    "why": "[layer1] 12.6 a pending item listed at the read that matched taken as new"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "    const up = account === 'everyday-card' ? move < 0 : move > 0;",
+    "replace": "    const up = move > 0;",
+    "why": "[layer1] 12.6 a card's balance going up said as going down"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "    const balance = account !== 'everyday-card' && after.available !== null ? 'available' : 'posted';",
+    "replace": "    const balance = after.available !== null || account === 'everyday-card' ? 'available' : 'posted';",
+    "why": "[layer1] 12.6 the card said to have an available balance"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "  if (!available.then || !available.now) return [];",
+    "replace": "  if (!available.then && !available.now) return [];",
+    "why": "[layer1] 12.6 an account read one way then and another now still has causes named"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "  const candidates = candidatesOn(account, input).filter((c) => c.amount !== 0);",
+    "replace": "  const candidates = candidatesOn(account, input).filter((c) => c.kind === 'posted-still-pending');",
+    "why": "[layer1] 12.6 only the posted-still-pending causes are ever named"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "        if (checked !== null) counts[checked] = addCents(counts[checked], item.amountCents);\n        continue;",
+    "replace": "        continue;",
+    "why": "[layer1] 12.6 a posted transaction left out of its account's transactions"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "        if (charge) counts[checked] = addCents(counts[checked], item.amountCents);",
+    "replace": "",
+    "why": "[layer1] 12.6 a pending charge left out of its account's transactions"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "description: read.ok ? read.item.description : '', purchase: charge });",
+    "replace": "description: '', purchase: charge });",
+    "why": "[layer1] 12.6 a pending item kept without the bank's words"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "description: read.ok ? read.item.description : '', purchase: charge });",
+    "replace": "description: read.ok ? read.item.description : '', purchase: false });",
+    "why": "[layer1] 12.6 a pending charge not known to be one"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "      counted: view.withPending[key],",
+    "replace": "      counted: view.posted[key],",
+    "why": "[layer1] 12.6 a read keeps the posted balance as what the check counted"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "    if (account === null || item.pending || item.removed || item.firstSync <= afterSync || item.amountCents === null || item.amountCents === 0) continue;",
+    "replace": "    if (account === null || item.pending || item.removed || item.firstSync < afterSync || item.amountCents === null || item.amountCents === 0) continue;",
+    "why": "[layer1] 12.6 an item from the sync of the read that matched taken as one since"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/bank-reads.ts",
+    "find": "  const row = statement(db, 'SELECT at, bank FROM bank_reads WHERE difference = 0 AND bank IS NOT NULL ORDER BY id DESC LIMIT 1').get() as { at: string; bank: string } | undefined;",
+    "replace": "  const row = statement(db, 'SELECT at, bank FROM bank_reads WHERE bank IS NOT NULL ORDER BY id DESC LIMIT 1').get() as { at: string; bank: string } | undefined;",
+    "why": "[layer1] 12.6 the last read taken for the last one that matched"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/bank-reads.ts",
+    "find": "  db.prepare('UPDATE bank_reads SET difference = 0 WHERE id = (SELECT MAX(id) FROM bank_reads) AND bank IS NOT NULL AND difference IS NULL').run();",
+    "replace": "  void db;",
+    "why": "[layer1] 12.6 14.3 setup day not counted as a read that matched"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/bank-reads.ts",
+    "find": "    read.difference ?? null,",
+    "replace": "    null,",
+    "why": "[layer1] 12.6 a read's check not kept"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "  if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed, sync, ...whatTheReadFound(db, book, sync) });",
+    "replace": "  if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed, sync: null, ...whatTheReadFound(db, book, sync) });",
+    "why": "[layer1] 12.6 11.4 the sync a read saved not kept"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "    if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed, sync: null, ...whatTheReadFound(db, book, sync - 1) });",
+    "replace": "    if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed, sync: null });",
+    "why": "[layer1] 12.6 a read that brought nothing new keeps nothing of the bank"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "  return { bank: bankAtRead(view.view, syncs), difference: book === null ? null : book.selfCheck(view.view.withPending).difference };",
+    "replace": "  return { bank: bankAtRead(view.view, syncs), difference: book === null ? null : book.selfCheck(view.view.posted).difference };",
+    "why": "[layer1] 12.6 a read's check worked out from the posted balances"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    return bucketsView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false, catchingUp: this.#catchingUp(), why: this.#whyNow() });",
+    "replace": "    return bucketsView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false, catchingUp: this.#catchingUp(), why: null });",
+    "why": "[layer1] 12.6 Buckets is told nothing of why"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      postedSince: then === null ? [] : postedSince(accounts, items, then.syncs),",
+    "replace": "      postedSince: then === null ? [] : postedSince(accounts, items, 0),",
+    "why": "[layer1] 12.6 every posted item taken as one since the read that matched"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      pendingNow: view.pending,",
+    "replace": "      pendingNow: [],",
+    "why": "[layer1] 12.6 no pending item named"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      markSetupRead(this.#db);",
+    "replace": "",
+    "why": "[layer1] 12.6 14.3 the Keeper does not count setup day as a read that matched"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/db/database.ts",
+    "find": "  WHERE changed = 1 AND (SELECT COUNT(*) FROM reads) = (SELECT COUNT(*) FROM saved);",
+    "replace": "  WHERE changed = 1;",
+    "why": "[layer1] 11.4 older reads given syncs even when some sync was saved without a read"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/db/database.ts",
+    "find": "    reads AS (SELECT id, ROW_NUMBER() OVER (ORDER BY id) AS n FROM bank_reads WHERE changed = 1),",
+    "replace": "    reads AS (SELECT id, ROW_NUMBER() OVER (ORDER BY id) AS n FROM bank_reads),",
+    "why": "[layer1] 11.4 an older read that brought nothing new counted as one that saved a sync"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "why: input.why ?? null };",
+    "replace": "why: null };",
+    "why": "[layer1] 12.6 the Buckets view drops why"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "const SHARE = 3 / 4;",
+    "replace": "const SHARE = 1 / 2;",
+    "why": "[layer1] 11.4 half of them, not three in four"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "export const FEWEST_EXAMPLES = 3;",
+    "replace": "export const FEWEST_EXAMPLES = 2;",
+    "why": "[layer1] 11.4 a figure from only 2 earlier ones"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "export const LAST = 10;",
+    "replace": "export const LAST = 20;",
+    "why": "[layer1] 11.4 more than the last 10 counted"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": ".sort((a, b) => Date.parse(b.postedAt) - Date.parse(a.postedAt))",
+    "replace": ".sort((a, b) => Date.parse(a.postedAt) - Date.parse(b.postedAt))",
+    "why": "[layer1] 11.4 the oldest 10, not the newest"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "  const hours = Math.max(1, Math.ceil(within / HOUR));",
+    "replace": "  const hours = Math.max(1, Math.round(within / HOUR));",
+    "why": "[layer1] 11.4 rounded to the nearest hour, not up"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "  return hours < 48 ? { within: hours, unit: 'hours' } : { within: Math.ceil(within / DAY), unit: 'days' };",
+    "replace": "  return hours <= 48 ? { within: hours, unit: 'hours' } : { within: Math.ceil(within / DAY), unit: 'days' };",
+    "why": "[layer1] 11.4 48 hours said in hours, not 2 days"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "  return hours < 48 ? { within: hours, unit: 'hours' } : { within: Math.ceil(within / DAY), unit: 'days' };",
+    "replace": "  return hours < 48 ? { within: hours, unit: 'hours' } : { within: Math.floor(within / DAY), unit: 'days' };",
+    "why": "[layer1] 11.4 days rounded down"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "  const moneyIn = (i: StoredItem): boolean => roles.has(i.accountId) && i.kind === 'deposit' && i.amountCents !== null && i.amountCents < 0;",
+    "replace": "  const moneyIn = (i: StoredItem): boolean => roles.has(i.accountId) && i.amountCents !== null && i.amountCents < 0;",
+    "why": "[layer1] 11.4 a transfer arriving taken as an earlier deposit"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "p.amountCents === posted.amountCents && p.lastSync === posted.firstSync && !used.has(p.transactionId)) : undefined);",
+    "replace": "p.amountCents === posted.amountCents && !used.has(p.transactionId)) : undefined);",
+    "why": "[layer1] 11.4 an unlinked pending one dropped in another read taken as the posted one's"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "p.amountCents === posted.amountCents && p.lastSync === posted.firstSync && !used.has(p.transactionId)) : undefined);",
+    "replace": "p.amountCents === posted.amountCents && p.lastSync === posted.firstSync) : undefined);",
+    "why": "[layer1] 11.4 one pending one taken for two posted ones"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "    if (!(ms >= 0)) continue;",
+    "replace": "",
+    "why": "[layer1] 11.4 a posted one seen before its pending one taken as an example"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "    const seen = syncTimes.get(pending.firstSync);",
+    "replace": "    const seen = syncTimes.get(pending.lastSync);",
+    "why": "[layer1] 11.4 timed from when the pending one was last changed"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/views/home.ts",
+    "find": "      const alike = examples.filter((e) => e.account === p.account && matchesTextRule(paycheckRule, e.description) === paycheck);",
+    "replace": "      const alike = examples.filter((e) => e.account === p.account);",
+    "why": "[layer1] 11.4 other money in learns from paychecks"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/views/home.ts",
+    "find": "      const alike = examples.filter((e) => e.account === p.account && matchesTextRule(paycheckRule, e.description) === paycheck);",
+    "replace": "      const alike = examples.filter((e) => matchesTextRule(paycheckRule, e.description) === paycheck);",
+    "why": "[layer1] 11.4 savings learns from checking"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/views/home.ts",
+    "find": "since: firstSeen === null ? { day: p.date } : { at: firstSeen },",
+    "replace": "since: { day: p.date },",
+    "why": "[layer1] 11.4 pending since only the day, even when the time is known"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/views/home.ts",
+    "find": "      if (firstSeen !== null && (!ISO_TIME.test(firstSeen) || Number.isNaN(Date.parse(firstSeen)))) throw new Error(`not a time with its offset: ${firstSeen}`);",
+    "replace": "",
+    "why": "[layer1] 11.4 a first-seen time without its offset let through"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "firstSeen: times.get(firstSync) ?? null }));",
+    "replace": "firstSeen: null }));",
+    "why": "[layer1] 11.4 the Keeper never knows when it first saw one"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "firstSeen: p.firstSeen === null || p.firstSeen === undefined ? null : timeIn(this.timeZone(), new Date(p.firstSeen)) })),",
+    "replace": "firstSeen: p.firstSeen ?? null })),",
+    "why": "[layer1] 11.4 pending since in UTC, not his home time zone"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      postingExamples: this.#bankNow().postingExamples,",
+    "replace": "      postingExamples: [],",
+    "why": "[layer1] 11.4 the Keeper learns nothing from earlier ones"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    return { bank: view.view.withPending, pendingIn, postingExamples: postingExamples(accounts, items, times) };",
+    "replace": "    return { bank: view.view.withPending, pendingIn, postingExamples: postingExamples(accounts, items, new Map()) };",
+    "why": "[layer1] 11.4 the reads' times not given to the examples"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "description: read.item.description, firstSync: item.firstSync });",
+    "replace": "description: read.item.description, firstSync: item.lastSync });",
+    "why": "[layer1] 11.4 pending since the last read that changed it"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "    if (pending === undefined || used.has(pending.transactionId)) continue;",
+    "replace": "    if (pending === undefined) continue;",
+    "why": "[layer1] 11.4 one pending one the bank linked to two posted ones taken twice"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      lastRead: lastRead === null ? null : local(lastRead),",
+    "replace": "      lastRead: null,",
+    "why": "[layer1] 0.7 the last good read never shown"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "result: result.needsLogin ? 'needs-login' : result.changed ? 'new' : 'nothing-new' };",
+    "replace": "result: result.needsLogin ? 'needs-login' : result.changed ? 'nothing-new' : 'new' };",
+    "why": "[layer1] 0.7 new activity and nothing new swapped"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "result: result.needsLogin ? 'needs-login' : result.changed ? 'new' : 'nothing-new' };",
+    "replace": "result: result.changed ? 'new' : 'nothing-new' };",
+    "why": "[layer1] 0.7 the bank wanting a new login said as a sync that went well"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "          this.#lastSync = { at: this.#now(), result: 'failed' };\n",
+    "replace": "",
+    "why": "[layer1] 0.7 a failed sync not shown"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "{ copying: backups.healthy(), lastBeat:",
+    "replace": "{ copying: true, lastBeat:",
+    "why": "[layer1] 0.7 A43 the backups always said to be copying"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "lastBeat: backups.lastBeat === null ? null : local(backups.lastBeat) },",
+    "replace": "lastBeat: null },",
+    "why": "[layer1] 0.7 A43 the last heartbeat never shown"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      started: local(started),",
+    "replace": "      started: local(this.#now()),",
+    "why": "[layer1] 0.7 the server said to have started just now"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    keeper.#eventsWhenOpened = countEvents(input.db);\n",
+    "replace": "    keeper.#eventsWhenOpened = countEvents(input.db);\n    keeper.#startedAt = input.now();\n",
+    "why": "[layer1] 0.7 0.6 the start noted when the books open, asking the clock"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      history: { whenOpened: this.#eventsWhenOpened, now: countEvents(this.#db) },",
+    "replace": "      history: { whenOpened: countEvents(this.#db), now: countEvents(this.#db) },",
+    "why": "[layer1] 0.7 0.6 every event now said to have replayed when the books opened"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    keeper.#eventsWhenOpened = countEvents(input.db);\n",
+    "replace": "",
+    "why": "[layer1] 0.7 0.6 the events when the books opened not counted"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      mismatchSince: since === null ? null : local(since),",
+    "replace": "      mismatchSince: null,",
+    "why": "[layer1] 0.7 10.4 a difference with the bank not shown"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      alertsWaiting: outboxCounts(this.#db).notSent,",
+    "replace": "      alertsWaiting: outboxCounts(this.#db).total,",
+    "why": "[layer1] 0.7 alerts already sent counted as waiting"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      state: this.book() === null ? 'not-set-up' : 'tracking',",
+    "replace": "      state: 'tracking',",
+    "why": "[layer1] 0.7 said to be tracking before setup day"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      status: () => this.statusView(backups),",
+    "replace": "      status: () => this.statusView(),",
+    "why": "[layer1] 0.7 A43 the hosted server's page not told of the backups"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      ['status', options.status],\n",
+    "replace": "",
+    "why": "[layer1] 0.7 /api/status not served"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/http/server.ts",
+    "find": "'/bank', '/status', ...Object.keys(POT_SLUGS)",
+    "replace": "'/bank', ...Object.keys(POT_SLUGS)",
+    "why": "[layer1] 0.7 /status not a screen of the app"
   }
 ]
