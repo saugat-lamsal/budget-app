@@ -25,7 +25,7 @@ export function dueText(daysLeft: number): string {
 export function cardsOffText(off: CardRemindersOff): { readonly title: string; readonly detail: string } {
   const title = `Card reminders are off for the ${off.card === 'everyday-card' ? 'everyday card' : 'old card'}`;
   return off.why === 'no-statement-date'
-    ? { title, detail: 'The bank did not send its statement date. Enter the days from its statement to its due date in Settings.' }
+    ? { title, detail: 'The bank did not send its statement date. Enter the day its statement closes in Settings.' }
     : { title, detail: 'The bank sent a statement for it that cannot be read.' };
 }
 

@@ -309,10 +309,15 @@ export class FakePlaid {
 
   #accountList(): PlaidAccount[] {
     return [...this.accounts.values()].map(({ input, posted }) => {
-      // Money in still pending is not available yet; only money going out is taken off.
-      const pendingOut = [...this.transactions.values()].filter((t) => t.account_id === input.id && t.pending && t.amount > 0).reduce((sum, t) => sum + Math.round(t.amount * 100), 0);
+      // Money going out that is still pending is taken off the available
+      // balance. A54 (seen on his real accounts on a payday, Oct 16, 2026):
+      // Bank of America also puts money in that is still pending (a paycheck)
+      // into a bank account's available balance at once.
+      const pending = [...this.transactions.values()].filter((t) => t.account_id === input.id && t.pending);
+      const pendingOut = pending.filter((t) => t.amount > 0).reduce((sum, t) => sum + Math.round(t.amount * 100), 0);
+      const pendingIn = pending.filter((t) => t.amount < 0).reduce((sum, t) => sum - Math.round(t.amount * 100), 0);
       const credit = input.kind === 'credit card';
-      const available = credit ? (input.limit === undefined ? null : input.limit - posted - pendingOut) : posted - pendingOut - (this.#availableHold.get(input.id) ?? 0);
+      const available = credit ? (input.limit === undefined ? null : input.limit - posted - pendingOut) : posted - pendingOut + pendingIn - (this.#availableHold.get(input.id) ?? 0);
       const current = credit ? posted : posted + (this.#notInCurrent.get(input.id) ?? 0);
       return {
         account_id: input.id,

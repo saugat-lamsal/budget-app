@@ -38,23 +38,47 @@ describe('9 card statements from the bank', () => {
 
   // A52 (found by A50c on his real accounts, Oct 15, 2026): Bank of America
   // sends each card's due date, balance and minimum, but no statement date.
-  it('9.8 no statement date from the bank: the statement date is the due date less the days set for that card', () => {
+  // A53 (Oct 16): each card closes on the same day of every month, and the
+  // days from it to the due date change from month to month.
+  it('9.8 no statement date from the bank: the statement date is the last day before the due date on the closing day set for that card', () => {
     const noDate = { ...card, last_statement_issue_date: null };
-    expect(cardStatement('old-card', noDate, 25)).toEqual({
+    expect(cardStatement('old-card', noDate, 28)).toEqual({
       ok: true,
       statement: { card: 'old-card', closingDate: '2026-09-28', dueDate: '2026-10-23', statementBalance: 45_025, minimumPayment: 3_500 },
     });
-    // One day, and back over the end of a month and of a year.
-    expect(cardStatement('old-card', noDate, 1)).toMatchObject({ ok: true, statement: { closingDate: '2026-10-22' } });
-    expect(cardStatement('everyday-card', { ...noDate, next_payment_due_date: '2027-01-20' }, 25)).toMatchObject({ ok: true, statement: { closingDate: '2026-12-26', dueDate: '2027-01-20' } });
-    expect(cardStatement('everyday-card', { ...noDate, next_payment_due_date: '2028-03-01' }, 1)).toMatchObject({ ok: true, statement: { closingDate: '2028-02-29' } });
+    const closes = (due: string, day: number) => {
+      const read = cardStatement('everyday-card', { ...noDate, next_payment_due_date: due }, day);
+      return read.ok ? read.statement.closingDate : read.why;
+    };
+    // The same month as the due date when that day comes before it.
+    expect(closes('2026-10-23', 5)).toBe('2026-10-05');
+    expect(closes('2026-10-23', 22)).toBe('2026-10-22');
+    // On the due date's own day, or after it: the month before.
+    expect(closes('2026-10-23', 23)).toBe('2026-09-23');
+    expect(closes('2026-10-23', 24)).toBe('2026-09-24');
+    // The same closing day gives a different number of days each month (why A53 replaced the days).
+    expect([closes('2026-10-09', 12), closes('2026-11-09', 12), closes('2027-03-09', 12)]).toEqual(['2026-09-12', '2026-10-12', '2027-02-12']);
+    // Back over the end of a year.
+    expect(closes('2027-01-20', 26)).toBe('2026-12-26');
+    expect(closes('2027-01-10', 15)).toBe('2026-12-15');
+    // A month too short for the day: its last day.
+    expect(closes('2027-03-24', 30)).toBe('2027-02-28');
+    expect(closes('2027-03-24', 31)).toBe('2027-02-28');
+    expect(closes('2028-03-24', 30)).toBe('2028-02-29');
+    expect(closes('2026-05-01', 31)).toBe('2026-04-30');
+    expect(closes('2026-03-31', 31)).toBe('2026-02-28');
+    expect(closes('2026-04-01', 31)).toBe('2026-03-31');
+    // The first and the last day of a month.
+    expect(closes('2026-10-01', 1)).toBe('2026-09-01');
+    expect(closes('2026-10-02', 1)).toBe('2026-10-01');
+    expect(closes('2026-12-31', 31)).toBe('2026-11-30');
   });
 
-  it('9.8 the bank\'s own statement date wins when it sends one; with none and no days set there is no statement, and it says why', () => {
+  it('9.8 the bank\'s own statement date wins when it sends one; with none and no closing day set there is no statement, and it says why', () => {
     expect(cardStatement('everyday-card', card, 10)).toMatchObject({ ok: true, statement: { closingDate: '2026-09-28' } });
     expect(cardStatement('everyday-card', { ...card, last_statement_issue_date: null }, null)).toEqual({ ok: false, why: 'the bank did not give the statement date' });
     expect(cardStatement('everyday-card', { ...card, last_statement_issue_date: null })).toEqual({ ok: false, why: 'the bank did not give the statement date' });
-    // The days set never make up for anything else missing.
+    // The closing day set never makes up for anything else missing.
     expect(cardStatement('old-card', { ...card, last_statement_issue_date: null, next_payment_due_date: null }, 25)).toEqual({ ok: false, why: 'the bank did not give the due date' });
     expect(cardStatement('old-card', { ...card, last_statement_issue_date: null, minimum_payment_amount: null }, 25)).toEqual({ ok: false, why: 'the bank did not give the minimum payment' });
   });

@@ -302,8 +302,8 @@ const SETTING_READERS: { readonly [K in keyof Settings]: (value: unknown) => Set
   amountsOnLockScreen: (v) => (typeof v === 'boolean' ? v : undefined),
   bankPermissionWarnDays: whole,
   // 9.8: whole days, or none (not set); the range is the money math's to say.
-  everydayCardStatementDays: (v) => (v === null ? null : whole(v)),
-  oldCardStatementDays: (v) => (v === null ? null : whole(v)),
+  everydayCardClosingDay: (v) => (v === null ? null : whole(v)),
+  oldCardClosingDay: (v) => (v === null ? null : whole(v)),
 };
 
 // A change to one or more settings, exactly as the money math keeps them; otherwise null.

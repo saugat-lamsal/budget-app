@@ -93,15 +93,15 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (item.kind === 'purchase') pendingCharges.push({ account: role, amount: item.amountCents });",
+    "find": "      if (item.kind === 'purchase' && item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });",
     "replace": "      void role;",
     "why": "12.1 leave pending charges out of the bank side"
   },
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (item.amountCents === null || item.amountCents <= 0) continue;\n      pendingOut.set(role, [...(pendingOut.get(role) ?? []), item.amountCents]);\n      if (item.kind === 'purchase')",
-    "replace": "      if (item.amountCents === null) continue;\n      if (item.amountCents > 0) pendingOut.set(role, [...(pendingOut.get(role) ?? []), item.amountCents]);\n      if (item.kind === 'purchase' || item.amountCents < 0)",
+    "find": "      if (item.kind === 'purchase' && item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });",
+    "replace": "      if (item.kind === 'purchase' || item.amountCents < 0) pendingCharges.push({ account: role, amount: item.amountCents });",
     "why": "B36 count pending money in and pending transfers in the bank side"
   },
   {
@@ -324,8 +324,8 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (item.kind === 'purchase') pendingCharges.push({ account: role, amount: item.amountCents });",
-    "replace": "      if (item.kind === 'purchase' && role !== 'savings') pendingCharges.push({ account: role, amount: item.amountCents });",
+    "find": "      if (item.kind === 'purchase' && item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });",
+    "replace": "      if (item.kind === 'purchase' && item.amountCents > 0 && role !== 'savings') pendingCharges.push({ account: role, amount: item.amountCents });",
     "why": "12.1 leave a charge pending on savings out of the bank side (A16)"
   },
   {
@@ -4174,30 +4174,30 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      return addCents(available, ...(pendingOut.get(role) ?? []));",
+    "find": "      return addCents(available, ...(pendingItems.get(role) ?? []));",
     "replace": "      return posted(role);",
     "why": "[a47] 12.1 B231 checking and savings from the bank's current balance, not the available one"
   },
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      return addCents(available, ...(pendingOut.get(role) ?? []));",
+    "find": "      return addCents(available, ...(pendingItems.get(role) ?? []));",
     "replace": "      return available;",
     "why": "[a47] 12.1 the available balance without putting back what is pending"
   },
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (item.kind === 'purchase') pendingCharges.push({ account: role, amount: item.amountCents });",
-    "replace": "      pendingCharges.push({ account: role, amount: item.amountCents });",
+    "find": "      if (item.kind === 'purchase' && item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });",
+    "replace": "      if (item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });",
     "why": "[a47] 12.1 a pending transfer or payment to a person counted as a pending charge"
   },
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (item.amountCents === null || item.amountCents <= 0) continue;\n      pendingOut.set",
-    "replace": "      if (item.amountCents === null) continue;\n      pendingOut.set",
-    "why": "[a47] 12.1 pending money in counted as if it were available"
+    "find": "      if (item.amountCents === null || item.amountCents === 0) continue;",
+    "replace": "      if (item.amountCents === null || item.amountCents <= 0) continue;",
+    "why": "[a47] [a54] 12.1 pending money in left in the available balance, counted as if the books had it"
   },
   {
     "section": "bank",
@@ -4860,37 +4860,37 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/statements.ts",
-    "find": "addDays(dueDate, -statementDays)",
-    "replace": "addDays(dueDate, statementDays)",
-    "why": "[a52] 9.8 the statement date after the due date"
+    "find": "return daysBetween(sameMonth, dueDate) > 0 ? sameMonth : onClosingDay(month - 1);",
+    "replace": "return daysBetween(sameMonth, dueDate) >= 0 ? sameMonth : onClosingDay(month - 1);",
+    "why": "[a52] [a53] 9.8 a closing day on the due date's own day closes that day"
   },
   {
     "section": "bank",
     "file": "packages/server/src/bank/statements.ts",
-    "find": "addDays(dueDate, -statementDays)",
-    "replace": "addDays(dueDate, 1 - statementDays)",
-    "why": "[a52] 9.8 the statement date a day late"
+    "find": "return new Date(Date.UTC(year, m - 1, Math.min(closingDay, lastDay))).toISOString().slice(0, 10);",
+    "replace": "return new Date(Date.UTC(year, m - 1, Math.min(closingDay, lastDay) + 1)).toISOString().slice(0, 10);",
+    "why": "[a52] [a53] 9.8 the statement date a day late"
   },
   {
     "section": "bank",
     "file": "packages/server/src/bank/statements.ts",
-    "find": "raw.last_statement_issue_date === null && statementDays !== null ?",
-    "replace": "statementDays !== null ?",
-    "why": "[a52] 9.8 the days set win over the bank's own statement date"
+    "find": "raw.last_statement_issue_date === null && closingDay !== null ?",
+    "replace": "closingDay !== null ?",
+    "why": "[a52] [a53] 9.8 the closing day set wins over the bank's own statement date"
   },
   {
     "section": "bank",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "a.role === 'everyday-card' ? settings.everydayCardStatementDays : settings.oldCardStatementDays;",
-    "replace": "a.role === 'everyday-card' ? settings.oldCardStatementDays : settings.everydayCardStatementDays;",
-    "why": "[a52] 9.8 each card read with the other card's days"
+    "find": "a.role === 'everyday-card' ? settings.everydayCardClosingDay : settings.oldCardClosingDay;",
+    "replace": "a.role === 'everyday-card' ? settings.oldCardClosingDay : settings.everydayCardClosingDay;",
+    "why": "[a52] [a53] 9.8 each card read with the other card's closing day"
   },
   {
     "section": "bank",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "days === null && cardStatement(a.role, raw, 1).ok ? 'no-statement-date' : 'unreadable'",
-    "replace": "days === null ? 'no-statement-date' : 'unreadable'",
-    "why": "[a52] 9.8 a statement the days would not fix said to want the days"
+    "find": "closingDay === null && cardStatement(a.role, raw, 1).ok ? 'no-statement-date' : 'unreadable'",
+    "replace": "closingDay === null ? 'no-statement-date' : 'unreadable'",
+    "why": "[a52] [a53] 9.8 a statement the closing day would not fix said to want it"
   },
   {
     "section": "bank",
@@ -4916,22 +4916,57 @@
   {
     "section": "history",
     "file": "packages/server/src/history/history-db.ts",
-    "find": "    ...(settings.everydayCardStatementDays === undefined ? { everydayCardStatementDays: null } : {}),\n",
+    "find": "    ...(settings.everydayCardClosingDay === undefined ? { everydayCardClosingDay: null } : {}),\n",
     "replace": "",
-    "why": "[a52] 0.6 a setup day saved before the days from statement to due date does not open"
+    "why": "[a52] [a53] 0.6 a setup day saved before the closing day does not open"
   },
   {
     "section": "settings",
     "file": "packages/server/src/choices.ts",
-    "find": "  oldCardStatementDays: (v) => (v === null ? null : whole(v)),",
-    "replace": "  oldCardStatementDays: whole,",
-    "why": "[a52] 9.8 the days cannot be cleared from Settings"
+    "find": "  oldCardClosingDay: (v) => (v === null ? null : whole(v)),",
+    "replace": "  oldCardClosingDay: whole,",
+    "why": "[a52] [a53] 9.8 the closing day cannot be cleared from Settings"
   },
   {
     "section": "bank",
     "file": "packages/server/src/status.ts",
-    "find": "a.role === 'everyday-card' ? book.settings().everydayCardStatementDays : book.settings().oldCardStatementDays;",
+    "find": "a.role === 'everyday-card' ? book.settings().everydayCardClosingDay : book.settings().oldCardClosingDay;",
     "replace": "null;",
-    "why": "[a52] 9.8 the status report reads no days"
+    "why": "[a52] [a53] 9.8 the status report reads no closing day"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/statements.ts",
+    "find": "Math.min(closingDay, lastDay)",
+    "replace": "closingDay",
+    "why": "[a53] 9.8 a closing day a month does not have runs into the next month"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/statements.ts",
+    "find": "const lastDay = new Date(Date.UTC(year, m, 0)).getUTCDate();",
+    "replace": "const lastDay = new Date(Date.UTC(year, m - 1, 0)).getUTCDate();",
+    "why": "[a53] 9.8 a short month read with the month before's last day"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/statements.ts",
+    "find": ": onClosingDay(month - 1);",
+    "replace": ": onClosingDay(month - 2);",
+    "why": "[a53] 9.8 two months back when the closing day comes on or after the due date"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/statements.ts",
+    "find": "const sameMonth = onClosingDay(month);",
+    "replace": "const sameMonth = onClosingDay(month - 1);",
+    "why": "[a53] 9.8 never the due date's own month"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "pendingItems.set(role, [...(pendingItems.get(role) ?? []), item.amountCents]);",
+    "replace": "pendingItems.set(role, [...(pendingItems.get(role) ?? []), Math.abs(item.amountCents)]);",
+    "why": "[a54] 12.1 pending money in added to the available balance again"
   }
 ]

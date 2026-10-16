@@ -901,6 +901,42 @@ A52. ADDED Oct 15 (A50c found it): Bank of America sends each card's due
      BUILT Oct 15 (branch a52-statement-days): Settings has "Everyday card:
      statement to due date" and "Old card: statement to due date" (not
      entered to start, 1 to 60 days, can be cleared). B242 to B244 below.
+     REPLACED Oct 16 by A53 (the closing day), before he entered any days.
+
+A53. ADDED Oct 16 (he read both cards' last two statements in the bank's
+     app): each card's statement closes on the same day of every month,
+     and the due date falls on the same day of the next month, so the
+     number of days between them changes with the length of the month
+     (fewer still after February). A52's days would put the statement date
+     a day or more off in some months, and with it which payments count
+     (9.3). Options:
+     1. (Recommended) A setting per card: the day of the month its
+        statement closes. The statement date is the last such day before
+        the due date the bank sends; a month without that day closes on its
+        last day.
+     2. Keep the days (A52), and he corrects them when a month is off.
+     ANSWERED Oct 16 (option 1, "you have okay for all of it"): rulebook
+     draft 25, 9.8, section 2 and 36a.
+     BUILT Oct 16 (branch closing-day-and-pending-pay): Settings has
+     "Everyday card: statement closing day" and "Old card: statement
+     closing day" (not entered to start, 1 to 31, can be cleared). A52's
+     days are no setting any more; they were never set on his books (read
+     on the machine, Oct 16, his OK). B246 below.
+
+A54. ADDED Oct 16 (a read-only look at his live books, his OK, after "Off
+     by" showed on a payday): the difference was exactly his paycheck,
+     still pending at the bank in two parts (checking and savings). Bank of
+     America put both parts into the available balances at once; the app
+     counts money in only once it posts, and 12.1 (A47) put back only
+     pending money going out. With the pending money in taken out, the
+     check matched to the cent. Every payday would show the paycheck as a
+     difference until it posted, and tell him after 12 hours (10.4).
+     Options:
+     1. (Recommended) 12.1 takes pending money in out of the available
+        balance, as it puts pending money going out back.
+     2. Nothing: "The bank is still catching up" until the paycheck posts.
+     ANSWERED Oct 16 ("Yes, fix it tonight"): rulebook draft 25, 12.1 and
+     36b. BUILT Oct 16 (branch closing-day-and-pending-pay). B247 below.
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
@@ -2915,3 +2951,41 @@ B245. Settings' Notifications card, the same gap B192 closed for Review, the
       from the background); after Turn on the button says "Turning on…"
       until then, and after Turn off, "Turn on" (off). Phone side only:
       nothing on the server changed.
+B246. A53 as built (9.8). The statement date is the last day before the due
+      date that falls on the closing day: in the due date's own month when
+      that day comes before the due date, otherwise the month before. A
+      closing day on the due date's own day of the month means the month
+      before. A closing day a month does not have (29, 30 or 31) closes on
+      that month's last day, and Settings says so ("The 30th of each month,
+      or its last day"). The bank's own statement date still wins whenever
+      it sends one, and the closing day never makes up for anything else
+      missing. A52's days are no setting any more, and a change that names
+      them is refused; a setup day saved before the closing day opens with
+      none (B242's guard covers it). The date worked out is not checked
+      against today: if the bank ever sent the next due date before the
+      statement closed, the statement date would come out in the future, and
+      no payment would count toward it yet. Not seen; his bank keeps the old
+      due date until the new statement. Worked example bank 17.
+B247. A54 as built (12.1). Every pending item the books do not count yet is
+      put back from the available balance at the bank's latest amount:
+      going out added back, coming in taken out. A pending purchase (counted
+      at once, 4.6) is already out of the available balance and is left as
+      it was. With no available balance from the bank, the posted balance
+      less pending charges, as before (pending money in is not in it).
+      Only a paycheck has been seen pending in his accounts so far: if the
+      bank ever leaves some pending money in (a refund, say) out of the
+      available balance, the bank side comes out low by it until it posts,
+      shown as the bank still catching up (10.4) and told only after 12
+      hours. Setup day reads the same bank side, so a paycheck pending on
+      setup day is not starting money; it waits in review once it posts.
+      The made-up bank in the tests now puts pending money in into the
+      available balance, as his bank does. Worked example bank 2.
+B248. Seen on his live books, Oct 16, not changed: the minimum payment his
+      bank sends looks like what is left of the minimum after payments, not
+      the statement's minimum (one card showed none left after its payment
+      this month). 9.3 counts the payments since the statement against it,
+      so a payment of part of the minimum would count twice, and the
+      reminders could stop with some of it unpaid. Paying the minimum or
+      more, as he does, is not affected. To check at the next statements:
+      what the bank sends before a payment. If it is the statement's
+      minimum, nothing to do; if not, a question for him.

@@ -1,6 +1,6 @@
 import type { RecheckedItem } from '@budget-app/money';
 import { describe, expect, it } from 'vitest';
-import { SETTING_NAMES, ZONE_CHOICES, daysText, leftoverText, lockAmountsText, notReadText, payScheduleText, permissionWarnText, quietHoursText, recheckedText, reminderText, ruleDoneText, ruleText, settingValueText, settingsDoneText, splitText, statementDaysText, textRuleText, timeText, zoneText } from '../src/screens/settings-text.js';
+import { SETTING_NAMES, ZONE_CHOICES, closingDayText, daysText, leftoverText, lockAmountsText, notReadText, payScheduleText, permissionWarnText, quietHoursText, recheckedText, reminderText, ruleDoneText, ruleText, settingValueText, settingsDoneText, splitText, textRuleText, timeText, zoneText } from '../src/screens/settings-text.js';
 
 // The words on the Settings screen. Every value comes from the money math;
 // these only write it, and must write it right.
@@ -61,14 +61,29 @@ describe('section 2 how each setting is written', () => {
     expect(SETTING_NAMES.bankPermissionWarnDays).toBe('Bank permission ending');
   });
 
-  it('9.8 the days from statement to due date, for each card: not entered, or how many days before the due date', () => {
-    expect(statementDaysText(null)).toBe('Not entered');
-    expect(statementDaysText(1)).toBe('1 day before the due date');
-    expect(statementDaysText(25)).toBe('25 days before the due date');
-    expect(settingValueText('oldCardStatementDays', 25)).toBe('25 days before the due date');
-    expect(settingValueText('everydayCardStatementDays', null)).toBe('Not entered');
-    expect(SETTING_NAMES.everydayCardStatementDays).toBe('Everyday card: statement to due date');
-    expect(SETTING_NAMES.oldCardStatementDays).toBe('Old card: statement to due date');
+  it('9.8 the statement closing day, for each card: not entered, or the day of the month, and its last day for a day some months do not have', () => {
+    expect(closingDayText(null)).toBe('Not entered');
+    expect([1, 2, 3, 4, 10, 11, 12, 13, 20, 21, 22, 23, 24, 28].map(closingDayText)).toEqual([
+      'The 1st of each month',
+      'The 2nd of each month',
+      'The 3rd of each month',
+      'The 4th of each month',
+      'The 10th of each month',
+      'The 11th of each month',
+      'The 12th of each month',
+      'The 13th of each month',
+      'The 20th of each month',
+      'The 21st of each month',
+      'The 22nd of each month',
+      'The 23rd of each month',
+      'The 24th of each month',
+      'The 28th of each month',
+    ]);
+    expect([29, 30, 31].map(closingDayText)).toEqual(['The 29th of each month, or its last day', 'The 30th of each month, or its last day', 'The 31st of each month, or its last day']);
+    expect(settingValueText('oldCardClosingDay', 12)).toBe('The 12th of each month');
+    expect(settingValueText('everydayCardClosingDay', null)).toBe('Not entered');
+    expect(SETTING_NAMES.everydayCardClosingDay).toBe('Everyday card: statement closing day');
+    expect(SETTING_NAMES.oldCardClosingDay).toBe('Old card: statement closing day');
   });
 
   it('section 2 10.7 10.8 10.10 quiet hours, the bank-not-read alert and amounts on the lock screen, in words', () => {

@@ -35,16 +35,17 @@ interface Row {
 // settings). Section 2 (A48): before the pay schedule setting (Oct 14) he was
 // paid every so many days, as the app then counted. 10.4 (A47): before the
 // wait for "totals do not match" (Oct 14) it was told at once; it opens with
-// the 12 hours he OK'd for his books (34b). 9.8 (A52): before the days from
-// statement to due date (Oct 15) there were none; until he sets them, a card
-// the bank sends no statement date for has its reminders off, as it had.
+// the 12 hours he OK'd for his books (34b). 9.8 (A52, A53): before the
+// statement closing day (Oct 16; the days from statement to due date, Oct 15,
+// were never set on his books) there was none; until he sets it, a card the
+// bank sends no statement date for has its reminders off, as it had.
 function savedSetup(input: SetupInput): SetupInput {
   const settings = input.settings as Partial<SetupInput['settings']>;
   const missing: Partial<SetupInput['settings']> = {
     ...(settings.paySchedule === undefined ? { paySchedule: 'every-n-days' } : {}),
     ...(settings.totalsMismatchAlertHours === undefined ? { totalsMismatchAlertHours: 12 } : {}),
-    ...(settings.everydayCardStatementDays === undefined ? { everydayCardStatementDays: null } : {}),
-    ...(settings.oldCardStatementDays === undefined ? { oldCardStatementDays: null } : {}),
+    ...(settings.everydayCardClosingDay === undefined ? { everydayCardClosingDay: null } : {}),
+    ...(settings.oldCardClosingDay === undefined ? { oldCardClosingDay: null } : {}),
   };
   return Object.keys(missing).length === 0 ? input : { ...input, settings: { ...input.settings, ...missing } };
 }

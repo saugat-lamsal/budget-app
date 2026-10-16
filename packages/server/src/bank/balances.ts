@@ -15,12 +15,15 @@ import { centsFromPlaid } from './amounts.js';
 // items the book counts (4.6).
 // Pending money in, and pending transfers and payments, count once they post.
 //
-// Checking and savings (A47, his call, Oct 14, 2026): the bank's available
-// balance, plus what is still pending that the books count only once it
-// posts (a transfer between his accounts, a payment to a person, money
-// leaving savings). Bank of America's "current" leaves out items Plaid
-// already sends as posted until the bank's overnight processing, and its
-// "available" is current less the pending items and those (B231). So the
+// Checking and savings (A47, his call, Oct 14, 2026; A54, Oct 16): the bank's
+// available balance, with what is still pending that the books count only
+// once it posts put back: money going out (a transfer between his accounts,
+// a payment to a person, money leaving savings) added back, money coming in
+// (a paycheck or other deposit, a refund, a transfer arriving) taken out.
+// Bank of America's "current" leaves out items Plaid already sends as posted
+// until the bank's overnight processing, and its "available" is current less
+// the pending items going out and those (B231), plus the pending money in
+// (A54: a paycheck is available the day it shows as pending). So the
 // available balance, with the pending items the books do not count yet put
 // back, is what the books hold; pending charges are already out of it, as
 // the books count them (4.6). When the bank gives no available balance:
@@ -31,9 +34,9 @@ export interface BankView {
   // The posted balances of checking, savings and the everyday card, as the bank gives them.
   readonly posted: BankBalances;
   // What the self-check starts from, before pending charges: for checking
-  // and savings the available balance plus every pending item going out
-  // (the posted balance when the bank gives no available one); the
-  // everyday card's posted balance.
+  // and savings the available balance plus every pending item going out and
+  // less every pending item coming in (the posted balance when the bank
+  // gives no available one); the everyday card's posted balance.
   readonly counted: BankBalances;
   // The available balances of checking and savings as the bank gave them; null when it gave none.
   readonly available: { readonly checking: Cents | null; readonly savings: Cents | null };
@@ -61,13 +64,14 @@ export function bankView(accounts: readonly StoredAccount[], items: ReadonlyMap<
     };
     for (const a of accounts) if (a.role !== null) roles.set(a.plaidAccountId, a.role);
     const pendingCharges: PendingCharge[] = [];
-    const pendingOut = new Map<AccountId, Cents[]>();
+    // Plaid's sign: money going out is above zero, money coming in below.
+    const pendingItems = new Map<AccountId, Cents[]>();
     for (const item of items.values()) {
       const role = roles.get(item.accountId);
       if (!item.pending || item.removed || item.replacedBy !== null || role === undefined) continue;
-      if (item.amountCents === null || item.amountCents <= 0) continue;
-      pendingOut.set(role, [...(pendingOut.get(role) ?? []), item.amountCents]);
-      if (item.kind === 'purchase') pendingCharges.push({ account: role, amount: item.amountCents });
+      if (item.amountCents === null || item.amountCents === 0) continue;
+      pendingItems.set(role, [...(pendingItems.get(role) ?? []), item.amountCents]);
+      if (item.kind === 'purchase' && item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });
     }
     // 12.1 (A47): checking and savings from the available balance, when the bank gives one.
     const availableOf = (role: 'checking' | 'savings'): Cents | null => {
@@ -77,7 +81,7 @@ export function bankView(accounts: readonly StoredAccount[], items: ReadonlyMap<
     const counted = (role: 'checking' | 'savings'): Cents => {
       const available = availableOf(role);
       if (available === null) return posted(role);
-      return addCents(available, ...(pendingOut.get(role) ?? []));
+      return addCents(available, ...(pendingItems.get(role) ?? []));
     };
     const balances: BankBalances = { checking: posted('checking'), savings: posted('savings'), everydayCard: posted('everyday-card') };
     const countedBalances: BankBalances = { checking: counted('checking'), savings: counted('savings'), everydayCard: balances.everydayCard };

@@ -3803,22 +3803,22 @@
   {
     "section": "0",
     "file": "packages/money/src/settings.ts",
-    "find": "isWholeInRange(s.everydayCardStatementDays, 1, 60)",
-    "replace": "isWholeInRange(s.everydayCardStatementDays, 0, 60)",
-    "why": "[a52] 9.8 zero days from statement to due date allowed"
+    "find": "isWholeInRange(s.everydayCardClosingDay, 1, 31)",
+    "replace": "isWholeInRange(s.everydayCardClosingDay, 0, 31)",
+    "why": "[a52] [a53] 9.8 a closing day of 0 allowed"
   },
   {
     "section": "0",
     "file": "packages/money/src/settings.ts",
-    "find": "isWholeInRange(s.oldCardStatementDays, 1, 60)",
-    "replace": "isWholeInRange(s.oldCardStatementDays, 1, 61)",
-    "why": "[a52] 9.8 61 days from statement to due date allowed"
+    "find": "isWholeInRange(s.oldCardClosingDay, 1, 31)",
+    "replace": "isWholeInRange(s.oldCardClosingDay, 1, 32)",
+    "why": "[a52] [a53] 9.8 a closing day of 32 allowed"
   },
   {
     "section": "0",
     "file": "packages/money/src/settings.ts",
-    "find": "  everydayCardStatementDays: null,\n  oldCardStatementDays: null,\n});",
-    "replace": "  everydayCardStatementDays: 25,\n  oldCardStatementDays: null,\n});",
-    "why": "[a52] 9.8 section 2 the days start made up instead of not entered"
+    "find": "  everydayCardClosingDay: null,\n  oldCardClosingDay: null,\n});",
+    "replace": "  everydayCardClosingDay: 12,\n  oldCardClosingDay: null,\n});",
+    "why": "[a52] [a53] 9.8 section 2 the closing day starts made up instead of not entered"
   }
 ]

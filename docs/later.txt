@@ -43,13 +43,15 @@ FIXES FOUND ON CONNECTION DAY
    and "The bank is still catching up" on Home and Buckets. Rulebook 12.1,
    10.4, section 2 and 34b with his OK (Oct 14). Not deployed.
 
-4. FIX if it comes back. The split paycheck (B228).
+4. DECIDE (it came back Oct 15). The split paycheck (B228).
    His employer sent part of each paycheck to savings and part to checking;
    the app knows one deposit per paycheck. He moved all of it to checking.
-   If a split payday still comes: the checking part "This is my paycheck",
-   the savings part "Other income". Only if he ever wants the split again:
-   teach the app that two deposits the same day are one paycheck (option A
-   of that day: the mom reserve once, then the split of the whole).
+   The Oct 15 paycheck still came in two parts. Once they post: the
+   checking part "This is my paycheck", the savings part "Other income"
+   (the split comes out within a cent or two of one paycheck). If the
+   split stays: teach the app that two deposits the same day are one
+   paycheck (option A of that day: the mom reserve once, then the split of
+   the whole). His call: change it at work, or keep it and build that.
 
 
 HIS STEPS
@@ -184,3 +186,33 @@ IDEAS ADDED OCT 14
     days from statement to due date per card, and Home and Settings say
     when a card's reminders are off). After the deploy he enters the days
     for each card, before the old card's November reminders.
+    REPLACED Oct 16 by A53 (his OK): the day of the month each card's
+    statement closes, since the days change from month to month. After the
+    deploy he enters each card's closing day on Settings (read off a
+    statement), and the reminders come on.
+
+
+FOUND IN THE LOOK AT HIS LIVE BOOKS (Oct 16, his OK, read-only)
+
+27. DONE Oct 16 (A54, his OK). "Off by" on payday was the paycheck itself,
+    still pending: the bank counts it as available at once, the app only
+    once it posts. 12.1 now takes pending money in out of the available
+    balance. It matched to the cent on his numbers.
+
+28. WATCH (B248). The minimum payment the bank sends looks like what is
+    left of the minimum after payments. Fine when he pays the minimum or
+    more; a part payment could stop the reminders early. Check at the next
+    statements what the bank sends before a payment.
+
+29. LATER, small. "Always do this" from his own picks: he sorted about
+    twenty purchases by hand in his first three days, with no sorting rule.
+    When he sorts a place the same way a second time, Review could offer
+    the rule in one tap. No outside service and no rulebook change (it is
+    13.6's "always do this", offered sooner). Stage 0 of item 12.
+
+30. LATER, small. Home shows a paycheck still pending: "Paycheck on its
+    way, counted when it posts", so payday morning does not look like
+    nothing happened.
+
+31. HIS, still to do on Oct 16: Pay schedule "Twice a month" (item 21).
+    The paycheck rule waits on item 4.

@@ -117,8 +117,8 @@ describe.each(ENGINES)('Settings in %s', (_name, engine) => {
     ['the pay schedule', 'row-pay-schedule', { 'field-pay-schedule': '7' }, { payScheduleDays: 7 }],
     ['section 2 A48 the pay schedule, twice a month', 'row-pay-schedule', { 'field-pay-schedule-kind': 'twice-a-month' }, { paySchedule: 'twice-a-month' }],
     ['the 10 days of rule 3.7', 'row-early-days', { 'field-early-days': '12' }, { earlyPaycheckDays: 12 }],
-    ['9.8 A52 the days from statement to due date, the everyday card', 'row-statement-days-everyday', { 'field-statement-days': '25' }, { everydayCardStatementDays: 25 }],
-    ['9.8 A52 the days from statement to due date, the old card', 'row-statement-days-old', { 'field-statement-days': '21' }, { oldCardStatementDays: 21 }],
+    ['9.8 A53 the statement closing day, the everyday card', 'row-closing-day-everyday', { 'field-closing-day': '12' }, { everydayCardClosingDay: 12 }],
+    ['9.8 A53 the statement closing day, the old card', 'row-closing-day-old', { 'field-closing-day': '31' }, { oldCardClosingDay: 31 }],
   ];
   it.each(EACH)('0.2 %s, and the screen then shows what the twin has', async (_what, row, fields, patch) => {
     const twin = life('normal');
@@ -132,29 +132,29 @@ describe.each(ENGINES)('Settings in %s', (_name, engine) => {
     await page.context().close();
   });
 
-  it('9.8 A52 the days from statement to due date can be cleared again: the card shows Not entered', async () => {
+  it('9.8 A53 the statement closing day can be cleared again: the card shows Not entered', async () => {
     const twin = life('normal');
     const page = await openSettings(await browser().newContext(phone()), base(), 'normal');
     const watch = watchChoices(page);
-    await change(page, 'row-statement-days-old', { 'field-statement-days': '25' });
+    await change(page, 'row-closing-day-old', { 'field-closing-day': '12' });
     await saved(page);
-    expect(await textAt(page, 'value-statement-days-old')).toBe('25 days before the due date');
-    await page.getByTestId('row-statement-days-old').click();
+    expect(await textAt(page, 'value-closing-day-old')).toBe('The 12th of each month');
+    await page.getByTestId('row-closing-day-old').click();
     await page.getByTestId('settings-sheet').waitFor();
     await page.getByTestId('sheet-clear').click();
     await saved(page);
-    expect(JSON.parse(watch.posts[1]?.postData() ?? '{}').settings).toEqual({ oldCardStatementDays: null });
-    twin.book.changeSettings({ oldCardStatementDays: 25 }, twin.today);
-    twin.book.changeSettings({ oldCardStatementDays: null }, twin.today);
+    expect(JSON.parse(watch.posts[1]?.postData() ?? '{}').settings).toEqual({ oldCardClosingDay: null });
+    twin.book.changeSettings({ oldCardClosingDay: 12 }, twin.today);
+    twin.book.changeSettings({ oldCardClosingDay: null }, twin.today);
     await expectSameAs(page, twin, 'cleared');
-    expect(await textAt(page, 'value-statement-days-old')).toBe('Not entered');
+    expect(await textAt(page, 'value-closing-day-old')).toBe('Not entered');
     await page.context().close();
   });
 
-  it('9.8 A52 a card whose reminders are off is said on Settings, next to the days that would turn them on; none when none is off', async () => {
+  it('9.8 A52 a card whose reminders are off is said on Settings, next to the closing day that would turn them on; none when none is off', async () => {
     const page = await openSettings(await browser().newContext(phone()), base(), 'cards-off');
     expect(await textAt(page, 'cards-off-everyday-card')).toBe('Card reminders are off for the everyday card. The bank sent a statement for it that cannot be read.');
-    expect(await textAt(page, 'cards-off-old-card')).toBe('Card reminders are off for the old card. The bank did not send its statement date. Enter the days from its statement to its due date in Settings.');
+    expect(await textAt(page, 'cards-off-old-card')).toBe('Card reminders are off for the old card. The bank did not send its statement date. Enter the day its statement closes in Settings.');
     // In the card with the rows that set them.
     expect(await page.getByTestId('alerts-card').getByTestId('cards-off-old-card').count()).toBe(1);
     await showSettings(page, base(), 'normal');

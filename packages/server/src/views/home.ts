@@ -54,8 +54,8 @@ export interface BankAccountFigures {
   readonly counted: Cents;
 }
 
-// 9.8 (A52): a card whose reminders are off, and why: the bank sent no
-// statement date and the days from statement to due date are not set for it
+// 9.8 (A52, A53): a card whose reminders are off, and why: the bank sent no
+// statement date and the statement closing day is not set for it
 // (section 2), or the statement cannot be read for another reason.
 export interface CardRemindersOff {
   readonly card: 'everyday-card' | 'old-card';
