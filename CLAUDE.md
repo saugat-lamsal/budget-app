@@ -1989,6 +1989,9 @@ long). It replaces running everything before every commit:
     home-text.ts onItsWayInText. Demo life paycheck-pending.
   - Tests: server on-its-way-in (the Keeper with the made-up bank),
     views-home; web home-text; browser home and design, in Chromium.
+  - Break-it "[a56]": 12 of 12 caught, each judged with --only by its own
+    test file (the screen's in Chromium); "[keeper] 0.5 read the bank while
+    it wants a new login" pointed at the code again, caught.
   - QUESTIONS.md A56, B250.
 - Waiting on: each card's statement closing day (his, on Settings, from a
   statement, before the old card's November reminders); Pay schedule
