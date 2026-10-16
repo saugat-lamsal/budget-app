@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 24)
+# Budget App Rulebook (draft 25)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -59,9 +59,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
 - Mom monthly target: $2,000 to $3,000
 - Low-bucket alert: 20% of what the bucket started the pay period with
 - Card reminders: 7 days and 2 days before the due date
-- Statement to due date, for each card: how many days before the due date
-  its statement is made (you fill in, from a statement). Used only when the
-  bank does not send a card's statement date (9.8).
+- Statement closing day, for each card: the day of the month its statement
+  closes (you fill in, from a statement). Used only when the bank does not
+  send a card's statement date (9.8).
 - Daily review time: 8:00 PM
 - Quiet hours: 10:00 PM to 7:00 AM. No alert is sent then (10.8).
 - Bank not read: an alert after 24 hours without a good read of the bank
@@ -307,9 +307,11 @@ number so a test can point at it. Nothing gets coded until you approve this.
      later than its day counts the days to the due date from the day it
      is sent ("due in 4 days", not "due in 7 days").
 9.8  When the bank does not send a card's statement date, the statement
-     date is the card's due date less the days set for that card (section
-     2). Until they are set, that card has no reminders, no due line on
-     Home, and no overdue alert, and Home and Settings say so: "Card
+     date is the last day before the card's due date that falls on the
+     closing day set for that card (section 2); in a month too short for
+     that day, the month's last day. Until it is set, that card has no
+     reminders, no due line on Home, and no overdue alert, and Home and
+     Settings say so: "Card
      reminders are off for the old card: the bank did not send its
      statement date." The same when the bank sends a statement for a card
      that the app cannot read.
@@ -392,9 +394,11 @@ number so a test can point at it. Nothing gets coded until you approve this.
 ## 12. Daily self-check
 
 12.1  Bank side: checking + savings - everyday card. For checking and
-      savings, the balance the bank shows as available, plus what is still
-      pending that the app counts only once it posts (a transfer between
-      your accounts, a payment to a person, money leaving savings). If the
+      savings, the balance the bank shows as available, with what is still
+      pending that the app counts only once it posts put back: money going
+      out added back (a transfer between your accounts, a payment to a
+      person, money leaving savings), and money coming in taken out (a
+      paycheck or other deposit, a refund, a transfer arriving). If the
       bank gives no available balance, its posted balance less pending
       charges. For the everyday card, what it owes, including pending
       charges (they already count in the buckets under 4.6).
@@ -773,3 +777,16 @@ a.  Bank of America sends each card's due date, statement balance and
     less a number of days set for each card, read once off a statement.
     Until it is set, that card's reminders are off, and Home and Settings
     say so (9.8, section 2, QUESTIONS.md A52).
+
+
+## 36. Answers on the closing day and a pending paycheck (Oct 16, 2026)
+
+a.  Each card's statement closes on the same day of every month, and the
+    number of days from it to the due date changes from month to month. So
+    the statement date comes from a closing day set for each card, not a
+    number of days (9.8, section 2, QUESTIONS.md A53).
+b.  Bank of America puts a paycheck still pending into the available
+    balance at once, and the app counts it only once it posts. So the bank
+    side takes pending money in out, as it adds pending money out back;
+    before, every payday showed the paycheck as a difference until it
+    posted (12.1, QUESTIONS.md A54).
