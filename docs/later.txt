@@ -178,5 +178,7 @@ IDEAS ADDED OCT 14
     one, and the pending one is dropped when the bank removes it (A2).
     Tests: pending-posted-readings (linked and not).
 
-26. NEXT (A50c, his OK at the time). Both cards' statements came through.
-    Not done Oct 15: he was away, and it reads his real books.
+26. DONE Oct 15 (A50c, his OK at the time, read-only). Both cards'
+    statements come through without the statement date, so the card
+    reminders are off, silently. DECIDE: A52 (how to work out the statement
+    date), needed before the old card's November reminders.
