@@ -158,7 +158,7 @@ long). It replaces running everything before every commit:
 ## Status
 
 - Rulebook: draft 23 (section 34c and 34d, Oct 15: the payday alert 10.14 and
-  the webhook sync line in section 2, both WAITING ON HIS OK; draft 22,
+  the webhook sync line in section 2, both with his OK, Oct 15; draft 22,
   section 34, Oct 14: the pay schedule, A48). Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
   items the second-opinion report found unclear), section 19 readings from
@@ -1752,8 +1752,8 @@ long). It replaces running everything before every commit:
     again, all caught.
 - Webhooks and the payday alert, branch webhooks-and-payday (Oct 15, 2026),
   one pull request, from handoff-webhooks-and-payday.md (not in git). He was
-  away all day: the rule texts and jose went in WAITING ON HIS OK (the PR
-  says so). Not deployed.
+  away all day: the rule texts and jose went in waiting on his OK, which
+  he gave on his return (Oct 15).
   - Item 1, the payday alert (A49, rule 10.14): alerts/alerts.ts (kind
     'payday', key "payday pay period N", words with and without amounts,
     alertScreen /payday), alerts/plan.ts (the ledger's payPeriod, the event's
@@ -1806,8 +1806,10 @@ long). It replaces running everything before every commit:
     (FakeTransactionInput label). Tests: pending-misread, bank-rules-text,
     review-text, browser bank-rules and review (Chromium). Break-it "[b226]":
     18 of 18 caught, and "[a31] Review sends no keys" pointed again, caught.
-- Waiting on: his OK on rule 10.14, the section 2 sync line (34c, 34d) and
-  jose; then the deploy and the webhook command, at his word; A50c (the read
+- PR #30 merged (Oct 15, 2026), with his OK on rule 10.14, the section 2
+  sync line (34c, 34d) and jose; the deploy and the webhook command at his
+  word the same evening.
+- Waiting on: A50c (the read
   of both cards' statements, his OK at the time); A51 (the shape of the weekly
   statement check); his check of part B (the list at its top), and the items
   in docs/later.txt marked DECIDE.

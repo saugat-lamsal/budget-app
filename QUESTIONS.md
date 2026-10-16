@@ -788,10 +788,10 @@ A47. ANSWERED Oct 14 ("can we do option A"; "Okay, I want to add the
            (a webhook); the 60-minute timer stays.
      The exact rulebook text is shown to him before it is committed.
      WEBHOOKS BUILT Oct 15 (branch webhooks-and-payday): POST /plaid/webhook,
-     every call checked by Plaid's signature (jose 6.2.12, added WAITING ON
-     HIS OK: Plaid's own advice is a vetted JWT library), a sync after each
-     one that says something new, the 60-minute timer kept. Section 2's sync
-     line and 34d in the rulebook (draft 23) WAITING ON HIS OK. His existing
+     every call checked by Plaid's signature (jose 6.2.12: Plaid's own advice
+     is a vetted JWT library), a sync after each one that says something
+     new, the 60-minute timer kept. Section 2's sync line and 34d in the
+     rulebook (draft 23). His OK to the sync line and to jose, Oct 15. His existing
      connection gets the address with one call on the machine, at his word,
      after the deploy (docs/phase-7-connection-day.txt). B236 to B240.
      His OK to the text, Oct 14 ("I am okay with both"), with one change
@@ -825,8 +825,8 @@ A49. ANSWERED Oct 14 ("yes lets do that"): a payday alert. When a paycheck is
      At once, quiet hours apply (10.8).
      BUILT Oct 15 (branch webhooks-and-payday) as rule 10.14, with the text
      he wrote in his handoff (shown to him Oct 14). He was away all day, so
-     the text went in the rulebook (draft 23, 10.14 and 34c) WAITING ON HIS
-     OK before the pull request is merged. B233 to B235.
+     the text went in the rulebook (draft 23, 10.14 and 34c). His OK to the
+     text, Oct 15, before the pull request was merged. B233 to B235.
 
 A50. ADDED Oct 14 on Claude's recommendation (his to strike): (a) before
      every deploy, the new image rebuilds the real books from the backup on
