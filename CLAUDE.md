@@ -1886,6 +1886,15 @@ long). It replaces running everything before every commit:
   mid-request. Break-it "[notifications-b92]": 3 of 3 caught, and "[push] a
   double tap on Turn on" pointed again, caught (Chromium and WebKit, each
   judged by --only test/browser/notifications.test.ts). Not deployed.
-- Waiting on: the A52 deploy, at his word, then the days for each card; A51 (the shape of the weekly
+- PR #35 (A52) and PR #34 (the Notifications double tap, B245) merged and
+  deployed Oct 16, 2026 (12:22 AM), at his word: the deploy check on main
+  with both (63 events, every one replays, "The backup works."; main's tree
+  checked to be the one it built from), then that exact image
+  (deploy-check-20261016t041248z). /health and /health/backups ok, /api 401,
+  http sent to https, the webhook address refuses an unsigned call; the
+  restore check on the machine: 63 events, "The backup works." The way back
+  is the image deploy-check-20261016t002402z (Oct 15's deploy).
+- Waiting on: the days from statement to due date for each card (his, on
+  Settings, from a statement, before the old card's November reminders); A51 (the shape of the weekly
   statement check); his check of part B (the list at its top), and the items
   in docs/later.txt marked DECIDE.
