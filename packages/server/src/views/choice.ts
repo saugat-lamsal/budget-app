@@ -9,6 +9,7 @@ import type {
   PickTo,
   Pot,
   RecheckedItem,
+  RuleOffer,
   Settings,
   SettingsPreview,
   SplitBucket,
@@ -79,6 +80,11 @@ export interface Done {
   // With "always do this": whether the next one arriving the same way will go
   // here by itself (13.6, B49). Null without "always do this".
   readonly sticks: boolean | null;
+  // 13.8: sorted by hand the same way as an earlier one from the same place:
+  // the rule the screen offers to make ("always do this"), with the place's
+  // name as its text. Left out when there is none (and in answers kept
+  // before 13.8).
+  readonly offer?: RuleOffer;
 }
 
 export type RefusalCode =

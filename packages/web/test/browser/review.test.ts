@@ -631,6 +631,115 @@ describe.each(ENGINES)('Review in %s', (_name, engine) => {
     await page.context().close();
   });
 
+  // ----- 13.8: a rule offered the second time -----
+
+  it('13.8 the second purchase from a place sorted the same way by hand: the notice offers the rule, and Yes, always makes it with the place\'s name', async () => {
+    const twin = life('rule-offer');
+    const id = idOf(twin.book, 'SUNRISE BAKERY #208');
+    const page = await openReview(await browser().newContext(phone()), base(), 'rule-offer');
+    const watch = watchChoices(page);
+    await item(page, id).getByTestId('pick-wants').click();
+    await page.getByTestId('notice-offer').waitFor();
+    // What the money math offers for the same answer.
+    twin.book.sort(id, { to: 'wants' }, twin.today);
+    expect(twin.book.ruleOffer(id)).toEqual({ for: 'purchase', contains: 'SUNRISE BAKERY', to: 'wants' });
+    expect(await textAt(page, 'notice-offer-text')).toBe('You sorted “SUNRISE BAKERY” the same way before. Make it a rule so the next one sorts itself?');
+    await page.getByTestId('notice-offer').click();
+    const sheet = page.getByTestId('offer-sheet');
+    await sheet.getByTestId('offer-yes').waitFor();
+    expect(await sheet.getByTestId('offer-text').inputValue()).toBe('SUNRISE BAKERY');
+    expect(await textAt(page, 'offer-sentence')).toBe('From now on, purchases whose description contains “SUNRISE BAKERY” are sorted as: Wants. Anything waiting that matches is sorted now too, if it can be.');
+    expect(watch.posts).toHaveLength(1);
+    await sheet.getByTestId('offer-yes').click();
+    await sheet.waitFor({ state: 'hidden' });
+    expect(await textAt(page, 'notice')).toContain('From now on it goes there by itself.');
+    expect(watch.posts).toHaveLength(2);
+    expect(JSON.parse(watch.posts[1]!.postData() ?? '{}')).toMatchObject({ item: id, choice: { to: 'wants' }, always: { contains: 'SUNRISE BAKERY' }, confirmed: true, resort: true });
+    twin.book.sortAlways(id, { to: 'wants' }, { id: 'rule-1', contains: 'SUNRISE BAKERY' }, twin.today);
+    // The rule moved no money: the buckets are the twin's.
+    expect(await bucketsOnScreen(page)).toEqual(bucketsOf(twin.book));
+    await page.context().close();
+  });
+
+  it('13.8 Not now closes it and sends nothing', async () => {
+    const twin = life('rule-offer');
+    const id = idOf(twin.book, 'SUNRISE BAKERY #208');
+    const page = await openReview(await browser().newContext(phone()), base(), 'rule-offer');
+    const watch = watchChoices(page);
+    await item(page, id).getByTestId('pick-wants').click();
+    await page.getByTestId('notice-offer').click();
+    const sheet = page.getByTestId('offer-sheet');
+    await sheet.getByTestId('offer-not-now').click();
+    await sheet.waitFor({ state: 'hidden' });
+    expect(watch.posts).toHaveLength(1);
+    expect(await page.getByTestId('notice-offer').count()).toBe(0);
+    await page.context().close();
+  });
+
+  it('13.8 the rule\'s text can be changed before the yes; with none it cannot be sent', async () => {
+    const twin = life('rule-offer');
+    const id = idOf(twin.book, 'SUNRISE BAKERY #208');
+    const page = await openReview(await browser().newContext(phone()), base(), 'rule-offer');
+    const watch = watchChoices(page);
+    await item(page, id).getByTestId('pick-wants').click();
+    await page.getByTestId('notice-offer').click();
+    const sheet = page.getByTestId('offer-sheet');
+    await sheet.getByTestId('offer-text').fill('  ');
+    expect(await sheet.getByTestId('offer-yes').isDisabled()).toBe(true);
+    await sheet.getByTestId('offer-text').fill('SUNRISE');
+    expect(await textAt(page, 'offer-sentence')).toContain('whose description contains “SUNRISE” are sorted as: Wants.');
+    await sheet.getByTestId('offer-yes').click();
+    await sheet.waitFor({ state: 'hidden' });
+    expect(JSON.parse(watch.posts[1]!.postData() ?? '{}')).toMatchObject({ always: { contains: 'SUNRISE' } });
+    await page.context().close();
+  });
+
+  it('13.8 a text that does not match the item is refused: nothing changes, and the sheet stays open with the reason', async () => {
+    const twin = life('rule-offer');
+    const id = idOf(twin.book, 'SUNRISE BAKERY #208');
+    const page = await openReview(await browser().newContext(phone()), base(), 'rule-offer');
+    const watch = watchChoices(page);
+    await item(page, id).getByTestId('pick-wants').click();
+    await page.getByTestId('notice-offer').click();
+    const sheet = page.getByTestId('offer-sheet');
+    await sheet.getByTestId('offer-text').fill('MOON DINER');
+    await sheet.getByTestId('offer-yes').click();
+    await sheet.getByTestId('notice').waitFor();
+    expect(await sheet.getByTestId('offer-yes').isVisible()).toBe(true);
+    expect(watch.posts).toHaveLength(2);
+    await sheet.getByTestId('offer-not-now').click();
+    await sheet.waitFor({ state: 'hidden' });
+    twin.book.sort(id, { to: 'wants' }, twin.today);
+    expect(await bucketsOnScreen(page)).toEqual(bucketsOf(twin.book));
+    await page.context().close();
+  });
+
+  it('13.8 13.6 "always do this" on a waiting item starts from the place\'s name, not the bank\'s store number', async () => {
+    const { book } = life('rule-offer');
+    const id = idOf(book, 'SUNRISE BAKERY #208');
+    const page = await openReview(await browser().newContext(phone()), base(), 'rule-offer');
+    await item(page, id).getByTestId('more').click();
+    const sheet = page.getByTestId('review-sheet');
+    await sheet.getByTestId('always-toggle').click();
+    expect(await sheet.getByTestId('always-text').inputValue()).toBe('SUNRISE BAKERY');
+    await page.context().close();
+  });
+
+  it('13.8 the first time a place is sorted, and a sort another way, offer nothing; "always do this" starts from the place\'s name', async () => {
+    const { book } = life('normal');
+    const id = idOf(book, 'CORNER STORE');
+    const page = await openReview(await browser().newContext(phone()), base(), 'normal');
+    await item(page, id).getByTestId('more').click();
+    const sheet = page.getByTestId('review-sheet');
+    await sheet.getByTestId('always-toggle').click();
+    expect(await sheet.getByTestId('always-text').inputValue()).toBe(book.ruleText(id));
+    await sheet.getByTestId('always-toggle').click();
+    await sheet.getByTestId('choice-wants').click();
+    await page.getByTestId('notice').waitFor();
+    expect(await page.getByTestId('notice-offer').count()).toBe(0);
+    await page.context().close();
+  });
+
   // ----- Always do this -----
 
   it('13.6 B49 "always do this": a rule for the text, the item sorted, and the others it matches sorted too', async () => {

@@ -229,6 +229,43 @@ describe.each(ENGINES)('sorting something again from a list, in %s', (_name, eng
     await page.context().close();
   });
 
+  it('13.8 4.7 sorted again from a list the same way as an earlier one from the same place: the rule is offered there too, and made from the row', async () => {
+    const twin = life('rule-offer');
+    const id = twin.book.reviewItems().find((i) => 'description' in i && i.description === 'SUNRISE BAKERY #208')?.id ?? '';
+    const page = await openScenario(await browser().newContext(phone()), base(), 'rule-offer', '/review');
+    const watch = watchChoices(page);
+    // In Review, to needs: not the way the earlier one went, so nothing is offered.
+    await page.getByTestId(`item-${id}`).getByTestId('pick-needs').click();
+    await page.getByTestId('notice').waitFor();
+    expect(await page.getByTestId('notice-offer').count()).toBe(0);
+    await untilQuiet(page);
+    await page.goto(`${base()}/buckets/needs`);
+    await page.locator('main[aria-busy="false"]').waitFor();
+    await page.getByTestId(`row-${id}`).click();
+    const sheet = page.getByTestId('activity-sheet');
+    // "Always do this" starts from the place's name here too.
+    await sheet.getByTestId('always-toggle').click();
+    expect(await sheet.getByTestId('always-text').inputValue()).toBe('SUNRISE BAKERY');
+    await sheet.getByTestId('always-toggle').click();
+    await sheet.getByTestId('choice-wants').click();
+    await page.getByTestId('notice-offer').click();
+    await page.getByTestId('offer-sheet').getByTestId('offer-yes').click();
+    await page.getByTestId('offer-sheet').waitFor({ state: 'hidden' });
+    expect(await textAt(page, 'notice')).toContain('From now on it goes there by itself.');
+    expect(watch.posts.map((p) => JSON.parse(p.postData() ?? '{}'))).toMatchObject([
+      { item: id, choice: { to: 'needs' } },
+      { item: id, choice: { to: 'wants' }, resort: true },
+      { item: id, choice: { to: 'wants' }, always: { contains: 'SUNRISE BAKERY' }, confirmed: true, resort: true },
+    ]);
+    twin.book.sort(id, { to: 'needs' }, twin.today);
+    twin.book.sort(id, { to: 'wants' }, twin.today);
+    twin.book.sortAlways(id, { to: 'wants' }, { id: 'rule-1', contains: 'SUNRISE BAKERY' }, twin.today);
+    await page.goto(`${base()}/buckets/wants`);
+    await page.locator('main[aria-busy="false"]').waitFor();
+    expect(numbersOf(await readActivity(page))).toEqual(numbersOf(activityOf(twin.book, 'wants')));
+    await page.context().close();
+  });
+
   it('4.7 B101 the choice it is already on is shown as "here now" and cannot be tapped', async () => {
     const { book } = life('activity-busy');
     const id = groceryOct1(book);

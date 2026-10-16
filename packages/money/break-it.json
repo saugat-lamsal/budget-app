@@ -3820,5 +3820,124 @@
     "find": "  everydayCardClosingDay: null,\n  oldCardClosingDay: null,\n});",
     "replace": "  everydayCardClosingDay: 12,\n  oldCardClosingDay: null,\n});",
     "why": "[a52] [a53] 9.8 section 2 the closing day starts made up instead of not entered"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/rule-offers.ts",
+    "find": "n * 2 > descriptions.length",
+    "replace": "n * 2 >= descriptions.length",
+    "why": "[a55] 13.8 a word on exactly half counted as common"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/rule-offers.ts",
+    "find": "if (/\\d/.test(text) || common.has(word)) {",
+    "replace": "if (common.has(word)) {",
+    "why": "[a55] 13.8 a word with a digit kept in the name"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/rule-offers.ts",
+    "find": "    if (word === '') continue;",
+    "replace": "    if (word === '') {\n      run = null;\n      continue;\n    }",
+    "why": "[a55] 13.8 a mark between words ends the name"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/rule-offers.ts",
+    "find": "if (best === null || run.words > best.words)",
+    "replace": "if (best === null || run.words >= best.words)",
+    "why": "[a55] 13.8 the last of two runs as long wins"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/rule-offers.ts",
+    "find": ".filter((w) => w !== '' && !/\\d/.test(w))",
+    "replace": ".filter((w) => w !== '')",
+    "why": "[a55] 13.8 a word with a digit counted as a common word"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/rule-offers.ts",
+    "find": "const words = new Set(description.split(/\\s+/)",
+    "replace": "const words = (description.split(/\\s+/)",
+    "why": "[a55] 13.8 a word counted again each time a description has it"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/rule-offers.ts",
+    "find": "return word.toLowerCase().replace(/[^a-z0-9]/g, '');",
+    "replace": "return word.replace(/[^a-zA-Z0-9]/g, '');",
+    "why": "[a55] 13.8 common words told apart by case"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (entry?.kind === 'spend' || entry?.kind === 'money-in') entry.byHand = true;",
+    "replace": "      void entry;",
+    "why": "[a55] 13.8 nothing is ever noted as sorted by hand"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (entry.kind === 'spend' || entry.kind === 'money-in') entry.byHand = false;",
+    "replace": "",
+    "why": "[a55] 13.8 one a rule sorted still counted as sorted by hand"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "    if (!detail.resortable || !detail.options.always.includes(to)) return null;",
+    "replace": "",
+    "why": "[a55] 13.8 offered where no rule can be made from it (counted for mom)"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (other === entry || this.#sortedByHand(other) !== to) continue;",
+    "replace": "      if (this.#sortedByHand(other) !== to) continue;",
+    "why": "[a55] 13.8 the item counts as its own earlier one: offered the first time"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (was?.for === place.for && was.descriptions.some",
+    "replace": "      if (was !== null && was.descriptions.some",
+    "why": "[a55] 13.8 an earlier one of another kind counts"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (entry.original !== undefined || entry.dropped === true) return null;",
+    "replace": "      if (entry.original !== undefined) return null;",
+    "why": "[a55] 13.8 a purchase the bank dropped still counts"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      return to === 'needs' || to === 'wants' || to === 'not-mine' ? to : null;",
+    "replace": "      return to === 'needs' || to === 'wants' ? to : null;",
+    "why": "[a55] 13.8 a payment marked not mine by hand never counts"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (before >= 0 && before <= COMMON_WORD_DAYS) near.push(p.first);",
+    "replace": "      if (before >= 0) near.push(p.first);",
+    "why": "[a55] 13.8 4.5 items older than 90 days counted for the common words"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "    return (place === null ? null : this.#placeNameOf(place)) ?? shown;",
+    "replace": "    return shown;",
+    "why": "[a55] 13.8 \"always do this\" starts from the whole description again"
+  },
+  {
+    "section": "13",
+    "file": "packages/money/src/book.ts",
+    "find": "      return name ?? original.description;",
+    "replace": "      return original.description;",
+    "why": "[a55] 13.8 A20 a marked payment starts from the whole description"
   }
 ]

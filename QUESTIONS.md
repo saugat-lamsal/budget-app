@@ -938,6 +938,16 @@ A54. ADDED Oct 16 (a read-only look at his live books, his OK, after "Off
      ANSWERED Oct 16 ("Yes, fix it tonight"): rulebook draft 25, 12.1 and
      36b. BUILT Oct 16 (branch closing-day-and-pending-pay). B247 below.
 
+A55. ADDED Oct 16 (his ask, after the look at his live books: he had sorted
+     about twenty purchases by hand in his first days, with no sorting rule):
+     offer "always do this" by itself the second time he sorts the same
+     place the same way. Found with it: "always do this" started from the
+     whole bank description, and a debit card purchase's has its date and
+     card digits in it, so a rule made from it never matched the next one.
+     ANSWERED Oct 16 (his OK to rule 13.8 as written): rulebook draft 26,
+     13.8 and 37a.
+     BUILT Oct 16 (branch rule-suggestions). B249 below.
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 WAITING FOR YOU TO CHECK (Oct 10, 2026, the end of Phase 4). Each was
@@ -2989,3 +2999,33 @@ B248. Seen on his live books, Oct 16, not changed: the minimum payment his
       more, as he does, is not affected. To check at the next statements:
       what the bank sends before a payment. If it is the statement's
       minimum, nothing to do; if not, a question for him.
+B249. A55 as built (13.8). The offer comes with the answer to a tap, in the
+      notice that says what was done, on Review and on the bucket lists:
+      "You sorted “GREEN LEAF MARKET” the same way before. Make it a rule so
+      the next one sorts itself?" and a button, "Make it a rule". It opens a
+      sheet with the rule's text, which he can change, and what the rule
+      would do; "Yes, always" makes it from the item already sorted (13.6,
+      B101: nothing moves, and it goes just ahead of a rule it corrects);
+      "Not now" sends nothing, and nothing about it is kept. Sorted by hand:
+      a sort or a sort again of his into one place (a bucket, other income,
+      not mine, for mom). A split is no one way; one he marked a transfer,
+      matched to a purchase or unmarked is no longer one he sorted; one a
+      rule sorted is not by hand. Which were by hand is worked out again from
+      the history at every start: no new kind of event. The words: split at
+      spaces; a word with a digit ends the run (dates, store numbers, card
+      digits); marks (- * #) inside the run stay as the bank wrote them, at
+      its ends they are left off; a word is common when it is on more than
+      half of his items of that kind on that account (each counted once, by
+      the description as it first showed up) on that day and in the 90 days
+      before; the longest run wins, the first of two as long. The kinds:
+      purchases (not money leaving savings, 4.9, which no rule sorts),
+      payments to people (with those counted for mom, for the common words),
+      and deposits. Not offered: for a payment counted for mom, which takes
+      no rule once counted (as on its list), so a rule could not be made from
+      it; and when no name is left, as for a place on most of his items of
+      that kind on that account (his first few items, or a card used mostly
+      at one place), whose own words are then the common ones. "Always do
+      this" starts from the same name on Review and the bucket lists (a
+      payment he marked to the old card, from the purchase it was); with no
+      name, from the description, as before. The offer is part of the answer
+      kept with its decision number, so a repeat gets it back too.

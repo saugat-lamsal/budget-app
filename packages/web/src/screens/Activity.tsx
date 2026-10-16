@@ -7,7 +7,7 @@ import { longDate, shortDate } from '../ui/dates.js';
 import type { IconName } from '../ui/Icon.js';
 import { moneyText } from '../ui/money-format.js';
 import { POT_NAMES } from '../ui/names.js';
-import { ChoiceSheet, SaidNotice, subjectOfRow, useChoiceFlow, type Said } from './choose.js';
+import { ChoiceSheet, RuleOfferSheet, SaidNotice, subjectOfRow, useChoiceFlow, type Said } from './choose.js';
 import { MoveMoney } from './Move.js';
 import { ACCOUNT_NAMES } from './review-text.js';
 
@@ -131,7 +131,7 @@ function ActivityReady({ view, reload, onChanged }: { readonly view: Tracking; r
         {view.madeUpData && <MadeUpPill />}
       </div>
 
-      {said !== null && sheet === null && <SaidNotice said={said} sending={sending} onRetry={submit} onDismiss={() => setSaid(null)} sticky />}
+      {said !== null && sheet === null && <SaidNotice said={said} sending={sending} onRetry={submit} onDismiss={() => setSaid(null)} onOffer={flow.openOffer} sticky />}
       {moved !== null && said === null && <SaidNotice said={moved} sending={false} onRetry={() => undefined} onDismiss={() => setMoved(null)} sticky />}
 
       <Hero label={name} testId="activity-hero" sub={`This pay period, since ${shortDate(activity.period.startDate)}`}>
@@ -192,9 +192,10 @@ function ActivityReady({ view, reload, onChanged }: { readonly view: Tracking; r
         )}
       </Card>
 
-      <ChoiceSheet flow={flow} itemId={open?.id} subject={open === undefined ? undefined : (subjectOfRow(open, view.keys[open.id]) ?? undefined)} title={open === undefined ? 'Details' : rowTitle(open)} testId="activity-sheet" likely>
+      <ChoiceSheet flow={flow} itemId={open?.id} subject={open === undefined ? undefined : (subjectOfRow(open, view.keys[open.id], view.ruleTexts[open.id]) ?? undefined)} title={open === undefined ? 'Details' : rowTitle(open)} testId="activity-sheet" likely>
         {open !== undefined && <RowFacts row={open} bucket={name} />}
       </ChoiceSheet>
+      <RuleOfferSheet flow={flow} testId="offer-sheet" />
 
       <MoveMoney open={moving} onClose={() => setMoving(false)} balances={balances} start={{ from: pot, to: other }} onMoved={(text) => {
           setMoved({ tone: 'ok', text });

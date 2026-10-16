@@ -522,7 +522,9 @@ export class ChoiceDesk {
       const d = details.find((x) => x.item.id === id);
       return { item: id, name: d === undefined ? 'An item' : nameOf(d) };
     });
-    const done: Done = { item: request.item, choice, alsoSorted, stillWaiting, sticks: applied.sticks };
+    // 13.8: one way, by hand, without a rule: the rule to offer, if any.
+    const offer = request.always === undefined && 'to' in choice ? this.#book.ruleOffer(request.item) : null;
+    const done: Done = { item: request.item, choice, alsoSorted, stillWaiting, sticks: applied.sticks, ...(offer === null ? {} : { offer }) };
     this.#done.set(request.id, { fingerprint, done });
     return { ok: true, replayed: false, done };
   }

@@ -86,6 +86,15 @@ const REVIEW_SHEETS: readonly (readonly [string, string, Reach])[] = [
     await more('act-water')(page);
     await page.getByTestId('choice-unmark').waitFor();
   }],
+  ['13.8 the done message offering a rule', 'rule-offer', async (page) => {
+    await page.getByTestId(`item-${idOf('rule-offer', 'SUNRISE BAKERY #208')}`).getByTestId('pick-wants').click();
+    await page.getByTestId('notice-offer').waitFor();
+  }],
+  ['13.8 the rule offered, to make', 'rule-offer', async (page) => {
+    await page.getByTestId(`item-${idOf('rule-offer', 'SUNRISE BAKERY #208')}`).getByTestId('pick-wants').click();
+    await page.getByTestId('notice-offer').click();
+    await page.getByTestId('offer-yes').waitFor();
+  }],
 ];
 
 describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, engine) => {

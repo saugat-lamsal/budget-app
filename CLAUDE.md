@@ -157,7 +157,9 @@ long). It replaces running everything before every commit:
 
 ## Status
 
-- Rulebook: draft 25 (section 36, Oct 16: 9.8 from a closing day per card,
+- Rulebook: draft 26 (section 37, Oct 16: 13.8, a rule offered the second
+  time a place is sorted the same way by hand, A55; draft 25, section 36,
+  Oct 16: 9.8 from a closing day per card,
   A53, and 12.1 taking pending money in out of the available balance, A54;
   draft 24, section 35, Oct 15: 9.8, the statement date Bank of
   America leaves out, and the setting in section 2, A52; draft 23, section
@@ -1933,6 +1935,28 @@ long). It replaces running everything before every commit:
   "The backup works." The payday difference cleared when the books opened
   (no gap noted, no alert waiting). The way back is the image
   deploy-check-20261016t041248z.
+- Rule suggestions (Oct 16, 2026, branch rule-suggestions, his ask and his
+  OK to 13.8; A55). Not deployed.
+  - Money: rule-offers.ts (placeName, commonPlaceWords: the place's name, the
+    longest run of words with no digits and none on most of his items of
+    that kind on that account in 90 days, as 4.5). The book notes which
+    entries he sorted by hand (byHand, set by Book.sort, cleared when a rule
+    sorts it; rebuilt from the history). Book.ruleOffer(id) after a sort;
+    Book.ruleText(id), what "always do this" starts from (the screens only:
+    it reads the whole book, so it is not part of reviewDetails, which the
+    simulator asks for all the time; inside it, a simulated life went from
+    seconds to 7 minutes).
+  - Server: Done.offer (choices.ts, only for one way, by hand, without a
+    rule); Review's items and the bucket lists carry ruleText (views
+    review.ts KeyedDetail, activity.ts ruleTexts).
+  - Screens: the done notice says it and has "Make it a rule" (choose.tsx
+    SaidNotice onOffer); RuleOfferSheet: the text, what it would do, "Yes,
+    always" (resort + always + confirmed, B101) and "Not now". Demo life
+    rule-offer.
+  - Tests: money 13-rule-offers; server rule-offers (restart, the repeat,
+    the rule made), views-review, views-payday; web review-text; browser
+    review, activity, design-screens (Chromium).
+  - QUESTIONS.md A55, B249. docs/later.txt 29.
 - Waiting on: each card's statement closing day (his, on Settings, from a
   statement, before the old card's November reminders); Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);

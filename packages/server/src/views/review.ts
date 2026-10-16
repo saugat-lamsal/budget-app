@@ -32,8 +32,9 @@ export type ReviewView =
 // an answer about an item a sync has changed since is refused. B226: a
 // pending item the bank labels as a card payment, a transfer or a payment to
 // a person, which his bank rules read as a purchase, has the bank rule for
-// its wording (labeled).
-export type KeyedDetail = ReviewDetail & { readonly key: string; readonly labeled?: BankRuleHint };
+// its wording (labeled). 13.6, 13.8: what "always do this" starts from
+// (ruleText): the place's name, or the description when it has none.
+export type KeyedDetail = ReviewDetail & { readonly key: string; readonly ruleText: string; readonly labeled?: BankRuleHint };
 
 // B226: the bank rule that would read such an item, and the next ones, right.
 export interface BankRuleHint {
@@ -44,8 +45,8 @@ export interface BankRuleHint {
   readonly other: AccountId | null;
 }
 
-export function keyed(detail: ReviewDetail): KeyedDetail {
-  return { ...detail, key: itemKey(detail) };
+export function keyed(detail: ReviewDetail, ruleText: string): KeyedDetail {
+  return { ...detail, key: itemKey(detail), ruleText };
 }
 
 const GROUPS: readonly ReviewDetail['item']['type'][] = ['leftover', 'money-in', 'spending', 'old-card-purchase'];
@@ -59,7 +60,8 @@ export function reviewView(input: ReviewInput): ReviewView {
     .sort((a, b) => GROUPS.indexOf(a.item.type) - GROUPS.indexOf(b.item.type) || (a.item.date < b.item.date ? -1 : a.item.date > b.item.date ? 1 : 0))
     .map((detail) => {
       const hint = detail.item.type === 'spending' && detail.pending ? input.labeled?.get(detail.item.id) : undefined;
-      return hint === undefined ? keyed(detail) : { ...keyed(detail), labeled: hint };
+      const ruleText = detail.item.type === 'spending' || detail.item.type === 'money-in' ? book.ruleText(detail.item.id) : '';
+      return hint === undefined ? keyed(detail, ruleText) : { ...keyed(detail, ruleText), labeled: hint };
     });
   return { state: 'tracking', madeUpData, today, heldBack: book.pots().unsortedOut, items };
 }

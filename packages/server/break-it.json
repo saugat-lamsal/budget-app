@@ -2305,8 +2305,8 @@
   {
     "section": "sync",
     "file": "packages/server/src/views/review.ts",
-    "find": "      return hint === undefined ? keyed(detail) : { ...keyed(detail), labeled: hint };",
-    "replace": "      return hint === undefined ? detail : { ...detail, labeled: hint };",
+    "find": "      return hint === undefined ? keyed(detail, ruleText) : { ...keyed(detail, ruleText), labeled: hint };",
+    "replace": "      return hint === undefined ? { ...detail, ruleText } : { ...detail, ruleText, labeled: hint };",
     "why": "[a31] Review sends no keys"
   },
   {
@@ -2319,8 +2319,8 @@
   {
     "section": "sync",
     "file": "packages/server/src/views/payday.ts",
-    "find": ".filter((d) => d.item.type === 'leftover').map(keyed),",
-    "replace": ".filter((d) => d.item.type === 'leftover'),",
+    "find": ".filter((d) => d.item.type === 'leftover').map((d) => keyed(d, '')),",
+    "replace": ".filter((d) => d.item.type === 'leftover').map((d) => ({ ...d, ruleText: '' })),",
     "why": "[a31] Payday sends no keys"
   },
   {
@@ -4968,5 +4968,33 @@
     "find": "pendingItems.set(role, [...(pendingItems.get(role) ?? []), item.amountCents]);",
     "replace": "pendingItems.set(role, [...(pendingItems.get(role) ?? []), Math.abs(item.amountCents)]);",
     "why": "[a54] 12.1 pending money in added to the available balance again"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "const offer = request.always === undefined && 'to' in choice ? this.#book.ruleOffer(request.item) : null;",
+    "replace": "const offer = 'to' in choice ? this.#book.ruleOffer(request.item) : null;",
+    "why": "[a55] 13.8 a rule offered right after \"always do this\" made one"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "...(offer === null ? {} : { offer })",
+    "replace": "",
+    "why": "[a55] 13.8 the offer never reaches the screen"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/review.ts",
+    "find": "const ruleText = detail.item.type === 'spending' || detail.item.type === 'money-in' ? book.ruleText(detail.item.id) : '';",
+    "replace": "const ruleText = 'description' in detail.item ? detail.item.description : '';",
+    "why": "[a55] 13.8 Review sends the whole description for \"always do this\""
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/activity.ts",
+    "find": "const ruleTexts = Object.fromEntries(",
+    "replace": "const ruleTexts = {} ?? Object.fromEntries(",
+    "why": "[a55] 13.8 the bucket lists send no rule text"
   }
 ]

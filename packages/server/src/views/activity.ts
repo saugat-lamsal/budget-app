@@ -29,6 +29,9 @@ export type ActivityView =
       // Step 3: each row's key, by its id, sent back with an answer about it
       // (seen), so an answer about an item a sync has changed since is refused.
       readonly keys: Readonly<Record<string, string>>;
+      // 13.6, 13.8: by the id of each row that can be sorted again, what
+      // "always do this" starts from: the place's name, or its description.
+      readonly ruleTexts: Readonly<Record<string, string>>;
     };
 
 export function activityView(input: ActivityInput): ActivityView {
@@ -38,7 +41,8 @@ export function activityView(input: ActivityInput): ActivityView {
   const balances = Object.fromEntries(MOVABLE_POTS.map((p) => [p, pots[p]])) as Record<Pot, Cents>;
   const activity = book.activity(pot);
   const keys = Object.fromEntries(activity.rows.map((row) => [row.id, itemKey(row.resort)]));
-  return { state: 'tracking', madeUpData, today, pot, activity, balances, keys };
+  const ruleTexts = Object.fromEntries(activity.rows.flatMap((row) => (row.resort.resortable ? [[row.id, book.ruleText(row.resort.id)]] : [])));
+  return { state: 'tracking', madeUpData, today, pot, activity, balances, keys, ruleTexts };
 }
 
 // Each bucket's name in an address: /buckets/needs, /api/activity/needs.

@@ -137,6 +137,9 @@ interface Story {
   // counts as moved (B46); to the old card, listed but not counted (12.4);
   // and a card payment that reached the card before it showed leaving.
   readonly onItsWay?: boolean;
+  // 13.8: a bakery he sorted to wants by hand last week; another from it
+  // waits in Review, so sorting it the same way offers the rule.
+  readonly ruleOffer?: boolean;
 }
 
 // When the bank was last read and matched, in the "bank-not-read" life:
@@ -247,6 +250,12 @@ function story(s: Story): HomeInput {
     book.sort('act-friend', { to: 'not-mine' }, DEMO_TODAY);
     // A hand move (13.3).
     book.moveMoney({ from: 'wants', to: 'needs', amount: x(2_500) }, '2026-10-06');
+  }
+  if (s.ruleOffer === true) {
+    const first = buy('2026-10-03', 1_275, 'SUNRISE BAKERY #208');
+    book.sort(first, { to: 'wants' }, '2026-10-03');
+    buy('2026-10-06', 1_480, 'SUNRISE BAKERY #208');
+    cardExtra += 1_275 + 1_480;
   }
   if (s.markedFromSavings === true) {
     feed({ kind: 'savings-withdrawal', id: 'act-water', account: 'savings', date: '2026-10-06', amount: x(6_410), description: 'BILL PAY WATER UTILITY', pending: false });
@@ -400,6 +409,7 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   { name: 'activity-marked', title: 'Activity: the same, and a purchase marked as a payment to the old card, to undo', input: () => story({ activityBusy: true, markedOldCard: true }) },
   { name: 'payday-paid', title: 'Payday: the second paycheck just came in, two leftover questions open', input: () => story({ today: '2026-10-16', secondPaycheck: true, allDone: true, statements: [] }) },
   { name: 'review-debit-refund', title: 'Review: a store refund to the debit card, shown as money in (A29)', input: () => story({ debitRefund: true }) },
+  { name: 'rule-offer', title: 'Review: a bakery sorted to wants by hand once; sort the second the same way to be offered a rule (13.8)', input: () => story({ ruleOffer: true }) },
   { name: 'on-its-way', title: 'Buckets and Payday: money on its way to savings and to the old card, and a card payment that landed first', input: () => story({ onItsWay: true }) },
   { name: 'review-marked-savings', title: 'Review: a bill from savings marked by mistake as a payment to the old card', input: () => story({ markedFromSavings: true }) },
   { name: 'settings-busy', title: 'Settings: changes along the way, a new split waiting for the next paycheck, a promo end date', input: () => story({ settingsBusy: true, chargedTwice: true }) },

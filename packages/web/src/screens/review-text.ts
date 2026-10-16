@@ -1,4 +1,4 @@
-import type { AccountId, Cents, PickTo, ReviewDetail, SortedNow, SpendingSort, TransferOutcome } from '@budget-app/money';
+import type { AccountId, Cents, PickTo, ReviewDetail, RuleOffer, SortedNow, SpendingSort, TransferOutcome } from '@budget-app/money';
 import type { BankRuleHint, ChoiceOf, Done } from '@budget-app/server/views';
 import { moneyText } from '../ui/money-format.js';
 import { POT_NAMES } from '../ui/names.js';
@@ -153,6 +153,19 @@ export function transferWords(outcome: TransferOutcome | undefined): { readonly 
     default:
       return { row: 'No bucket changes. It is money moving between your accounts.', done: '' };
   }
+}
+
+// 13.6, 13.8: what each kind of sorting rule covers, in words.
+export const RULE_WHAT: Readonly<Record<RuleOffer['for'], 'purchases' | 'payments to people' | 'deposits'>> = { purchase: 'purchases', person: 'payments to people', deposit: 'deposits' };
+
+// What a rule would do, said before he makes it.
+export function ruleSentenceText(what: 'purchases' | 'payments to people' | 'deposits', text: string, label: string): string {
+  return `From now on, ${what} whose description contains “${text}” are sorted as: ${label}. Anything waiting that matches is sorted now too, if it can be.`;
+}
+
+// 13.8: the rule offered the second time a place is sorted the same way by hand.
+export function offerText(offer: RuleOffer): string {
+  return `You sorted “${offer.contains}” the same way before. Make it a rule so the next one sorts itself?`;
 }
 
 // What was done, said back to him (after "Done" from the server). about
