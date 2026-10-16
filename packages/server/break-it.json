@@ -93,22 +93,22 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (item.kind === 'purchase' && item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });",
-    "replace": "      void role;",
+    "find": "      if (charge) pendingCharges.push({ account: role, amount: item.amountCents });",
+    "replace": "      void charge;",
     "why": "12.1 leave pending charges out of the bank side"
   },
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (item.kind === 'purchase' && item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });",
+    "find": "      if (charge) pendingCharges.push({ account: role, amount: item.amountCents });",
     "replace": "      if (item.kind === 'purchase' || item.amountCents < 0) pendingCharges.push({ account: role, amount: item.amountCents });",
     "why": "B36 count pending money in and pending transfers in the bank side"
   },
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (!item.pending || item.removed || item.replacedBy !== null || role === undefined) continue;",
-    "replace": "      if (!item.pending || item.replacedBy !== null || role === undefined) continue;",
+    "find": "      if (role === undefined || item.removed || item.amountCents === null || item.amountCents === 0) continue;",
+    "replace": "      if (role === undefined || (item.removed && !item.pending) || item.amountCents === null || item.amountCents === 0) continue;",
     "why": "4.6 keep counting a pending charge the bank removed"
   },
   {
@@ -324,8 +324,8 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (item.kind === 'purchase' && item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });",
-    "replace": "      if (item.kind === 'purchase' && item.amountCents > 0 && role !== 'savings') pendingCharges.push({ account: role, amount: item.amountCents });",
+    "find": "      if (charge) pendingCharges.push({ account: role, amount: item.amountCents });",
+    "replace": "      if (charge && role !== 'savings') pendingCharges.push({ account: role, amount: item.amountCents });",
     "why": "12.1 leave a charge pending on savings out of the bank side (A16)"
   },
   {
@@ -618,8 +618,8 @@
   {
     "section": "review",
     "file": "packages/server/src/views/buckets.ts",
-    "find": "difference: self.difference, catchingUp: input.catchingUp ?? false }",
-    "replace": "difference: -self.difference, catchingUp: input.catchingUp ?? false }",
+    "find": "difference: self.difference, catchingUp: input.catchingUp ?? false, why: input.why ?? null }",
+    "replace": "difference: -self.difference, catchingUp: input.catchingUp ?? false, why: input.why ?? null }",
     "why": "[review] 12.3 the difference is the wrong way round"
   },
   {
@@ -2158,15 +2158,15 @@
   {
     "section": "sync",
     "file": "packages/server/src/sync/sync.ts",
-    "find": "  if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed });\n  if (!changed) return result;\n",
+    "find": "  if (!changed) {\n    if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed, sync: null, ...whatTheReadFound(db, book, sync - 1) });\n    return result;\n  }\n",
     "replace": "  if (!changed) return result;\n",
     "why": "[sync] B171 a sync with nothing new is not counted as a read"
   },
   {
     "section": "sync",
-    "file": "packages/server/src/sync/sync.ts",
-    "find": "  if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed });\n",
-    "replace": "",
+    "file": "packages/server/src/sync/bank-reads.ts",
+    "find": "  db.prepare('INSERT INTO bank_reads (at, changed, sync, bank, difference) VALUES (?, ?, ?, ?, ?)').run(",
+    "replace": "  if (read.at === '') db.prepare('INSERT INTO bank_reads (at, changed, sync, bank, difference) VALUES (?, ?, ?, ?, ?)').run(",
     "why": "[sync] B171 no read is ever noted"
   },
   {
@@ -4188,15 +4188,15 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (item.kind === 'purchase' && item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });",
+    "find": "      if (charge) pendingCharges.push({ account: role, amount: item.amountCents });",
     "replace": "      if (item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });",
     "why": "[a47] 12.1 a pending transfer or payment to a person counted as a pending charge"
   },
   {
     "section": "bank",
     "file": "packages/server/src/bank/balances.ts",
-    "find": "      if (item.amountCents === null || item.amountCents === 0) continue;",
-    "replace": "      if (item.amountCents === null || item.amountCents <= 0) continue;",
+    "find": "      pendingItems.set(role, [...(pendingItems.get(role) ?? []), item.amountCents]);",
+    "replace": "      if (item.amountCents > 0) pendingItems.set(role, [...(pendingItems.get(role) ?? []), item.amountCents]);",
     "why": "[a47] [a54] 12.1 pending money in left in the available balance, counted as if the books had it"
   },
   {
@@ -4293,8 +4293,8 @@
   {
     "section": "history",
     "file": "packages/server/src/views/buckets.ts",
-    "find": "catchingUp: input.catchingUp ?? false };",
-    "replace": "catchingUp: false };",
+    "find": "catchingUp: input.catchingUp ?? false, why: input.why ?? null };",
+    "replace": "catchingUp: false, why: input.why ?? null };",
     "why": "[a47] 10.4 Buckets never says the bank is still catching up"
   },
   {
@@ -5052,5 +5052,250 @@
     "find": "      pendingIn: this.#bankNow().pendingIn,\n",
     "replace": "",
     "why": "[a56] 11.4 the Keeper leaves money on its way in off Home"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "    const move = addCents(account === 'everyday-card' ? -counted : counted, subtractCents(after.items, before.items));",
+    "replace": "    const move = addCents(counted, subtractCents(after.items, before.items));",
+    "why": "[layer1] 12.6 the card's move taken the same way as a bank account's"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "    const move = addCents(account === 'everyday-card' ? -counted : counted, subtractCents(after.items, before.items));",
+    "replace": "    const move = account === 'everyday-card' ? -counted : counted;",
+    "why": "[layer1] 12.6 an account's own transactions left out of its move"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "  if (taken.length === size) return taken.reduce((total, i) => total + parts[i]!, 0) === target ? taken : null;",
+    "replace": "  if (taken.length === size) return taken.reduce((total, i) => total + parts[i]!, 0) !== 0 ? taken : null;",
+    "why": "[layer1] 12.6 a cause named that does not account for the move to the cent"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "  for (let size = 1; size <= largest; size += 1) {",
+    "replace": "  for (let size = largest; size >= 1; size -= 1) {",
+    "why": "[layer1] 12.6 the most items that add up, not the fewest"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "  if (rest !== 0) lines.push({ kind: 'rest', amount: rest });",
+    "replace": "  if (rest > 0) lines.push({ kind: 'rest', amount: rest });",
+    "why": "[layer1] 12.6 a rest below zero left out, so the lines do not add up"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "  if (then === null) return [{ kind: 'no-match-kept', amount: difference }];",
+    "replace": "  if (then === null) return [{ kind: 'rest', amount: difference }];",
+    "why": "[layer1] 12.6 no read that matched is not said"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "  if (difference === 0) return [];",
+    "replace": "  if (difference === 0 && then === null) return [];",
+    "why": "[layer1] 12.6 totals that match still get lines"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "charge: p.purchase && p.amount > 0, amount: -p.amount }));",
+    "replace": "charge: false, amount: -p.amount }));",
+    "why": "[layer1] 12.6 a charge the bank posted said as counted once, not twice"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "charge: p.purchase && p.amount > 0, amount: -p.amount }));",
+    "replace": "charge: p.purchase && p.amount > 0, amount: p.amount }));",
+    "why": "[layer1] 12.6 a pending item the bank posted taken with the bank's sign"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "    const twin = pending.find((p) => p.amount === posted.amount && !paired.has(p.id));",
+    "replace": "    const twin = pending.find((p) => !paired.has(p.id));",
+    "why": "[layer1] 12.6 any pending item taken for a posted one's twin"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "amount: subtractCents(p.amount, was) });",
+    "replace": "amount: subtractCents(was, p.amount) });",
+    "why": "[layer1] 12.6 a changed amount's part the wrong way round"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "  const listedThen = new Map(then.pending.filter((p) => p.account === account).map((p) => [p.id, p.amount]));",
+    "replace": "  const listedThen = new Map<string, Cents>();",
+    "why": "[layer1] 12.6 a pending item listed at the read that matched taken as new"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "    const up = account === 'everyday-card' ? move < 0 : move > 0;",
+    "replace": "    const up = move > 0;",
+    "why": "[layer1] 12.6 a card's balance going up said as going down"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "    const balance = account !== 'everyday-card' && after.available !== null ? 'available' : 'posted';",
+    "replace": "    const balance = after.available !== null || account === 'everyday-card' ? 'available' : 'posted';",
+    "why": "[layer1] 12.6 the card said to have an available balance"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "  if (!available.then || !available.now) return [];",
+    "replace": "  if (!available.then && !available.now) return [];",
+    "why": "[layer1] 12.6 an account read one way then and another now still has causes named"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/why.ts",
+    "find": "  const candidates = candidatesOn(account, input).filter((c) => c.amount !== 0);",
+    "replace": "  const candidates = candidatesOn(account, input).filter((c) => c.kind === 'posted-still-pending');",
+    "why": "[layer1] 12.6 only the posted-still-pending causes are ever named"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "        if (checked !== null) counts[checked] = addCents(counts[checked], item.amountCents);\n        continue;",
+    "replace": "        continue;",
+    "why": "[layer1] 12.6 a posted transaction left out of its account's transactions"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "        if (charge) counts[checked] = addCents(counts[checked], item.amountCents);",
+    "replace": "",
+    "why": "[layer1] 12.6 a pending charge left out of its account's transactions"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "description: read.ok ? read.item.description : '', purchase: charge });",
+    "replace": "description: '', purchase: charge });",
+    "why": "[layer1] 12.6 a pending item kept without the bank's words"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "description: read.ok ? read.item.description : '', purchase: charge });",
+    "replace": "description: read.ok ? read.item.description : '', purchase: false });",
+    "why": "[layer1] 12.6 a pending charge not known to be one"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "      counted: view.withPending[key],",
+    "replace": "      counted: view.posted[key],",
+    "why": "[layer1] 12.6 a read keeps the posted balance as what the check counted"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "    if (account === null || item.pending || item.removed || item.firstSync <= afterSync || item.amountCents === null || item.amountCents === 0) continue;",
+    "replace": "    if (account === null || item.pending || item.removed || item.firstSync < afterSync || item.amountCents === null || item.amountCents === 0) continue;",
+    "why": "[layer1] 12.6 an item from the sync of the read that matched taken as one since"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/bank-reads.ts",
+    "find": "  const row = statement(db, 'SELECT at, bank FROM bank_reads WHERE difference = 0 AND bank IS NOT NULL ORDER BY id DESC LIMIT 1').get() as { at: string; bank: string } | undefined;",
+    "replace": "  const row = statement(db, 'SELECT at, bank FROM bank_reads WHERE bank IS NOT NULL ORDER BY id DESC LIMIT 1').get() as { at: string; bank: string } | undefined;",
+    "why": "[layer1] 12.6 the last read taken for the last one that matched"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/bank-reads.ts",
+    "find": "  db.prepare('UPDATE bank_reads SET difference = 0 WHERE id = (SELECT MAX(id) FROM bank_reads) AND bank IS NOT NULL AND difference IS NULL').run();",
+    "replace": "  void db;",
+    "why": "[layer1] 12.6 14.3 setup day not counted as a read that matched"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/bank-reads.ts",
+    "find": "    read.difference ?? null,",
+    "replace": "    null,",
+    "why": "[layer1] 12.6 a read's check not kept"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "  if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed, sync, ...whatTheReadFound(db, book, sync) });",
+    "replace": "  if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed, sync: null, ...whatTheReadFound(db, book, sync) });",
+    "why": "[layer1] 12.6 11.4 the sync a read saved not kept"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "    if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed, sync: null, ...whatTheReadFound(db, book, sync - 1) });",
+    "replace": "    if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed, sync: null });",
+    "why": "[layer1] 12.6 a read that brought nothing new keeps nothing of the bank"
+  },
+  {
+    "section": "sync",
+    "file": "packages/server/src/sync/sync.ts",
+    "find": "  return { bank: bankAtRead(view.view, syncs), difference: book === null ? null : book.selfCheck(view.view.withPending).difference };",
+    "replace": "  return { bank: bankAtRead(view.view, syncs), difference: book === null ? null : book.selfCheck(view.view.posted).difference };",
+    "why": "[layer1] 12.6 a read's check worked out from the posted balances"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    return bucketsView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false, catchingUp: this.#catchingUp(), why: this.#whyNow() });",
+    "replace": "    return bucketsView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false, catchingUp: this.#catchingUp(), why: null });",
+    "why": "[layer1] 12.6 Buckets is told nothing of why"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      postedSince: then === null ? [] : postedSince(accounts, items, then.syncs),",
+    "replace": "      postedSince: then === null ? [] : postedSince(accounts, items, 0),",
+    "why": "[layer1] 12.6 every posted item taken as one since the read that matched"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      pendingNow: view.pending,",
+    "replace": "      pendingNow: [],",
+    "why": "[layer1] 12.6 no pending item named"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      markSetupRead(this.#db);",
+    "replace": "",
+    "why": "[layer1] 12.6 14.3 the Keeper does not count setup day as a read that matched"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/db/database.ts",
+    "find": "  WHERE changed = 1 AND (SELECT COUNT(*) FROM reads) = (SELECT COUNT(*) FROM saved);",
+    "replace": "  WHERE changed = 1;",
+    "why": "[layer1] 11.4 older reads given syncs even when some sync was saved without a read"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/db/database.ts",
+    "find": "    reads AS (SELECT id, ROW_NUMBER() OVER (ORDER BY id) AS n FROM bank_reads WHERE changed = 1),",
+    "replace": "    reads AS (SELECT id, ROW_NUMBER() OVER (ORDER BY id) AS n FROM bank_reads),",
+    "why": "[layer1] 11.4 an older read that brought nothing new counted as one that saved a sync"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "why: input.why ?? null };",
+    "replace": "why: null };",
+    "why": "[layer1] 12.6 the Buckets view drops why"
   }
 ]

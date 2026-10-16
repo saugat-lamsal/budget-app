@@ -799,3 +799,31 @@ describe('worked examples: card statements (Phase 7)', () => {
     expect(cardDue(second, read.statement, later, DEFAULT_SETTINGS)).toBeNull();
   });
 });
+
+describe('worked examples: why it does not match (Phase 7)', () => {
+  it('example 18, 12.6 the bank ahead of Plaid: a card charge counted twice and checking up with no transaction, in lines that add up to the difference', async () => {
+    const checks = checksOf(18);
+    const life = await lifeInAFile();
+    try {
+      await life.sync();
+      setUpThroughTheDesk(life);
+      life.now = new Date('2026-10-02T13:00:00Z');
+      life.h.fake.addPending({ id: 'p-coffee', account: ACCOUNT_IDS.everyday, amount: 2_500, date: '2026-10-02', description: 'COFFEE CART' });
+      await life.sync();
+      life.now = new Date('2026-10-02T14:00:00Z');
+      life.h.fake.drift(ACCOUNT_IDS.everyday, 2_500);
+      life.h.fake.drift(ACCOUNT_IDS.checking, 2_750);
+      await life.sync();
+      const home = life.keeper.home();
+      if (home.state !== 'tracking' || home.safeToSpend.shown || home.safeToSpend.why !== 'totals-do-not-match') throw new Error('they match');
+      const why = home.safeToSpend.detail?.why ?? [];
+      expect(home.safeToSpend.check.difference).toBe(checks.get('difference'));
+      expect(why).toEqual([
+        { kind: 'balance-moved', account: 'checking', balance: 'available', went: 'up', by: checks.get('checking line'), amount: checks.get('checking line') },
+        { kind: 'posted-still-pending', account: 'everyday-card', description: 'COFFEE CART', charge: true, amount: checks.get('card line') },
+      ]);
+    } finally {
+      life.done();
+    }
+  });
+});

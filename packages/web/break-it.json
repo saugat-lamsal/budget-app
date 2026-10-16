@@ -2490,5 +2490,75 @@
     "find": "<Money cents={item.amount} testId={`on-its-way-in-${i}-amount`} />",
     "replace": "<Money cents={view.onItsWayIn[0]?.amount ?? 0} testId={`on-its-way-in-${i}-amount`} />",
     "why": "[a56] 11.4 every row shows the first amount"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/why-text.ts",
+    "find": "        detail: line.charge ? 'Posted at the bank, Plaid still says pending: counted twice for now.' : 'Posted at the bank, Plaid still says pending: counted once Plaid says it posted.',",
+    "replace": "        detail: 'Posted at the bank, Plaid still says pending: counted once Plaid says it posted.',",
+    "why": "[layer1] 12.6 a charge counted twice said as counted once"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/why-text.ts",
+    "find": "went ${line.went} ${formatDollars(line.by)}",
+    "replace": "went up ${formatDollars(line.by)}",
+    "why": "[layer1] 12.6 every balance said to have gone up"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/why-text.ts",
+    "find": "from ${formatDollars(line.was)} to ${formatDollars(line.now)}",
+    "replace": "from ${formatDollars(line.now)} to ${formatDollars(line.was)}",
+    "why": "[layer1] 12.6 a changed amount said the wrong way round"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/why-text.ts",
+    "find": "${line.balance === 'available' ? 'available balance' : 'balance'}",
+    "replace": "available balance",
+    "why": "[layer1] 12.6 a posted balance said to be the available one"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/why-text.ts",
+    "find": "  return `${NAMES[account]}: ${description === '' ? 'a pending item' : `“${description}”`}`;",
+    "replace": "  return `${NAMES[account]}: “${description}”`;",
+    "why": "[layer1] 12.6 an item with no words named as empty quotes"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/why.tsx",
+    "find": "trailing={<Money cents={line.amount} signed testId={`${testId}-${i}-amount`} />}",
+    "replace": "trailing={<Money cents={Math.abs(line.amount)} signed testId={`${testId}-${i}-amount`} />}",
+    "why": "[layer1] 12.6 a line's part of the difference shown without its sign"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/why.tsx",
+    "find": "        {lines.map((line, i) => {",
+    "replace": "        {lines.slice(0, 1).map((line, i) => {",
+    "why": "[layer1] 12.6 only the first line shown"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "      {detail !== null && detail.why.length > 0 && (",
+    "replace": "      {detail !== null && detail.why.length > 99 && (",
+    "why": "[layer1] 12.6 Home's check sheet does not say why"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Buckets.tsx",
+    "find": "    check.state === 'does-not-match' && check.why !== null && check.why.length > 0 ? (",
+    "replace": "    check.state === 'does-not-match' && check.why !== null && check.why.length > 99 ? (",
+    "why": "[layer1] 12.6 Buckets has no See why"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Buckets.tsx",
+    "find": "<Money cents={check.difference} signed testId=\"why-difference\" />",
+    "replace": "<Money cents={Math.abs(check.difference)} signed testId=\"why-difference\" />",
+    "why": "[layer1] 12.6 Buckets' sheet shows the difference without its sign"
   }
 ]

@@ -55,7 +55,7 @@ export function createDemoServer(options: { readonly webRoot: string; readonly o
     },
     buckets: async (request) => {
       const { input } = await wait(scenarioOf(request));
-      return bucketsView({ today: input.today, book: input.book, bank: input.bank, madeUpData: input.madeUpData, catchingUp: input.catchingUp ?? false });
+      return bucketsView({ today: input.today, book: input.book, bank: input.bank, madeUpData: input.madeUpData, catchingUp: input.catchingUp ?? false, why: input.bankDetail?.why ?? null });
     },
     review: async (request) => {
       const { input } = await wait(scenarioOf(request));

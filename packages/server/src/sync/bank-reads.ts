@@ -1,3 +1,5 @@
+import type { Cents } from '@budget-app/money';
+import type { BankAtRead } from '../bank/why.js';
 import { statement, type Db } from '../db/database.js';
 
 // When the bank was read, and how often to read it (Step 3, rulebook section
@@ -34,8 +36,48 @@ export function saveGapSince(db: Db, since: string | null): void {
   else db.prepare('INSERT INTO bank_gap (id, since) VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET since = excluded.since').run(since);
 }
 
-export function saveBankRead(db: Db, read: { readonly at: string; readonly changed: boolean }): void {
-  db.prepare('INSERT INTO bank_reads (at, changed) VALUES (?, ?)').run(read.at, read.changed ? 1 : 0);
+// A read of the bank, saved in the sync's own transaction. 12.6 and 11.4
+// (database step 11): the sync it saved (when it brought anything new), the
+// bank as it left it, and the check after it (null before setup day, or when
+// the bank's balances could not be worked out).
+export interface BankRead {
+  readonly at: string;
+  readonly changed: boolean;
+  readonly sync?: number | null;
+  readonly bank?: BankAtRead | null;
+  readonly difference?: Cents | null;
+}
+
+export function saveBankRead(db: Db, read: BankRead): void {
+  db.prepare('INSERT INTO bank_reads (at, changed, sync, bank, difference) VALUES (?, ?, ?, ?, ?)').run(
+    read.at,
+    read.changed ? 1 : 0,
+    read.sync ?? null,
+    read.bank === undefined || read.bank === null ? null : JSON.stringify(read.bank),
+    read.difference ?? null,
+  );
+}
+
+// 12.6: the last read whose check matched, with the bank as it left it;
+// null when none is kept (none since database step 11).
+export function readLastMatchingRead(db: Db): { readonly at: string; readonly bank: BankAtRead } | null {
+  const row = statement(db, 'SELECT at, bank FROM bank_reads WHERE difference = 0 AND bank IS NOT NULL ORDER BY id DESC LIMIT 1').get() as { at: string; bank: string } | undefined;
+  return row === undefined ? null : { at: row.at, bank: JSON.parse(row.bank) as BankAtRead };
+}
+
+// 14.3: setup day starts with the books matching the bank, as the last read
+// left it (nothing about the bank changes between reads): that read counts as
+// one that matched, for 12.6.
+export function markSetupRead(db: Db): void {
+  db.prepare('UPDATE bank_reads SET difference = 0 WHERE id = (SELECT MAX(id) FROM bank_reads) AND bank IS NOT NULL AND difference IS NULL').run();
+}
+
+// 11.4: when each sync was saved, as the read that saved it says (an
+// instant); syncs saved without a read (or before database step 11, when
+// which read saved which is not known) are not here.
+export function readSyncTimes(db: Db): ReadonlyMap<number, string> {
+  const rows = statement(db, 'SELECT sync, at FROM bank_reads WHERE sync IS NOT NULL').all() as { sync: number; at: string }[];
+  return new Map(rows.map((r) => [r.sync, r.at]));
 }
 
 export function syncEveryMinutes(db: Db): number {

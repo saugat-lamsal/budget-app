@@ -12,7 +12,9 @@ import { answerAuth, loginViewOf } from '../auth/http.js';
 import { BankRulesDesk } from '../bank-rules-desk.js';
 import { bankLinesIn, bankRuleLogIn, saveBankRuleLine } from '../bank-rules-db.js';
 import { RECENT_DAYS, bankLinesOf, misreadHints } from '../bank-rules.js';
-import { bankView } from '../bank/balances.js';
+import { bankAtRead, bankView, postedSince, type BankView } from '../bank/balances.js';
+import type { StoredAccount } from '../bank/stored-account.js';
+import { whyItDoesNotMatch } from '../bank/why.js';
 import { cardStatement } from '../bank/statements.js';
 import { canonical, refuse, ChoiceDesk } from '../choices.js';
 import type { TokenBox } from '../crypto/token-box.js';
@@ -27,8 +29,8 @@ import type { PushKeys } from '../push/push-keys.js';
 import { saveServerLine, serverLinesIn } from '../server-log.js';
 import { SetupDesk } from '../setup-desk.js';
 import { NO_ANSWERS, SETUP_LOOK_BACK_DAYS, type SetupAnswers } from '../setup-view.js';
-import { FEWEST_MINUTES, MOST_MINUTES, readGapSince, readLastRead, saveGapSince, saveSyncEveryMinutes, syncEveryMinutes } from '../sync/bank-reads.js';
-import type { Plan, PlanInput } from '../sync/plan.js';
+import { FEWEST_MINUTES, MOST_MINUTES, markSetupRead, readGapSince, readLastMatchingRead, readLastRead, saveGapSince, saveSyncEveryMinutes, syncEveryMinutes } from '../sync/bank-reads.js';
+import type { Plan, PlanInput, StoredItem } from '../sync/plan.js';
 import { syncBank, type SyncResult } from '../sync/sync.js';
 import type { AlertSender, OutgoingAlert } from '../serve/alert-timer.js';
 import { ALERTS_SHOWN, type AlertsView } from '../views/alerts.js';
@@ -36,7 +38,7 @@ import { activityView, type ActivityView } from '../views/activity.js';
 import type { BankRuleRequest, BankRuleResponse } from '../views/bank-rules.js';
 import { bucketsView, type BucketsView } from '../views/buckets.js';
 import type { ChoiceRequest, ChoiceResponse, MoveRequest, MoveResponse, RuleRequest, RuleResponse, SettingsRequest, SettingsResponse, SetupRequest, SetupResponse } from '../views/choice.js';
-import { homeView, type BankDetail, type CardRemindersOff, type CheckedAt, type HomeView, type PendingMoneyIn } from '../views/home.js';
+import { homeView, type BankDetail, type CardRemindersOff, type CheckedAt, type HomeView, type PendingMoneyIn, type WhyLine } from '../views/home.js';
 import { paydayView, type PaydayView } from '../views/payday.js';
 import { reviewView, type ReviewView } from '../views/review.js';
 import { settingsView, type SettingsView } from '../views/settings.js';
@@ -182,11 +184,14 @@ export class Keeper {
   }
 
   // "Why it doesn't match" (docs/later.txt 18): each account as the bank
-  // last gave it, and when the difference began. Null when the bank cannot be read.
+  // last gave it, when the difference began, and why (12.6). Null when the
+  // bank cannot be read.
   #bankDetail(): BankDetail | null {
     const connection = readConnection(this.#db);
     if (connection === null || connection.needsLogin) return null;
-    const view = bankView(readAccounts(this.#db), readItems(this.#db));
+    const accounts = readAccounts(this.#db);
+    const items = readItems(this.#db);
+    const view = bankView(accounts, items);
     if (!view.ok) return null;
     const v = view.view;
     const since = readGapSince(this.#db);
@@ -197,7 +202,30 @@ export class Keeper {
         { account: 'everyday-card', posted: v.posted.everydayCard, available: null, counted: v.withPending.everydayCard },
       ],
       since: since === null ? null : timeIn(this.timeZone(), new Date(since)),
+      why: this.#why(v, accounts, items),
     };
+  }
+
+  // 12.6 (A57): why the totals do not match, from the last read that matched
+  // and the bank now; none while they match, or before setup day.
+  #why(view: BankView, accounts: readonly StoredAccount[], items: ReadonlyMap<string, StoredItem>): WhyLine[] {
+    const book = this.book();
+    if (book === null) return [];
+    const difference = book.selfCheck(view.withPending).difference;
+    if (difference === 0) return [];
+    const then = readLastMatchingRead(this.#db)?.bank ?? null;
+    return whyItDoesNotMatch({
+      difference,
+      then,
+      now: bankAtRead(view, 0),
+      pendingNow: view.pending,
+      postedSince: then === null ? [] : postedSince(accounts, items, then.syncs),
+    });
+  }
+
+  // 12.6: the lines for Buckets' sheet; null when the bank cannot be read.
+  #whyNow(): WhyLine[] | null {
+    return this.#bankDetail()?.why.slice() ?? null;
   }
 
   // 10.4 (A47): when the totals stopped matching the bank; null while they match.
@@ -349,7 +377,7 @@ export class Keeper {
   }
 
   buckets(): BucketsView {
-    return bucketsView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false, catchingUp: this.#catchingUp() });
+    return bucketsView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false, catchingUp: this.#catchingUp(), why: this.#whyNow() });
   }
 
   review(): ReviewView {
@@ -451,6 +479,8 @@ export class Keeper {
       for (const item of started.items) saveItem(this.#db, item);
       logChange(this.#db, today, 'setup day', { startingMoney: started.startingMoney, assignment: started.input.assignment, inTransit: (started.input.transfersInTransit ?? []).map((h) => h.id) });
       saveDecision(this.#db, { ...decision, seq });
+      // 12.6: the books start out matching the bank as the last read left it.
+      markSetupRead(this.#db);
     });
     this.reload();
     this.#changed();

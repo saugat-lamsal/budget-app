@@ -61,11 +61,42 @@ export interface OnItsWayIn {
 
 // Each account as the bank gave it: posted, available (null when the bank
 // gave none), and what the daily check counts for it (12.1). And when the
-// difference began, as a time with its offset in his home time zone.
+// difference began, as a time with its offset in his home time zone, and why.
 export interface BankDetail {
   readonly accounts: readonly BankAccountFigures[];
   readonly since: string | null;
+  // 12.6 (A57): why, in lines that add up to the difference.
+  readonly why: readonly WhyLine[];
 }
+
+// 12.6 (A57): why the totals do not match, in lines that add up to the
+// difference exactly. amount is each line's part of the difference (12.3:
+// the bank side plus money in transit, minus the app side), in cents: above
+// zero, the bank shows more than the buckets. Descriptions are the bank's own
+// words. The lines only explain: nothing is changed by them.
+export type WhyLine =
+  // On an account the check reads from its posted balance (the everyday
+  // card; checking or savings when the bank gives no available balance): the
+  // bank posted a pending item Plaid still lists. A charge is counted twice
+  // for now; anything else (money in, a transfer) only once Plaid says it posted.
+  | { readonly kind: 'posted-still-pending'; readonly account: WhyAccount; readonly description: string; readonly charge: boolean; readonly amount: Cents }
+  // Checking or savings: a pending item Plaid lists that the available balance does not show yet.
+  | { readonly kind: 'not-in-available-yet'; readonly account: 'checking' | 'savings'; readonly description: string; readonly amount: Cents }
+  // Checking or savings: a pending item whose amount Plaid changed while the
+  // available balance still has the old one. was and now are its amounts, above zero.
+  | { readonly kind: 'amount-changed'; readonly account: 'checking' | 'savings'; readonly description: string; readonly was: Cents; readonly now: Cents; readonly amount: Cents }
+  // Checking or savings: it posted while Plaid still lists the pending one too.
+  | { readonly kind: 'posted-and-pending'; readonly account: 'checking' | 'savings'; readonly description: string; readonly amount: Cents }
+  // What is left of an account's move: its balance (the available one, or
+  // the posted one) went up or down by this much with no transaction from the
+  // bank yet. A card's balance going up is the bank side going down.
+  | { readonly kind: 'balance-moved'; readonly account: WhyAccount; readonly balance: 'available' | 'posted'; readonly went: 'up' | 'down'; readonly by: Cents; readonly amount: Cents }
+  // What the bank's balances and transactions do not account for.
+  | { readonly kind: 'rest'; readonly amount: Cents }
+  // No earlier read of the bank that matched is kept to compare with.
+  | { readonly kind: 'no-match-kept'; readonly amount: Cents };
+
+export type WhyAccount = 'checking' | 'savings' | 'everyday-card';
 
 export interface BankAccountFigures {
   readonly account: 'checking' | 'savings' | 'everyday-card';

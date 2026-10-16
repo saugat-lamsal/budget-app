@@ -30,8 +30,13 @@ describe('the made-up lives', () => {
       const input = s.input();
       expect(input.madeUpData, s.name).toBe(true);
       expect(homeView(input).madeUpData, s.name).toBe(true);
-      // Every one but "mismatch" and "catching-up" agrees with its made-up bank (12.3).
-      if (input.book !== null && input.bank !== null) expect(input.book.selfCheck(input.bank).ok, s.name).toBe(s.name !== 'mismatch' && s.name !== 'catching-up');
+      // Every one but those that show a difference agrees with its made-up bank (12.3).
+      if (input.book !== null && input.bank !== null) expect(input.book.selfCheck(input.bank).ok, s.name).toBe(!['mismatch', 'catching-up', 'why-counted-twice', 'why-no-match-kept'].includes(s.name));
+      // 12.6: and those say why, in lines that add up to the difference.
+      const view = homeView(input);
+      if (view.state === 'tracking' && !view.safeToSpend.shown && view.safeToSpend.why === 'totals-do-not-match') {
+        expect(view.safeToSpend.detail?.why.reduce((total, line) => total + line.amount, 0), s.name).toBe(view.safeToSpend.check.difference);
+      }
     }
   });
 
@@ -56,6 +61,28 @@ describe('the made-up lives', () => {
     expect(viewOf('bank-not-read').safeToSpend).toEqual({ shown: false, why: 'bank-not-read', lastChecked: { amount: 62_244 + 625, at: '2026-10-07T07:15:00-04:00' } });
     expect(homeView(demoScenario('not-set-up')!.input!())).toEqual({ state: 'not-set-up', madeUpData: true });
     expect(demoScenario('error')!.input).toBeNull();
+  });
+});
+
+describe('the made-up lives for why it does not match (12.6)', () => {
+  it('12.6 "why-counted-twice": the bank posted a coffee Plaid still lists as pending, and checking went up with no transaction', () => {
+    const view = viewOf('why-counted-twice');
+    if (view.safeToSpend.shown || view.safeToSpend.why !== 'totals-do-not-match') throw new Error('it matches');
+    expect(view.safeToSpend.catchingUp).toBe(true);
+    expect(view.safeToSpend.check.difference).toBe(2_750 - 575);
+    expect(view.safeToSpend.detail?.why).toEqual([
+      { kind: 'balance-moved', account: 'checking', balance: 'available', went: 'up', by: 2_750, amount: 2_750 },
+      { kind: 'posted-still-pending', account: 'everyday-card', description: 'BLUE DOOR COFFEE', charge: true, amount: -575 },
+    ]);
+  });
+
+  it('12.6 "why-no-match-kept": one line, with the whole difference; "mismatch" and "catching-up": checking moved with no transaction', () => {
+    const none = viewOf('why-no-match-kept');
+    if (none.safeToSpend.shown || none.safeToSpend.why !== 'totals-do-not-match') throw new Error('it matches');
+    expect(none.safeToSpend.detail?.why).toEqual([{ kind: 'no-match-kept', amount: -1_234 }]);
+    const mismatch = viewOf('mismatch');
+    if (mismatch.safeToSpend.shown || mismatch.safeToSpend.why !== 'totals-do-not-match') throw new Error('it matches');
+    expect(mismatch.safeToSpend.detail?.why).toEqual([{ kind: 'balance-moved', account: 'checking', balance: 'available', went: 'down', by: 1_234, amount: -1_234 }]);
   });
 });
 
@@ -197,6 +224,14 @@ describe('the demo server', () => {
       expect((await json<BucketsView>('/api/buckets', cookie)).state, s.name).toBe(s.name === 'not-set-up' ? 'not-set-up' : 'tracking');
       expect((await json<ReviewView>('/api/review', cookie)).state, s.name).toBe(s.name === 'not-set-up' ? 'not-set-up' : 'tracking');
     }
+  });
+
+  it('12.6 Buckets says why too, the same lines as Home', async () => {
+    const buckets = await json<BucketsView>('/api/buckets', 'demo=why-counted-twice');
+    if (buckets.state !== 'tracking' || buckets.check.state !== 'does-not-match') throw new Error('it matches');
+    const home = viewOf('why-counted-twice');
+    if (home.safeToSpend.shown || home.safeToSpend.why !== 'totals-do-not-match') throw new Error('it matches');
+    expect(buckets.check.why).toEqual(home.safeToSpend.detail?.why);
   });
 
   it('4.7 a choice made in Review stays made until the life is picked again', async () => {
@@ -361,6 +396,7 @@ describe('the demo is made-up data only', () => {
       'bank/plaid-item.ts',
       'bank/reading.ts',
       'bank/stored-account.ts',
+      'bank/why.ts',
       'choices.ts',
       'demo/demo-server.ts',
       'demo/made-up-bank.ts',

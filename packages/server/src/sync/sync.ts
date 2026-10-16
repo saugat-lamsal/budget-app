@@ -1,4 +1,6 @@
-import type { IsoDate } from '@budget-app/money';
+import type { Book, Cents, IsoDate } from '@budget-app/money';
+import { bankAtRead, bankView } from '../bank/balances.js';
+import type { BankAtRead } from '../bank/why.js';
 import type { TokenBox } from '../crypto/token-box.js';
 import type { Db } from '../db/database.js';
 import {
@@ -249,8 +251,10 @@ function save(input: SyncInput, startCursor: string | null, fetched: Fetched): S
     attention: plan.attention,
     historyComplete,
   };
-  if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed });
-  if (!changed) return result;
+  if (!changed) {
+    if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed, sync: null, ...whatTheReadFound(db, book, sync - 1) });
+    return result;
+  }
 
   for (const account of changedAccounts) saveAccount(db, account, JSON.stringify(account), sync);
   if (fetched.permissionEnds !== undefined && fetched.permissionEnds !== connection.permissionEnds) savePermissionEnds(db, fetched.permissionEnds);
@@ -273,6 +277,15 @@ function save(input: SyncInput, startCursor: string | null, fetched: Fetched): S
     sent: plan.events.length,
     held: plan.attention.length,
   });
+  if (input.readAt !== undefined) saveBankRead(db, { at: input.readAt(), changed, sync, ...whatTheReadFound(db, book, sync) });
   input.beforeCommit?.();
   return result;
+}
+
+// 12.6 (A57): the bank as this read leaves it, and the check after it, with
+// the book as the sync leaves it (the plan gave it what the bank sent).
+function whatTheReadFound(db: Db, book: Book | null, syncs: number): { readonly bank: BankAtRead | null; readonly difference: Cents | null } {
+  const view = bankView(readAccounts(db), readItems(db));
+  if (!view.ok) return { bank: null, difference: null };
+  return { bank: bankAtRead(view.view, syncs), difference: book === null ? null : book.selfCheck(view.view.withPending).difference };
 }

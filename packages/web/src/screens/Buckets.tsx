@@ -2,12 +2,13 @@ import type { BucketsView } from '@budget-app/server/views';
 import { useState } from 'react';
 import type { Load, Reload } from '../app/api.js';
 import { activityPath, pathOf } from '../app/routes.js';
-import { Banner, BucketBar, Button, Card, Hero, ListRow, MadeUpPill, Money, Skeleton, StateMessage, TargetBar } from '../ui/blocks.js';
+import { Banner, BottomSheet, BucketBar, Button, Card, Hero, ListRow, MadeUpPill, Money, Skeleton, StateMessage, TargetBar } from '../ui/blocks.js';
 import { longDate, monthName } from '../ui/dates.js';
 import { Icon } from '../ui/Icon.js';
 import { onItsWayDetail, onItsWayTitle } from './buckets-text.js';
 import { SaidNotice, type Said } from './choose.js';
 import { MoveMoney } from './Move.js';
+import { WhyList } from './why.js';
 
 // Buckets: what is left in each bucket, the mom reserve with this month
 // against the target, money held for others, and the old card debt. The one
@@ -70,6 +71,13 @@ function BucketsReady({ view, reload, onChanged }: { readonly view: Tracking; re
   const { check, momReserve, heldForOthers, waiting } = view;
   const [moving, setMoving] = useState(false);
   const [moved, setMoved] = useState<Said | null>(null);
+  const [whyOpen, setWhyOpen] = useState(false);
+  const seeWhy =
+    check.state === 'does-not-match' && check.why !== null && check.why.length > 0 ? (
+      <Button variant="secondary" onClick={() => setWhyOpen(true)} testId="see-why">
+        See why
+      </Button>
+    ) : null;
   return (
     <>
       <div className="eyebrow">
@@ -86,6 +94,7 @@ function BucketsReady({ view, reload, onChanged }: { readonly view: Tracking; re
             Off by <Money cents={Math.abs(check.difference)} testId="mismatch-amount" /> for now
           </p>
           <p className="banner__body">The bank shows {check.difference > 0 ? 'more' : 'less'} than your buckets add up to. This usually clears within a few hours. Home has the numbers behind it.</p>
+          {seeWhy}
           <ListRow title="Open Home" href={pathOf('home')} testId="see-home" />
         </Banner>
       )}
@@ -96,8 +105,19 @@ function BucketsReady({ view, reload, onChanged }: { readonly view: Tracking; re
             Off by <Money cents={Math.abs(check.difference)} testId="mismatch-amount" />
           </p>
           <p className="banner__body">The bank shows {check.difference > 0 ? 'more' : 'less'} than your buckets add up to. Home has the numbers behind it.</p>
+          {seeWhy}
           <ListRow title="Open Home" href={pathOf('home')} testId="see-home" />
         </Banner>
+      )}
+
+      {check.state === 'does-not-match' && check.why !== null && check.why.length > 0 && (
+        // 12.6 (A57): the same lines as Home's check sheet.
+        <BottomSheet open={whyOpen} title="Why it doesn't match" onClose={() => setWhyOpen(false)} testId="why-sheet">
+          <p className="sheet__note">
+            Off by <Money cents={check.difference} signed testId="why-difference" />: the bank plus money on its way, less your buckets.
+          </p>
+          <WhyList lines={check.why} />
+        </BottomSheet>
       )}
 
       <Hero
