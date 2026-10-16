@@ -84,6 +84,47 @@ describe('A50a the deploy check, against a stand-in for fly', () => {
     expect(calls.map((c) => c[0])).toEqual(['deploy', 'console', 'machines', 'machine']);
   });
 
+  // Its first real run (Oct 15, 2026): the image was built and pushed, fly
+  // console found it, and the machine could not start from it, Fly's registry
+  // saying the new label was not known yet ("manifest unknown"). The same
+  // command a few minutes later ran the check. No machine was made.
+  it('A50a a new label Fly\'s registry does not know yet: the check is tried again after a wait, at most 3 times in all; any other failure is not', async () => {
+    const notYet: Answer = { code: 1, out: `image found: img_madeup\nError: failed to launch VM: failed to get manifest registry.fly.io/${APP}:${LABEL}: request failed: not found [http 404]: {"errors":[{"code":"MANIFEST_UNKNOWN","message":"manifest unknown"}]}\n` };
+    const works: Answer = { code: 0, out: 'History: 12 events.\nThe backup works.\n' };
+    const tries = (answers: readonly Answer[]) => {
+      const calls: string[][] = [];
+      const waits: number[] = [];
+      const left = [...answers];
+      const run = async (args: readonly string[]): Promise<Answer> => {
+        calls.push([...args]);
+        if (args[0] === 'console') return left.shift() ?? works;
+        if (args[0] === 'machines') return { code: 0, out: '', stdout: JSON.stringify([THE_APP_MACHINE]) };
+        return { code: 0, out: 'image pushed' };
+      };
+      const wait = async (ms: number) => {
+        waits.push(ms);
+      };
+      return { calls, waits, check: () => deployCheck({ run, say: () => undefined, label: LABEL, wait }) };
+    };
+    const twice = tries([notYet, works]);
+    expect(await twice.check()).toEqual({ ok: true, lastLine: 'The backup works.', image: IMAGE });
+    expect(twice.calls.map((c) => c[0])).toEqual(['deploy', 'console', 'console', 'machines']);
+    expect(twice.waits).toEqual([30_000]);
+    // The same command each time.
+    expect(twice.calls[2]).toEqual(twice.calls[1]);
+
+    const never = tries([notYet, notYet, notYet, works]);
+    expect(await never.check()).toMatchObject({ ok: false });
+    expect(never.calls.filter((c) => c[0] === 'console')).toHaveLength(3);
+    expect(never.waits).toEqual([30_000, 30_000]);
+
+    // A check that ran and failed is never tried again.
+    const failed = tries([{ code: 1, out: 'Event 41 replays differently: wants 120.00, was 100.00.\n' }]);
+    expect(await failed.check()).toMatchObject({ ok: false, lastLine: 'Event 41 replays differently: wants 120.00, was 100.00.' });
+    expect(failed.calls.filter((c) => c[0] === 'console')).toHaveLength(1);
+    expect(failed.waits).toEqual([]);
+  });
+
   it('A50a the label is the time, so no machine of the app already runs it', () => {
     expect(labelFor(new Date('2026-10-14T23:00:00.123Z'))).toBe(LABEL);
   });

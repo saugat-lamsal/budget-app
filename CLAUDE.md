@@ -1807,8 +1807,28 @@ long). It replaces running everything before every commit:
     review-text, browser bank-rules and review (Chromium). Break-it "[b226]":
     18 of 18 caught, and "[a31] Review sends no keys" pointed again, caught.
 - PR #30 merged (Oct 15, 2026), with his OK on rule 10.14, the section 2
-  sync line (34c, 34d) and jose; the deploy and the webhook command at his
+  sync line (34c, 34d) and jose. The deploy and the webhook command at his
   word the same evening.
+- The deploy check's first real run (Oct 15, 2026, evening), branch
+  deploy-check-fixes, before the deploy. It stopped the deploy: his real
+  setup day (saved Oct 12, before PR #29) did not replay with the new code,
+  which has the 12-hour wait for "totals do not match" (10.4) as a setting
+  the old setup day lacks. Deployed, the app would not have started (0.6).
+  - The fix (B242): history-db.ts savedSetup gives a setup day saved before
+    that setting the 12 hours he OK'd (34b), as it gives one saved before the
+    pay schedule every 14 days. history-check.test.ts also keeps a setup day
+    with only the settings of his real setup day (SETTINGS_ON_HIS_SETUP_DAY,
+    the version deployed then, 9bc04a6), so a setting added later without a
+    value for older histories fails npm test, not the deploy check.
+  - The deploy check (B243): Fly's registry did not know the new image's
+    label for a short while after the push ("manifest unknown"; no machine
+    made); the console step is tried again after 30 s, at most 3 times, for
+    that answer only. Seen on the real runs: the throwaway machine is new (in
+    iad), with no volume and no ports, its init sleeps (the server never
+    starts), and it is removed after; the app's own machine is untouched.
+  - With the fix, on Fly: 62 events, every one replays to its totals, "The
+    backup works." Break-it "[deploy-check]": 7 of 7 caught, and the two
+    "[a48] 0.6" breaks (one pointed at the code again), caught.
 - Waiting on: A50c (the read
   of both cards' statements, his OK at the time); A51 (the shape of the weekly
   statement check); his check of part B (the list at its top), and the items

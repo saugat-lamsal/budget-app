@@ -2,6 +2,8 @@
 export const APP: string;
 export const CHECK_COMMAND: string;
 export const WORKS: string;
+export const CHECK_TRIES: number;
+export const RETRY_WAIT_MS: number;
 
 export interface FlyAnswer {
   readonly code: number;
@@ -16,4 +18,5 @@ export function deployCheck(input: {
   readonly say: (line: string) => void;
   readonly app?: string;
   readonly label: string;
+  readonly wait?: (ms: number) => Promise<void>;
 }): Promise<{ readonly ok: boolean; readonly lastLine: string; readonly image: string }>;

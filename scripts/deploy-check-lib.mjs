@@ -14,12 +14,22 @@
 //    own restore check (node /app/serve/restore-check.mjs) and is removed when
 //    it ends. The check only reads the backup: it never starts the server,
 //    Litestream's copying, or a sync.
+//    If Fly's registry does not know the new label yet ("manifest unknown":
+//    no machine is made; seen on the first real run, Oct 15, 2026), the same
+//    command is tried again after 30 seconds, at most 3 times in all.
 // 3. Whatever happened, any machine left from that image is removed.
 // The answer is yes only when the check said "The backup works."
 
 export const APP = 'budget-app-x7q2';
 export const CHECK_COMMAND = 'node /app/serve/restore-check.mjs';
 export const WORKS = 'The backup works.';
+export const CHECK_TRIES = 3;
+export const RETRY_WAIT_MS = 30_000;
+
+// Fly's registry did not know the new label yet: nothing ran.
+function notInRegistryYet(out) {
+  return /MANIFEST_UNKNOWN|failed to get manifest/.test(out);
+}
 
 // A label no machine of the app already runs: deploy-check-<UTC time>.
 export function labelFor(now) {
@@ -28,7 +38,7 @@ export function labelFor(now) {
 
 // run(args) runs flyctl with these arguments and resolves to { code, out,
 // stdout } (out: stdout and stderr together); say(line) prints one line.
-export async function deployCheck({ run, say, app = APP, label }) {
+export async function deployCheck({ run, say, app = APP, label, wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) }) {
   const image = `registry.fly.io/${app}:${label}`;
   let lastLine = '';
   let ok = false;
@@ -40,7 +50,13 @@ export async function deployCheck({ run, say, app = APP, label }) {
       return { ok: false, lastLine, image };
     }
     say('Rebuilding the books from the backup on a throwaway machine (no volume, no traffic)...');
-    const checked = await run(['console', '--app', app, '--image', image, '--vm-size', 'shared-cpu-1x', '--vm-memory', '512', '-C', CHECK_COMMAND]);
+    const args = ['console', '--app', app, '--image', image, '--vm-size', 'shared-cpu-1x', '--vm-memory', '512', '-C', CHECK_COMMAND];
+    let checked = await run(args);
+    for (let tried = 1; tried < CHECK_TRIES && checked.code !== 0 && notInRegistryYet(checked.out); tried += 1) {
+      say(`Fly's registry does not know the new image yet; trying again in ${RETRY_WAIT_MS / 1000} seconds.`);
+      await wait(RETRY_WAIT_MS);
+      checked = await run(args);
+    }
     const lines = checked.out.split(/\r?\n/).map((l) => l.trim()).filter((l) => l !== '');
     lastLine = lines.at(-1) ?? '(the check printed nothing)';
     ok = checked.code === 0 && lastLine === WORKS;
