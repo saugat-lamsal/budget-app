@@ -975,7 +975,7 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/choose.tsx",
-    "find": "      ...(options.resort ? { resort: true as const } : {}),\n",
+    "find": "      ...(options.resort || pending.resort === true ? { resort: true as const } : {}),\n",
     "replace": "",
     "why": "[activity] B101 a tap on a list does not say it is sorting again"
   },
@@ -2406,5 +2406,61 @@
     "find": "${day > 28 ? ', or its last day' : ''}",
     "replace": "${day > 29 ? ', or its last day' : ''}",
     "why": "[a53] 9.8 the 29th never said to close on a short month's last day"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/review-text.ts",
+    "find": "You sorted “${offer.contains}” the same way before.",
+    "replace": "You sorted this the same way before.",
+    "why": "[a55] 13.8 the offer does not name the place"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "...(options.resort || pending.resort === true ? { resort: true as const } : {}),",
+    "replace": "...(options.resort ? { resort: true as const } : {}),",
+    "why": "[a55] 13.8 the rule from Review is sent as if the item still waited"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "    ruleText: detail.ruleText,",
+    "replace": "    ruleText: item.description,",
+    "why": "[a55] 13.8 Review's \"always do this\" starts from the whole description"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "    ruleText: ruleText ?? r.description,",
+    "replace": "    ruleText: r.description,",
+    "why": "[a55] 13.8 a list's \"always do this\" starts from the whole description"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "const offer = retry === undefined && onOffer !== undefined ? said.offer : undefined;",
+    "replace": "const offer = undefined as Offered | undefined;",
+    "why": "[a55] 13.8 the notice never offers the rule"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "setSheet((current) => (current === null ? null : current.step === 'offer' ? current : { item: current.item, step: 'choose' }));",
+    "replace": "setSheet((current) => (current === null ? null : { item: current.item, step: 'choose' }));",
+    "why": "[a55] 13.8 a refused rule closes the sheet without its reason"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "disabled={sending || contains === ''}",
+    "replace": "disabled={sending}",
+    "why": "[a55] 13.8 a rule with no text can be sent"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "choice: { to: offer.to }, always: { contains }, confirmed: true, resort: true })",
+    "replace": "choice: { to: offer.to }, always: { contains: offer.contains }, confirmed: true, resort: true })",
+    "why": "[a55] 13.8 the changed text is not what is sent"
   }
 ]

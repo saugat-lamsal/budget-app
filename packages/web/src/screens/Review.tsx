@@ -3,7 +3,7 @@ import type { KeyedDetail, ReviewView } from '@budget-app/server/views';
 import { newDecisionId, type Load, type Reload } from '../app/api.js';
 import { Button, ButtonRow, Card, Decision, Hero, HeroCount, LinkButton, MadeUpPill, Money, Skeleton, StateMessage } from '../ui/blocks.js';
 import { longDate, shortDate } from '../ui/dates.js';
-import { ChoiceSheet, LeftoverDecision, LikelyPurchases, SaidNotice, askFor, subjectOfReview, useChoiceFlow, type Choose, type Kind, type Pending, type Target } from './choose.js';
+import { ChoiceSheet, LeftoverDecision, LikelyPurchases, RuleOfferSheet, SaidNotice, askFor, subjectOfReview, useChoiceFlow, type Choose, type Kind, type Pending, type Target } from './choose.js';
 import { ACCOUNT_NAMES, changedWords, groupTitle, labeledText, pickLabel, reasonText, titleOf } from './review-text.js';
 
 // Review: everything waiting for him to decide, one tap each. Every choice
@@ -81,7 +81,7 @@ function ReviewReady({ view, reload, onChanged }: { readonly view: Tracking; rea
         {view.madeUpData && <MadeUpPill />}
       </div>
 
-      {said !== null && sheet === null && <SaidNotice said={said} sending={sending} onRetry={submit} onDismiss={() => setSaid(null)} sticky />}
+      {said !== null && sheet === null && <SaidNotice said={said} sending={sending} onRetry={submit} onDismiss={() => setSaid(null)} onOffer={flow.openOffer} sticky />}
 
       <Hero
         label="Waiting in review"
@@ -117,6 +117,7 @@ function ReviewReady({ view, reload, onChanged }: { readonly view: Tracking; rea
       ))}
 
       <ChoiceSheet flow={flow} itemId={open?.item.id} subject={open === undefined ? undefined : (subjectOfReview(open) ?? undefined)} title={open === undefined ? 'Choices' : titleOf(open.item)} testId="review-sheet" />
+      <RuleOfferSheet flow={flow} testId="offer-sheet" />
     </>
   );
 }

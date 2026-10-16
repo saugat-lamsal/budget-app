@@ -93,6 +93,7 @@ export {
 } from './reminders.js';
 export { reviewOptions, type PickTo, type ReviewFacts, type ReviewOptions, type ReviewPick, type TransferOutcome, type Unavailable } from './review-options.js';
 export { MOST_LIKELY_SHOWN, likelyPurchases, type LikelyPurchase, type PurchaseCandidate, type RefundToMatch } from './likely-purchases.js';
+export { commonPlaceWords, placeName, type RuleOffer } from './rule-offers.js';
 export { bucketLevel, type Alert, type AlertInput, type BucketLevel } from './alerts.js';
 export { bankSide, withPendingCharges, type BankBalances, type PendingCharge } from './self-check.js';
 export { checkAssignment, inTransitEffect, startTracking, startingDebt, startingMoney, type SetupInput, type SetupResult } from './setup.js';

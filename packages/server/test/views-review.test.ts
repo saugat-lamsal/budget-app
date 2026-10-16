@@ -46,10 +46,10 @@ describe('10.3 B32 everything waiting in review is listed', () => {
     expect(tracking(reviewView(input(book))).heldBack).toBe(3_467);
   });
 
-  it('each item carries its choices, its account, the likely purchases, and the paycheck preview, as the money math gives them, and its key (Step 3)', () => {
+  it('each item carries its choices, its account, the likely purchases, and the paycheck preview, as the money math gives them, its key (Step 3), and what "always do this" starts from (13.8)', () => {
     const book = busyBook();
     const v = tracking(reviewView(input(book)));
-    const keyed = book.reviewDetails().map((d) => ({ ...d, key: itemKey(d) }));
+    const keyed = book.reviewDetails().map((d) => ({ ...d, key: itemKey(d), ruleText: d.item.type === 'spending' || d.item.type === 'money-in' ? book.ruleText(d.item.id) : '' }));
     expect([...v.items].sort((a, b) => (a.item.id < b.item.id ? -1 : 1))).toEqual(keyed.sort((a, b) => (a.item.id < b.item.id ? -1 : 1)));
     expect(new Set(v.items.map((i) => i.key)).size).toBe(v.items.length);
   });

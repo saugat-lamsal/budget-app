@@ -45,7 +45,8 @@ export function paydayView(input: PaydayInput): PaydayView {
     today,
     payday: { next: plain.nextPayday, days: plain.daysToPayday },
     report: book.paydayReport(),
-    questions: book.reviewDetails().filter((d) => d.item.type === 'leftover').map(keyed),
+    // A payday question takes no rule.
+    questions: book.reviewDetails().filter((d) => d.item.type === 'leftover').map((d) => keyed(d, '')),
     toSavings: bank === null ? { state: 'bank-not-read' } : { state: 'known', transfer: book.savingsTransfer(bank.savings), onItsWay: onItsWayToSavings(book) },
   };
 }

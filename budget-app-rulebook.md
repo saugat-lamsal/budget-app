@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 25)
+# Budget App Rulebook (draft 26)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -466,6 +466,17 @@ number so a test can point at it. Nothing gets coded until you approve this.
       posted") and takes no tap for about a second, so a tap meant for what
       was there before is not sent. An item you answered yourself is not
       marked.
+13.8  When you sort a purchase, a payment to a person, or money in by hand
+      the same way as an earlier one from the same place that you also
+      sorted by hand, the app offers to make it a rule ("always do this",
+      13.6). The place is the name in the item's description as it first
+      showed up: its longest run of words with no digits in them and none
+      on most of your items of that kind on that account in the 90 days
+      before (as in 4.5). The same place means the earlier one has that
+      name in its description too. The rule's text starts as that name, and
+      you can change it before you say yes. "Not now" changes nothing, and
+      it is offered again the next time. "Always do this" (13.6) also
+      starts from that name instead of the whole description.
 
 
 ## 14. Setup day
@@ -790,3 +801,12 @@ b.  Bank of America puts a paycheck still pending into the available
     side takes pending money in out, as it adds pending money out back;
     before, every payday showed the paycheck as a difference until it
     posted (12.1, QUESTIONS.md A54).
+
+
+## 37. Answers on rule suggestions (Oct 16, 2026)
+
+a.  The second time you sort something from the same place the same way
+    by hand, the app offers to make it a rule, with the place's name as
+    its text. "Always do this" starts from that name too, not the whole
+    bank description, whose dates and card digits would stop the rule
+    from matching the next one (13.8, QUESTIONS.md A55).

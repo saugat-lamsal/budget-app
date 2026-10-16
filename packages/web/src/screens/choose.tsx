@@ -1,11 +1,11 @@
-import { parseDollars, type AccountId, type ActivityRow, type Cents, type IsoDate, type LikelyPurchase, type PaycheckSplit, type PickTo, type ReviewDetail, type ReviewOptions, type SortedNow } from '@budget-app/money';
+import { parseDollars, type AccountId, type ActivityRow, type Cents, type IsoDate, type LikelyPurchase, type PaycheckSplit, type PickTo, type ReviewDetail, type ReviewOptions, type RuleOffer, type SortedNow } from '@budget-app/money';
 import type { ChoiceOf, ChoicePart, ChoiceRequest, KeyedDetail } from '@budget-app/server/views';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { newDecisionId, sendChoice, type Reload } from '../app/api.js';
 import { BottomSheet, Button, ButtonRow, Card, Decision, ListRow, Money, Notice, TextField, ToggleRow } from '../ui/blocks.js';
 import { shortDate } from '../ui/dates.js';
 import { moneyText } from '../ui/money-format.js';
-import { ACCOUNT_NAMES, BUCKET_NAMES, changedWords, doneText, lessSincePaydayWords, markedWords, nowWords, pickLabel, reasonText, sortedWords, titleOf, transferWords } from './review-text.js';
+import { ACCOUNT_NAMES, BUCKET_NAMES, RULE_WHAT, changedWords, doneText, lessSincePaydayWords, markedWords, nowWords, offerText, pickLabel, reasonText, ruleSentenceText, sortedWords, titleOf, transferWords } from './review-text.js';
 
 // Choosing what happens to an item: the same for an item waiting in Review
 // and for one sorted already, from the list of what went in and out of a
@@ -62,6 +62,9 @@ export interface Pending {
   readonly confirmed?: boolean;
   // Step 3: the item's key as the screen showed it (Target).
   readonly seen?: string;
+  // 13.8: a rule made from the offer, for an item already sorted (as from its
+  // bucket's list, B101), whichever screen it was sorted on.
+  readonly resort?: true;
   // What the confirm step says.
   readonly ask?: ReactNode;
   // What the choice pointed at, for the answer (doneText).
@@ -78,13 +81,26 @@ export interface Extra {
 
 export type Choose = (target: Target, choice: ChoiceOf, extra?: Extra) => void;
 
-export type Sheet = { readonly item: string; readonly step: 'choose' } | { readonly item: string; readonly step: 'confirm'; readonly pending: Pending };
+export type Sheet =
+  | { readonly item: string; readonly step: 'choose' }
+  | { readonly item: string; readonly step: 'confirm'; readonly pending: Pending }
+  // 13.8: making the rule offered after a sort.
+  | { readonly item: string; readonly step: 'offer'; readonly offer: Offered };
+
+// 13.8: the rule the server offered with an answer, and the item it is about.
+export interface Offered extends RuleOffer {
+  readonly item: string;
+  readonly label: string;
+  readonly kind: Kind;
+}
 
 export interface Said {
   readonly tone: 'ok' | 'warning' | 'danger';
   readonly text: string;
   // Sending failed for want of a signal: the same decision can be sent again.
   readonly retry?: Pending;
+  // 13.8: sorted the same way as an earlier one from the same place: the rule to offer.
+  readonly offer?: Offered;
 }
 
 // ----- What each kind of item is, for the sheet -----
@@ -103,14 +119,14 @@ export function subjectOfReview(detail: KeyedDetail): Subject | null {
     paycheckPreview: detail.paycheckPreview,
     now: null,
     marked: null,
-    ruleText: item.description,
+    ruleText: detail.ruleText,
     ruleWhat: item.type === 'money-in' ? 'deposits' : item.reason === 'person-payment' ? 'payments to people' : 'purchases',
     refund: item.type === 'money-in' && item.reason === 'refund',
   };
 }
 
 // A row of a bucket's list, if it can be sorted again (B100).
-export function subjectOfRow(row: ActivityRow, seen: string | undefined): Subject | null {
+export function subjectOfRow(row: ActivityRow, seen: string | undefined, ruleText?: string): Subject | null {
   const r = row.resort;
   if (!r.resortable) return null;
   return {
@@ -124,7 +140,7 @@ export function subjectOfRow(row: ActivityRow, seen: string | undefined): Subjec
     paycheckPreview: r.paycheckPreview,
     now: r.now,
     marked: r.marked,
-    ruleText: r.description,
+    ruleText: ruleText ?? r.description,
     ruleWhat: r.type === 'money-in' ? 'deposits' : row.what === 'person-payment' ? 'payments to people' : 'purchases',
     refund: r.refund,
   };
@@ -176,6 +192,12 @@ export function useChoiceFlow(options: { readonly resort: boolean; readonly relo
     setSheet({ item: id, step: 'choose' });
   };
 
+  // 13.8: "Make it a rule" on the notice that offered one.
+  const openOffer = (offer: Offered): void => {
+    setSaid(null);
+    setSheet({ item: offer.item, step: 'offer', offer });
+  };
+
   const submit = (pending: Pending): void => {
     if (lock.current) return;
     lock.current = true;
@@ -187,7 +209,7 @@ export function useChoiceFlow(options: { readonly resort: boolean; readonly relo
       choice: pending.choice,
       ...(pending.always === undefined ? {} : { always: pending.always }),
       ...(pending.confirmed === true ? { confirmed: true } : {}),
-      ...(options.resort ? { resort: true as const } : {}),
+      ...(options.resort || pending.resort === true ? { resort: true as const } : {}),
       ...(pending.seen === undefined ? {} : { seen: pending.seen }),
     };
     sendChoice(request).then(
@@ -197,7 +219,8 @@ export function useChoiceFlow(options: { readonly resort: boolean; readonly relo
         if (answer.ok) {
           fresh.answered(pending.item);
           setSheet(null);
-          setSaid({ tone: 'ok', text: doneText(pending.label, pending.kind, answer.done, pending.about) });
+          const offer = answer.done.offer;
+          setSaid({ tone: 'ok', text: doneText(pending.label, pending.kind, answer.done, pending.about), ...(offer === undefined ? {} : { offer: { ...offer, item: pending.item, label: pending.label, kind: pending.kind } }) });
         } else if (answer.code === 'not-waiting' || answer.code === 'changed') {
           // Not waiting any more, or changed since it was shown (Step 3): the
           // numbers are asked for again, and he looks at it as it is now. A
@@ -205,8 +228,9 @@ export function useChoiceFlow(options: { readonly resort: boolean; readonly relo
           setSheet(null);
           setSaid({ tone: 'warning', text: answer.code === 'changed' ? answer.why : `${pending.label}: ${answer.why}` });
         } else {
-          // Refused: nothing changed. Back to the choices, with the reason.
-          setSheet((current) => (current === null ? null : { item: current.item, step: 'choose' }));
+          // Refused: nothing changed. Back to the choices, with the reason
+          // (a rule from the offer stays where its text can be changed).
+          setSheet((current) => (current === null ? null : current.step === 'offer' ? current : { item: current.item, step: 'choose' }));
           setSaid({ tone: 'danger', text: answer.why });
           return;
         }
@@ -241,7 +265,7 @@ export function useChoiceFlow(options: { readonly resort: boolean; readonly relo
     } else submit(pending);
   };
 
-  return { sheet, said, sending: sending || answeredOn === options.view, setSaid, setSheet, openSheet, closeSheet, submit, choose, changed: fresh.changed, holding: fresh.holding };
+  return { sheet, said, sending: sending || answeredOn === options.view, setSaid, setSheet, openSheet, openOffer, closeSheet, submit, choose, changed: fresh.changed, holding: fresh.holding };
 }
 
 // A32: which items changed when the screen last read its numbers, and which
@@ -291,8 +315,24 @@ function useFresh(keys: ReadonlyMap<string, string>) {
 
 export type ChoiceFlow = ReturnType<typeof useChoiceFlow>;
 
-export function SaidNotice({ said, sending, onRetry, onDismiss, sticky = false }: { readonly said: Said; readonly sending: boolean; readonly onRetry: (pending: Pending) => void; readonly onDismiss: () => void; readonly sticky?: boolean }) {
+export function SaidNotice({
+  said,
+  sending,
+  onRetry,
+  onDismiss,
+  onOffer,
+  sticky = false,
+}: {
+  readonly said: Said;
+  readonly sending: boolean;
+  readonly onRetry: (pending: Pending) => void;
+  readonly onDismiss: () => void;
+  // 13.8: opens the sheet that makes the rule offered.
+  readonly onOffer?: (offer: Offered) => void;
+  readonly sticky?: boolean;
+}) {
   const retry = said.retry;
+  const offer = retry === undefined && onOffer !== undefined ? said.offer : undefined;
   return (
     <Notice
       tone={said.tone}
@@ -312,7 +352,85 @@ export function SaidNotice({ said, sending, onRetry, onDismiss, sticky = false }
       }
     >
       {said.text}
+      {offer !== undefined && (
+        <>
+          <span data-testid="notice-offer-text">
+            {' '}
+            {offerText(offer)}
+          </span>
+          <span style={{ display: 'block', marginTop: 'var(--space-2)' }}>
+            <Button variant="secondary" disabled={sending} onClick={() => onOffer?.(offer)} testId="notice-offer">
+              Make it a rule
+            </Button>
+          </span>
+        </>
+      )}
     </Notice>
+  );
+}
+
+// ----- 13.8: making the rule offered -----
+
+// The rule offered after a sort: its text, which he can change first, and
+// what it would do. "Yes, always" makes it from the item already sorted
+// (13.6, B101); "Not now" changes nothing.
+export function RuleOfferSheet({ flow, testId }: { readonly flow: ChoiceFlow; readonly testId: string }) {
+  const { sheet, said, sending, setSaid, submit, closeSheet } = flow;
+  const offer = sheet?.step === 'offer' ? sheet.offer : undefined;
+  return (
+    <BottomSheet open={offer !== undefined} title="Make it a rule?" onClose={closeSheet} testId={testId}>
+      {offer !== undefined && <OfferForm key={`${offer.item} ${offer.contains}`} offer={offer} said={said} sending={sending} onDismiss={() => setSaid(null)} onRetry={submit} onYes={submit} onNotNow={closeSheet} />}
+    </BottomSheet>
+  );
+}
+
+function OfferForm({
+  offer,
+  said,
+  sending,
+  onDismiss,
+  onRetry,
+  onYes,
+  onNotNow,
+}: {
+  readonly offer: Offered;
+  readonly said: Said | null;
+  readonly sending: boolean;
+  readonly onDismiss: () => void;
+  readonly onRetry: (pending: Pending) => void;
+  readonly onYes: (pending: Pending) => void;
+  readonly onNotNow: () => void;
+}) {
+  const [text, setText] = useState(offer.contains);
+  const contains = text.trim();
+  const label = pickLabel(offer.kind === 'money-in' ? 'money-in' : 'spending', offer.to);
+  return (
+    <>
+      {said !== null && <SaidNotice said={said} sending={sending} onRetry={onRetry} onDismiss={onDismiss} />}
+      <div className="card">
+        <div style={{ display: 'grid', gap: 'var(--space-3)', padding: 'var(--space-4)' }}>
+          <TextField label="When the description contains" value={text} onChange={setText} hint="Upper and lower case do not matter. A shorter piece, such as the store's name, catches more." testId="offer-text" />
+          <p className="field__hint" data-testid="offer-sentence">
+            {contains === '' ? 'Enter some text to match.' : ruleSentenceText(RULE_WHAT[offer.for], contains, label)}
+          </p>
+        </div>
+      </div>
+      <ButtonRow>
+        <Button
+          wide
+          disabled={sending || contains === ''}
+          testId="offer-yes"
+          onClick={() =>
+            onYes({ id: newDecisionId(), item: offer.item, label: offer.label, kind: offer.kind, choice: { to: offer.to }, always: { contains }, confirmed: true, resort: true })
+          }
+        >
+          {sending ? 'Saving…' : 'Yes, always'}
+        </Button>
+        <Button variant="secondary" wide disabled={sending} testId="offer-not-now" onClick={onNotNow}>
+          Not now
+        </Button>
+      </ButtonRow>
+    </>
   );
 }
 
@@ -621,7 +739,7 @@ function Choices({ subject, busy, onChoose }: { readonly subject: Subject; reado
 
 // What a rule would do, in words.
 function ruleSentence(subject: Subject, text: string, label: string): string {
-  return `From now on, ${subject.ruleWhat} whose description contains “${text}” are sorted as: ${label}. Anything waiting that matches is sorted now too, if it can be.`;
+  return ruleSentenceText(subject.ruleWhat, text, label);
 }
 
 function SplitForm({

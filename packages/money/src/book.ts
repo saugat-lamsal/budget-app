@@ -7,8 +7,9 @@ import { addCents, assertCents, assertPositiveCents, subtractCents, type Cents }
 import { assertIsoDate, daysBetween, monthOf, type IsoDate } from './dates.js';
 import { MoneyError } from './errors.js';
 import { nextPayday, splitPaycheck, type PaycheckSplit, type SplitSettings } from './payday.js';
-import { likelyPurchases, type LikelyPurchase, type PurchaseCandidate } from './likely-purchases.js';
-import { reviewOptions, type ReviewFacts, type ReviewOptions } from './review-options.js';
+import { COMMON_WORD_DAYS, likelyPurchases, type LikelyPurchase, type PurchaseCandidate } from './likely-purchases.js';
+import { reviewOptions, type PickTo, type ReviewFacts, type ReviewOptions } from './review-options.js';
+import { commonPlaceWords, placeName, type RuleOffer } from './rule-offers.js';
 import type { LeftoverReport, PaycheckReport, PaydayReport } from './payday-report.js';
 import type { ResortDetail } from './resort.js';
 import { bankSide, type BankBalances } from './self-check.js';
@@ -203,6 +204,17 @@ export interface ReviewDetail {
   readonly likelyPurchases: readonly LikelyPurchase[];
   // 3.2, 3.3: for a deposit that could be my paycheck, the split it would get.
   readonly paycheckPreview: PaycheckSplit | null;
+}
+
+// 13.8: what a sorting rule could cover in an entry: the kind of rule, the
+// account and day, the description as it first showed up, and every
+// description it has had (as it first showed up and as it posted).
+interface Place {
+  readonly for: RuleOffer['for'];
+  readonly account: AccountId;
+  readonly date: IsoDate;
+  readonly first: string;
+  readonly descriptions: readonly string[];
 }
 
 export interface PurchaseView {
@@ -403,6 +415,8 @@ interface MoneyInEntry extends FromTheBank {
   reason: MoneyInReason;
   // A deposit you call your paycheck becomes a paycheck entry instead.
   sortedTo: 'unsorted' | DepositRuleChoice['to'];
+  // 13.8: he sorted it himself (in review or from a bucket's list), not a rule.
+  byHand?: boolean;
   // How it was split, when sorted as other income.
   incomeSplit: PaycheckSplit | null;
   effect: Effect;
@@ -418,6 +432,8 @@ interface SpendEntry extends FromTheBank {
   postedTxn: Purchase | SavingsWithdrawal | null;
   pending: boolean;
   amount: Cents;
+  // 13.8: he sorted it himself (in review or from a bucket's list), not a rule.
+  byHand?: boolean;
   refunded: Cents;
   // The part already taken out of the starting money on setup day.
   readonly countedAtSetup: Cents;
@@ -1224,6 +1240,95 @@ export class Book {
     }
   }
 
+  // 13.8: after he sorted an item by hand, the rule to offer for it: when an
+  // earlier one from the same place was sorted by hand the same way. The
+  // same place: its description, as it first showed up or as it posted, has
+  // this one's name in it. Only where "always do this" can still be made for
+  // it from its bucket's list (not for one counted for mom, which takes no
+  // rule once counted). Changes nothing.
+  ruleOffer(id: string): RuleOffer | null {
+    const entry = this.#entries.get(this.#aliases.get(id) ?? id);
+    if (entry === undefined) throw new MoneyError('unknown-item', 'no item ' + id);
+    const place = this.#placeOf(entry);
+    const to = this.#sortedByHand(entry);
+    if (place === null || to === null) return null;
+    const detail = this.#resortOf(entry.id, entry);
+    if (!detail.resortable || !detail.options.always.includes(to)) return null;
+    const name = this.#placeNameOf(place);
+    if (name === null) return null;
+    const rule = { contains: name };
+    for (const other of this.#entries.values()) {
+      if (other === entry || this.#sortedByHand(other) !== to) continue;
+      const was = this.#placeOf(other);
+      if (was?.for === place.for && was.descriptions.some((d) => matchesTextRule(rule, d))) return Object.freeze({ for: place.for, contains: name, to });
+    }
+    return null;
+  }
+
+  // 13.8: the place in an entry a sorting rule could cover. Null for
+  // anything else, for one the bank took back or dropped, and for one he
+  // marked a transfer (5.6).
+  #placeOf(entry: Entry): Place | null {
+    if (this.#gone(entry)) return null;
+    if (entry.kind === 'spend') {
+      const txn = entry.txn;
+      if (entry.original !== undefined || entry.dropped === true) return null;
+      if (entry.spendingKind === 'purchase' && txn.kind === 'purchase') {
+        return { for: 'purchase', account: txn.account, date: txn.date, first: txn.description, descriptions: entry.postedTxn === null ? [txn.description] : [txn.description, entry.postedTxn.description] };
+      }
+      if (entry.spendingKind === 'person-payment' && txn.kind === 'payment-to-person') return { for: 'person', account: txn.account, date: txn.date, first: txn.description, descriptions: [txn.description] };
+      return null;
+    }
+    if (entry.kind === 'mom') return { for: 'person', account: entry.txn.account, date: entry.txn.date, first: entry.txn.description, descriptions: [entry.txn.description] };
+    if (entry.kind === 'money-in' && entry.reason === 'deposit' && entry.txn.kind === 'deposit') {
+      return { for: 'deposit', account: entry.txn.account, date: entry.txn.date, first: entry.txn.description, descriptions: [entry.txn.description] };
+    }
+    return null;
+  }
+
+  // 13.8: where he sorted it by hand, in one place; null when a rule sorted
+  // it, it waits, or it was split.
+  #sortedByHand(entry: Entry): PickTo | null {
+    if (entry.kind === 'spend' && entry.byHand === true && 'to' in entry.sortedTo) {
+      const to = entry.sortedTo.to;
+      return to === 'needs' || to === 'wants' || to === 'not-mine' ? to : null;
+    }
+    if (entry.kind === 'mom' && entry.how === 'by-hand') return 'mom';
+    if (entry.kind === 'money-in' && entry.byHand === true && entry.sortedTo !== 'unsorted') return entry.sortedTo;
+    return null;
+  }
+
+  // 13.8 (as 4.5, A33): the place's name, without the words on most of his
+  // items of that kind on that account, on its day and in the 90 days before.
+  #placeNameOf(place: Place): string | null {
+    const near: string[] = [];
+    for (const e of this.#entries.values()) {
+      const p = this.#placeOf(e);
+      if (p === null || p.for !== place.for || p.account !== place.account) continue;
+      const before = daysBetween(p.date, place.date);
+      if (before >= 0 && before <= COMMON_WORD_DAYS) near.push(p.first);
+    }
+    return placeName(place.first, commonPlaceWords(near));
+  }
+
+  // 13.6, 13.8: what "always do this" starts from for an item, waiting or
+  // sorted: its place's name, or its description when it has none. One he
+  // marked a transfer (5.6) starts from the purchase or payment it was. Asked
+  // for by the screens only: it reads the whole book.
+  ruleText(id: string): string {
+    const entry = this.#entries.get(this.#aliases.get(id) ?? id);
+    if (entry === undefined) throw new MoneyError('unknown-item', 'no item ' + id);
+    const original = entry.kind === 'spend' || entry.kind === 'leg' ? entry.original : undefined;
+    if (original !== undefined) {
+      const kind = original.kind === 'payment-to-person' ? 'person' : original.kind === 'purchase' ? 'purchase' : null;
+      const name = kind === null ? null : this.#placeNameOf({ for: kind, account: original.account, date: original.date, first: original.description, descriptions: [original.description] });
+      return name ?? original.description;
+    }
+    const place = this.#placeOf(entry);
+    const shown = 'txn' in entry ? (entry.kind === 'spend' && entry.postedTxn !== null ? entry.postedTxn.description : entry.txn.description) : '';
+    return (place === null ? null : this.#placeNameOf(place)) ?? shown;
+  }
+
   // A20, B110: a purchase you marked as a payment to the old card, from checking.
   // It comes out of needs (5.2) and is on needs' list as that. Sorting it any
   // way but a transfer makes it what the bank sent again (5.6), so the choices
@@ -1939,8 +2044,18 @@ export class Book {
     entry.answeredFor = amount;
   }
 
-  // Sorts something waiting in review, or re-sorts it later (4.7).
+  // Sorts something waiting in review, or re-sorts it later (4.7). Either
+  // way it is sorted by hand (13.8), unless it was made a transfer, matched
+  // to its purchase, or unmarked: then it is no longer one he sorted.
   sort(id: string, choice: SortChoice, date: IsoDate): void {
+    this.#sortAnswer(id, choice, date);
+    if (typeof choice === 'object' && choice !== null && ('to' in choice || 'split' in choice)) {
+      const entry = this.#entries.get(this.#aliases.get(id) ?? id);
+      if (entry?.kind === 'spend' || entry?.kind === 'money-in') entry.byHand = true;
+    }
+  }
+
+  #sortAnswer(id: string, choice: SortChoice, date: IsoDate): void {
     assertIsoDate(date);
     const entry = this.#entries.get(this.#aliases.get(id) ?? id);
     if (entry === undefined) throw new MoneyError('unknown-item', `no item ${id}`);
@@ -2523,6 +2638,8 @@ export class Book {
         if (rule !== undefined) apply = () => this.#sortMoneyIn(entry, rule.choice);
       }
       if (apply === undefined) continue;
+      // 13.8: a rule sorts it, not he.
+      if (entry.kind === 'spend' || entry.kind === 'money-in') entry.byHand = false;
       try {
         this.#atomically(apply);
       } catch (error) {
