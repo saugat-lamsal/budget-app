@@ -211,9 +211,9 @@ FOUND IN THE LOOK AT HIS LIVE BOOKS (Oct 16, his OK, read-only)
     the rule in one tap. No outside service and no rulebook change (it is
     13.6's "always do this", offered sooner). Stage 0 of item 12.
 
-30. LATER, small. Home shows a paycheck still pending: "Paycheck on its
-    way, counted when it posts", so payday morning does not look like
-    nothing happened.
+30. BUILT Oct 16 (rule 11.4, A56, branch paycheck-on-its-way). Home
+    shows a paycheck still pending: "Paycheck on its way, counted when it
+    posts", so payday morning does not look like nothing happened.
 
 31. HIS, still to do on Oct 16: Pay schedule "Twice a month" (item 21).
     The paycheck rule waits on item 4.

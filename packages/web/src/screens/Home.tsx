@@ -6,7 +6,7 @@ import { pathOf, setupPath } from '../app/routes.js';
 import { Banner, BottomSheet, BucketBar, Button, Card, LinkButton, ListRow, MadeUpPill, Money, Skeleton, StateMessage, StatusLabel } from '../ui/blocks.js';
 import { asOfText, checkedAtText, longDate, shortDate } from '../ui/dates.js';
 import { Icon } from '../ui/Icon.js';
-import { cardsOffText, dueText, paydayText, stillToSetText, waitingText } from './home-text.js';
+import { cardsOffText, dueText, onItsWayInText, paydayText, stillToSetText, waitingText } from './home-text.js';
 
 // Home: safe to spend is the one main number. Below it, what needs
 // attention, then needs and wants as compact bars.
@@ -146,6 +146,16 @@ function HomeReady({ view, onChanged }: { readonly view: Tracking; readonly onCh
           <Icon name="clock" size={16} />
           <span>Checked at {checkedAtText(view.checkedAt.at, view.today, view.checkedAt.timeZone)}</span>
         </p>
+      )}
+
+      {view.onItsWayIn.length > 0 && (
+        // 11.4: money still pending at the bank, counted when it posts.
+        <Card title="On its way in" testId="on-its-way-in">
+          {view.onItsWayIn.map((item, i) => {
+            const words = onItsWayInText(item);
+            return <ListRow key={`${item.date} ${item.account} ${i}`} icon="clock" title={words.title} detail={words.detail} trailing={<Money cents={item.amount} testId={`on-its-way-in-${i}-amount`} />} testId={`on-its-way-in-${i}`} />;
+          })}
+        </Card>
       )}
 
       <Card title="Needs attention" testId="attention">

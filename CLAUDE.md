@@ -157,8 +157,9 @@ long). It replaces running everything before every commit:
 
 ## Status
 
-- Rulebook: draft 26 (section 37, Oct 16: 13.8, a rule offered the second
-  time a place is sorted the same way by hand, A55; draft 25, section 36,
+- Rulebook: draft 27 (section 38, Oct 16: 11.4, money still pending in
+  shown on Home, A56; draft 26, section 37, Oct 16: 13.8, a rule offered
+  the second time a place is sorted the same way by hand, A55; draft 25, section 36,
   Oct 16: 9.8 from a closing day per card,
   A53, and 12.1 taking pending money in out of the available balance, A54;
   draft 24, section 35, Oct 15: 9.8, the statement date Bank of
@@ -1973,6 +1974,25 @@ long). It replaces running everything before every commit:
   unsigned call; the restore check on the machine: 63 events, "The backup
   works."; no gap noted, no alert waiting. The way back is the image
   deploy-check-20261016t053421z.
+- Money on its way in (Oct 16, 2026, branch paycheck-on-its-way, his OK
+  to the recommended changes; A56, docs/later.txt 30). Rulebook draft 27,
+  11.4, section 38. Not deployed.
+  - Home has an "On its way in" card while a deposit is pending into
+    checking or savings: "Paycheck on its way" when the paycheck rule
+    matches it, otherwise "Money on its way in", "To checking, counted when
+    it posts", and the amount. Nothing about money changes.
+  - Server: bank/balances.ts BankView.pendingIn (pending deposits on
+    checking and savings); the Keeper keeps it with the bank's balances
+    (none while the bank cannot be read) and gives it to homeView
+    (HomeInput.pendingIn, PendingMoneyIn), which orders it and marks the
+    paycheck (HomeView onItsWayIn, OnItsWayIn). Screens: Home.tsx,
+    home-text.ts onItsWayInText. Demo life paycheck-pending.
+  - Tests: server on-its-way-in (the Keeper with the made-up bank),
+    views-home; web home-text; browser home and design, in Chromium.
+  - Break-it "[a56]": 12 of 12 caught, each judged with --only by its own
+    test file (the screen's in Chromium); "[keeper] 0.5 read the bank while
+    it wants a new login" pointed at the code again, caught.
+  - QUESTIONS.md A56, B250.
 - Waiting on: each card's statement closing day (his, on Settings, from a
   statement, before the old card's November reminders); Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);

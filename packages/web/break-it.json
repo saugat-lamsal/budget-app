@@ -2462,5 +2462,33 @@
     "find": "choice: { to: offer.to }, always: { contains }, confirmed: true, resort: true })",
     "replace": "choice: { to: offer.to }, always: { contains: offer.contains }, confirmed: true, resort: true })",
     "why": "[a55] 13.8 the changed text is not what is sent"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/home-text.ts",
+    "find": "title: item.paycheck ? 'Paycheck on its way' : 'Money on its way in'",
+    "replace": "title: 'Paycheck on its way'",
+    "why": "[a56] 11.4 every deposit called a paycheck on the screen"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/home-text.ts",
+    "find": "detail: `To ${item.account}, counted when it posts`",
+    "replace": "detail: 'Counted when it posts'",
+    "why": "[a56] 11.4 the screen does not say which account"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "{view.onItsWayIn.length > 0 && (",
+    "replace": "{view.onItsWayIn.length === 0 && (",
+    "why": "[a56] 11.4 the card shows only when nothing is on its way in"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "<Money cents={item.amount} testId={`on-its-way-in-${i}-amount`} />",
+    "replace": "<Money cents={view.onItsWayIn[0]?.amount ?? 0} testId={`on-its-way-in-${i}-amount`} />",
+    "why": "[a56] 11.4 every row shows the first amount"
   }
 ]

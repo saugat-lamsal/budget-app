@@ -15,7 +15,7 @@ import {
 } from '@budget-app/money';
 import { checkBankRules, type BankRule } from '../bank/reading.js';
 import { timeIn } from '../history/today.js';
-import type { CardRemindersOff, HomeInput } from '../views/home.js';
+import type { CardRemindersOff, HomeInput, PendingMoneyIn } from '../views/home.js';
 import type { MadeUpBank } from './made-up-bank.js';
 import { SETUP_OWES_MORE, SETUP_PENDING, SETUP_PENDING_PAYMENT, SETUP_SUGGEST } from './setup-lives.js';
 
@@ -140,6 +140,8 @@ interface Story {
   // 13.8: a bakery he sorted to wants by hand last week; another from it
   // waits in Review, so sorting it the same way offers the rule.
   readonly ruleOffer?: boolean;
+  // 11.4: money still pending at the bank, not in the books until it posts.
+  readonly pendingIn?: readonly PendingMoneyIn[];
 }
 
 // When the bank was last read and matched, in the "bank-not-read" life:
@@ -354,6 +356,7 @@ function story(s: Story): HomeInput {
     madeUpData: true,
     seenTakeBacks: new Set(),
     ...(s.cardsOff === undefined ? {} : { cardsOff: s.cardsOff }),
+    ...(s.pendingIn === undefined || s.bankNotRead === true ? {} : { pendingIn: s.pendingIn }),
     lastChecked: s.bankNotRead === true ? { amount: checkedThisMorning, at: LAST_CHECKED_AT } : null,
     // Step 3: when the made-up bank was last read: this morning.
     catchingUp: s.catchingUp ?? false,
@@ -397,6 +400,21 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   { name: 'mismatch', title: 'Totals do not match the bank', input: () => story({ bankOff: -1_234 }) },
   { name: 'catching-up', title: 'The bank is still catching up', input: () => story({ bankOff: -4_210, catchingUp: true }) },
   { name: 'payday', title: 'Payday is today', input: () => story({ today: '2026-10-16', allDone: true, statements: [] }) },
+  {
+    name: 'paycheck-pending',
+    title: 'Payday morning: the paycheck still pending at the bank, in two parts, and money from a friend (11.4)',
+    input: () =>
+      story({
+        today: '2026-10-16',
+        allDone: true,
+        statements: [],
+        pendingIn: [
+          { account: 'checking', amount: 162_540, date: '2026-10-16', description: `${EMPLOYER} DIRECT DEP` },
+          { account: 'checking', amount: 2_500, date: '2026-10-15', description: 'ZELLE FROM MADE UP FRIEND' },
+          { account: 'savings', amount: 40_000, date: '2026-10-16', description: `${EMPLOYER} DIRECT DEP` },
+        ],
+      }),
+  },
   { name: 'late', title: 'The paycheck is two days late', input: () => story({ today: '2026-10-18', allDone: true, statements: [] }) },
   { name: 'trouble', title: 'Bank needs a login, old card overdue', input: () => story({ needsLogin: true, statements: [OLD_CARD_OVERDUE] }) },
   { name: 'cards-off', title: 'Card reminders off: no statement date for the old card, one that cannot be read for the everyday card (9.8)', input: () => story({ statements: [], cardsOff: [{ card: 'everyday-card', why: 'unreadable' }, { card: 'old-card', why: 'no-statement-date' }] }) },

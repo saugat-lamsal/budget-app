@@ -2,7 +2,9 @@ import { addCents, withPendingCharges, type AccountId, type BankBalances, type C
 import type { StoredAccount } from './stored-account.js';
 import type { StoredItem } from '../sync/plan.js';
 import { BankDataError } from '../errors.js';
+import type { PendingMoneyIn } from '../views/home.js';
 import { centsFromPlaid } from './amounts.js';
+import { readPlaidItem } from './plaid-item.js';
 
 // Rule 12.1, the bank side of the self-check: checking + savings - everyday
 // card balance, including pending charges.
@@ -47,6 +49,9 @@ export interface BankView {
   // of the self-check (12.4); the book tracks it as debt.
   readonly oldCardPosted: Cents;
   readonly oldCardWithPending: Cents;
+  // 11.4 (A56): deposits still pending into checking or savings, which the
+  // books count only once they post, for Home.
+  readonly pendingIn: readonly PendingMoneyIn[];
 }
 
 export type BankViewResult = { readonly ok: true; readonly view: BankView } | { readonly ok: false; readonly why: string };
@@ -64,6 +69,7 @@ export function bankView(accounts: readonly StoredAccount[], items: ReadonlyMap<
     };
     for (const a of accounts) if (a.role !== null) roles.set(a.plaidAccountId, a.role);
     const pendingCharges: PendingCharge[] = [];
+    const pendingIn: PendingMoneyIn[] = [];
     // Plaid's sign: money going out is above zero, money coming in below.
     const pendingItems = new Map<AccountId, Cents[]>();
     for (const item of items.values()) {
@@ -72,6 +78,10 @@ export function bankView(accounts: readonly StoredAccount[], items: ReadonlyMap<
       if (item.amountCents === null || item.amountCents === 0) continue;
       pendingItems.set(role, [...(pendingItems.get(role) ?? []), item.amountCents]);
       if (item.kind === 'purchase' && item.amountCents > 0) pendingCharges.push({ account: role, amount: item.amountCents });
+      if (item.kind === 'deposit' && item.amountCents < 0 && (role === 'checking' || role === 'savings')) {
+        const read = readPlaidItem(item.raw);
+        if (read.ok) pendingIn.push({ account: role, amount: -item.amountCents, date: read.item.date, description: read.item.description });
+      }
     }
     // 12.1 (A47): checking and savings from the available balance, when the bank gives one.
     const availableOf = (role: 'checking' | 'savings'): Cents | null => {
@@ -97,6 +107,7 @@ export function bankView(accounts: readonly StoredAccount[], items: ReadonlyMap<
         withPending: withPendingCharges(countedBalances, pendingCharges),
         oldCardPosted,
         oldCardWithPending: addCents(oldCardPosted, ...oldCardPending),
+        pendingIn,
       },
     };
   } catch (error) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardsOffText } from '../src/screens/home-text.js';
+import { cardsOffText, onItsWayInText } from '../src/screens/home-text.js';
 
 // Words on Home (and Settings) for a card whose reminders are off (9.8,
 // QUESTIONS.md A52, A53). The words are the rulebook's: "Card reminders are off for
@@ -15,5 +15,14 @@ describe('9.8 a card whose reminders are off', () => {
       title: 'Card reminders are off for the everyday card',
       detail: 'The bank sent a statement for it that cannot be read.',
     });
+  });
+});
+
+// 11.4 (A56): money still pending in, in the rulebook's words.
+describe('11.4 money on its way in', () => {
+  it('11.4 a paycheck says "Paycheck on its way"; other money "Money on its way in"; both say where and that it counts when it posts', () => {
+    expect(onItsWayInText({ account: 'checking', amount: 180_000, date: '2026-10-02', paycheck: true })).toEqual({ title: 'Paycheck on its way', detail: 'To checking, counted when it posts' });
+    expect(onItsWayInText({ account: 'savings', amount: 40_000, date: '2026-10-02', paycheck: true })).toEqual({ title: 'Paycheck on its way', detail: 'To savings, counted when it posts' });
+    expect(onItsWayInText({ account: 'checking', amount: 2_500, date: '2026-10-02', paycheck: false })).toEqual({ title: 'Money on its way in', detail: 'To checking, counted when it posts' });
   });
 });
