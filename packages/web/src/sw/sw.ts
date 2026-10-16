@@ -1,14 +1,19 @@
 import { SHOWN_KEPT, decide, payloadOf, screenToOpen } from '../push/rules.js';
+import { NO_ANSWER_MS, handlesNavigation, offlinePage, showOffline } from './offline.js';
 
-// Phase 5, the phone's service worker, at /sw.js: notifications only. It
-// follows the rules in push/rules.ts (the made-up phone in the server's tests
-// follows the same ones): each alert shown with its id as its tag, a repeat
-// dropped, a tap opening the screen it is about.
+// Phase 5, the phone's service worker, at /sw.js: notifications, and (0.8)
+// the plain page when the app's server cannot be reached. It follows the
+// rules in push/rules.ts (the made-up phone in the server's tests follows the
+// same ones): each alert shown with its id as its tag, a repeat dropped, a tap
+// opening the screen it is about.
 //
-// It never keeps or serves the app's numbers: it has no fetch handler, so
-// every request the app makes goes to the server as if it were not there. The
-// one thing it keeps on the phone is the ids of the newest alerts it has shown
-// (10.12, QUESTIONS.md A42), never their words or amounts.
+// It never keeps or serves the app's numbers: it keeps no copy of anything
+// the server sends. Every request a screen makes (its numbers, its answers)
+// goes to the server as if it were not there; only opening a screen of the
+// app passes through it, on to the server as it is, and when the server
+// cannot be reached it answers with one fixed page instead (sw/offline.ts).
+// The one thing it keeps on the phone is the ids of the newest alerts it has
+// shown (10.12, QUESTIONS.md A42), never their words or amounts.
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -19,6 +24,30 @@ self.addEventListener('install', () => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
+
+// 0.8 (QUESTIONS.md A57): opening a screen of the app goes on to the server
+// as it is; when the server cannot be reached, the plain page. Anything else
+// is left to the browser.
+self.addEventListener('fetch', (event) => {
+  if (event.request.mode !== 'navigate' || !handlesNavigation(new URL(event.request.url), self.location.origin)) return;
+  event.respondWith(openScreen(event.request));
+});
+
+async function openScreen(request: Request): Promise<Response> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const noAnswer = new Promise<'no-answer'>((done) => {
+    timer = setTimeout(() => done('no-answer'), NO_ANSWER_MS);
+  });
+  try {
+    const answer = await Promise.race([fetch(request), noAnswer]);
+    if (answer === 'no-answer') return offlinePage();
+    return showOffline(answer) ? offlinePage() : answer;
+  } catch {
+    return offlinePage();
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 self.addEventListener('push', (event) => {
   event.waitUntil(onPush(event.data?.text() ?? null));

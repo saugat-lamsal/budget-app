@@ -2679,5 +2679,138 @@
     "find": "href=\"/status\" testId=\"row-status\"",
     "replace": "href=\"/alerts\" testId=\"row-status\"",
     "why": "[layer1] 0.7 the Status row opens the alerts"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "const NOT_RUNNING: ReadonlySet<number> = new Set([502, 503, 504]);",
+    "replace": "const NOT_RUNNING: ReadonlySet<number> = new Set([502, 504]);",
+    "why": "[layer1] 0.8 the host's 503 shown as it came"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "  return answer === 'failed' || answer === 'no-answer' || NOT_RUNNING.has(answer.status);",
+    "replace": "  return answer === 'failed' || (answer !== 'no-answer' && NOT_RUNNING.has(answer.status));",
+    "why": "[layer1] 0.8 no answer left blank"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "const NOT_SCREENS = /^\\/(api|health|plaid)(\\/|$)|^\\/sw\\.js$/;",
+    "replace": "const NOT_SCREENS = /^\\/(api|plaid)(\\/|$)|^\\/sw\\.js$/;",
+    "why": "[layer1] 0.8 the health checks answered with the plain page"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "const NOT_SCREENS = /^\\/(api|health|plaid)(\\/|$)|^\\/sw\\.js$/;",
+    "replace": "const NOT_SCREENS = /^\\/(health|plaid)(\\/|$)|^\\/sw\\.js$/;",
+    "why": "[layer1] 0.8 opening the numbers' address answered by the worker"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "  return url.origin === origin && !NOT_SCREENS.test(url.pathname);",
+    "replace": "  return !NOT_SCREENS.test(url.pathname);",
+    "why": "[layer1] 0.8 another site's page answered with the plain page"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "export const NO_ANSWER_MS = 15_000;",
+    "replace": "export const NO_ANSWER_MS = 60_000;",
+    "why": "[layer1] 0.8 a minute with no answer before the plain page"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "  body: 'Your money is safe; the server is offline or restarting. Try again in a few minutes.',",
+    "replace": "  body: 'Your money is safe.',",
+    "why": "[layer1] 0.8 the page leaves out what happened and what to do"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "<a href=\"\" data-testid=\"offline-again\">",
+    "replace": "<a href=\"/home\" data-testid=\"offline-again\">",
+    "why": "[layer1] 0.8 Try again opens Home, not the screen he opened"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "      'Content-Security-Policy': \"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'\",\n",
+    "replace": "",
+    "why": "[layer1] 0.8 the page without its own security policy"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "      'Cache-Control': 'no-store',\n",
+    "replace": "",
+    "why": "[layer1] 0.8 the page may be kept by the browser"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "    status: 503,",
+    "replace": "    status: 200,",
+    "why": "[layer1] 0.8 the plain page said to be the app answering"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "@media (prefers-color-scheme: dark) { :root { --bg: #000000; --surface: #1c1c1e; --text: #f5f5f7; --text-2: #a3a3aa; --accent: #6f9dff; --on-accent: #0a1430; } }\n",
+    "replace": "",
+    "why": "[layer1] 0.8 the plain page ignores dark mode"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "min-width: 44px; min-height: 44px; padding: 0.625rem 1.5rem;",
+    "replace": "padding: 0.125rem 0.25rem;",
+    "why": "[layer1] 0.8 Try again smaller than 44 points"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/offline.ts",
+    "find": "@supports (font: -apple-system-body) { html { font: -apple-system-body; } }\n",
+    "replace": "",
+    "why": "[layer1] 0.8 the plain page ignores the phone's text size"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/sw.ts",
+    "find": "  if (event.request.mode !== 'navigate' || !handlesNavigation(new URL(event.request.url), self.location.origin)) return;",
+    "replace": "  if (!handlesNavigation(new URL(event.request.url), self.location.origin)) return;",
+    "why": "[layer1] 0.8 every request on the app's address taken, not only opening a screen"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/sw.ts",
+    "find": "    return showOffline(answer) ? offlinePage() : answer;",
+    "replace": "    return answer;",
+    "why": "[layer1] 0.8 the host saying the server is not running shown as it came"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/sw.ts",
+    "find": "  } catch {\n    return offlinePage();\n  } finally {",
+    "replace": "  } catch (error) {\n    throw error;\n  } finally {",
+    "why": "[layer1] 0.8 a request that fails left blank"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/sw/sw.ts",
+    "find": "    timer = setTimeout(() => done('no-answer'), NO_ANSWER_MS);",
+    "replace": "    timer = undefined;\n    void done;",
+    "why": "[layer1] 0.8 waits for ever for an answer"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/main.tsx",
+    "find": "if (window.location.protocol === 'https:' && 'serviceWorker' in navigator) void navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => undefined);",
+    "replace": "if (window.location.protocol === 'https:' && 'serviceWorker' in navigator && Notification.permission === 'granted') void navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => undefined);",
+    "why": "[layer1] 0.8 the background part only where notifications are on"
   }
 ]
