@@ -958,6 +958,24 @@ A56. ADDED Oct 16 (docs/later.txt 30, from the payday "Off by" of A54):
      ANSWERED Oct 16 (his OK to all of the recommended changes, before
      he went to sleep): rulebook draft 27, 11.4 and 38a.
 
+A57. ADDED Oct 16 (his ask, "Layer 1": the app explains itself, with no AI
+     and nothing sent anywhere new). Three things confused him that day:
+     the paycheck pending on payday morning, a black screen for 16 minutes
+     while the host restarted, and "The bank is still catching up, off by"
+     a few dollars, which a read-only look found was Bank of America's
+     balances moving before Plaid sent the transactions (a card charge
+     posted at the bank but still pending in Plaid, so counted twice, and a
+     rise in checking's available balance with no transaction yet).
+     Recommended, four pieces: lines that add up to the difference and say
+     why, from the bank's balances kept with each read (12.6); "pending
+     since" and "usually posts within" on money on its way in (11.4); a
+     status page (0.7); a plain page when the server cannot be reached
+     (0.8). Nothing about money changes. The fixed numbers in them (3
+     examples, three in four of the last 10, 15 seconds) are not settings,
+     like 4.5's five and 10.12's 500.
+     ANSWERED Oct 16 (his OK to the text as written, "OK, build it"):
+     rulebook draft 28, 0.7, 0.8, 11.4, 12.6 and section 39.
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 WAITING FOR YOU TO CHECK (Oct 10, 2026, the end of Phase 4). Each was

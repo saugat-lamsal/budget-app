@@ -157,8 +157,10 @@ long). It replaces running everything before every commit:
 
 ## Status
 
-- Rulebook: draft 27 (section 38, Oct 16: 11.4, money still pending in
-  shown on Home, A56; draft 26, section 37, Oct 16: 13.8, a rule offered
+- Rulebook: draft 28 (section 39, Oct 16: 0.7 the status page, 0.8 the
+  page when the app cannot be reached, 11.4 pending since and usually
+  posts within, 12.6 why it does not match, A57; draft 27, section 38,
+  Oct 16: 11.4, money still pending in shown on Home, A56; draft 26, section 37, Oct 16: 13.8, a rule offered
   the second time a place is sorted the same way by hand, A55; draft 25, section 36,
   Oct 16: 9.8 from a closing day per card,
   A53, and 12.1 taking pending money in out of the available balance, A54;

@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 27)
+# Budget App Rulebook (draft 28)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -24,6 +24,22 @@ number so a test can point at it. Nothing gets coded until you approve this.
      changed. If an event cannot be replayed at all (a fix makes the money
      math refuse an old answer), the app does not start either: the command
      says which event and why, and nothing is dropped or replaced.
+0.7  Status. Settings has a row "Status" that opens a page that only
+     reads: when the bank was last read, and how the last sync went (new
+     activity, nothing new, the bank wants a new login, or it failed, and
+     when); whether the backups are copying (the heartbeat /health/backups
+     watches); when the server last started; how many events the history
+     holds, and that every one replayed to its totals when the books opened
+     (0.6); since when the totals have not matched the bank, if they do not
+     (10.4); and how many alerts wait to be sent. It shows no amounts.
+0.8  When the app cannot be reached. If the phone cannot reach the app's
+     server when it opens a screen (no answer within 15 seconds, or the
+     host saying the server is not running), it shows one fixed page built
+     into the app instead of a blank screen: "Can't reach the app right
+     now. Your money is safe; the server is offline or restarting. Try
+     again in a few minutes." and Try again. The page has no numbers and
+     nothing from the server. The phone keeps nothing for it, and every
+     number is still asked of the server.
 
 
 ## 1. Accounts (all Bank of America, one connection)
@@ -396,6 +412,15 @@ number so a test can point at it. Nothing gets coded until you approve this.
       posts". It is not part of safe to spend or any bucket, and nothing
       is asked about it, until it posts. While the bank cannot be read,
       none is shown.
+      Each row also says when the app first saw it pending ("Pending
+      since Fri 6:12 AM"). Once the app has seen at least 3 earlier ones of
+      the same kind (a paycheck, or other money in) go from pending to
+      posted on the same account, the row adds "Usually posts within 9
+      hours": the time within which at least three in four of the last 10
+      of them posted, from when the app first saw each one pending to when
+      it first saw it posted, rounded up to the hour, or to the day from 2
+      days. It is never a promise. One the app first saw before it kept
+      the times of its reads says the day the bank dated it instead.
 
 
 ## 12. Daily self-check
@@ -427,6 +452,33 @@ number so a test can point at it. Nothing gets coded until you approve this.
       pair by the bank's link, otherwise with the oldest unpaired half
       between the same accounts for the same amount. One seen arriving
       first is a negative in transit until it shows leaving (B45).
+12.6  Why it does not match. When the totals do not match the bank (12.3),
+      the daily check sheet on Home, and a sheet on Buckets, list why:
+      short lines, each with an amount, that add up to the difference
+      exactly, to the cent. With every read of the bank the app keeps each
+      account's balances as the bank gave them (posted and available), what
+      the check counted for it, and whether the check matched. It compares
+      the last read that matched with now, account by account: how each
+      balance moved, against what the bank's transactions in between
+      account for. It names a cause only when it accounts for a move to
+      the cent:
+      - On the everyday card, pending charges Plaid still lists, when the
+        card's balance went up by exactly them: "Posted at the bank, Plaid
+        still says pending: counted twice for now." Money in still pending
+        there (a refund) that the balance already took: "Posted at the
+        bank, Plaid still says pending: counted once Plaid says it posted."
+        The same for checking or savings when the bank gives no available
+        balance.
+      - On checking or savings: a pending item Plaid lists that the
+        available balance does not show yet; a pending item whose amount
+        Plaid changed while the available balance still has the old one;
+        and a deposit or charge that posted while Plaid still lists the
+        pending one too.
+      What is left of each account's move is one line, such as "Checking's
+      available balance went up $27.50 with no transaction from the bank
+      yet." Anything the balances do not account for is one more line. With
+      no earlier read that matched, one line says so, with the whole
+      difference. The lines only explain: they change nothing.
 
 
 ## 13. Changing things on the fly
@@ -824,3 +876,16 @@ a.  The second time you sort something from the same place the same way
 a.  Home shows a paycheck or other deposit still pending at the bank, so
     payday morning does not look like nothing happened. It counts only
     once it posts, as before (11.4, QUESTIONS.md A56).
+
+
+## 39. Answers on the app explaining itself (Oct 16, 2026)
+
+a.  When the totals do not match, the app lists why, in lines with
+    amounts that add up to the difference, from the bank's balances kept
+    with each read (12.6, QUESTIONS.md A57).
+b.  Money on its way in says since when it has been pending, and once
+    there are 3 earlier ones like it, how long they usually take to post
+    (11.4).
+c.  A status page on Settings, with no amounts (0.7).
+d.  A plain page instead of a blank screen when the app's server cannot be
+    reached (0.8).
