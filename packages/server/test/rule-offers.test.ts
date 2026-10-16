@@ -52,8 +52,11 @@ describe('13.8 the rule offered with the answer', () => {
     const life = await shopping();
     try {
       choose(life, { item: 'g1', choice: { to: 'wants' } });
+      // The second from the place, split: no one way.
       expect(offerOf(choose(life, { item: 'g2', choice: { split: [{ bucket: 'needs', amount: 1_000 }, { bucket: 'wants', amount: 'rest' }] } }))).toBeNull();
-      expect(offerOf(choose(life, { item: 'o1', choice: { to: 'wants' }, always: { contains: 'CORNER BAKERY' }, confirmed: true }))).toBeNull();
+      // Then the same way as the first, with "always do this": the rule is made already.
+      expect(offerOf(choose(life, { item: 'g2', choice: { to: 'wants' }, always: { contains: 'GREEN LEAF MARKET' }, resort: true, confirmed: true }))).toBeNull();
+      expect(life.keeper.book()?.rules().map((r) => r.contains)).toEqual(['GREEN LEAF MARKET']);
     } finally {
       life.done();
     }

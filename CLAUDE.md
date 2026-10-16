@@ -1956,6 +1956,12 @@ long). It replaces running everything before every commit:
   - Tests: money 13-rule-offers; server rule-offers (restart, the repeat,
     the rule made), views-review, views-payday; web review-text; browser
     review, activity, design-screens (Chromium).
+  - Break-it "[a55]": 29 of 29 caught (money 17, server 4, screens 8, each
+    judged with --only by its own test file; the screens' in Chromium). One
+    survived at first and got a tighter test: an offer right after "always
+    do this" made the rule. The list's "always do this" break is judged by
+    activity.test.ts. Three older breaks pointed at the code again ("[a31]"
+    Review and Payday send no keys, "[activity]" B101), caught.
   - QUESTIONS.md A55, B249. docs/later.txt 29.
 - Waiting on: each card's statement closing day (his, on Settings, from a
   statement, before the old card's November reminders); Pay schedule
