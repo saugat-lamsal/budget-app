@@ -948,6 +948,16 @@ A55. ADDED Oct 16 (his ask, after the look at his live books: he had sorted
      13.8 and 37a.
      BUILT Oct 16 (branch rule-suggestions). B249 below.
 
+A56. ADDED Oct 16 (docs/later.txt 30, from the payday "Off by" of A54):
+     on payday morning his paycheck sat pending at the bank and Home
+     showed nothing about it, so payday looked like nothing happened
+     until it posted. Recommended: Home shows money still pending into
+     checking or savings, "Paycheck on its way" when the paycheck rule
+     matches it, with "counted when it posts". Nothing about money
+     changes.
+     ANSWERED Oct 16 (his OK to all of the recommended changes, before
+     he went to sleep): rulebook draft 27, 11.4 and 38a.
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 WAITING FOR YOU TO CHECK (Oct 10, 2026, the end of Phase 4). Each was

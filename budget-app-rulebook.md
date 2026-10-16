@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 26)
+# Budget App Rulebook (draft 27)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -389,6 +389,13 @@ number so a test can point at it. Nothing gets coded until you approve this.
       negative instead of jumping ahead (B35).
 11.3  Savings, mom reserve, held for others, and unsorted money in are never
       part of it.
+11.4  Money still pending into checking or savings (a deposit, which the
+      app counts only once it posts, 12.1) is shown on Home with its
+      amount and account: "Paycheck on its way" when the paycheck rule
+      matches it, otherwise "Money on its way in", and "counted when it
+      posts". It is not part of safe to spend or any bucket, and nothing
+      is asked about it, until it posts. While the bank cannot be read,
+      none is shown.
 
 
 ## 12. Daily self-check
@@ -810,3 +817,10 @@ a.  The second time you sort something from the same place the same way
     its text. "Always do this" starts from that name too, not the whole
     bank description, whose dates and card digits would stop the rule
     from matching the next one (13.8, QUESTIONS.md A55).
+
+
+## 38. Answers on money on its way in (Oct 16, 2026)
+
+a.  Home shows a paycheck or other deposit still pending at the bank, so
+    payday morning does not look like nothing happened. It counts only
+    once it posts, as before (11.4, QUESTIONS.md A56).
