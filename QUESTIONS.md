@@ -840,6 +840,14 @@ A50. ADDED Oct 14 on Claude's recommendation (his to strike): (a) before
      date) came through, which the reminders depend on.
      BUILT Oct 14: (a) npm run deploy-check, first run at the next deploy;
      (b) one fix (B232). (c) waits for his OK at the time.
+     (a) RAN Oct 15 before the deploy and stopped it (B242, B243).
+     (c) DONE Oct 15, with his OK at the time (read-only, on the machine):
+     both cards' statements come through with the due date, the statement
+     balance, the minimum and the last payment, but Bank of America (through
+     Plaid) sends no statement date (last_statement_issue_date is null on
+     both, every sync since Oct 12). cardStatement refuses a statement with
+     no statement date, and the Keeper drops it without a word: no card
+     reminders, no "due" on Home, no overdue alert, on either card. A52.
 
 B232. Found by A50b's tests (Oct 14): a posted item linked to a pending
      purchase (pending_transaction_id) always replaced it as a purchase,
@@ -866,6 +874,28 @@ A51. ADDED Oct 15 (docs/later.txt 20, the last item of his handoff, "if
      3. By statement: from one statement date to the next for the cards, by
         month for checking and savings. Matches the paper statements, but a
         month is a long wait in Phase 7.
+     Not built: waiting on his pick.
+
+A52. ADDED Oct 15 (A50c found it): Bank of America sends each card's due
+     date, statement balance and minimum, but no statement date, and 9.3
+     counts payments since the statement. Today a card with no statement
+     date is dropped silently: no reminders, no "due" on Home, no overdue
+     alert (9.1 to 9.4, 9.6, 9.7). Options:
+     1. (Recommended) A setting per card: days from the statement date to
+        the due date, which he reads once off a statement (two months, to
+        see it holds). Each statement date is worked out from the due date
+        Plaid sends. Until it is set, that card's reminders stay off and
+        Home says so.
+     2. A setting per card: the day of the month its statement closes.
+        Easy to read off a statement, but a day off when the cycle's
+        length changes.
+     3. The bank's own minimum: remind while it is above $0, and the bank's
+        "overdue". Nothing to enter, but not known to be how Bank of America
+        reports it, and it does not give the everyday card's full-balance
+        rule (9.3).
+     With any of them: a card whose statement cannot be read says so on Home
+     and Settings ("Card reminders are off for the old card: the bank did
+     not send its statement date"), never dropped without a word.
      Not built: waiting on his pick.
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.

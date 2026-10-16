@@ -1845,7 +1845,12 @@ long). It replaces running everything before every commit:
     came the same second, checked with Plaid's production key: "webhook
     address confirmed by Plaid".
   - His step: Settings, Pay schedule, "Twice a month".
-- Waiting on: A50c (the read
-  of both cards' statements, his OK at the time); A51 (the shape of the weekly
+- A50c done Oct 15 (his OK at the time, read-only on the machine): both
+  cards' statements come through without the statement date, and the app
+  drops a card with none silently: no card reminders at all (QUESTIONS.md
+  A50, A52).
+- Waiting on: A52 (the statement date Bank of America leaves out: card
+  reminders are off until it is built, needed before the old card's
+  November cycle); A51 (the shape of the weekly
   statement check); his check of part B (the list at its top), and the items
   in docs/later.txt marked DECIDE.
