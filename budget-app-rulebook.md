@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 23)
+# Budget App Rulebook (draft 24)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -59,6 +59,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
 - Mom monthly target: $2,000 to $3,000
 - Low-bucket alert: 20% of what the bucket started the pay period with
 - Card reminders: 7 days and 2 days before the due date
+- Statement to due date, for each card: how many days before the due date
+  its statement is made (you fill in, from a statement). Used only when the
+  bank does not send a card's statement date (9.8).
 - Daily review time: 8:00 PM
 - Quiet hours: 10:00 PM to 7:00 AM. No alert is sent then (10.8).
 - Bank not read: an alert after 24 hours without a good read of the bank
@@ -303,6 +306,13 @@ number so a test can point at it. Nothing gets coded until you approve this.
      (section 2), with the daily review (10.3). A reminder that goes out
      later than its day counts the days to the due date from the day it
      is sent ("due in 4 days", not "due in 7 days").
+9.8  When the bank does not send a card's statement date, the statement
+     date is the card's due date less the days set for that card (section
+     2). Until they are set, that card has no reminders, no due line on
+     Home, and no overdue alert, and Home and Settings say so: "Card
+     reminders are off for the old card: the bank did not send its
+     statement date." The same when the bank sends a statement for a card
+     that the app cannot read.
 
 
 ## 10. Alerts
@@ -754,3 +764,12 @@ c.  When a paycheck is counted, you are told what to move to savings and,
     QUESTIONS.md A49).
 d.  The app also syncs as soon as Plaid says it has something new (a
     webhook); the 60-minute timer stays (section 2, QUESTIONS.md A47).
+
+
+## 35. Answers on the card statements (Oct 15, 2026)
+
+a.  Bank of America sends each card's due date, statement balance and
+    minimum, but not its statement date. The statement date is the due date
+    less a number of days set for each card, read once off a statement.
+    Until it is set, that card's reminders are off, and Home and Settings
+    say so (9.8, section 2, QUESTIONS.md A52).

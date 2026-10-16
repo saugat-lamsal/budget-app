@@ -84,7 +84,7 @@ export function createDemoServer(options: { readonly webRoot: string; readonly o
     settings: async (request) => {
       const { input } = await wait(scenarioOf(request));
       const { bankRules } = liveOf(scenarioOf(request));
-      return settingsView({ today: input.today, book: input.book, bank: input.bank, madeUpData: input.madeUpData, bankRules: { rules: bankRules.rules(), log: bankRules.log(), recentDays: RECENT_DAYS } });
+      return settingsView({ today: input.today, book: input.book, bank: input.bank, madeUpData: input.madeUpData, bankRules: { rules: bankRules.rules(), log: bankRules.log(), recentDays: RECENT_DAYS }, ...(input.cardsOff === undefined ? {} : { cardsOff: input.cardsOff }) });
     },
     settingsChange: (request, change) => {
       const { desk } = liveOf(scenarioOf(request));

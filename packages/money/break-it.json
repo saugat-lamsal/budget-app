@@ -3799,5 +3799,26 @@
     "find": "isWholeInRange(s.totalsMismatchAlertHours, 1, 168)",
     "replace": "isWholeInRange(s.totalsMismatchAlertHours, 0, 169)",
     "why": "[a47] 10.4 take 0 or 169 hours for the wait"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "isWholeInRange(s.everydayCardStatementDays, 1, 60)",
+    "replace": "isWholeInRange(s.everydayCardStatementDays, 0, 60)",
+    "why": "[a52] 9.8 zero days from statement to due date allowed"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "isWholeInRange(s.oldCardStatementDays, 1, 60)",
+    "replace": "isWholeInRange(s.oldCardStatementDays, 1, 61)",
+    "why": "[a52] 9.8 61 days from statement to due date allowed"
+  },
+  {
+    "section": "0",
+    "file": "packages/money/src/settings.ts",
+    "find": "  everydayCardStatementDays: null,\n  oldCardStatementDays: null,\n});",
+    "replace": "  everydayCardStatementDays: 25,\n  oldCardStatementDays: null,\n});",
+    "why": "[a52] 9.8 section 2 the days start made up instead of not entered"
   }
 ]

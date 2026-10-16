@@ -36,7 +36,7 @@ import { activityView, type ActivityView } from '../views/activity.js';
 import type { BankRuleRequest, BankRuleResponse } from '../views/bank-rules.js';
 import { bucketsView, type BucketsView } from '../views/buckets.js';
 import type { ChoiceRequest, ChoiceResponse, MoveRequest, MoveResponse, RuleRequest, RuleResponse, SettingsRequest, SettingsResponse, SetupRequest, SetupResponse } from '../views/choice.js';
-import { homeView, type BankDetail, type CheckedAt, type HomeView } from '../views/home.js';
+import { homeView, type BankDetail, type CardRemindersOff, type CheckedAt, type HomeView } from '../views/home.js';
 import { paydayView, type PaydayView } from '../views/payday.js';
 import { reviewView, type ReviewView } from '../views/review.js';
 import { settingsView, type SettingsView } from '../views/settings.js';
@@ -44,6 +44,14 @@ import type { SetupView } from '../views/setup.js';
 import { recorderOf, totalsOf, type Answer, type Recorder, type SavedSetupAnswers } from './history.js';
 import { appendEvent, lastSeqOf, readDecision, readHistory, readLastChecked, replayHistory, saveDecision, saveLastChecked, sealHistory, type DeskName } from './history-db.js';
 import { timeIn, todayIn } from './today.js';
+
+// The bank's balances and the card statements as the database has them.
+interface BankNow {
+  readonly version: string;
+  readonly bank: BankBalances | null;
+  readonly statements: CardStatement[];
+  readonly cardsOff: CardRemindersOff[];
+}
 
 // The real server's books (Step 1): everything he answers is kept in the
 // database, so a restart finds the books exactly as they were.
@@ -127,7 +135,7 @@ export class Keeper {
   // Phase 5: told after each sync and each answer (serveBooks pokes the alert timer).
   #onChange: (() => void) | null = null;
   // The bank's balances and statements last read from the database (#bankNow).
-  #bankRead: { readonly version: string; readonly bank: BankBalances | null; readonly statements: CardStatement[] } | null = null;
+  #bankRead: BankNow | null = null;
 
   private constructor(input: KeeperInput) {
     this.#db = input.db;
@@ -264,14 +272,19 @@ export class Keeper {
     return this.#bankNow().statements;
   }
 
+  // 9.8 (A52): the cards whose statement cannot be read, so their reminders are off.
+  #cardsOff(): CardRemindersOff[] {
+    return this.#bankNow().cardsOff;
+  }
+
   // The bank's balances and statements as the database has them, read again
   // only once something was written to it since (by this server or another):
   // the alert timer looks every minute.
-  #bankNow(): { readonly version: string; readonly bank: BankBalances | null; readonly statements: CardStatement[] } {
+  #bankNow(): BankNow {
     const { changes } = statement(this.#db, 'SELECT total_changes() AS changes').get() as { changes: number };
     const { data_version: written } = statement(this.#db, 'PRAGMA data_version').get() as { data_version: number };
     const version = `${changes} ${written}`;
-    if (this.#bankRead?.version !== version) this.#bankRead = { version, bank: this.#readBank(), statements: this.#readStatements() };
+    if (this.#bankRead?.version !== version) this.#bankRead = { version, bank: this.#readBank(), ...this.#readStatements() };
     return this.#bankRead;
   }
 
@@ -282,14 +295,27 @@ export class Keeper {
     return view.ok ? view.view.withPending : null;
   }
 
-  #readStatements(): CardStatement[] {
+  // Each card's statement as the bank sent it, read with the days from
+  // statement to due date set for that card (9.8). One the bank sent that
+  // cannot be read is never dropped without a word: its reminders are off,
+  // and Home and Settings say why.
+  #readStatements(): { readonly statements: CardStatement[]; readonly cardsOff: CardRemindersOff[] } {
     const stored = readStatements(this.#db);
-    return readAccounts(this.#db).flatMap((a) => {
+    const settings = this.book()?.settings() ?? null;
+    const statements: CardStatement[] = [];
+    const cardsOff: CardRemindersOff[] = [];
+    for (const a of readAccounts(this.#db)) {
       const raw = stored.get(a.plaidAccountId)?.raw;
-      if ((a.role !== 'everyday-card' && a.role !== 'old-card') || raw === undefined) return [];
-      const read = cardStatement(a.role, raw);
-      return read.ok ? [read.statement] : [];
-    });
+      if ((a.role !== 'everyday-card' && a.role !== 'old-card') || raw === undefined) continue;
+      const days = settings === null ? null : a.role === 'everyday-card' ? settings.everydayCardStatementDays : settings.oldCardStatementDays;
+      const read = cardStatement(a.role, raw, days);
+      if (read.ok) statements.push(read.statement);
+      // Off for want of the days only when the days would read it.
+      else cardsOff.push({ card: a.role, why: days === null && cardStatement(a.role, raw, 1).ok ? 'no-statement-date' : 'unreadable' });
+    }
+    // The everyday card first, as everywhere on the screens.
+    cardsOff.sort((x, y) => (x.card === y.card ? 0 : x.card === 'everyday-card' ? -1 : 1));
+    return { statements, cardsOff };
   }
 
   home(): HomeView {
@@ -299,6 +325,7 @@ export class Keeper {
       bank: this.#bank(),
       needsLogin: readConnection(this.#db)?.needsLogin ?? false,
       statements: this.#statements(),
+      cardsOff: this.#cardsOff(),
       madeUpData: false,
       seenTakeBacks: this.#state.seen,
       lastChecked: readLastChecked(this.#db),
@@ -351,6 +378,7 @@ export class Keeper {
       sync: { everyMinutes: this.syncEveryMinutes(), checkedAt: this.#checkedAt(), today: this.today() },
       alerts: outboxCounts(this.#db),
       ...(session === null ? {} : { push: this.#push.view(session) }),
+      cardsOff: this.#cardsOff(),
     });
   }
 

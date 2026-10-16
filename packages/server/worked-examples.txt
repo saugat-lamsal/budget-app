@@ -580,3 +580,33 @@ The old way, posted less pending charges, used the bank's current balance:
   3,000.00 - 6.50 = 2,993.50, high by the grocer's 42.10 until the night.
 
 Check: available 2,451.40 | checking side 2,951.40 | old way 2,993.50
+
+
+EXAMPLE 17. A card statement sent without its statement date (9.8, 9.3; QUESTIONS.md A52, B28)
+
+Made-up numbers. The bank sends the old card's statement: minimum 40.00,
+due Nov 24, and no statement date. On a paper statement he reads
+"closing date Oct 30, payment due date Nov 24": 25 days apart, so he
+enters 25 days for the old card on Settings.
+
+The statement date: Nov 24 less 25 days. Back 24 days is Oct 31; one more
+is Oct 30.
+
+Payments to the old card, each landing the day it was made:
+  Oct 30, 20.00: on the statement date itself, so it counts toward the
+  statement before (B28), not this one.
+  Oct 31, 25.00: after the statement date, so it counts.
+Counted toward this statement: 25.00. The minimum is 40.00, so 15.00 is
+still to pay: 40.00 - 25.00 = 15.00.
+
+Nov 17 is 7 days before Nov 24: a reminder at the daily review time, and
+Home shows the card due every day from then on (9.6).
+  Nov 18, 20.00: counted 25.00 + 20.00 = 45.00, at least the minimum. No
+  reminder on Nov 22 (2 days before), and nothing due on Home (9.3).
+
+Had he not entered the days, the card would have no reminders at all, and
+Home and Settings would say "Card reminders are off for the old card"
+(9.8).
+
+Dates: statement date 2026-10-30 | first reminder 2026-11-17 | second reminder 2026-11-22
+Check: minimum 40.00 | counted at the first reminder 25.00 | still to pay 15.00 | counted at the second reminder 45.00

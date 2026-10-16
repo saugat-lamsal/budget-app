@@ -56,6 +56,8 @@ export const SETTING_NAMES: Readonly<Record<keyof Settings, string>> = {
   totalsMismatchAlertHours: 'Totals do not match',
   amountsOnLockScreen: 'Amounts on the lock screen',
   bankPermissionWarnDays: 'Bank permission ending',
+  everydayCardStatementDays: 'Everyday card: statement to due date',
+  oldCardStatementDays: 'Old card: statement to due date',
 };
 
 // Section 2: the home time zones offered on Settings, his first, and how each
@@ -116,6 +118,11 @@ export function quietHoursText(quiet: Settings['quietHours']): string {
 
 // 10.7: "After 24 hours".
 // 10.13: how long before the bank's permission runs out he is told.
+// 9.8 (A52): how many days before the due date a card's statement is made.
+export function statementDaysText(days: number | null): string {
+  return days === null ? 'Not entered' : `${daysText(days)} before the due date`;
+}
+
 export function permissionWarnText(days: number): string {
   return `${days} ${days === 1 ? 'day' : 'days'} before`;
 }
@@ -185,6 +192,9 @@ export function settingValueText<K extends keyof Settings>(key: K, value: Settin
       return lockAmountsText(v as boolean);
     case 'bankPermissionWarnDays':
       return permissionWarnText(v as number);
+    case 'everydayCardStatementDays':
+    case 'oldCardStatementDays':
+      return statementDaysText(v as number | null);
     default:
       return String(v);
   }

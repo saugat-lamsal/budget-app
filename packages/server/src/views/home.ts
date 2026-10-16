@@ -16,6 +16,9 @@ export interface HomeInput {
   readonly needsLogin: boolean;
   // The latest statement of each card, for the card reminders (section 9).
   readonly statements: readonly CardStatement[];
+  // 9.8 (A52): the cards whose statement the bank sent but the app cannot
+  // read, so their reminders are off. None when left out (the demo).
+  readonly cardsOff?: readonly CardRemindersOff[];
   // True only for the demo's made-up numbers, so the screen can say so.
   readonly madeUpData: boolean;
   // 10.6: the take-backs he has marked as seen, by the id in the change log.
@@ -49,6 +52,14 @@ export interface BankAccountFigures {
   readonly posted: Cents;
   readonly available: Cents | null;
   readonly counted: Cents;
+}
+
+// 9.8 (A52): a card whose reminders are off, and why: the bank sent no
+// statement date and the days from statement to due date are not set for it
+// (section 2), or the statement cannot be read for another reason.
+export interface CardRemindersOff {
+  readonly card: 'everyday-card' | 'old-card';
+  readonly why: 'no-statement-date' | 'unreadable';
 }
 
 export interface CheckedAt {
@@ -105,6 +116,9 @@ export type Attention =
   | { readonly kind: 'bank-login' }
   // 9.4: the due date passed with less than the minimum paid.
   | { readonly kind: 'card-overdue'; readonly card: 'everyday-card' | 'old-card'; readonly dueDate: IsoDate; readonly minimumPayment: Cents }
+  // 9.8 (A52): no reminders, no due line and no overdue alert for this card
+  // until its statement can be read.
+  | ({ readonly kind: 'card-reminders-off' } & CardRemindersOff)
   // 10.6: the bank took back a transaction the app had counted (4.10). It
   // stays until he marks it seen (B84). id is the change log's.
   | { readonly kind: 'bank-took-back'; readonly id: string; readonly date: IsoDate; readonly description: string; readonly amount: Cents }
@@ -160,6 +174,7 @@ export function homeView(input: HomeInput): HomeView {
   for (const c of cards) {
     if (c.kind === 'overdue') attention.push({ kind: 'card-overdue', card: c.card, dueDate: c.dueDate, minimumPayment: c.minimumPayment });
   }
+  for (const off of input.cardsOff ?? []) attention.push({ kind: 'card-reminders-off', card: off.card, why: off.why });
   // 10.6: each take-back in the change log, oldest first, until seen (B84).
   for (const entry of book.changeLog()) {
     if (entry.kind === 'bank-took-back' && !input.seenTakeBacks.has(entry.id)) {
