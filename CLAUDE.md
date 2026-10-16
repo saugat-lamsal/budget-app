@@ -2005,6 +2005,47 @@ long). It replaces running everything before every commit:
   works."; no gap noted, no alert waiting. The way back is the image
   deploy-check-20261016t064429z (PR #39), and before it
   deploy-check-20261016t053421z.
+- The app explains itself, Layer 1 (Oct 16, 2026, branch
+  layer1-explains-itself, his OK to the rule texts; A57). Rulebook draft 28:
+  0.7, 0.8, 11.4, 12.6, section 39. No AI, nothing leaves the server, and
+  nothing about money changes. One commit per piece, tests first.
+  - 12.6, why the totals do not match: each read of the bank keeps what it
+    saw, in the sync's own transaction (database step 11: bank_reads.sync,
+    .bank, .difference; sync/bank-reads.ts saveBankRead, readLastMatchingRead,
+    markSetupRead). bank/why.ts whyItDoesNotMatch compares the last read that
+    matched with now: one line per account and "the rest", adding up to the
+    difference to the cent by construction, with a cause named only when
+    some pending items add up exactly (the bank posted a charge Plaid still
+    lists as pending, posted and pending at once, an amount Plaid changed,
+    not in the available balance yet). bank/balances.ts bankAtRead,
+    postedSince. Home's check sheet and a sheet on Buckets (screens/why.tsx,
+    why-text.ts). Demo lives why-counted-twice and why-no-match-kept.
+    Worked example bank 18. Tests: server why-it-does-not-match,
+    why-through-the-books (random lags through the real books: never a
+    rest; WHY_SCENARIOS), database step 11; web why-text; browser why.
+  - 11.4, on its way in: "Pending since" from the read that first saw it,
+    and "Usually posts within" once three posted deposits of the same kind
+    on that account were timed (bank/posting-times.ts: the newest 10, three
+    in four). Worked example bank 19. Tests: server pending-since,
+    on-its-way-in, views-home; web home-text; browser on-its-way-in, home.
+  - 0.7, the status page: /status from Settings' Bank card, real server
+    only, no amounts (views/status.ts StatusView, Keeper.statusView;
+    screens/Status.tsx, status-text.ts). Tests: server status-page,
+    http-screens; web status-text, routes-screens; browser status.
+  - 0.8, the offline page: the service worker (src/sw/offline.ts, sw.ts)
+    answers the opening of a screen with a fixed page when the server
+    cannot be reached; it never takes /api or a screen's own requests and
+    keeps nothing. Registered on the https address (main.tsx). Tests: web
+    offline, read-only, service-worker; browser offline.
+  - Break-it "[layer1]": 119 of 119 caught (server 73, web 46; each judged
+    with --only by its own test file, the screens' in Chromium); the
+    survivors at first got tests. Older breaks on changed lines pointed at
+    the code again: 10 of 10 caught, judged by the whole suite
+    without browsers. Found by that run's nothing-broken check: the status
+    page read the clock when the books opened (0.6 forbids it; now noted
+    when serving begins) and the demo guard lacked views/status.ts.
+  - QUESTIONS.md A57, B251 to B254 (what only a real iPhone can show: the
+    offline page while the server is down).
 - Waiting on: each card's statement closing day (his, on Settings, from a
   statement, before the old card's November reminders); Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);
