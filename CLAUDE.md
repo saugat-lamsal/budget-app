@@ -1937,7 +1937,7 @@ long). It replaces running everything before every commit:
   (no gap noted, no alert waiting). The way back is the image
   deploy-check-20261016t041248z.
 - Rule suggestions (Oct 16, 2026, branch rule-suggestions, his ask and his
-  OK to 13.8; A55). Not deployed.
+  OK to 13.8; A55).
   - Money: rule-offers.ts (placeName, commonPlaceWords: the place's name, the
     longest run of words with no digits and none on most of his items of
     that kind on that account in 90 days, as 4.5). The book notes which
@@ -1964,6 +1964,16 @@ long). It replaces running everything before every commit:
     activity.test.ts. Three older breaks pointed at the code again ("[a31]"
     Review and Payday send no keys, "[activity]" B101), caught.
   - QUESTIONS.md A55, B249. docs/later.txt 29.
+- PR #39 merged and deployed Oct 16, 2026 (2:58 AM), at his word (his OK,
+  before he went to sleep, to the recommended changes, until they are live):
+  the deploy check on the branch's tree (63 events, every one replays, "The
+  backup works."), main's tree after the merge checked to be the same, a
+  read-only look on the machine just before (still 63 events), then that
+  exact image (deploy-check-20261016t064429z). /health and /health/backups
+  ok, /api 401, http sent to https, the webhook address refuses GET and an
+  unsigned call; the restore check on the machine: 63 events, "The backup
+  works."; no gap noted, no alert waiting. The way back is the image
+  deploy-check-20261016t053421z.
 - Money on its way in (Oct 16, 2026, branch paycheck-on-its-way, his OK
   to the recommended changes; A56, docs/later.txt 30). Rulebook draft 27,
   11.4, section 38. Not deployed.
