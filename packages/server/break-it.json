@@ -4097,8 +4097,8 @@
   {
     "section": "history",
     "file": "packages/server/src/history/history-db.ts",
-    "find": "settings: { ...input.settings, paySchedule: 'every-n-days' } }",
-    "replace": "settings: { ...input.settings, paySchedule: 'twice-a-month' } }",
+    "find": "{ paySchedule: 'every-n-days' }",
+    "replace": "{ paySchedule: 'twice-a-month' }",
     "why": "[a48] 0.6 a setup day saved before the pay schedule setting reads as twice a month"
   },
   {
@@ -4107,6 +4107,55 @@
     "find": "        ? { kind: 'setup', input: savedSetup(payload as SetupInput) }",
     "replace": "        ? { kind: 'setup', input: payload as SetupInput }",
     "why": "[a48] 0.6 a setup day saved before the pay schedule setting does not open"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history-db.ts",
+    "find": "    ...(settings.totalsMismatchAlertHours === undefined ? { totalsMismatchAlertHours: 12 } : {}),\n",
+    "replace": "",
+    "why": "[deploy-check] 0.6 10.4 a setup day saved before the 12-hour wait does not open"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history-db.ts",
+    "find": "? { totalsMismatchAlertHours: 12 } :",
+    "replace": "? { totalsMismatchAlertHours: 24 } :",
+    "why": "[deploy-check] 0.6 10.4 a setup day saved before the 12-hour wait opens with 24 hours"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history-db.ts",
+    "find": "return Object.keys(missing).length === 0 ? input :",
+    "replace": "return Object.keys(missing).length <= 1 ? input :",
+    "why": "[deploy-check] 0.6 a setup day missing one setting opens as saved"
+  },
+  {
+    "section": "deploy-check",
+    "file": "scripts/deploy-check-lib.mjs",
+    "find": "tried < CHECK_TRIES &&",
+    "replace": "tried < 1 &&",
+    "why": "[deploy-check] A50a a label the registry does not know yet is not tried again"
+  },
+  {
+    "section": "deploy-check",
+    "file": "scripts/deploy-check-lib.mjs",
+    "find": "checked.code !== 0 && notInRegistryYet(checked.out)",
+    "replace": "checked.code !== 0",
+    "why": "[deploy-check] A50a a check that ran and failed is tried again"
+  },
+  {
+    "section": "deploy-check",
+    "file": "scripts/deploy-check-lib.mjs",
+    "find": "      await wait(RETRY_WAIT_MS);\n",
+    "replace": "",
+    "why": "[deploy-check] A50a tried again at once, without waiting for the registry"
+  },
+  {
+    "section": "deploy-check",
+    "file": "scripts/deploy-check-lib.mjs",
+    "find": "export const CHECK_TRIES = 3;",
+    "replace": "export const CHECK_TRIES = 4;",
+    "why": "[deploy-check] A50a tried 4 times"
   },
   {
     "section": "settings",

@@ -2830,3 +2830,24 @@ B241. B226 as built. A pending item the bank labels as a card payment or a
       not while pending). Posted items, and items his rules already read
       right, are as before. Demo life setup-pending-payment.
 
+
+B242. Found by the deploy check's first real run (A50a, Oct 15, 2026),
+      before the deploy: his real setup day was saved on Oct 12, before the
+      12-hour wait for "totals do not match" (10.4, A47) existed, and the
+      code from PR #29 on refused to replay it ("the totals-do-not-match
+      alert must be a whole number of hours from 1 to 168"). Deployed, the
+      app would not have started (0.6). A setup day saved before that setting
+      now opens with the 12 hours he OK'd (34b), as one saved before the pay
+      schedule opens as every 14 days (A48). It changes no money: the
+      setting only says when the alert is told. A test now keeps a setup day
+      with only the settings there were on his real setup day, so a setting
+      added later without a value for older histories fails npm test, not
+      the deploy check.
+B243. The deploy check's first real run: Fly built and pushed the new image,
+      and the throwaway machine could not start from it, Fly's registry not
+      knowing the new label yet ("manifest unknown"; no machine was made).
+      The same command a few minutes later ran. The check now tries that step
+      again after 30 seconds, at most 3 times, only for that answer. Seen on
+      that run: the throwaway machine was new (in iad), with no volume, no
+      ports, the server never started (it sleeps until the check runs),
+      removed when it ended; the app's own machine was not touched.

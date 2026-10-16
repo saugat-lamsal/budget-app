@@ -29,11 +29,20 @@ interface Row {
   totals: string | null;
 }
 
-// Section 2 (A48): setup days saved before the pay schedule setting existed
-// (Oct 14, 2026) were paid every so many days, as the app then counted.
+// Setup days saved before a setting existed open with a value for it, or the
+// books he has would not open after the deploy that adds it (0.6). His real
+// setup day was saved on Oct 12, 2026 (history-check.test.ts lists its
+// settings). Section 2 (A48): before the pay schedule setting (Oct 14) he was
+// paid every so many days, as the app then counted. 10.4 (A47): before the
+// wait for "totals do not match" (Oct 14) it was told at once; it opens with
+// the 12 hours he OK'd for his books (34b).
 function savedSetup(input: SetupInput): SetupInput {
   const settings = input.settings as Partial<SetupInput['settings']>;
-  return settings.paySchedule === undefined ? { ...input, settings: { ...input.settings, paySchedule: 'every-n-days' } } : input;
+  const missing: Partial<SetupInput['settings']> = {
+    ...(settings.paySchedule === undefined ? { paySchedule: 'every-n-days' } : {}),
+    ...(settings.totalsMismatchAlertHours === undefined ? { totalsMismatchAlertHours: 12 } : {}),
+  };
+  return Object.keys(missing).length === 0 ? input : { ...input, settings: { ...input.settings, ...missing } };
 }
 
 export function readHistory(db: Db): StoredEvent[] {

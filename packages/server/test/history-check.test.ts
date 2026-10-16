@@ -73,6 +73,48 @@ describe('the replay check: the history must replay to the totals saved with it'
     }
   });
 
+  // Found by the deploy check (A50a) on Oct 15, 2026, before the deploy: his
+  // real setup day was saved on Oct 12, before 10.4's 12-hour wait existed,
+  // and the books would not have opened (0.6).
+  it('0.6 10.4 a history saved before the 12-hour wait for "totals do not match" existed (Oct 14, 2026) opens, with 12 hours, and replays the same', async () => {
+    const life = await aFewDays();
+    try {
+      const row = life.h.db.prepare("SELECT seq, payload FROM book_events WHERE kind = 'setup'").get() as { seq: number; payload: string };
+      const saved = JSON.parse(row.payload) as { settings: Record<string, unknown> };
+      expect(saved.settings['totalsMismatchAlertHours']).toBe(12);
+      delete saved.settings['totalsMismatchAlertHours'];
+      life.h.db.prepare('UPDATE book_events SET payload = ? WHERE seq = ?').run(JSON.stringify(saved), row.seq);
+      const again = life.reopen();
+      expect(again.keeper.book()?.settings()).toMatchObject({ totalsMismatchAlertHours: 12 });
+      expect(everything(again.keeper.book()!)).toEqual(everything(life.keeper.book()!));
+      again.close();
+    } finally {
+      life.done();
+    }
+  });
+
+  // The settings a setup day had when his real one was saved (Oct 12, 2026,
+  // the version deployed then, 9bc04a6). A setting added since must open such
+  // a history too, or the books he has would not open after the deploy.
+  const SETTINGS_ON_HIS_SETUP_DAY = ['split', 'momReservePerPaycheck', 'momReserveCap', 'momMonthlyTarget', 'lowBucketAlertPercent', 'cardReminderDaysBefore', 'dailyReviewTime', 'leftoverAtPayday', 'oldCardPromoEndDate', 'paycheckRule', 'payScheduleDays', 'momRule', 'earlyPaycheckDays', 'homeTimeZone', 'quietHours', 'bankNotReadAlertHours', 'amountsOnLockScreen', 'bankPermissionWarnDays'];
+
+  it('0.6 a setup day saved with only the settings there were on his real setup day (Oct 12, 2026) opens and replays the same: every setting added since has a value for it', async () => {
+    const life = await aFewDays();
+    try {
+      const row = life.h.db.prepare("SELECT seq, payload FROM book_events WHERE kind = 'setup'").get() as { seq: number; payload: string };
+      const saved = JSON.parse(row.payload) as { settings: Record<string, unknown> };
+      const added = Object.keys(saved.settings).filter((k) => !SETTINGS_ON_HIS_SETUP_DAY.includes(k));
+      expect(added.length).toBeGreaterThan(0);
+      for (const k of added) delete saved.settings[k];
+      life.h.db.prepare('UPDATE book_events SET payload = ? WHERE seq = ?').run(JSON.stringify(saved), row.seq);
+      const again = life.reopen();
+      expect(everything(again.keeper.book()!)).toEqual(everything(life.keeper.book()!));
+      again.close();
+    } finally {
+      life.done();
+    }
+  });
+
   it('a rule changed on purpose (sorting to wants lands in needs) is caught: the books do not open, and it says at which event', async () => {
     const life = await aFewDays();
     try {
