@@ -90,7 +90,7 @@ Check: unsorted spending -2.24 | bank side 10,259.38 | difference 0.00 | old car
 
 
 ========================================================================
-EXAMPLE 2. Pending money in waits until it posts (rule 12.1, B36)
+EXAMPLE 2. Pending money in waits until it posts (rule 12.1, B36, A54)
 ========================================================================
 
 Checking, posted balance                         1,000.00
@@ -99,16 +99,17 @@ Checking, posted balance                         1,000.00
 Savings                                              0.00
 Everyday card, owed                                  0.00
 
-What the bank shows as available takes off pending money going out; money
-coming in is not available until it posts: 1,000.00 - 30.00 = 970.00.
+What the bank shows as available takes off pending money going out, and
+(as Bank of America does with a paycheck, A54) already has the pending
+money coming in: 1,000.00 - 30.00 + 200.00 = 1,170.00.
 
-Bank side (12.1, A47): the available balance, plus what is pending going
-out that the books count only once it posts (nothing here: the charge is
-counted now, 4.6). Pending money in counts once it posts:
-970.00 + 0.00 - 0.00 = 970.00. The same as the posted balance less pending
-charges: 1,000.00 - 30.00 = 970.00.
+Bank side (12.1, A47, A54): the available balance, plus what is pending
+going out that the books count only once it posts (nothing here: the
+charge is counted now, 4.6), less what is pending coming in, which the
+books count once it posts: 1,170.00 + 0.00 - 200.00 = 970.00. The same as
+the posted balance less pending charges: 1,000.00 - 30.00 = 970.00.
 
-Check: bank side 970.00 | available 970.00
+Check: bank side 970.00 | available 1,170.00
 
 
 ========================================================================
@@ -582,15 +583,20 @@ The old way, posted less pending charges, used the bank's current balance:
 Check: available 2,451.40 | checking side 2,951.40 | old way 2,993.50
 
 
-EXAMPLE 17. A card statement sent without its statement date (9.8, 9.3; QUESTIONS.md A52, B28)
+EXAMPLE 17. A card statement sent without its statement date (9.8, 9.3; QUESTIONS.md A52, A53, B28)
 
 Made-up numbers. The bank sends the old card's statement: minimum 40.00,
-due Nov 24, and no statement date. On a paper statement he reads
-"closing date Oct 30, payment due date Nov 24": 25 days apart, so he
-enters 25 days for the old card on Settings.
+due Nov 25, and no statement date. On a paper statement he reads
+"closing date Oct 30, payment due date Nov 25", and on the one before
+"closing date Sep 30": it closes on the 30th, so he enters 30 as the old
+card's closing day on Settings.
 
-The statement date: Nov 24 less 25 days. Back 24 days is Oct 31; one more
-is Oct 30.
+The statement date: the last day before Nov 25 that is the 30th. Nov 30
+is after Nov 25, so it is Oct 30.
+
+In a month too short for the day, the month's last day: for a due date
+of Mar 25, 2027, Mar 30 is after it, and February 2027 has no 30th, so
+that statement date is Feb 28, 2027.
 
 Payments to the old card, each landing the day it was made:
   Oct 30, 20.00: on the statement date itself, so it counts toward the
@@ -599,14 +605,14 @@ Payments to the old card, each landing the day it was made:
 Counted toward this statement: 25.00. The minimum is 40.00, so 15.00 is
 still to pay: 40.00 - 25.00 = 15.00.
 
-Nov 17 is 7 days before Nov 24: a reminder at the daily review time, and
+Nov 18 is 7 days before Nov 25: a reminder at the daily review time, and
 Home shows the card due every day from then on (9.6).
-  Nov 18, 20.00: counted 25.00 + 20.00 = 45.00, at least the minimum. No
-  reminder on Nov 22 (2 days before), and nothing due on Home (9.3).
+  Nov 19, 20.00: counted 25.00 + 20.00 = 45.00, at least the minimum. No
+  reminder on Nov 23 (2 days before), and nothing due on Home (9.3).
 
-Had he not entered the days, the card would have no reminders at all, and
+Had he not entered the day, the card would have no reminders at all, and
 Home and Settings would say "Card reminders are off for the old card"
 (9.8).
 
-Dates: statement date 2026-10-30 | first reminder 2026-11-17 | second reminder 2026-11-22
+Dates: statement date 2026-10-30 | first reminder 2026-11-18 | second reminder 2026-11-23 | short month statement date 2027-02-28
 Check: minimum 40.00 | counted at the first reminder 25.00 | still to pay 15.00 | counted at the second reminder 45.00

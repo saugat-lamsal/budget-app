@@ -56,8 +56,8 @@ export const SETTING_NAMES: Readonly<Record<keyof Settings, string>> = {
   totalsMismatchAlertHours: 'Totals do not match',
   amountsOnLockScreen: 'Amounts on the lock screen',
   bankPermissionWarnDays: 'Bank permission ending',
-  everydayCardStatementDays: 'Everyday card: statement to due date',
-  oldCardStatementDays: 'Old card: statement to due date',
+  everydayCardClosingDay: 'Everyday card: statement closing day',
+  oldCardClosingDay: 'Old card: statement closing day',
 };
 
 // Section 2: the home time zones offered on Settings, his first, and how each
@@ -118,9 +118,13 @@ export function quietHoursText(quiet: Settings['quietHours']): string {
 
 // 10.7: "After 24 hours".
 // 10.13: how long before the bank's permission runs out he is told.
-// 9.8 (A52): how many days before the due date a card's statement is made.
-export function statementDaysText(days: number | null): string {
-  return days === null ? 'Not entered' : `${daysText(days)} before the due date`;
+// 9.8 (A53): the day of the month a card's statement closes: "The 12th of
+// each month". A day some months do not have closes on their last day.
+export function closingDayText(day: number | null): string {
+  if (day === null) return 'Not entered';
+  const teen = day % 100 >= 11 && day % 100 <= 13;
+  const suffix = teen ? 'th' : day % 10 === 1 ? 'st' : day % 10 === 2 ? 'nd' : day % 10 === 3 ? 'rd' : 'th';
+  return `The ${day}${suffix} of each month${day > 28 ? ', or its last day' : ''}`;
 }
 
 export function permissionWarnText(days: number): string {
@@ -192,9 +196,9 @@ export function settingValueText<K extends keyof Settings>(key: K, value: Settin
       return lockAmountsText(v as boolean);
     case 'bankPermissionWarnDays':
       return permissionWarnText(v as number);
-    case 'everydayCardStatementDays':
-    case 'oldCardStatementDays':
-      return statementDaysText(v as number | null);
+    case 'everydayCardClosingDay':
+    case 'oldCardClosingDay':
+      return closingDayText(v as number | null);
     default:
       return String(v);
   }

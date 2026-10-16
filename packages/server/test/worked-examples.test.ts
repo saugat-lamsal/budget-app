@@ -768,13 +768,15 @@ describe('worked examples: the bank side (Phase 7)', () => {
 });
 
 describe('worked examples: card statements (Phase 7)', () => {
-  it('example 17, 9.8 a card statement sent without its statement date: the due date less the days he entered, and which payments count (9.3, B28)', () => {
+  it('example 17, 9.8 a card statement sent without its statement date: the last closing day he entered before the due date, and which payments count (9.3, B28)', () => {
     const checks = checksOf(17);
     const dates = datesOf(17);
     const minimum = checks.get('minimum') ?? 0;
-    const read = cardStatement('old-card', { account_id: ACCOUNT_IDS.old, is_overdue: false, last_payment_amount: null, last_payment_date: null, last_statement_issue_date: null, last_statement_balance: 1_500, minimum_payment_amount: minimum / 100, next_payment_due_date: '2026-11-24' }, 25);
+    const raw = { account_id: ACCOUNT_IDS.old, is_overdue: false, last_payment_amount: null, last_payment_date: null, last_statement_issue_date: null, last_statement_balance: 1_500, minimum_payment_amount: minimum / 100, next_payment_due_date: '2026-11-25' };
+    const read = cardStatement('old-card', raw, 30);
     if (!read.ok) throw new Error(read.why);
     expect(read.statement.closingDate).toBe(dates.get('statement date'));
+    expect(cardStatement('old-card', { ...raw, next_payment_due_date: '2027-03-25' }, 30)).toMatchObject({ ok: true, statement: { closingDate: dates.get('short month statement date') } });
     const first = dates.get('first reminder') ?? '';
     const second = dates.get('second reminder') ?? '';
     const paid: CardPayment[] = [
@@ -784,11 +786,11 @@ describe('worked examples: card statements (Phase 7)', () => {
     // What is counted, read off where the reminders stop: one cent short of the rest still reminds, the rest exactly does not.
     const toPay = checks.get('still to pay') ?? 0;
     expect(minimum - (checks.get('counted at the first reminder') ?? 0)).toBe(toPay);
-    expect(cardNotices(first, read.statement, paid, DEFAULT_SETTINGS)).toEqual([{ kind: 'reminder', card: 'old-card', daysBefore: 7, dueDate: '2026-11-24', minimumPayment: minimum }]);
+    expect(cardNotices(first, read.statement, paid, DEFAULT_SETTINGS)).toEqual([{ kind: 'reminder', card: 'old-card', daysBefore: 7, dueDate: '2026-11-25', minimumPayment: minimum }]);
     expect(cardNotices(first, read.statement, [...paid, { date: first, amount: toPay - 1 }], DEFAULT_SETTINGS)).toHaveLength(1);
     expect(cardNotices(first, read.statement, [...paid, { date: first, amount: toPay }], DEFAULT_SETTINGS)).toEqual([]);
     expect(cardDue(first, read.statement, paid, DEFAULT_SETTINGS)).toMatchObject({ kind: 'due', daysLeft: 7 });
-    const later = [...paid, { date: '2026-11-18', amount: 2_000 }];
+    const later = [...paid, { date: '2026-11-19', amount: 2_000 }];
     // Counted exactly: a minimum one cent above it would still remind, one equal to it does not.
     const counted = checks.get('counted at the second reminder') ?? 0;
     expect(cardNotices(second, { ...read.statement, minimumPayment: counted + 1 }, later, DEFAULT_SETTINGS)).toHaveLength(1);

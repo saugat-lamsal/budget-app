@@ -159,7 +159,7 @@ describe.each(ENGINES)('Home in %s', (_name, engine) => {
     // No due line for a card whose reminders are off.
     expect(rows.filter((r) => r?.startsWith('attention-card-due'))).toEqual([]);
     expect(await textAt(page, 'attention-card-reminders-off-everyday-card')).toBe('Card reminders are off for the everyday card The bank sent a statement for it that cannot be read.');
-    expect(await textAt(page, 'attention-card-reminders-off-old-card')).toBe('Card reminders are off for the old card The bank did not send its statement date. Enter the days from its statement to its due date in Settings.');
+    expect(await textAt(page, 'attention-card-reminders-off-old-card')).toBe('Card reminders are off for the old card The bank did not send its statement date. Enter the day its statement closes in Settings.');
     await page.getByTestId('attention-card-reminders-off-old-card').click();
     await page.waitForURL(/\/settings$/);
     await page.context().close();

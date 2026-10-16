@@ -307,11 +307,11 @@ export class Keeper {
     for (const a of readAccounts(this.#db)) {
       const raw = stored.get(a.plaidAccountId)?.raw;
       if ((a.role !== 'everyday-card' && a.role !== 'old-card') || raw === undefined) continue;
-      const days = settings === null ? null : a.role === 'everyday-card' ? settings.everydayCardStatementDays : settings.oldCardStatementDays;
-      const read = cardStatement(a.role, raw, days);
+      const closingDay = settings === null ? null : a.role === 'everyday-card' ? settings.everydayCardClosingDay : settings.oldCardClosingDay;
+      const read = cardStatement(a.role, raw, closingDay);
       if (read.ok) statements.push(read.statement);
-      // Off for want of the days only when the days would read it.
-      else cardsOff.push({ card: a.role, why: days === null && cardStatement(a.role, raw, 1).ok ? 'no-statement-date' : 'unreadable' });
+      // Off for want of the closing day only when a closing day would read it.
+      else cardsOff.push({ card: a.role, why: closingDay === null && cardStatement(a.role, raw, 1).ok ? 'no-statement-date' : 'unreadable' });
     }
     // The everyday card first, as everywhere on the screens.
     cardsOff.sort((x, y) => (x.card === y.card ? 0 : x.card === 'everyday-card' ? -1 : 1));

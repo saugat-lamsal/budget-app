@@ -157,7 +157,9 @@ long). It replaces running everything before every commit:
 
 ## Status
 
-- Rulebook: draft 24 (section 35, Oct 15: 9.8, the statement date Bank of
+- Rulebook: draft 25 (section 36, Oct 16: 9.8 from a closing day per card,
+  A53, and 12.1 taking pending money in out of the available balance, A54;
+  draft 24, section 35, Oct 15: 9.8, the statement date Bank of
   America leaves out, and the setting in section 2, A52; draft 23, section
   34c and 34d, Oct 15: the payday alert 10.14 and
   the webhook sync line in section 2, both with his OK, Oct 15; draft 22,
@@ -1894,7 +1896,36 @@ long). It replaces running everything before every commit:
   http sent to https, the webhook address refuses an unsigned call; the
   restore check on the machine: 63 events, "The backup works." The way back
   is the image deploy-check-20261016t002402z (Oct 15's deploy).
-- Waiting on: the days from statement to due date for each card (his, on
-  Settings, from a statement, before the old card's November reminders); A51 (the shape of the weekly
-  statement check); his check of part B (the list at its top), and the items
-  in docs/later.txt marked DECIDE.
+- The closing day and the pending paycheck (Oct 16, 2026, branch
+  closing-day-and-pending-pay), from a read-only look at his live books
+  (his OK) and his OK on the rule texts. Rulebook draft 25, section 36.
+  - A53 (9.8): each card's statement closes on the same day of every
+    month, and the days to the due date change with the month. Settings
+    everydayCardClosingDay and oldCardClosingDay (1 to 31, null to start)
+    replace A52's days (never set on his books). bank/statements.ts
+    cardStatement(card, raw, closingDay): the last day before the due date
+    on that day; a month without it, its last day. Settings rows
+    closing-day-everyday and closing-day-old ("The 12th of each month";
+    29 to 31 add ", or its last day"). Worked example bank 17 (dates moved
+    off any of his).
+  - A54 (12.1): on payday "Off by" was exactly his paycheck, still
+    pending: Bank of America puts pending money in into the available
+    balance at once. bank/balances.ts takes every pending item the books
+    do not count yet out of the available balance at its signed amount
+    (going out added back, coming in taken out). The made-up bank
+    (fake-plaid.ts) now does the same as his bank. Worked example bank 2.
+  - Tests: money 0-ground-rules; server statements, closing-day (was
+    statement-days), choices-settings, worked examples, bank-side-available
+    (a paycheck pending in two parts, a transfer pending on both sides, a
+    pending deposit removed, setup day on a payday); web settings-text,
+    home-text; browser settings, design-settings, home, design (Chromium).
+  - Break-it "[a53]" and "[a54]", and the "[a52]" and older 12.1 breaks
+    on changed lines pointed at the code again.
+  - QUESTIONS.md A53, A54, B246 to B248 (B248: the minimum his bank sends
+    looks like what is left after payments; watch). docs/later.txt 4
+    (the split paycheck came back), 26 to 31.
+- Waiting on: each card's statement closing day (his, on Settings, from a
+  statement, before the old card's November reminders); Pay schedule
+  "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);
+  A51 (the shape of the weekly statement check); his check of part B (the
+  list at its top), and the items in docs/later.txt marked DECIDE.

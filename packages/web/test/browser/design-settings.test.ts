@@ -57,9 +57,9 @@ const SHEETS: readonly (readonly [string, string, (page: Page) => Promise<void>]
     await page.getByTestId('row-lock-amounts').click();
     await page.getByTestId('field-lock-amounts').waitFor();
   }],
-  ['9.8 A52 the days from statement to due date', 'cards-off', async (page) => {
-    await page.getByTestId('row-statement-days-old').click();
-    await page.getByTestId('field-statement-days').waitFor();
+  ['9.8 A53 the statement closing day', 'cards-off', async (page) => {
+    await page.getByTestId('row-closing-day-old').click();
+    await page.getByTestId('field-closing-day').waitFor();
   }],
   ['the promo end date, set', 'settings-busy', async (page) => {
     await page.getByTestId('row-promo').click();

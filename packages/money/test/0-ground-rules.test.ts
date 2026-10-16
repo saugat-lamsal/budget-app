@@ -140,8 +140,8 @@ describe('0.2 every number and rule is a setting', () => {
       totalsMismatchAlertHours: 12,
       amountsOnLockScreen: false,
       bankPermissionWarnDays: 7,
-      everydayCardStatementDays: null,
-      oldCardStatementDays: null,
+      everydayCardClosingDay: null,
+      oldCardClosingDay: null,
     } satisfies Settings);
   });
 
@@ -256,17 +256,19 @@ describe('0.2 every number and rule is a setting', () => {
     for (const days of [0, 61, 7.5, Number.NaN]) expect(codeOf(() => changeSettings(DEFAULT_SETTINGS, { bankPermissionWarnDays: days })), String(days)).toBe('bad-setting');
   });
 
-  it('section 2 9.8 the days from statement to due date are a setting for each card: none to start, a whole number from 1 to 60, or none again; the money math only keeps them', () => {
-    expect(DEFAULT_SETTINGS.everydayCardStatementDays).toBeNull();
-    expect(DEFAULT_SETTINGS.oldCardStatementDays).toBeNull();
-    const set = changeSettings(DEFAULT_SETTINGS, { everydayCardStatementDays: 25, oldCardStatementDays: 1 });
-    expect([set.everydayCardStatementDays, set.oldCardStatementDays]).toEqual([25, 1]);
-    expect(changeSettings(set, { oldCardStatementDays: 60 }).oldCardStatementDays).toBe(60);
+  it('section 2 9.8 the statement closing day is a setting for each card: none to start, a day of the month from 1 to 31, or none again; the money math only keeps them', () => {
+    expect(DEFAULT_SETTINGS.everydayCardClosingDay).toBeNull();
+    expect(DEFAULT_SETTINGS.oldCardClosingDay).toBeNull();
+    const set = changeSettings(DEFAULT_SETTINGS, { everydayCardClosingDay: 12, oldCardClosingDay: 1 });
+    expect([set.everydayCardClosingDay, set.oldCardClosingDay]).toEqual([12, 1]);
+    expect(changeSettings(set, { oldCardClosingDay: 31 }).oldCardClosingDay).toBe(31);
     // Cleared again: that card's reminders are off until it is set (9.8).
-    expect(changeSettings(set, { everydayCardStatementDays: null }).everydayCardStatementDays).toBeNull();
-    for (const key of ['everydayCardStatementDays', 'oldCardStatementDays'] as const) {
-      for (const days of [0, -1, 61, 2.5, Number.NaN, '25' as unknown as number]) expect(codeOf(() => changeSettings(DEFAULT_SETTINGS, { [key]: days })), `${key} ${String(days)}`).toBe('bad-setting');
+    expect(changeSettings(set, { everydayCardClosingDay: null }).everydayCardClosingDay).toBeNull();
+    for (const key of ['everydayCardClosingDay', 'oldCardClosingDay'] as const) {
+      for (const day of [0, -1, 32, 2.5, Number.NaN, '12' as unknown as number]) expect(codeOf(() => changeSettings(DEFAULT_SETTINGS, { [key]: day })), `${key} ${String(day)}`).toBe('bad-setting');
     }
+    // Section 36 (A53): draft 24's days from statement to due date are no setting any more.
+    expect(codeOf(() => changeSettings(DEFAULT_SETTINGS, { everydayCardStatementDays: 25 } as never))).toBe('bad-setting');
   });
 
   it('section 2 10.7 10.8 10.10 quiet hours, the bank-not-read alert and amounts on the lock screen are settings; the money math only keeps them', () => {

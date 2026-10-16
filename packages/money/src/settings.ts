@@ -62,12 +62,13 @@ export interface Settings {
   // Rule 10.13: told this many days before the bank stops letting the app
   // read the accounts. The money math only keeps it, for the server.
   readonly bankPermissionWarnDays: number;
-  // Rule 9.8 (A52): when the bank sends no statement date for a card, it is
-  // the card's due date less this many days; null until he enters it (that
-  // card's reminders are off until then). The money math only keeps these,
-  // for the server that reads the bank's statements.
-  readonly everydayCardStatementDays: number | null;
-  readonly oldCardStatementDays: number | null;
+  // Rule 9.8 (A52, A53): when the bank sends no statement date for a card, it
+  // is the last day before the card's due date on this day of the month (the
+  // month's last day in a month too short for it); null until he enters it
+  // (that card's reminders are off until then). The money math only keeps
+  // these, for the server that reads the bank's statements.
+  readonly everydayCardClosingDay: number | null;
+  readonly oldCardClosingDay: number | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = deepFreeze({
@@ -91,8 +92,8 @@ export const DEFAULT_SETTINGS: Settings = deepFreeze({
   totalsMismatchAlertHours: 12,
   amountsOnLockScreen: false,
   bankPermissionWarnDays: 7,
-  everydayCardStatementDays: null,
-  oldCardStatementDays: null,
+  everydayCardClosingDay: null,
+  oldCardClosingDay: null,
 });
 
 const LEFTOVER_CHOICES: readonly LeftoverChoice[] = ['ask', 'roll-over', 'move-to-savings'];
@@ -143,8 +144,8 @@ export function validateSettings(settings: Settings): Settings {
   check(isWholeInRange(s.totalsMismatchAlertHours, 1, 168), 'the totals-do-not-match alert must be a whole number of hours from 1 to 168');
   check(typeof s.amountsOnLockScreen === 'boolean', 'amounts on the lock screen must be on or off');
   check(isWholeInRange(s.bankPermissionWarnDays, 1, 60), 'the warning before the bank permission runs out must be a whole number of days from 1 to 60');
-  check(s.everydayCardStatementDays === null || isWholeInRange(s.everydayCardStatementDays, 1, 60), "the days from the everyday card's statement to its due date must be a whole number from 1 to 60");
-  check(s.oldCardStatementDays === null || isWholeInRange(s.oldCardStatementDays, 1, 60), "the days from the old card's statement to its due date must be a whole number from 1 to 60");
+  check(s.everydayCardClosingDay === null || isWholeInRange(s.everydayCardClosingDay, 1, 31), "the everyday card's statement closing day must be a day of the month from 1 to 31");
+  check(s.oldCardClosingDay === null || isWholeInRange(s.oldCardClosingDay, 1, 31), "the old card's statement closing day must be a day of the month from 1 to 31");
   return deepFreeze(copySettings(s));
 }
 

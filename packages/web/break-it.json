@@ -2354,9 +2354,9 @@
   {
     "section": "settings",
     "file": "packages/web/src/screens/settings-text.ts",
-    "find": "`${daysText(days)} before the due date`",
-    "replace": "`${daysText(days)} after the due date`",
-    "why": "[a52] 9.8 the days said to be after the due date"
+    "find": "if (day === null) return 'Not entered';",
+    "replace": "if (day === null) return 'The 1st of each month';",
+    "why": "[a52] [a53] 9.8 a closing day not entered shown as one"
   },
   {
     "section": "home",
@@ -2368,9 +2368,9 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Settings.tsx",
-    "find": "editing.what === 'statement-days-everyday' ? { everydayCardStatementDays: r.value[0] ?? 0 } : { oldCardStatementDays: r.value[0] ?? 0 }",
-    "replace": "editing.what === 'statement-days-everyday' ? { oldCardStatementDays: r.value[0] ?? 0 } : { everydayCardStatementDays: r.value[0] ?? 0 }",
-    "why": "[a52] 9.8 each card's sheet sets the other card's days"
+    "find": "editing.what === 'closing-day-everyday' ? { everydayCardClosingDay: r.value[0] ?? 0 } : { oldCardClosingDay: r.value[0] ?? 0 }",
+    "replace": "editing.what === 'closing-day-everyday' ? { oldCardClosingDay: r.value[0] ?? 0 } : { everydayCardClosingDay: r.value[0] ?? 0 }",
+    "why": "[a52] [a53] 9.8 each card's sheet sets the other card's closing day"
   },
   {
     "section": "home",
@@ -2382,8 +2382,29 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Settings.tsx",
-    "find": "e.what === 'statement-days-everyday' ? { everydayCardStatementDays: null } : { oldCardStatementDays: null }",
-    "replace": "e.what === 'statement-days-everyday' ? { oldCardStatementDays: null } : { everydayCardStatementDays: null }",
-    "why": "[a52] 9.8 Clear the days clears the other card's"
+    "find": "e.what === 'closing-day-everyday' ? { everydayCardClosingDay: null } : { oldCardClosingDay: null }",
+    "replace": "e.what === 'closing-day-everyday' ? { oldCardClosingDay: null } : { everydayCardClosingDay: null }",
+    "why": "[a52] [a53] 9.8 Clear the day clears the other card's"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "day % 10 === 1 ? 'st'",
+    "replace": "day % 10 === 1 ? 'th'",
+    "why": "[a53] 9.8 the 1st and the 21st written 1th and 21th"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "day % 100 >= 11 && day % 100 <= 13",
+    "replace": "day % 100 >= 11 && day % 100 <= 12",
+    "why": "[a53] 9.8 the 13th written 13rd"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "${day > 28 ? ', or its last day' : ''}",
+    "replace": "${day > 29 ? ', or its last day' : ''}",
+    "why": "[a53] 9.8 the 29th never said to close on a short month's last day"
   }
 ]
