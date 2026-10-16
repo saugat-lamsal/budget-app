@@ -1,5 +1,5 @@
 import type { PushView } from '@budget-app/server/views';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Reload } from '../app/api.js';
 import { browserEndpoint, permission, sendTestAlert, support, turnOff, turnOn } from '../app/push.js';
 import { Button, ButtonRow, Card, ListRow } from '../ui/blocks.js';
@@ -28,9 +28,19 @@ const ICONS: Readonly<Record<CardState['kind'], IconName>> = {
   off: 'bell',
 };
 
+type Act = 'on' | 'off' | 'test';
+
 export function NotificationsCard({ push, onSaid, reload }: { readonly push: PushView; readonly onSaid: (said: Said) => void; readonly reload: Reload }) {
   const [facts, setFacts] = useState<DeviceFacts | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<Act | null>(null);
+  // Nor after an answer, while Settings still shows the numbers from before it
+  // (B245, as B92 and B192 elsewhere): the card can say Off then, with Turn on
+  // under the second tap of a double tap (on Turn off, too). The buttons stay
+  // off until the numbers asked for after the answer are shown.
+  const shown = useRef(push);
+  shown.current = push;
+  const [answered, setAnswered] = useState<{ readonly on: PushView; readonly act: Act } | null>(null);
+  const doing = busy ?? (answered !== null && answered.on === push ? answered.act : null);
   // What the browser can do and has, looked at again whenever the server's numbers come.
   useEffect(() => {
     let live = true;
@@ -45,15 +55,16 @@ export function NotificationsCard({ push, onSaid, reload }: { readonly push: Pus
   const state = cardState(push, facts);
   const words = cardWords(state);
   // Each button is off while one is on its way (a second tap does nothing).
-  const run = async (act: () => Promise<{ readonly ok: boolean; readonly why?: string }>, done: string): Promise<void> => {
-    setBusy(true);
+  const run = async (which: Act, act: () => Promise<{ readonly ok: boolean; readonly why?: string }>, done: string): Promise<void> => {
+    setBusy(which);
     try {
       const answer = await act();
       onSaid(answer.ok ? { tone: 'ok', text: done } : { tone: 'danger', text: answer.why ?? NOTIFICATION_NO_SIGNAL });
     } catch {
       onSaid({ tone: 'danger', text: NOTIFICATION_NO_SIGNAL });
     } finally {
-      setBusy(false);
+      setAnswered({ on: shown.current, act: which });
+      setBusy(null);
       setFacts(await readFacts());
       reload('after');
     }
@@ -64,17 +75,17 @@ export function NotificationsCard({ push, onSaid, reload }: { readonly push: Pus
       <ListRow icon={ICONS[state.kind]} tone={state.kind === 'blocked' ? 'warning' : 'info'} title={words.title} detail={words.detail} testId="notifications-state" />
       {state.kind === 'off' && push.state === 'ready' && (
         <ButtonRow>
-          <Button wide disabled={busy} onClick={() => void run(() => turnOn(push.publicKey), NOTIFICATION_DONE.on)} testId="notifications-on">
-            {busy ? 'Turning on…' : 'Turn on'}
+          <Button wide disabled={doing !== null} onClick={() => void run('on', () => turnOn(push.publicKey), NOTIFICATION_DONE.on)} testId="notifications-on">
+            {doing === 'on' ? 'Turning on…' : 'Turn on'}
           </Button>
         </ButtonRow>
       )}
       {state.kind === 'on' && (
         <ButtonRow>
-          <Button variant="secondary" wide disabled={busy} onClick={() => void run(sendTestAlert, NOTIFICATION_DONE.test)} testId="notifications-test">
+          <Button variant="secondary" wide disabled={doing !== null} onClick={() => void run('test', sendTestAlert, NOTIFICATION_DONE.test)} testId="notifications-test">
             Send a test alert
           </Button>
-          <Button variant="secondary" wide disabled={busy} onClick={() => void run(turnOff, NOTIFICATION_DONE.off)} testId="notifications-off">
+          <Button variant="secondary" wide disabled={doing !== null} onClick={() => void run('off', turnOff, NOTIFICATION_DONE.off)} testId="notifications-off">
             Turn off
           </Button>
         </ButtonRow>

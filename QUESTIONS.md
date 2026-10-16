@@ -2901,3 +2901,17 @@ B244. A52 as built (9.8). The bank's own statement date wins whenever it
       the two rows that set the days. A setup day saved before the setting
       (his, Oct 12) opens with no days set, as it was (B242's guard covers
       it). Demo life cards-off. Worked example bank 17.
+B245. Settings' Notifications card, the same gap B192 closed for Review, the
+      bucket lists and Payday (found on CI's WebKit runner, PR #31, run
+      38829682106: "a double tap on Turn on" sent two). After Turn on, Send a
+      test alert or Turn off was answered, the card's buttons took taps
+      again before Settings showed the numbers asked for after it. In that
+      moment the card still said Off after Turn on (a second /api/push/on,
+      harmless: the server kept the same subscription again), sent a second
+      test alert, and after Turn off it already said Off with Turn on taking
+      taps, so the second tap of a double tap on Turn off turned them back
+      on. Now the buttons stay off until those numbers are shown, also when
+      the numbers were read again while the request was on its way (back
+      from the background); after Turn on the button says "Turning on…"
+      until then, and after Turn off, "Turn on" (off). Phone side only:
+      nothing on the server changed.

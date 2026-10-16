@@ -1875,6 +1875,17 @@ long). It replaces running everything before every commit:
     older breaks pointed at the code again, caught.
   - Not deployed. After the deploy he enters the days for each card from a
     statement (Settings, "statement to due date").
+- The Notifications card's double tap (Oct 15, 2026, branch
+  notifications-double-tap, B245): after Turn on, Send a test alert or Turn
+  off was answered, the card took taps again before Settings showed the
+  numbers asked for after it (CI's WebKit, PR #31: two /api/push/on; after
+  Turn off a second tap could turn them back on). Its buttons now stay off
+  until those numbers are shown, as useChoiceFlow and Setup day's useSender
+  do (notifications-card.tsx answered). notifications.test.ts holds the
+  numbers at that moment for each button, and with the numbers read again
+  mid-request. Break-it "[notifications-b92]": 3 of 3 caught, and "[push] a
+  double tap on Turn on" pointed again, caught (Chromium and WebKit, each
+  judged by --only test/browser/notifications.test.ts). Not deployed.
 - Waiting on: the A52 deploy, at his word, then the days for each card; A51 (the shape of the weekly
   statement check); his check of part B (the list at its top), and the items
   in docs/later.txt marked DECIDE.
