@@ -2046,8 +2046,19 @@ long). It replaces running everything before every commit:
     when serving begins) and the demo guard lacked views/status.ts.
   - QUESTIONS.md A57, B251 to B254 (what only a real iPhone can show: the
     offline page while the server is down).
+- PR #43 merged and deployed Oct 16, 2026 (4:42 PM), at his word: CI on
+  Linux started by hand (run 38962571647: the PR's last commit was notes
+  with [skip ci], so GitHub ran nothing on it; checks, Chromium, WebKit and
+  image green), the deploy check on the branch's tree (66 events, every one
+  replays, "The backup works."), main's tree after the merge checked to be
+  the same, a read-only look just before (still 66 events), then that exact
+  image (deploy-check-20261016t202354z). /health and /health/backups ok,
+  /api 401, http sent to https, the webhook address refuses GET and an
+  unsigned call; the restore check on the machine: 66 events, "The backup
+  works." The way back is the image deploy-check-20261016t070457z (PR #41).
 - Waiting on: each card's statement closing day (his, on Settings, from a
   statement, before the old card's November reminders); Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);
   A51 (the shape of the weekly statement check); his check of part B (the
-  list at its top), and the items in docs/later.txt marked DECIDE.
+  list at its top), and the items in docs/later.txt marked DECIDE. To see
+  on his iPhone: the offline page (0.8) at the next restart (B254).
