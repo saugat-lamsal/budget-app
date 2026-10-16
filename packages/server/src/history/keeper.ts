@@ -149,9 +149,11 @@ export class Keeper {
   #onChange: (() => void) | null = null;
   // The bank's balances and statements last read from the database (#bankNow).
   #bankRead: BankNow | null = null;
-  // 0.7 (A57): when the books opened, how many events the history had then
-  // (every one replayed to its totals, 0.6), and how the last sync since went.
-  readonly #startedAt: Date;
+  // 0.7 (A57): when the server began serving the books (noted then, not when
+  // they open: opening never asks the clock, 0.6), how many events the
+  // history had when they opened (every one replayed to its totals), and how
+  // the last sync since went.
+  #startedAt: Date | null = null;
   #eventsWhenOpened = 0;
   #lastSync: { readonly at: Date; readonly result: 'new' | 'nothing-new' | 'needs-login' | 'failed' } | null = null;
 
@@ -172,7 +174,6 @@ export class Keeper {
     });
     const lastRead = readLastRead(input.db);
     this.#lastTry = lastRead === null ? null : Date.parse(lastRead);
-    this.#startedAt = input.now();
   }
 
   // Opens the books kept in the database, after checking that the history
@@ -811,6 +812,8 @@ export class Keeper {
     const local = (at: Date | string | number): string => timeIn(zone, new Date(at));
     const lastRead = this.lastRead();
     const since = this.mismatchSince();
+    const started = this.#startedAt;
+    if (started === null) throw new Error('the status page is only for books being served (Keeper.server)');
     return {
       state: this.book() === null ? 'not-set-up' : 'tracking',
       today: this.today(),
@@ -818,7 +821,7 @@ export class Keeper {
       lastRead: lastRead === null ? null : local(lastRead),
       lastSync: this.#lastSync === null ? null : { at: local(this.#lastSync.at), result: this.#lastSync.result },
       backups: backups === undefined ? null : { copying: backups.healthy(), lastBeat: backups.lastBeat === null ? null : local(backups.lastBeat) },
-      started: local(this.#startedAt),
+      started: local(started),
       history: { whenOpened: this.#eventsWhenOpened, now: countEvents(this.#db) },
       mismatchSince: since === null ? null : local(since),
       alertsWaiting: outboxCounts(this.#db).notSent,
@@ -849,6 +852,7 @@ export class Keeper {
     const { backups, bank, webhook } = extras;
     const desk = bank === undefined ? null : this.bankDesk(bank);
     this.#origin = origin;
+    this.#startedAt ??= this.#now();
     const auth = this.#auth;
     return createAppServer({
       webRoot,

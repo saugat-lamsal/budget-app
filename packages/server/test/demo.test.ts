@@ -437,6 +437,8 @@ describe('the demo is made-up data only', () => {
       'views/server-log.ts',
       'views/settings.ts',
       'views/setup.ts',
+      // 0.7 (A57): the status page's types (the web server names them); the demo has no status page.
+      'views/status.ts',
     ]);
     for (const file of files) expect(file, file).not.toMatch(/^(db|crypto|serve)\/|^(connect|status|log)\.ts$|^plaid\/(client|sandbox-lock)\.ts$|^sync\/sync\.ts$|^history\/(history-db|keeper)\.ts$/);
     // node:crypto only names a preview of a settings change (choices.ts, previewKey).

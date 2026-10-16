@@ -16,11 +16,21 @@ import { lifeInAFile, setUpThroughTheDesk, type Life } from './keeper-harness.js
 
 const C = ACCOUNT_IDS.checking;
 
+// The server starts: the books open, then it serves them (as serveBooks does).
 async function setUp(): Promise<Life> {
   const life = await lifeInAFile();
   life.now = new Date('2026-10-02T13:00:00Z');
   life.restart();
+  serve(life);
   return life;
+}
+
+function serve(life: Life): ReturnType<Life['keeper']['server']> {
+  const webRoot = join(life.dir, 'dist');
+  mkdirSync(webRoot, { recursive: true });
+  writeFileSync(join(webRoot, 'index.html'), '<!doctype html><title>app</title>');
+  const server = life.keeper.server(webRoot, () => `http://localhost:${(server.address() as AddressInfo | null)?.port ?? 0}`);
+  return server;
 }
 
 describe('0.7 the status page', () => {
@@ -88,6 +98,7 @@ describe('0.7 the status page', () => {
       // Started again: every event replayed when the books opened, and when that was.
       life.now = new Date('2026-10-02T15:30:00Z');
       life.restart();
+      serve(life);
       expect(life.keeper.statusView()).toMatchObject({ started: '2026-10-02T11:30:00-04:00', history: { whenOpened: events, now: events }, lastSync: null, lastRead: '2026-10-02T10:00:00-04:00' });
     } finally {
       life.done();
@@ -142,6 +153,20 @@ describe('0.7 the status page', () => {
     }
   });
 
+  it('0.7 0.6 when the server started is when it began serving the books: opening them never asks the clock', async () => {
+    const life = await lifeInAFile();
+    try {
+      life.now = new Date('2026-10-02T13:00:00Z');
+      life.restart();
+      life.now = new Date('2026-10-02T13:05:00Z');
+      serve(life);
+      life.now = new Date('2026-10-02T14:00:00Z');
+      expect(life.keeper.statusView().started).toBe('2026-10-02T09:05:00-04:00');
+    } finally {
+      life.done();
+    }
+  });
+
   it('0.7 no amounts: nothing on the page is money, whatever the books hold', async () => {
     const life = await setUp();
     try {
@@ -159,10 +184,7 @@ describe('0.7 the status page', () => {
   it('0.7 /api/status needs a login, and answers the status with one; /status is a screen of the app', async () => {
     const life = await setUp();
     try {
-      const webRoot = join(life.dir, 'dist');
-      mkdirSync(webRoot, { recursive: true });
-      writeFileSync(join(webRoot, 'index.html'), '<!doctype html><title>app</title>');
-      const server = life.keeper.server(webRoot, () => `http://localhost:${(server.address() as AddressInfo).port}`);
+      const server = serve(life);
       await new Promise<void>((done) => server.listen(0, '127.0.0.1', () => done()));
       try {
         const base = `http://localhost:${(server.address() as AddressInfo).port}`;
@@ -180,7 +202,7 @@ describe('0.7 the status page', () => {
       let clock = life.now.getTime();
       const watch = new BackupWatch(() => clock);
       watch.beat();
-      const hosted = life.keeper.server(webRoot, () => `http://localhost:${(hosted.address() as AddressInfo).port}`, undefined, { backups: watch });
+      const hosted = life.keeper.server(join(life.dir, 'dist'), () => `http://localhost:${(hosted.address() as AddressInfo).port}`, undefined, { backups: watch });
       await new Promise<void>((done) => hosted.listen(0, '127.0.0.1', () => done()));
       try {
         const base = `http://localhost:${(hosted.address() as AddressInfo).port}`;

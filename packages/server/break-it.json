@@ -5497,9 +5497,16 @@
   {
     "section": "history",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "      started: local(this.#startedAt),",
+    "find": "      started: local(started),",
     "replace": "      started: local(this.#now()),",
     "why": "[layer1] 0.7 the server said to have started just now"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    keeper.#eventsWhenOpened = countEvents(input.db);\n",
+    "replace": "    keeper.#eventsWhenOpened = countEvents(input.db);\n    keeper.#startedAt = input.now();\n",
+    "why": "[layer1] 0.7 0.6 the start noted when the books open, asking the clock"
   },
   {
     "section": "history",
