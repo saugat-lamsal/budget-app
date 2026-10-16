@@ -1661,8 +1661,8 @@
   {
     "section": "history",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "    if (connection === null || connection.needsLogin) return null;\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    return view.ok ? view.view.withPending : null;",
-    "replace": "    if (connection === null) return null;\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    return view.ok ? view.view.withPending : null;",
+    "find": "    if (connection === null || connection.needsLogin) return { bank: null, pendingIn: [] };\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    return view.ok ? { bank: view.view.withPending, pendingIn: view.view.pendingIn } : { bank: null, pendingIn: [] };",
+    "replace": "    if (connection === null) return { bank: null, pendingIn: [] };\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    return view.ok ? { bank: view.view.withPending, pendingIn: view.view.pendingIn } : { bank: null, pendingIn: [] };",
     "why": "[keeper] 0.5 read the bank while it wants a new login"
   },
   {
@@ -4996,5 +4996,61 @@
     "find": "const ruleTexts = Object.fromEntries(",
     "replace": "const ruleTexts = {} ?? Object.fromEntries(",
     "why": "[a55] 13.8 the bucket lists send no rule text"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "if (item.kind === 'deposit' && item.amountCents < 0 && (role === 'checking' || role === 'savings')) {",
+    "replace": "if (item.amountCents < 0 && (role === 'checking' || role === 'savings')) {",
+    "why": "[a56] 11.4 a transfer arriving shown as money on its way in"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "pendingIn.push({ account: role, amount: -item.amountCents,",
+    "replace": "pendingIn.push({ account: role, amount: item.amountCents,",
+    "why": "[a56] 11.4 the amount on its way in with the bank's sign"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/home.ts",
+    "find": "paycheck: matchesTextRule(paycheckRule, p.description) };",
+    "replace": "paycheck: paycheckRule !== null };",
+    "why": "[a56] 11.4 every deposit called a paycheck once the paycheck rule is set"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/home.ts",
+    "find": "const order = (p: PendingMoneyIn): string => `${p.date} ${p.account === 'checking' ? 0 : 1}`;",
+    "replace": "const order = (p: PendingMoneyIn): string => `${p.account === 'checking' ? 0 : 1} ${p.date}`;",
+    "why": "[a56] 11.4 checking before savings ahead of oldest first"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/home.ts",
+    "find": "    .sort((a, b) => (order(a) < order(b) ? -1 : order(a) > order(b) ? 1 : 0))\n",
+    "replace": "",
+    "why": "[a56] 11.4 money on its way in in the bank's order"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/home.ts",
+    "find": "onItsWayIn: onItsWayIn(input.pendingIn ?? [], settings.paycheckRule),",
+    "replace": "onItsWayIn: [],",
+    "why": "[a56] 11.4 nothing pending in reaches Home"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    if (connection === null || connection.needsLogin) return { bank: null, pendingIn: [] };\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    return view.ok ? { bank: view.view.withPending, pendingIn: view.view.pendingIn } : { bank: null, pendingIn: [] };",
+    "replace": "    if (connection === null) return { bank: null, pendingIn: [] };\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    if (connection.needsLogin) return { bank: null, pendingIn: view.ok ? view.view.pendingIn : [] };\n    return view.ok ? { bank: view.view.withPending, pendingIn: view.view.pendingIn } : { bank: null, pendingIn: [] };",
+    "why": "[a56] 11.4 0.5 money on its way in shown while the bank cannot be read"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      pendingIn: this.#bankNow().pendingIn,\n",
+    "replace": "",
+    "why": "[a56] 11.4 the Keeper leaves money on its way in off Home"
   }
 ]

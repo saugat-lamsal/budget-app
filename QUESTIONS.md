@@ -3039,3 +3039,16 @@ B249. A55 as built (13.8). The offer comes with the answer to a tap, in the
       payment he marked to the old card, from the purchase it was); with no
       name, from the description, as before. The offer is part of the answer
       kept with its decision number, so a repeat gets it back too.
+B250. A56 as built (11.4). "On its way in" is a card on Home under
+      "Checked at", shown only when something is pending. A row for each
+      deposit still pending into checking or savings: money in that no bank
+      rule reads as a transfer between his accounts (a card's pending refund
+      is not one: it is on the card). Oldest first, checking before savings
+      on the same day; a paycheck in two parts is two rows. "Paycheck on its
+      way" when the paycheck rule matches the pending item's description
+      (the bank's words while pending); with no paycheck rule, as on his
+      books now (B228), every row says "Money on its way in". Each says "To
+      checking, counted when it posts" and the amount. None while the bank
+      cannot be read (10.5). Nothing about money changes: 12.1 already takes
+      pending money in out of the bank side (A54), and the item counts once
+      it posts, as before.
