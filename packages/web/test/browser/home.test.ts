@@ -236,9 +236,11 @@ describe.each(ENGINES)('Home in %s', (_name, engine) => {
     expect(await textAt(page, 'payday')).toContain('Payday is today');
     const rows = await page.getByTestId('on-its-way-in').locator('[data-testid^="on-its-way-in-"]:not([data-testid$="-amount"])').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
     expect(rows).toEqual(['on-its-way-in-0', 'on-its-way-in-1', 'on-its-way-in-2']);
-    expect(await textAt(page, 'on-its-way-in-0')).toMatch(/^Money on its way in To checking, counted when it posts \$/);
-    expect(await textAt(page, 'on-its-way-in-1')).toMatch(/^Paycheck on its way To checking, counted when it posts \$/);
-    expect(await textAt(page, 'on-its-way-in-2')).toMatch(/^Paycheck on its way To savings, counted when it posts \$/);
+    // A57: pending since when first seen (the day the bank dated it when that is not known), and,
+    // with 3 earlier paychecks into checking, how long they usually took; two into savings are too few.
+    expect(await textAt(page, 'on-its-way-in-0')).toMatch(/^Money on its way in To checking, counted when it posts\. Pending since Thu, Oct 15\. \$/);
+    expect(await textAt(page, 'on-its-way-in-1')).toMatch(/^Paycheck on its way To checking, counted when it posts\. Pending since 6:12 AM\. Usually posts within 22 hours\. \$/);
+    expect(await textAt(page, 'on-its-way-in-2')).toMatch(/^Paycheck on its way To savings, counted when it posts\. Pending since 6:12 AM\. \$/);
     const byDay = (day: string, account: string): number => pending.find((p) => p.date === day && p.account === account)?.amount ?? NaN;
     expect(await centsAt(page, 'on-its-way-in-0-amount')).toBe(byDay('2026-10-15', 'checking'));
     expect(await centsAt(page, 'on-its-way-in-1-amount')).toBe(byDay('2026-10-16', 'checking'));

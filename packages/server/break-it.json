@@ -1661,8 +1661,8 @@
   {
     "section": "history",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "    if (connection === null || connection.needsLogin) return { bank: null, pendingIn: [] };\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    return view.ok ? { bank: view.view.withPending, pendingIn: view.view.pendingIn } : { bank: null, pendingIn: [] };",
-    "replace": "    if (connection === null) return { bank: null, pendingIn: [] };\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    return view.ok ? { bank: view.view.withPending, pendingIn: view.view.pendingIn } : { bank: null, pendingIn: [] };",
+    "find": "    if (connection === null || connection.needsLogin) return { bank: null, pendingIn: [], postingExamples: [] };",
+    "replace": "    if (connection === null) return { bank: null, pendingIn: [], postingExamples: [] };",
     "why": "[keeper] 0.5 read the bank while it wants a new login"
   },
   {
@@ -5014,8 +5014,8 @@
   {
     "section": "review",
     "file": "packages/server/src/views/home.ts",
-    "find": "paycheck: matchesTextRule(paycheckRule, p.description) };",
-    "replace": "paycheck: paycheckRule !== null };",
+    "find": "      const paycheck = matchesTextRule(paycheckRule, p.description);",
+    "replace": "      const paycheck = paycheckRule !== null;",
     "why": "[a56] 11.4 every deposit called a paycheck once the paycheck rule is set"
   },
   {
@@ -5035,21 +5035,21 @@
   {
     "section": "review",
     "file": "packages/server/src/views/home.ts",
-    "find": "onItsWayIn: onItsWayIn(input.pendingIn ?? [], settings.paycheckRule),",
+    "find": "onItsWayIn: onItsWayIn(input.pendingIn ?? [], settings.paycheckRule, input.postingExamples ?? []),",
     "replace": "onItsWayIn: [],",
     "why": "[a56] 11.4 nothing pending in reaches Home"
   },
   {
     "section": "bank",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "    if (connection === null || connection.needsLogin) return { bank: null, pendingIn: [] };\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    return view.ok ? { bank: view.view.withPending, pendingIn: view.view.pendingIn } : { bank: null, pendingIn: [] };",
-    "replace": "    if (connection === null) return { bank: null, pendingIn: [] };\n    const view = bankView(readAccounts(this.#db), readItems(this.#db));\n    if (connection.needsLogin) return { bank: null, pendingIn: view.ok ? view.view.pendingIn : [] };\n    return view.ok ? { bank: view.view.withPending, pendingIn: view.view.pendingIn } : { bank: null, pendingIn: [] };",
+    "find": "    if (connection === null || connection.needsLogin) return { bank: null, pendingIn: [], postingExamples: [] };\n    const accounts = readAccounts(this.#db);",
+    "replace": "    if (connection === null) return { bank: null, pendingIn: [], postingExamples: [] };\n    if (connection.needsLogin) {\n      const v = bankView(readAccounts(this.#db), readItems(this.#db));\n      return { bank: null, pendingIn: v.ok ? v.view.pendingIn : [], postingExamples: [] };\n    }\n    const accounts = readAccounts(this.#db);",
     "why": "[a56] 11.4 0.5 money on its way in shown while the bank cannot be read"
   },
   {
     "section": "bank",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "      pendingIn: this.#bankNow().pendingIn,\n",
+    "find": "      pendingIn: this.#bankNow().pendingIn.map((p) => ({ ...p, firstSeen: p.firstSeen === null || p.firstSeen === undefined ? null : timeIn(this.timeZone(), new Date(p.firstSeen)) })),\n",
     "replace": "",
     "why": "[a56] 11.4 the Keeper leaves money on its way in off Home"
   },
@@ -5297,5 +5297,159 @@
     "find": "why: input.why ?? null };",
     "replace": "why: null };",
     "why": "[layer1] 12.6 the Buckets view drops why"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "const SHARE = 3 / 4;",
+    "replace": "const SHARE = 1 / 2;",
+    "why": "[layer1] 11.4 half of them, not three in four"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "export const FEWEST_EXAMPLES = 3;",
+    "replace": "export const FEWEST_EXAMPLES = 2;",
+    "why": "[layer1] 11.4 a figure from only 2 earlier ones"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "export const LAST = 10;",
+    "replace": "export const LAST = 20;",
+    "why": "[layer1] 11.4 more than the last 10 counted"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": ".sort((a, b) => Date.parse(b.postedAt) - Date.parse(a.postedAt))",
+    "replace": ".sort((a, b) => Date.parse(a.postedAt) - Date.parse(b.postedAt))",
+    "why": "[layer1] 11.4 the oldest 10, not the newest"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "  const hours = Math.max(1, Math.ceil(within / HOUR));",
+    "replace": "  const hours = Math.max(1, Math.round(within / HOUR));",
+    "why": "[layer1] 11.4 rounded to the nearest hour, not up"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "  return hours < 48 ? { within: hours, unit: 'hours' } : { within: Math.ceil(within / DAY), unit: 'days' };",
+    "replace": "  return hours <= 48 ? { within: hours, unit: 'hours' } : { within: Math.ceil(within / DAY), unit: 'days' };",
+    "why": "[layer1] 11.4 48 hours said in hours, not 2 days"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "  return hours < 48 ? { within: hours, unit: 'hours' } : { within: Math.ceil(within / DAY), unit: 'days' };",
+    "replace": "  return hours < 48 ? { within: hours, unit: 'hours' } : { within: Math.floor(within / DAY), unit: 'days' };",
+    "why": "[layer1] 11.4 days rounded down"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "  const moneyIn = (i: StoredItem): boolean => roles.has(i.accountId) && i.kind === 'deposit' && i.amountCents !== null && i.amountCents < 0;",
+    "replace": "  const moneyIn = (i: StoredItem): boolean => roles.has(i.accountId) && i.amountCents !== null && i.amountCents < 0;",
+    "why": "[layer1] 11.4 a transfer arriving taken as an earlier deposit"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "p.amountCents === posted.amountCents && p.lastSync === posted.firstSync && !used.has(p.transactionId)) : undefined);",
+    "replace": "p.amountCents === posted.amountCents && !used.has(p.transactionId)) : undefined);",
+    "why": "[layer1] 11.4 an unlinked pending one dropped in another read taken as the posted one's"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "p.amountCents === posted.amountCents && p.lastSync === posted.firstSync && !used.has(p.transactionId)) : undefined);",
+    "replace": "p.amountCents === posted.amountCents && p.lastSync === posted.firstSync) : undefined);",
+    "why": "[layer1] 11.4 one pending one taken for two posted ones"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "    if (!(ms >= 0)) continue;",
+    "replace": "",
+    "why": "[layer1] 11.4 a posted one seen before its pending one taken as an example"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "    const seen = syncTimes.get(pending.firstSync);",
+    "replace": "    const seen = syncTimes.get(pending.lastSync);",
+    "why": "[layer1] 11.4 timed from when the pending one was last changed"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/views/home.ts",
+    "find": "      const alike = examples.filter((e) => e.account === p.account && matchesTextRule(paycheckRule, e.description) === paycheck);",
+    "replace": "      const alike = examples.filter((e) => e.account === p.account);",
+    "why": "[layer1] 11.4 other money in learns from paychecks"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/views/home.ts",
+    "find": "      const alike = examples.filter((e) => e.account === p.account && matchesTextRule(paycheckRule, e.description) === paycheck);",
+    "replace": "      const alike = examples.filter((e) => matchesTextRule(paycheckRule, e.description) === paycheck);",
+    "why": "[layer1] 11.4 savings learns from checking"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/views/home.ts",
+    "find": "since: firstSeen === null ? { day: p.date } : { at: firstSeen },",
+    "replace": "since: { day: p.date },",
+    "why": "[layer1] 11.4 pending since only the day, even when the time is known"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/views/home.ts",
+    "find": "      if (firstSeen !== null && (!ISO_TIME.test(firstSeen) || Number.isNaN(Date.parse(firstSeen)))) throw new Error(`not a time with its offset: ${firstSeen}`);",
+    "replace": "",
+    "why": "[layer1] 11.4 a first-seen time without its offset let through"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "firstSeen: times.get(firstSync) ?? null }));",
+    "replace": "firstSeen: null }));",
+    "why": "[layer1] 11.4 the Keeper never knows when it first saw one"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "firstSeen: p.firstSeen === null || p.firstSeen === undefined ? null : timeIn(this.timeZone(), new Date(p.firstSeen)) })),",
+    "replace": "firstSeen: p.firstSeen ?? null })),",
+    "why": "[layer1] 11.4 pending since in UTC, not his home time zone"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      postingExamples: this.#bankNow().postingExamples,",
+    "replace": "      postingExamples: [],",
+    "why": "[layer1] 11.4 the Keeper learns nothing from earlier ones"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    return { bank: view.view.withPending, pendingIn, postingExamples: postingExamples(accounts, items, times) };",
+    "replace": "    return { bank: view.view.withPending, pendingIn, postingExamples: postingExamples(accounts, items, new Map()) };",
+    "why": "[layer1] 11.4 the reads' times not given to the examples"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/balances.ts",
+    "find": "description: read.item.description, firstSync: item.firstSync });",
+    "replace": "description: read.item.description, firstSync: item.lastSync });",
+    "why": "[layer1] 11.4 pending since the last read that changed it"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/posting-times.ts",
+    "find": "    if (pending === undefined || used.has(pending.transactionId)) continue;",
+    "replace": "    if (pending === undefined) continue;",
+    "why": "[layer1] 11.4 one pending one the bank linked to two posted ones taken twice"
   }
 ]

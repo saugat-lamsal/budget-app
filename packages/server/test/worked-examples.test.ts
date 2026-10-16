@@ -21,6 +21,7 @@ import { plaidKeysFromEnv } from '../src/plaid/sandbox-lock.js';
 import { setUpTracking, setupPreview } from '../src/setup-day.js';
 import { bankStatus } from '../src/status.js';
 import { bankView } from '../src/bank/balances.js';
+import { usuallyPostsWithin } from '../src/bank/posting-times.js';
 import { cardStatement } from '../src/bank/statements.js';
 import { SyncTimer } from '../src/serve/sync-timer.js';
 import { syncBank } from '../src/sync/sync.js';
@@ -825,5 +826,26 @@ describe('worked examples: why it does not match (Phase 7)', () => {
     } finally {
       life.done();
     }
+  });
+});
+
+describe('worked examples: when pending money in usually posts (Phase 7)', () => {
+  it('example 19, 11.4 A57 usually posts within: three in four of the last 10, rounded up', () => {
+    const block = text.split(/^EXAMPLE /m).find((b) => b.startsWith('19.')) ?? '';
+    const line = /^Hours: (.*)$/m.exec(block)?.[1] ?? '';
+    const hours = new Map(line.split('|').map((part) => {
+      const m = /^\s*([a-z -]+?)\s+(\d+)\s*$/.exec(part);
+      if (m === null) throw new Error(`cannot read "${part}"`);
+      return [m[1] ?? '', Number(m[2])] as const;
+    }));
+    const HOUR = 3_600_000;
+    const at = (n: number): string => new Date(Date.parse('2026-10-02T15:00:00Z') + n * 86_400_000).toISOString();
+    const examples = (ms: readonly number[]) => ms.map((m, i) => ({ account: 'checking' as const, description: 'MADE UP PAYROLL', ms: m, postedAt: at(i) }));
+    expect(usuallyPostsWithin(examples([5, 9, 7].map((h) => h * HOUR)))).toEqual({ within: hours.get('three'), unit: 'hours' });
+    expect(usuallyPostsWithin(examples([5, 9, 7, 30].map((h) => h * HOUR)))).toEqual({ within: hours.get('four'), unit: 'hours' });
+    expect(usuallyPostsWithin(examples([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((h) => h * HOUR)))).toEqual({ within: hours.get('ten'), unit: 'hours' });
+    expect(usuallyPostsWithin(examples([1, 2, 7 * HOUR + 60_000]))).toEqual({ within: hours.get('seven and a minute'), unit: 'hours' });
+    expect(usuallyPostsWithin(examples([1, 2, 47 * HOUR + 60_000]))).toEqual({ within: hours.get('forty-seven and a minute in days'), unit: 'days' });
+    expect(usuallyPostsWithin(examples([5 * HOUR, 9 * HOUR]))).toBeNull();
   });
 });

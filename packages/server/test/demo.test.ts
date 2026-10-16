@@ -394,6 +394,7 @@ describe('the demo is made-up data only', () => {
       'bank/amounts.ts',
       'bank/balances.ts',
       'bank/plaid-item.ts',
+      'bank/posting-times.ts',
       'bank/reading.ts',
       'bank/stored-account.ts',
       'bank/why.ts',

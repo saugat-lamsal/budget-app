@@ -2473,8 +2473,8 @@
   {
     "section": "settings",
     "file": "packages/web/src/screens/home-text.ts",
-    "find": "detail: `To ${item.account}, counted when it posts`",
-    "replace": "detail: 'Counted when it posts'",
+    "find": "detail: `To ${item.account}, counted when it posts. Pending since",
+    "replace": "detail: `Counted when it posts. Pending since",
     "why": "[a56] 11.4 the screen does not say which account"
   },
   {
@@ -2560,5 +2560,40 @@
     "find": "<Money cents={check.difference} signed testId=\"why-difference\" />",
     "replace": "<Money cents={Math.abs(check.difference)} signed testId=\"why-difference\" />",
     "why": "[layer1] 12.6 Buckets' sheet shows the difference without its sign"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/home-text.ts",
+    "find": "(item.usually.within === 1 ? 'hour' : 'hours')",
+    "replace": "'hours'",
+    "why": "[layer1] 11.4 1 hour said as 1 hours"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/home-text.ts",
+    "find": "checkedAtText(item.since.at, today, timeZone)",
+    "replace": "checkedAtText(item.since.at, today, 'UTC')",
+    "why": "[layer1] 11.4 pending since said in UTC"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/home-text.ts",
+    "find": "item.usually.unit === 'hours' ? (item.usually.within === 1 ? 'hour' : 'hours') : 'days'",
+    "replace": "(item.usually.within === 1 ? 'hour' : 'hours')",
+    "why": "[layer1] 11.4 days said as hours"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/home-text.ts",
+    "find": "const usually = item.usually === null ? '' :",
+    "replace": "const usually = item.usually !== null ? '' :",
+    "why": "[layer1] 11.4 usually posts within never said"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "const words = onItsWayInText(item, view.today, view.timeZone);",
+    "replace": "const words = onItsWayInText(item, view.today, 'UTC');",
+    "why": "[layer1] 11.4 Home says pending since in UTC"
   }
 ]

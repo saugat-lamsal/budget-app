@@ -653,3 +653,31 @@ deposit behind the 27.50 (which waits in review as money in), they match
 again and the lines go.
 
 Check: checking line 27.50 | card line -25.00 | difference 2.50
+
+
+EXAMPLE 19. When pending money in usually posts (11.4; QUESTIONS.md A57)
+
+Made-up times, in New York. Three earlier paychecks into checking, each from
+when the app first saw it pending to when it first saw it posted (the times
+of the reads that brought each):
+  Oct 2: seen pending 6:00 AM, posted 11:00 AM          5 hours
+  Oct 17: seen pending 6:00 AM, posted 3:00 PM           9 hours
+  Nov 1: seen pending 6:00 AM, posted 1:00 PM            7 hours
+
+"Usually posts within": the time within which at least three in four of the
+last 10 posted. Of three, three in four is all three (3 x 3/4 = 2.25, so 3),
+the longest: 9 hours.
+
+A fourth that took 30 hours: of four, three in four is three (4 x 3/4 = 3),
+so the third quickest of 5, 7, 9, 30: still 9 hours.
+
+Ten of 1 to 10 hours: three in four of ten is eight (10 x 3/4 = 7.5, so 8),
+so the eighth quickest: 8 hours.
+
+Rounded up to the hour: 7 hours and 1 minute is 8 hours. From 2 days, to
+the day: 47 hours and 1 minute rounds up to 48 hours, which is 2 days.
+
+With only two earlier ones, Home says "Pending since 6:12 AM." and nothing
+about when it should post.
+
+Hours: three 9 | four 9 | ten 8 | seven and a minute 8 | forty-seven and a minute in days 2

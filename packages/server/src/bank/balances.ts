@@ -51,8 +51,9 @@ export interface BankView {
   readonly oldCardPosted: Cents;
   readonly oldCardWithPending: Cents;
   // 11.4 (A56): deposits still pending into checking or savings, which the
-  // books count only once they post, for Home.
-  readonly pendingIn: readonly PendingMoneyIn[];
+  // books count only once they post, for Home; with the sync that first
+  // brought each (A57: pending since).
+  readonly pendingIn: readonly (PendingMoneyIn & { readonly firstSync: number })[];
   // 12.6 (A57): for each account in the check, the bank's own transactions on
   // it that the books count, added up in Plaid's sign (money out, or onto the
   // card, above zero): the posted ones, and the pending charges (4.6).
@@ -76,7 +77,7 @@ export function bankView(accounts: readonly StoredAccount[], items: ReadonlyMap<
     };
     for (const a of accounts) if (a.role !== null) roles.set(a.plaidAccountId, a.role);
     const pendingCharges: PendingCharge[] = [];
-    const pendingIn: PendingMoneyIn[] = [];
+    const pendingIn: (PendingMoneyIn & { readonly firstSync: number })[] = [];
     const counts: Record<CheckAccount, Cents> = { checking: 0, savings: 0, 'everyday-card': 0 };
     const pending: PendingItemNow[] = [];
     // Plaid's sign: money going out is above zero, money coming in below.
@@ -101,7 +102,7 @@ export function bankView(accounts: readonly StoredAccount[], items: ReadonlyMap<
       }
       if (item.kind === 'deposit' && item.amountCents < 0 && (role === 'checking' || role === 'savings')) {
         const read = readPlaidItem(item.raw);
-        if (read.ok) pendingIn.push({ account: role, amount: -item.amountCents, date: read.item.date, description: read.item.description });
+        if (read.ok) pendingIn.push({ account: role, amount: -item.amountCents, date: read.item.date, description: read.item.description, firstSync: item.firstSync });
       }
     }
     // 12.1 (A47): checking and savings from the available balance, when the bank gives one.

@@ -15,6 +15,7 @@ import {
 } from '@budget-app/money';
 import { checkBankRules, type BankRule } from '../bank/reading.js';
 import { timeIn } from '../history/today.js';
+import type { PostingExample } from '../bank/posting-times.js';
 import { whyItDoesNotMatch, type BankAtRead, type PendingItemNow } from '../bank/why.js';
 import type { CardRemindersOff, HomeInput, PendingMoneyIn, WhyLine } from '../views/home.js';
 import type { MadeUpBank } from './made-up-bank.js';
@@ -39,6 +40,8 @@ const RULES: readonly SortingRule[] = [
 ];
 
 const SETUP_DAY: IsoDate = '2026-09-19';
+
+const HOUR = 3_600_000;
 
 // 12.6: a coffee still pending on the everyday card in the why-counted-twice life.
 const PENDING_COFFEE: Cents = 575;
@@ -152,6 +155,8 @@ interface Story {
   readonly ruleOffer?: boolean;
   // 11.4: money still pending at the bank, not in the books until it posts.
   readonly pendingIn?: readonly PendingMoneyIn[];
+  // 11.4 (A57): earlier deposits seen going from pending to posted.
+  readonly postingExamples?: readonly PostingExample[];
 }
 
 // When the bank was last read and matched, in the "bank-not-read" life:
@@ -370,6 +375,7 @@ function story(s: Story): HomeInput {
     seenTakeBacks: new Set(),
     ...(s.cardsOff === undefined ? {} : { cardsOff: s.cardsOff }),
     ...(s.pendingIn === undefined || s.bankNotRead === true ? {} : { pendingIn: s.pendingIn }),
+    ...(s.postingExamples === undefined ? {} : { postingExamples: s.postingExamples }),
     lastChecked: s.bankNotRead === true ? { amount: checkedThisMorning, at: LAST_CHECKED_AT } : null,
     // Step 3: when the made-up bank was last read: this morning.
     catchingUp: s.catchingUp ?? false,
@@ -448,10 +454,22 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
         today: '2026-10-16',
         allDone: true,
         statements: [],
+        // A57: the paycheck parts first seen at 6:12 this morning; the money
+        // from a friend before the app kept the times of its reads (so the
+        // day the bank dated it).
         pendingIn: [
-          { account: 'checking', amount: 162_540, date: '2026-10-16', description: `${EMPLOYER} DIRECT DEP` },
+          { account: 'checking', amount: 162_540, date: '2026-10-16', description: `${EMPLOYER} DIRECT DEP`, firstSeen: '2026-10-16T06:12:00-04:00' },
           { account: 'checking', amount: 2_500, date: '2026-10-15', description: 'ZELLE FROM MADE UP FRIEND' },
-          { account: 'savings', amount: 40_000, date: '2026-10-16', description: `${EMPLOYER} DIRECT DEP` },
+          { account: 'savings', amount: 40_000, date: '2026-10-16', description: `${EMPLOYER} DIRECT DEP`, firstSeen: '2026-10-16T06:12:00-04:00' },
+        ],
+        // Three earlier paychecks into checking, posted 20, 22 and 21 hours
+        // after first seen pending; only two into savings, too few to say.
+        postingExamples: [
+          { account: 'checking', description: `${EMPLOYER} DIRECT DEP`, ms: 20 * HOUR, postedAt: '2026-09-16T08:00:00.000Z' },
+          { account: 'checking', description: `${EMPLOYER} DIRECT DEP`, ms: 22 * HOUR, postedAt: '2026-09-30T10:00:00.000Z' },
+          { account: 'checking', description: `${EMPLOYER} DIRECT DEP`, ms: 21 * HOUR, postedAt: '2026-10-15T09:00:00.000Z' },
+          { account: 'savings', description: `${EMPLOYER} DIRECT DEP`, ms: 20 * HOUR, postedAt: '2026-09-30T10:00:00.000Z' },
+          { account: 'savings', description: `${EMPLOYER} DIRECT DEP`, ms: 21 * HOUR, postedAt: '2026-10-15T09:00:00.000Z' },
         ],
       }),
   },

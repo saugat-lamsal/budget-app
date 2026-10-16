@@ -14,6 +14,7 @@ import { bankLinesIn, bankRuleLogIn, saveBankRuleLine } from '../bank-rules-db.j
 import { RECENT_DAYS, bankLinesOf, misreadHints } from '../bank-rules.js';
 import { bankAtRead, bankView, postedSince, type BankView } from '../bank/balances.js';
 import type { StoredAccount } from '../bank/stored-account.js';
+import { postingExamples, type PostingExample } from '../bank/posting-times.js';
 import { whyItDoesNotMatch } from '../bank/why.js';
 import { cardStatement } from '../bank/statements.js';
 import { canonical, refuse, ChoiceDesk } from '../choices.js';
@@ -29,7 +30,7 @@ import type { PushKeys } from '../push/push-keys.js';
 import { saveServerLine, serverLinesIn } from '../server-log.js';
 import { SetupDesk } from '../setup-desk.js';
 import { NO_ANSWERS, SETUP_LOOK_BACK_DAYS, type SetupAnswers } from '../setup-view.js';
-import { FEWEST_MINUTES, MOST_MINUTES, markSetupRead, readGapSince, readLastMatchingRead, readLastRead, saveGapSince, saveSyncEveryMinutes, syncEveryMinutes } from '../sync/bank-reads.js';
+import { FEWEST_MINUTES, MOST_MINUTES, markSetupRead, readGapSince, readLastMatchingRead, readLastRead, readSyncTimes, saveGapSince, saveSyncEveryMinutes, syncEveryMinutes } from '../sync/bank-reads.js';
 import type { Plan, PlanInput, StoredItem } from '../sync/plan.js';
 import { syncBank, type SyncResult } from '../sync/sync.js';
 import type { AlertSender, OutgoingAlert } from '../serve/alert-timer.js';
@@ -51,8 +52,10 @@ import { timeIn, todayIn } from './today.js';
 interface BankNow {
   readonly version: string;
   readonly bank: BankBalances | null;
-  // 11.4: none while the bank cannot be read.
+  // 11.4: none while the bank cannot be read. A57: firstSeen as an instant (ISO, UTC).
   readonly pendingIn: readonly PendingMoneyIn[];
+  // 11.4 (A57): earlier deposits seen going from pending to posted.
+  readonly postingExamples: readonly PostingExample[];
   readonly statements: CardStatement[];
   readonly cardsOff: CardRemindersOff[];
 }
@@ -318,11 +321,17 @@ export class Keeper {
     return this.#bankRead;
   }
 
-  #readBank(): { readonly bank: BankBalances | null; readonly pendingIn: readonly PendingMoneyIn[] } {
+  #readBank(): { readonly bank: BankBalances | null; readonly pendingIn: readonly PendingMoneyIn[]; readonly postingExamples: readonly PostingExample[] } {
     const connection = readConnection(this.#db);
-    if (connection === null || connection.needsLogin) return { bank: null, pendingIn: [] };
-    const view = bankView(readAccounts(this.#db), readItems(this.#db));
-    return view.ok ? { bank: view.view.withPending, pendingIn: view.view.pendingIn } : { bank: null, pendingIn: [] };
+    if (connection === null || connection.needsLogin) return { bank: null, pendingIn: [], postingExamples: [] };
+    const accounts = readAccounts(this.#db);
+    const items = readItems(this.#db);
+    const view = bankView(accounts, items);
+    if (!view.ok) return { bank: null, pendingIn: [], postingExamples: [] };
+    // 11.4 (A57): when each was first seen pending, from the read that saved its sync.
+    const times = readSyncTimes(this.#db);
+    const pendingIn = view.view.pendingIn.map(({ firstSync, ...p }) => ({ ...p, firstSeen: times.get(firstSync) ?? null }));
+    return { bank: view.view.withPending, pendingIn, postingExamples: postingExamples(accounts, items, times) };
   }
 
   // Each card's statement as the bank sent it, read with the days from
@@ -362,7 +371,9 @@ export class Keeper {
       checkedAt: this.#checkedAt(),
       catchingUp: this.#catchingUp(),
       bankDetail: this.#bankDetail(),
-      pendingIn: this.#bankNow().pendingIn,
+      // 11.4 (A57): first seen as a time in his home time zone.
+      pendingIn: this.#bankNow().pendingIn.map((p) => ({ ...p, firstSeen: p.firstSeen === null || p.firstSeen === undefined ? null : timeIn(this.timeZone(), new Date(p.firstSeen)) })),
+      postingExamples: this.#bankNow().postingExamples,
     });
     // 0.5, B82: the last safe to spend the bank backed up, and when.
     if (view.state === 'tracking' && view.safeToSpend.shown) saveLastChecked(this.#db, { amount: view.safeToSpend.amount, at: timeIn(this.timeZone(), this.#now()) });

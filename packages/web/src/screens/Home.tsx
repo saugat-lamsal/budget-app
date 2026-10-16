@@ -153,7 +153,7 @@ function HomeReady({ view, onChanged }: { readonly view: Tracking; readonly onCh
         // 11.4: money still pending at the bank, counted when it posts.
         <Card title="On its way in" testId="on-its-way-in">
           {view.onItsWayIn.map((item, i) => {
-            const words = onItsWayInText(item);
+            const words = onItsWayInText(item, view.today, view.timeZone);
             return <ListRow key={`${item.date} ${item.account} ${i}`} icon="clock" title={words.title} detail={words.detail} trailing={<Money cents={item.amount} testId={`on-its-way-in-${i}-amount`} />} testId={`on-its-way-in-${i}`} />;
           })}
         </Card>

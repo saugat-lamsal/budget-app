@@ -572,20 +572,72 @@ describe('11.4 money on its way in', () => {
       ),
     );
     expect(view.onItsWayIn).toEqual([
-      { account: 'checking', amount: 1, date: '2026-10-01', paycheck: false },
-      { account: 'checking', amount: 180_000, date: '2026-10-02', paycheck: true },
-      { account: 'savings', amount: 40_000, date: '2026-10-02', paycheck: true },
-      { account: 'checking', amount: 2_500, date: '2026-10-03', paycheck: false },
+      { account: 'checking', amount: 1, date: '2026-10-01', paycheck: false, since: { day: '2026-10-01' }, usually: null },
+      { account: 'checking', amount: 180_000, date: '2026-10-02', paycheck: true, since: { day: '2026-10-02' }, usually: null },
+      { account: 'savings', amount: 40_000, date: '2026-10-02', paycheck: true, since: { day: '2026-10-02' }, usually: null },
+      { account: 'checking', amount: 2_500, date: '2026-10-03', paycheck: false, since: { day: '2026-10-03' }, usually: null },
     ]);
   });
 
   it('11.4 with no paycheck rule nothing is called a paycheck; none pending, or none given, is an empty list', () => {
     const book = openTestBook({ settings: { paycheckRule: null } });
     expect(tracking(homeView(input(book, { pendingIn: [pending('checking', 180_000, '2026-10-02', 'MADE UP PAYROLL')] }))).onItsWayIn).toEqual([
-      { account: 'checking', amount: 180_000, date: '2026-10-02', paycheck: false },
+      { account: 'checking', amount: 180_000, date: '2026-10-02', paycheck: false, since: { day: '2026-10-02' }, usually: null },
     ]);
     expect(tracking(homeView(input(book, { pendingIn: [] }))).onItsWayIn).toEqual([]);
     expect(tracking(homeView(input(book))).onItsWayIn).toEqual([]);
+  });
+
+  it('11.4 A57 pending since: when the app first saw it pending, as a time in his home time zone; the day the bank dated it when that is not known', () => {
+    const book = openTestBook({ settings: { paycheckRule: { contains: 'made up payroll' } } });
+    const view = tracking(
+      homeView(
+        input(book, {
+          pendingIn: [
+            { ...pending('checking', 180_000, '2026-10-02', 'MADE UP PAYROLL'), firstSeen: '2026-10-02T06:12:00-04:00' },
+            { ...pending('savings', 40_000, '2026-10-02', 'MADE UP PAYROLL'), firstSeen: null },
+          ],
+        }),
+      ),
+    );
+    expect(view.onItsWayIn.map((p) => p.since)).toEqual([{ at: '2026-10-02T06:12:00-04:00' }, { day: '2026-10-02' }]);
+    for (const at of ['2026-10-02T06:12:00', 'soon']) expect(() => homeView(input(book, { pendingIn: [{ ...pending('checking', 1, '2026-10-02', 'X'), firstSeen: at }] })), at).toThrow();
+  });
+
+  it('11.4 A57 usually posts within: from at least 3 earlier ones of the same kind on the same account; a paycheck learns from paychecks, other money in from other money in', () => {
+    const book = openTestBook({ settings: { paycheckRule: { contains: 'made up payroll' } } });
+    const HOUR = 3_600_000;
+    const ex = (account: 'checking' | 'savings', description: string, hours: number, day: number) => ({ account, description, ms: hours * HOUR, postedAt: `2026-09-${String(day).padStart(2, '0')}T12:00:00.000Z` });
+    const postingExamples = [
+      ex('checking', 'MADE UP PAYROLL', 20, 1),
+      ex('checking', 'MADE UP PAYROLL', 22, 15),
+      ex('checking', 'MADE UP PAYROLL', 21, 30),
+      // Other money in on checking: two only.
+      ex('checking', 'ZELLE FROM MADE UP FRIEND', 1, 3),
+      ex('checking', 'ZELLE FROM MADE UP FRIEND', 2, 4),
+      // Paychecks into savings: their own account.
+      ex('savings', 'MADE UP PAYROLL', 70, 1),
+      ex('savings', 'MADE UP PAYROLL', 72, 15),
+      ex('savings', 'MADE UP PAYROLL', 71, 30),
+    ];
+    const view = tracking(
+      homeView(
+        input(book, {
+          pendingIn: [pending('checking', 180_000, '2026-10-02', 'MADE UP PAYROLL'), pending('checking', 2_500, '2026-10-02', 'ZELLE FROM MADE UP FRIEND'), pending('savings', 40_000, '2026-10-02', 'MADE UP PAYROLL')],
+          postingExamples,
+        }),
+      ),
+    );
+    expect(view.onItsWayIn.map((p) => [p.account, p.paycheck, p.usually])).toEqual([
+      ['checking', true, { within: 22, unit: 'hours' }],
+      ['checking', false, null],
+      ['savings', true, { within: 3, unit: 'days' }],
+    ]);
+    // With the paycheck rule changed, what counts as the same kind changes with it.
+    const noRule = openTestBook({ settings: { paycheckRule: null } });
+    const other = tracking(homeView(input(noRule, { pendingIn: [pending('checking', 2_500, '2026-10-02', 'ZELLE FROM MADE UP FRIEND')], postingExamples })));
+    // All five on checking are other money in now: 1, 2, 20, 21 and 22 hours; three in four of five is the fourth.
+    expect(other.onItsWayIn[0]?.usually).toEqual({ within: 21, unit: 'hours' });
   });
 
   it('11.4 money on its way in changes nothing else on Home: safe to spend, the buckets, what needs attention', () => {

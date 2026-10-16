@@ -1,4 +1,5 @@
 import { assertCents, bucketLevel, cardDue, matchesTextRule, type BankBalances, type Book, type BucketLevel, type CardStatement, type Cents, type IsoDate, type SelfCheck, type TextRule } from '@budget-app/money';
+import { usuallyPostsWithin, type PostingExample } from '../bank/posting-times.js';
 import { onItsWayToSavings } from './payday.js';
 
 // What the Home screen shows, worked out on the server from the book. The
@@ -40,6 +41,9 @@ export interface HomeInput {
   // 11.4 (A56): money still pending into checking or savings, as the bank
   // last showed it. None when the bank cannot be read, or left out.
   readonly pendingIn?: readonly PendingMoneyIn[];
+  // 11.4 (A57): earlier deposits the app saw go from pending to posted, for
+  // "usually posts within". None when left out.
+  readonly postingExamples?: readonly PostingExample[];
 }
 
 // 11.4: a deposit still pending at the bank, which the books count only
@@ -49,14 +53,29 @@ export interface PendingMoneyIn {
   readonly amount: Cents;
   readonly date: IsoDate;
   readonly description: string;
+  // 11.4 (A57): when the app first saw it pending, as a time with its offset
+  // in his home time zone; null or left out when that is not known.
+  readonly firstSeen?: string | null;
 }
 
-// 11.4: what Home shows of it: paycheck when the paycheck rule matches it.
+// 11.4: what Home shows of it: paycheck when the paycheck rule matches it;
+// since when it has been pending; and, with at least 3 earlier ones of its
+// kind on its account, how long they usually took to post (null otherwise).
 export interface OnItsWayIn {
   readonly account: 'checking' | 'savings';
   readonly amount: Cents;
   readonly date: IsoDate;
   readonly paycheck: boolean;
+  // When the app first saw it pending (a time with its offset in his home
+  // time zone), or, when that is not known, the day the bank dated it.
+  readonly since: { readonly at: string } | { readonly day: IsoDate };
+  readonly usually: UsuallyPosts | null;
+}
+
+// 11.4 (A57): "Usually posts within 9 hours": never a promise.
+export interface UsuallyPosts {
+  readonly within: number;
+  readonly unit: 'hours' | 'days';
 }
 
 // Each account as the bank gave it: posted, available (null when the bank
@@ -272,18 +291,25 @@ export function homeView(input: HomeInput): HomeView {
     waitingInReview,
     checkedAt: checkedCheckedAt(input.checkedAt ?? null),
     timeZone: settings.homeTimeZone,
-    onItsWayIn: onItsWayIn(input.pendingIn ?? [], settings.paycheckRule),
+    onItsWayIn: onItsWayIn(input.pendingIn ?? [], settings.paycheckRule, input.postingExamples ?? []),
   };
 }
 
-// 11.4: "Paycheck on its way" when the paycheck rule matches it (3.1).
-function onItsWayIn(pending: readonly PendingMoneyIn[], paycheckRule: TextRule | null): OnItsWayIn[] {
+// 11.4: "Paycheck on its way" when the paycheck rule matches it (3.1). A57:
+// pending since when the app first saw it, and how long earlier ones of the
+// same kind (a paycheck, or other money in, by the paycheck rule now) on the
+// same account usually took to post.
+function onItsWayIn(pending: readonly PendingMoneyIn[], paycheckRule: TextRule | null, examples: readonly PostingExample[]): OnItsWayIn[] {
   const order = (p: PendingMoneyIn): string => `${p.date} ${p.account === 'checking' ? 0 : 1}`;
   return [...pending]
     .sort((a, b) => (order(a) < order(b) ? -1 : order(a) > order(b) ? 1 : 0))
     .map((p) => {
       assertCents(p.amount, 'money on its way in');
-      return { account: p.account, amount: p.amount, date: p.date, paycheck: matchesTextRule(paycheckRule, p.description) };
+      const paycheck = matchesTextRule(paycheckRule, p.description);
+      const firstSeen = p.firstSeen ?? null;
+      if (firstSeen !== null && (!ISO_TIME.test(firstSeen) || Number.isNaN(Date.parse(firstSeen)))) throw new Error(`not a time with its offset: ${firstSeen}`);
+      const alike = examples.filter((e) => e.account === p.account && matchesTextRule(paycheckRule, e.description) === paycheck);
+      return { account: p.account, amount: p.amount, date: p.date, paycheck, since: firstSeen === null ? { day: p.date } : { at: firstSeen }, usually: usuallyPostsWithin(alike) };
     });
 }
 
