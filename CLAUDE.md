@@ -157,7 +157,9 @@ long). It replaces running everything before every commit:
 
 ## Status
 
-- Rulebook: draft 23 (section 34c and 34d, Oct 15: the payday alert 10.14 and
+- Rulebook: draft 24 (section 35, Oct 15: 9.8, the statement date Bank of
+  America leaves out, and the setting in section 2, A52; draft 23, section
+  34c and 34d, Oct 15: the payday alert 10.14 and
   the webhook sync line in section 2, both with his OK, Oct 15; draft 22,
   section 34, Oct 14: the pay schedule, A48). Section 15 confirmed (a to j), section 17 changes
   after the Phase 1 review, section 18 his answers (A1 to A10, and the
@@ -1849,8 +1851,32 @@ long). It replaces running everything before every commit:
   cards' statements come through without the statement date, and the app
   drops a card with none silently: no card reminders at all (QUESTIONS.md
   A50, A52).
+- A52, the statement date Bank of America leaves out (Oct 15, 2026, branch
+  a52-statement-days, his pick: option 1, and say so on Home and Settings).
+  Rulebook draft 24: 9.8, section 2, section 35.
+  - Money: Settings.everydayCardStatementDays and oldCardStatementDays
+    (null to start, 1 to 60); the money math only keeps them.
+  - Server: bank/statements.ts cardStatement(card, raw, statementDays): no
+    statement date from the bank, the due date less the days. The Keeper
+    reads each card with its own days (#readStatements) and keeps the cards
+    whose statement it cannot read (CardRemindersOff: no-statement-date or
+    unreadable), for Home (Attention card-reminders-off), Settings
+    (cardsOff) and the alert plan's statements. status.ts reads the days
+    too. history-db.ts savedSetup: older setup days open with none.
+  - Screens: Home's row (home-text.ts cardsOffText; opens Settings when the
+    days would fix it); Settings: notices at the top of "Alerts and
+    reminders" and two rows with a sheet (Clear the days). Demo life
+    cards-off.
+  - Tests: money 0-ground-rules; server statements, statement-days (the
+    Keeper, restarts, overdue, the status report), choices-settings,
+    history-check (the guard), worked example bank 17; web settings-text,
+    home-text; browser home, settings, design (cards-off), design-settings
+    (the sheet), in Chromium. Break-it "[a52]": 20 of 20 caught, and 3
+    older breaks pointed at the code again, caught.
+  - Not deployed. After the deploy he enters the days for each card from a
+    statement (Settings, "statement to due date").
 - The Notifications card's double tap (Oct 15, 2026, branch
-  notifications-double-tap, B244): after Turn on, Send a test alert or Turn
+  notifications-double-tap, B245): after Turn on, Send a test alert or Turn
   off was answered, the card took taps again before Settings showed the
   numbers asked for after it (CI's WebKit, PR #31: two /api/push/on; after
   Turn off a second tap could turn them back on). Its buttons now stay off
@@ -1858,10 +1884,8 @@ long). It replaces running everything before every commit:
   do (notifications-card.tsx answered). notifications.test.ts holds the
   numbers at that moment for each button, and with the numbers read again
   mid-request. Break-it "[notifications-b92]": 3 of 3 caught, and "[push] a
-  double tap on Turn on" pointed again, caught (Chromium, --only
-  test/browser/notifications.test.ts). Not deployed.
-- Waiting on: A52 (the statement date Bank of America leaves out: card
-  reminders are off until it is built, needed before the old card's
-  November cycle); A51 (the shape of the weekly
+  double tap on Turn on" pointed again, caught (Chromium and WebKit, each
+  judged by --only test/browser/notifications.test.ts). Not deployed.
+- Waiting on: the A52 deploy, at his word, then the days for each card; A51 (the shape of the weekly
   statement check); his check of part B (the list at its top), and the items
   in docs/later.txt marked DECIDE.

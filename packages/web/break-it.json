@@ -548,8 +548,8 @@
   {
     "section": "home",
     "file": "packages/server/src/demo/scenarios.ts",
-    "find": "    madeUpData: true,\n    seenTakeBacks: new Set(),\n    lastChecked: s.bankNotRead",
-    "replace": "    madeUpData: false,\n    seenTakeBacks: new Set(),\n    lastChecked: s.bankNotRead",
+    "find": "    madeUpData: true,\n    seenTakeBacks: new Set(),\n    ...(s.cardsOff",
+    "replace": "    madeUpData: false,\n    seenTakeBacks: new Set(),\n    ...(s.cardsOff",
     "why": "safety: made-up numbers do not say so"
   },
   {
@@ -2153,21 +2153,21 @@
     "file": "packages/web/src/screens/notifications-card.tsx",
     "find": "const doing = busy ?? (answered !== null && answered.on === push ? answered.act : null);",
     "replace": "const doing = busy;",
-    "why": "[notifications-b92] B244 after an answer the card takes taps again before Settings shows the numbers asked for after it"
+    "why": "[notifications-b92] B245 after an answer the card takes taps again before Settings shows the numbers asked for after it"
   },
   {
     "section": "home",
     "file": "packages/web/src/screens/notifications-card.tsx",
     "find": "setAnswered({ on: shown.current, act: which });",
     "replace": "setAnswered({ on: push, act: which });",
-    "why": "[notifications-b92] B244 numbers read again while a request was on its way let the card take taps before the numbers asked for after it"
+    "why": "[notifications-b92] B245 numbers read again while a request was on its way let the card take taps before the numbers asked for after it"
   },
   {
     "section": "home",
     "file": "packages/web/src/screens/notifications-card.tsx",
     "find": "{doing === 'on' ? 'Turning on…' : 'Turn on'}",
     "replace": "{doing !== null ? 'Turning on…' : 'Turn on'}",
-    "why": "[notifications-b92] B244 after Turn off, Turn on says Turning on… until the fresh numbers are shown"
+    "why": "[notifications-b92] B245 after Turn off, Turn on says Turning on… until the fresh numbers are shown"
   },
   {
     "section": "home",
@@ -2343,5 +2343,47 @@
     "find": "        {detail.labeled !== undefined && (",
     "replace": "        {false && (",
     "why": "[b226] Review never shows the hint"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/home-text.ts",
+    "find": "  return off.why === 'no-statement-date'",
+    "replace": "  return off.why !== 'no-statement-date'",
+    "why": "[a52] 9.8 each card off said with the other why"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/settings-text.ts",
+    "find": "`${daysText(days)} before the due date`",
+    "replace": "`${daysText(days)} after the due date`",
+    "why": "[a52] 9.8 the days said to be after the due date"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "{...(item.why === 'no-statement-date' ? { href: pathOf('settings') } : {})} ",
+    "replace": "",
+    "why": "[a52] 9.8 the card off for want of the days does not open Settings"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "editing.what === 'statement-days-everyday' ? { everydayCardStatementDays: r.value[0] ?? 0 } : { oldCardStatementDays: r.value[0] ?? 0 }",
+    "replace": "editing.what === 'statement-days-everyday' ? { oldCardStatementDays: r.value[0] ?? 0 } : { everydayCardStatementDays: r.value[0] ?? 0 }",
+    "why": "[a52] 9.8 each card's sheet sets the other card's days"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "        {view.cardsOff.length > 0 && (",
+    "replace": "        {false && (",
+    "why": "[a52] 9.8 Settings does not show which cards are off"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "e.what === 'statement-days-everyday' ? { everydayCardStatementDays: null } : { oldCardStatementDays: null }",
+    "replace": "e.what === 'statement-days-everyday' ? { oldCardStatementDays: null } : { everydayCardStatementDays: null }",
+    "why": "[a52] 9.8 Clear the days clears the other card's"
   }
 ]

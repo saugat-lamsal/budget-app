@@ -896,7 +896,11 @@ A52. ADDED Oct 15 (A50c found it): Bank of America sends each card's due
      With any of them: a card whose statement cannot be read says so on Home
      and Settings ("Card reminders are off for the old card: the bank did
      not send its statement date"), never dropped without a word.
-     Not built: waiting on his pick.
+     ANSWERED Oct 15 (option 1, "make a card with no readable statement say
+     so on Home and Settings"): rulebook draft 24, 9.8, section 2 and 35.
+     BUILT Oct 15 (branch a52-statement-days): Settings has "Everyday card:
+     statement to due date" and "Old card: statement to due date" (not
+     entered to start, 1 to 60 days, can be cleared). B242 to B244 below.
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
@@ -2881,7 +2885,23 @@ B243. The deploy check's first real run: Fly built and pushed the new image,
       that run: the throwaway machine was new (in iad), with no volume, no
       ports, the server never started (it sleeps until the check runs),
       removed when it ended; the app's own machine was not touched.
-B244. Settings' Notifications card, the same gap B192 closed for Review, the
+B244. A52 as built (9.8). The bank's own statement date wins whenever it
+      sends one; the days are used only when it sends none. With the days
+      set, the statement date is the due date less them; the due date, the
+      balance and the minimum still come from the bank, and the days never
+      make up for one of those missing. A card is said to be off only for a
+      statement the bank sent: "no statement date" when the days would read
+      it (setting them turns the reminders on, and its row on Home opens
+      Settings), "cannot be read" otherwise (nothing on Settings would fix
+      it, so its row opens nothing). A card account the bank sends no
+      statement for at all is as before, not said: his bank sends one for
+      each card, and the made-up bank in the tests has none unless a test
+      sets one. On Home the off cards come right after an overdue card; on
+      Settings they are notices at the top of "Alerts and reminders", above
+      the two rows that set the days. A setup day saved before the setting
+      (his, Oct 12) opens with no days set, as it was (B242's guard covers
+      it). Demo life cards-off. Worked example bank 17.
+B245. Settings' Notifications card, the same gap B192 closed for Review, the
       bucket lists and Payday (found on CI's WebKit runner, PR #31, run
       38829682106: "a double tap on Turn on" sent two). After Turn on, Send a
       test alert or Turn off was answered, the card's buttons took taps

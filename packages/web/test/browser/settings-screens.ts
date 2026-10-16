@@ -2,7 +2,7 @@ import { payoffCountdown, type Book, type Cents, type IsoDate, type SortingRule 
 import type { BrowserContext, Page } from 'playwright';
 import { dayWithYear } from '../../src/ui/dates.js';
 import { daysText, leftoverText, lockAmountsText, notReadText, payScheduleText,
-  permissionWarnText, quietHoursText, reminderText, textRuleText, timeText, zoneText } from '../../src/screens/settings-text.js';
+  permissionWarnText, quietHoursText, reminderText, statementDaysText, textRuleText, timeText, zoneText } from '../../src/screens/settings-text.js';
 import { openScenario, readCents, showScenario, untilAnswered, waitOrReport } from './harness.js';
 
 // Opens Settings on a made-up life, once its numbers are in. (openScenario
@@ -46,7 +46,7 @@ export interface SettingsNumbers {
   readonly log: readonly string[];
 }
 
-const VALUE_ROWS = ['paycheck-rule', 'pay-schedule', 'early-days', 'leftover', 'mom-rule', 'low-alert', 'reminders', 'review-time', 'time-zone', 'quiet-hours', 'not-read', 'mismatch-wait', 'permission-warn', 'lock-amounts', 'promo'] as const;
+const VALUE_ROWS = ['paycheck-rule', 'pay-schedule', 'early-days', 'leftover', 'mom-rule', 'low-alert', 'reminders', 'review-time', 'time-zone', 'quiet-hours', 'not-read', 'mismatch-wait', 'permission-warn', 'lock-amounts', 'promo', 'statement-days-everyday', 'statement-days-old'] as const;
 
 export async function readSettings(page: Page): Promise<SettingsNumbers> {
   const text = async (testId: string): Promise<string> => (await page.getByTestId(testId).innerText()).replace(/\s+/g, ' ').trim();
@@ -135,6 +135,8 @@ export function settingsOf(book: Book, today: IsoDate): SettingsNumbers {
       'permission-warn': permissionWarnText(s.bankPermissionWarnDays),
       'lock-amounts': lockAmountsText(s.amountsOnLockScreen),
       promo: s.oldCardPromoEndDate === null ? 'Not entered' : dayWithYear(s.oldCardPromoEndDate),
+      'statement-days-everyday': statementDaysText(s.everydayCardStatementDays),
+      'statement-days-old': statementDaysText(s.oldCardStatementDays),
     },
     target: { low: s.momMonthlyTarget.low, high: s.momMonthlyTarget.high },
     perPayday: payoff.on ? payoff.perPayday : null,

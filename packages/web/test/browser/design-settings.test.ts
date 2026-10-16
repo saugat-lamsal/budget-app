@@ -9,7 +9,7 @@ import { openSettings, showSettings } from './settings-screens.js';
 // home bar, the phone's text size and reduced-motion settings, money written
 // one way, and what changes said in words, not by color alone.
 
-const STATES = ['settings-busy', 'normal', 'settings-first-sync', 'mismatch', 'big', 'bank-not-read', 'not-set-up', 'error'] as const;
+const STATES = ['settings-busy', 'normal', 'settings-first-sync', 'mismatch', 'big', 'bank-not-read', 'not-set-up', 'error', 'cards-off'] as const;
 
 // Every sheet there is on Settings: [name, made-up life, how to open it].
 const SHEETS: readonly (readonly [string, string, (page: Page) => Promise<void>])[] = [
@@ -56,6 +56,10 @@ const SHEETS: readonly (readonly [string, string, (page: Page) => Promise<void>]
   ['10.10 amounts on the lock screen', 'normal', async (page) => {
     await page.getByTestId('row-lock-amounts').click();
     await page.getByTestId('field-lock-amounts').waitFor();
+  }],
+  ['9.8 A52 the days from statement to due date', 'cards-off', async (page) => {
+    await page.getByTestId('row-statement-days-old').click();
+    await page.getByTestId('field-statement-days').waitFor();
   }],
   ['the promo end date, set', 'settings-busy', async (page) => {
     await page.getByTestId('row-promo').click();

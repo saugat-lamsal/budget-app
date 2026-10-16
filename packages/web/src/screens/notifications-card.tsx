@@ -34,7 +34,7 @@ export function NotificationsCard({ push, onSaid, reload }: { readonly push: Pus
   const [facts, setFacts] = useState<DeviceFacts | null>(null);
   const [busy, setBusy] = useState<Act | null>(null);
   // Nor after an answer, while Settings still shows the numbers from before it
-  // (B244, as B92 and B192 elsewhere): the card can say Off then, with Turn on
+  // (B245, as B92 and B192 elsewhere): the card can say Off then, with Turn on
   // under the second tap of a double tap (on Turn off, too). The buttons stay
   // off until the numbers asked for after the answer are shown.
   const shown = useRef(push);

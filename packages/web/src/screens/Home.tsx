@@ -6,7 +6,7 @@ import { pathOf, setupPath } from '../app/routes.js';
 import { Banner, BottomSheet, BucketBar, Button, Card, LinkButton, ListRow, MadeUpPill, Money, Skeleton, StateMessage, StatusLabel } from '../ui/blocks.js';
 import { asOfText, checkedAtText, longDate, shortDate } from '../ui/dates.js';
 import { Icon } from '../ui/Icon.js';
-import { dueText, paydayText, stillToSetText, waitingText } from './home-text.js';
+import { cardsOffText, dueText, paydayText, stillToSetText, waitingText } from './home-text.js';
 
 // Home: safe to spend is the one main number. Below it, what needs
 // attention, then needs and wants as compact bars.
@@ -330,7 +330,7 @@ function CheckFigures({ check, detail, timeZone }: { readonly check: SelfCheck; 
 }
 
 function rowKey(item: Attention): string {
-  if (item.kind === 'card-due' || item.kind === 'card-overdue') return `${item.kind}-${item.card}`;
+  if (item.kind === 'card-due' || item.kind === 'card-overdue' || item.kind === 'card-reminders-off') return `${item.kind}-${item.card}`;
   if (item.kind === 'bank-took-back') return `${item.kind}-${item.id}`;
   return item.kind;
 }
@@ -375,6 +375,11 @@ function AttentionRow({ item, onSavings, onTakeBack }: { readonly item: Attentio
           testId={testId}
         />
       );
+    case 'card-reminders-off': {
+      // 9.8 (A52): never dropped without a word. The days on Settings turn them on when the date is what is missing.
+      const words = cardsOffText(item);
+      return <ListRow icon="alert" tone="warning" title={words.title} detail={words.detail} {...(item.why === 'no-statement-date' ? { href: pathOf('settings') } : {})} testId={testId} />;
+    }
     case 'review':
       return (
         <ListRow

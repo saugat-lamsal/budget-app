@@ -14,6 +14,7 @@ import { LoginCard } from './login-card.js';
 import { NotificationsCard } from './notifications-card.js';
 import { SyncCard } from './sync-card.js';
 import { bankRuleText } from './setup-text.js';
+import { cardsOffText } from './home-text.js';
 import {
   LEFTOVER_NAMES,
   LOGIN_LINES,
@@ -37,6 +38,7 @@ import {
   ruleText,
   settingValueText,
   settingsDoneText,
+  statementDaysText,
   textRuleText,
   timeText,
   ZONE_CHOICES,
@@ -112,7 +114,7 @@ function SettingsLoading() {
 
 // What is being changed in the sheet.
 type Editing =
-  | { readonly what: 'split' | 'reserve' | 'target' | 'low-alert' | 'reminders' | 'review-time' | 'time-zone' | 'quiet-hours' | 'not-read' | 'mismatch-wait' | 'permission-warn' | 'lock-amounts' | 'leftover' | 'promo' | 'paycheck-rule' | 'pay-schedule' | 'mom-rule' | 'early-days' }
+  | { readonly what: 'split' | 'reserve' | 'target' | 'low-alert' | 'reminders' | 'review-time' | 'time-zone' | 'quiet-hours' | 'not-read' | 'mismatch-wait' | 'permission-warn' | 'lock-amounts' | 'leftover' | 'promo' | 'paycheck-rule' | 'pay-schedule' | 'mom-rule' | 'early-days' | 'statement-days-everyday' | 'statement-days-old' }
   // A sorting rule: null to add one.
   | { readonly what: 'rule'; readonly rule: RuleRow | null };
 
@@ -240,8 +242,23 @@ function SettingsReady({ view, reload, onChanged }: { readonly view: Tracking; r
       </Card>
 
       <Card title="Alerts and reminders" testId="alerts-card">
+        {/* 9.8 (A52): a card whose statement cannot be read is never dropped without a word. */}
+        {view.cardsOff.length > 0 && (
+          <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
+            {view.cardsOff.map((off) => {
+              const words = cardsOffText(off);
+              return (
+                <Notice key={off.card} tone="warning" icon="alert" testId={`cards-off-${off.card}`}>
+                  {words.title}. {words.detail}
+                </Notice>
+              );
+            })}
+          </div>
+        )}
         {row('low-alert', 'Low-bucket alert', `${s.lowBucketAlertPercent}%`, 'Of what needs or wants started the pay period with')}
         {textRow('reminders', 'Card reminders', reminderText(s.cardReminderDaysBefore), 'Before each card is due')}
+        {textRow('statement-days-everyday', 'Everyday card: statement to due date', statementDaysText(s.everydayCardStatementDays), 'Used only when the bank does not send the statement date')}
+        {textRow('statement-days-old', 'Old card: statement to due date', statementDaysText(s.oldCardStatementDays), 'Used only when the bank does not send the statement date')}
         {row('review-time', 'Daily review', timeText(s.dailyReviewTime), 'Only when something waits in Review')}
         {textRow('time-zone', 'Home time zone', zoneText(s.homeTimeZone), 'Today is the date here, and the daily review time is in it')}
         {textRow('quiet-hours', 'Quiet hours', quietHoursText(s.quietHours), 'No alerts then. What comes due waits until they end')}
@@ -520,6 +537,10 @@ function startFields(editing: Editing, s: Settings): Fields {
       return { schedule: s.paySchedule, scheduleWas: s.paySchedule, days: String(s.payScheduleDays) };
     case 'early-days':
       return { days: String(s.earlyPaycheckDays) };
+    case 'statement-days-everyday':
+      return { days: s.everydayCardStatementDays === null ? '' : String(s.everydayCardStatementDays) };
+    case 'statement-days-old':
+      return { days: s.oldCardStatementDays === null ? '' : String(s.oldCardStatementDays) };
     case 'rule':
       return editing.rule === null ? { kind: 'purchase', text: '', to: 'needs' } : { kind: editing.rule.for, text: editing.rule.contains, to: editing.rule.to };
   }
@@ -605,6 +626,12 @@ function readSettings(editing: Editing, f: Fields): Reading<Partial<Settings>> {
       const r = wholes(['days']);
       return 'problem' in r ? r : { value: { earlyPaycheckDays: r.value[0] ?? 0 } };
     }
+    case 'statement-days-everyday':
+    case 'statement-days-old': {
+      const r = wholes(['days']);
+      if ('problem' in r) return r;
+      return { value: editing.what === 'statement-days-everyday' ? { everydayCardStatementDays: r.value[0] ?? 0 } : { oldCardStatementDays: r.value[0] ?? 0 } };
+    }
     case 'rule':
       return { problem: 'not a setting' };
   }
@@ -635,6 +662,8 @@ const TITLES: Readonly<Record<Editing['what'], string>> = {
   'pay-schedule': 'Pay schedule',
   'mom-rule': 'Mom rule',
   'early-days': 'Early paycheck check',
+  'statement-days-everyday': 'Everyday card: statement to due date',
+  'statement-days-old': 'Old card: statement to due date',
   rule: 'Sorting rule',
 };
 
@@ -740,6 +769,11 @@ function SettingSheet({ editing, view, onClose, onDone }: { readonly editing: Ed
               Clear the rule
             </Button>
           ) : null}
+          {((e.what === 'statement-days-everyday' && view.settings.everydayCardStatementDays !== null) || (e.what === 'statement-days-old' && view.settings.oldCardStatementDays !== null)) && (
+            <Button variant="secondary" wide disabled={sending} testId="sheet-clear" onClick={() => send({ settings: e.what === 'statement-days-everyday' ? { everydayCardStatementDays: null } : { oldCardStatementDays: null } })}>
+              Clear the days
+            </Button>
+          )}
           {e.what === 'promo' && view.settings.oldCardPromoEndDate !== null && (
             <Button variant="secondary" wide disabled={sending} testId="sheet-clear" onClick={() => send({ settings: { oldCardPromoEndDate: null } })}>
               Clear the date
@@ -911,6 +945,18 @@ function SheetFields({ editing, get, set, view, kind }: { readonly editing: Edit
       );
     case 'early-days':
       return <TextField label="Days" kind="whole" value={get('days')} onChange={set('days')} testId="field-early-days" />;
+    case 'statement-days-everyday':
+    case 'statement-days-old':
+      return (
+        <TextField
+          label="Days from the statement date to the due date"
+          kind="whole"
+          value={get('days')}
+          onChange={set('days')}
+          testId="field-statement-days"
+          hint="Read it off a statement: the payment due date less the statement closing date. 1 to 60. Used only when the bank does not send the statement date."
+        />
+      );
     case 'rule': {
       const choices = view.ruleChoices[kind] as readonly RuleSpec['to'][];
       const to = get('to');

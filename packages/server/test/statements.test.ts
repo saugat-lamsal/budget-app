@@ -36,6 +36,29 @@ describe('9 card statements from the bank', () => {
     expect(cardStatement('old-card', { ...card, minimum_payment_amount: 0.001 })).toMatchObject({ ok: false, why: /whole number of cents/ });
   });
 
+  // A52 (found by A50c on his real accounts, Oct 15, 2026): Bank of America
+  // sends each card's due date, balance and minimum, but no statement date.
+  it('9.8 no statement date from the bank: the statement date is the due date less the days set for that card', () => {
+    const noDate = { ...card, last_statement_issue_date: null };
+    expect(cardStatement('old-card', noDate, 25)).toEqual({
+      ok: true,
+      statement: { card: 'old-card', closingDate: '2026-09-28', dueDate: '2026-10-23', statementBalance: 45_025, minimumPayment: 3_500 },
+    });
+    // One day, and back over the end of a month and of a year.
+    expect(cardStatement('old-card', noDate, 1)).toMatchObject({ ok: true, statement: { closingDate: '2026-10-22' } });
+    expect(cardStatement('everyday-card', { ...noDate, next_payment_due_date: '2027-01-20' }, 25)).toMatchObject({ ok: true, statement: { closingDate: '2026-12-26', dueDate: '2027-01-20' } });
+    expect(cardStatement('everyday-card', { ...noDate, next_payment_due_date: '2028-03-01' }, 1)).toMatchObject({ ok: true, statement: { closingDate: '2028-02-29' } });
+  });
+
+  it('9.8 the bank\'s own statement date wins when it sends one; with none and no days set there is no statement, and it says why', () => {
+    expect(cardStatement('everyday-card', card, 10)).toMatchObject({ ok: true, statement: { closingDate: '2026-09-28' } });
+    expect(cardStatement('everyday-card', { ...card, last_statement_issue_date: null }, null)).toEqual({ ok: false, why: 'the bank did not give the statement date' });
+    expect(cardStatement('everyday-card', { ...card, last_statement_issue_date: null })).toEqual({ ok: false, why: 'the bank did not give the statement date' });
+    // The days set never make up for anything else missing.
+    expect(cardStatement('old-card', { ...card, last_statement_issue_date: null, next_payment_due_date: null }, 25)).toEqual({ ok: false, why: 'the bank did not give the due date' });
+    expect(cardStatement('old-card', { ...card, last_statement_issue_date: null, minimum_payment_amount: null }, 25)).toEqual({ ok: false, why: 'the bank did not give the minimum payment' });
+  });
+
   it('9.1 statements that came before his accounts were set are there once they are set (found in the live test)', async () => {
     const h = await connected({
       history: (fake) => {

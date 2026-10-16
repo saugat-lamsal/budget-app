@@ -152,6 +152,19 @@ describe.each(ENGINES)('Home in %s', (_name, engine) => {
     await page.context().close();
   });
 
+  it('9.8 A52 a card whose reminders are off says so in Needs attention, and why; the one the days would fix opens Settings', async () => {
+    const page = await openScenario(await browser().newContext(phone()), base(), 'cards-off');
+    const rows = await page.getByTestId('attention').locator('[data-testid^="attention-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
+    expect(rows.slice(0, 2)).toEqual(['attention-card-reminders-off-everyday-card', 'attention-card-reminders-off-old-card']);
+    // No due line for a card whose reminders are off.
+    expect(rows.filter((r) => r?.startsWith('attention-card-due'))).toEqual([]);
+    expect(await textAt(page, 'attention-card-reminders-off-everyday-card')).toBe('Card reminders are off for the everyday card The bank sent a statement for it that cannot be read.');
+    expect(await textAt(page, 'attention-card-reminders-off-old-card')).toBe('Card reminders are off for the old card The bank did not send its statement date. Enter the days from its statement to its due date in Settings.');
+    await page.getByTestId('attention-card-reminders-off-old-card').click();
+    await page.waitForURL(/\/settings$/);
+    await page.context().close();
+  });
+
   it('10.6 a take-back stays in Needs attention until he says he has seen it (B84)', async () => {
     const { book } = life('took-back');
     const entry = book.changeLog().find((e) => e.kind === 'bank-took-back');

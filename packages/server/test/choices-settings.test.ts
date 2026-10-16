@@ -68,6 +68,8 @@ describe('section 2 reading what the phone sent: a settings change', () => {
       totalsMismatchAlertHours: 6,
       amountsOnLockScreen: true,
       bankPermissionWarnDays: 10,
+      everydayCardStatementDays: 25,
+      oldCardStatementDays: null,
     };
     expect(Object.keys(patch).sort()).toEqual(Object.keys(DEFAULT_SETTINGS).sort());
     const request = { id: 'abcdefgh', settings: patch, confirmed: true, seen: '0123456789abcdef'.repeat(2) };
@@ -113,6 +115,8 @@ describe('section 2 reading what the phone sent: a settings change', () => {
     ['a preview key that is not one', { id: 'abcdefgh', settings: { payScheduleDays: 7 }, seen: 'not a key' }],
     ['something more', { id: 'abcdefgh', settings: { payScheduleDays: 7 }, also: 1 }],
     ['section 2 a pay schedule that is not one of the two', { id: 'abcdefgh', settings: { paySchedule: 'monthly' } }],
+    ['9.8 days from statement to due date as text', { id: 'abcdefgh', settings: { everydayCardStatementDays: '25' } }],
+    ['9.8 days from statement to due date that are not whole', { id: 'abcdefgh', settings: { oldCardStatementDays: 2.5 } }],
   ])('2 refuses %s', (_why, value) => {
     expect(parseSettingsRequest(value)).toBeNull();
     expect(parseRequest(value)).toBeNull();
@@ -218,6 +222,8 @@ describe('0.2 every setting in section 2 can be changed from Settings', () => {
     quietHours: { from: '00:00', to: '00:00' },
     bankNotReadAlertHours: 168,
     amountsOnLockScreen: true,
+    everydayCardStatementDays: 60,
+    oldCardStatementDays: 1,
   };
   it.each(Object.entries(NEW))('0.2 %s', (key, value) => {
     const { book, desk } = setup();
@@ -245,6 +251,8 @@ describe('0.2 a setting the money math refuses changes nothing and says why', ()
     [{ homeTimeZone: 'Mars/Olympus_Mons' }, 'Home time zone must be the name of a time zone, such as America/New_York. Nothing was changed.'],
     [{ quietHours: { from: '22:00', to: '7:00' } }, 'Quiet hours must be two times, HH:MM. Nothing was changed.'],
     [{ bankNotReadAlertHours: 0 }, 'The bank-not-read alert must be a whole number of hours from 1 to 168. Nothing was changed.'],
+    [{ everydayCardStatementDays: 0 }, "The days from the everyday card's statement to its due date must be a whole number from 1 to 60. Nothing was changed."],
+    [{ oldCardStatementDays: 61 }, "The days from the old card's statement to its due date must be a whole number from 1 to 60. Nothing was changed."],
   ] satisfies [Partial<Settings>, string][])('0.2 %o', (patch, why) => {
     const { book, desk } = setup();
     const before = snapshot(book);

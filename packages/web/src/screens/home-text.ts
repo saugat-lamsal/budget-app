@@ -1,3 +1,5 @@
+import type { CardRemindersOff } from '@budget-app/server/views';
+
 // Words on Home.
 
 // 11.2: the days to payday. A late paycheck says late (B35).
@@ -16,6 +18,15 @@ export function waitingText(waiting: number): string {
 export function dueText(daysLeft: number): string {
   if (daysLeft === 0) return 'due today';
   return `due in ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`;
+}
+
+// 9.8 (A52): a card whose reminders are off, on Home and on Settings, in the
+// rulebook's words.
+export function cardsOffText(off: CardRemindersOff): { readonly title: string; readonly detail: string } {
+  const title = `Card reminders are off for the ${off.card === 'everyday-card' ? 'everyday card' : 'old card'}`;
+  return off.why === 'no-statement-date'
+    ? { title, detail: 'The bank did not send its statement date. Enter the days from its statement to its due date in Settings.' }
+    : { title, detail: 'The bank sent a statement for it that cannot be read.' };
 }
 
 // After setup day: the rules not set yet (section 2), and what waits for them.

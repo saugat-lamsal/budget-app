@@ -1,6 +1,6 @@
 import type { RecheckedItem } from '@budget-app/money';
 import { describe, expect, it } from 'vitest';
-import { SETTING_NAMES, ZONE_CHOICES, daysText, leftoverText, lockAmountsText, notReadText, payScheduleText, permissionWarnText, quietHoursText, recheckedText, reminderText, ruleDoneText, ruleText, settingValueText, settingsDoneText, splitText, textRuleText, timeText, zoneText } from '../src/screens/settings-text.js';
+import { SETTING_NAMES, ZONE_CHOICES, daysText, leftoverText, lockAmountsText, notReadText, payScheduleText, permissionWarnText, quietHoursText, recheckedText, reminderText, ruleDoneText, ruleText, settingValueText, settingsDoneText, splitText, statementDaysText, textRuleText, timeText, zoneText } from '../src/screens/settings-text.js';
 
 // The words on the Settings screen. Every value comes from the money math;
 // these only write it, and must write it right.
@@ -59,6 +59,16 @@ describe('section 2 how each setting is written', () => {
     expect(permissionWarnText(60)).toBe('60 days before');
     expect(settingValueText('bankPermissionWarnDays', 14)).toBe('14 days before');
     expect(SETTING_NAMES.bankPermissionWarnDays).toBe('Bank permission ending');
+  });
+
+  it('9.8 the days from statement to due date, for each card: not entered, or how many days before the due date', () => {
+    expect(statementDaysText(null)).toBe('Not entered');
+    expect(statementDaysText(1)).toBe('1 day before the due date');
+    expect(statementDaysText(25)).toBe('25 days before the due date');
+    expect(settingValueText('oldCardStatementDays', 25)).toBe('25 days before the due date');
+    expect(settingValueText('everydayCardStatementDays', null)).toBe('Not entered');
+    expect(SETTING_NAMES.everydayCardStatementDays).toBe('Everyday card: statement to due date');
+    expect(SETTING_NAMES.oldCardStatementDays).toBe('Old card: statement to due date');
   });
 
   it('section 2 10.7 10.8 10.10 quiet hours, the bank-not-read alert and amounts on the lock screen, in words', () => {

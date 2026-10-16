@@ -114,8 +114,8 @@
   {
     "section": "bank",
     "file": "packages/server/src/bank/statements.ts",
-    "find": "    const closingDate = date(raw.last_statement_issue_date, 'statement date');",
-    "replace": "    const closingDate = date(raw.last_payment_date, 'statement date');",
+    "find": ": date(raw.last_statement_issue_date, 'statement date');",
+    "replace": ": date(raw.last_payment_date, 'statement date');",
     "why": "9.3 take the last payment date as the statement date"
   },
   {
@@ -289,8 +289,8 @@
   {
     "section": "bank",
     "file": "packages/server/src/status.ts",
-    "find": "return (a.role === 'everyday-card' || a.role === 'old-card') && raw !== undefined ? [{ card: a.role, result: cardStatement(a.role, raw) }] : [];",
-    "replace": "return a.role === 'everyday-card' && raw !== undefined ? [{ card: a.role, result: cardStatement(a.role, raw) }] : [];",
+    "find": "    if ((a.role !== 'everyday-card' && a.role !== 'old-card') || raw === undefined) return [];",
+    "replace": "    if (a.role !== 'everyday-card' || raw === undefined) return [];",
     "why": "9.2 leave out the old card statement"
   },
   {
@@ -4856,5 +4856,82 @@
     "find": "matches: s.matches, status, ruleId: added ? answer.ruleId : null, pending: s.pending };",
     "replace": "matches: s.matches, status, ruleId: added ? answer.ruleId : null, pending: null };",
     "why": "[b226] Setup day leaves out the pending item it was made for"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/statements.ts",
+    "find": "addDays(dueDate, -statementDays)",
+    "replace": "addDays(dueDate, statementDays)",
+    "why": "[a52] 9.8 the statement date after the due date"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/statements.ts",
+    "find": "addDays(dueDate, -statementDays)",
+    "replace": "addDays(dueDate, 1 - statementDays)",
+    "why": "[a52] 9.8 the statement date a day late"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/bank/statements.ts",
+    "find": "raw.last_statement_issue_date === null && statementDays !== null ?",
+    "replace": "statementDays !== null ?",
+    "why": "[a52] 9.8 the days set win over the bank's own statement date"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "a.role === 'everyday-card' ? settings.everydayCardStatementDays : settings.oldCardStatementDays;",
+    "replace": "a.role === 'everyday-card' ? settings.oldCardStatementDays : settings.everydayCardStatementDays;",
+    "why": "[a52] 9.8 each card read with the other card's days"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "days === null && cardStatement(a.role, raw, 1).ok ? 'no-statement-date' : 'unreadable'",
+    "replace": "days === null ? 'no-statement-date' : 'unreadable'",
+    "why": "[a52] 9.8 a statement the days would not fix said to want the days"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      else cardsOff.push({",
+    "replace": "      else if (false) cardsOff.push({",
+    "why": "[a52] 9.8 a card whose statement cannot be read dropped without a word"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      ...(session === null ? {} : { push: this.#push.view(session) }),\n      cardsOff: this.#cardsOff(),\n",
+    "replace": "      ...(session === null ? {} : { push: this.#push.view(session) }),\n",
+    "why": "[a52] 9.8 Settings does not say which cards are off"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/views/home.ts",
+    "find": "  for (const off of input.cardsOff ?? []) attention.push({ kind: 'card-reminders-off', card: off.card, why: off.why });\n",
+    "replace": "",
+    "why": "[a52] 9.8 Home does not say which cards are off"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/history-db.ts",
+    "find": "    ...(settings.everydayCardStatementDays === undefined ? { everydayCardStatementDays: null } : {}),\n",
+    "replace": "",
+    "why": "[a52] 0.6 a setup day saved before the days from statement to due date does not open"
+  },
+  {
+    "section": "settings",
+    "file": "packages/server/src/choices.ts",
+    "find": "  oldCardStatementDays: (v) => (v === null ? null : whole(v)),",
+    "replace": "  oldCardStatementDays: whole,",
+    "why": "[a52] 9.8 the days cannot be cleared from Settings"
+  },
+  {
+    "section": "bank",
+    "file": "packages/server/src/status.ts",
+    "find": "a.role === 'everyday-card' ? book.settings().everydayCardStatementDays : book.settings().oldCardStatementDays;",
+    "replace": "null;",
+    "why": "[a52] 9.8 the status report reads no days"
   }
 ]

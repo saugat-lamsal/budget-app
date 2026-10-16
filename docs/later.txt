@@ -180,5 +180,7 @@ IDEAS ADDED OCT 14
 
 26. DONE Oct 15 (A50c, his OK at the time, read-only). Both cards'
     statements come through without the statement date, so the card
-    reminders are off, silently. DECIDE: A52 (how to work out the statement
-    date), needed before the old card's November reminders.
+    reminders were off, silently. A52 BUILT Oct 15 (his pick, option 1:
+    days from statement to due date per card, and Home and Settings say
+    when a card's reminders are off). After the deploy he enters the days
+    for each card, before the old card's November reminders.

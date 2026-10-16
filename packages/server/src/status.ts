@@ -34,7 +34,10 @@ export function bankStatus(db: Db): BankStatus {
   const stored = readStatements(db);
   const statements = accounts.flatMap((a) => {
     const raw = stored.get(a.plaidAccountId)?.raw;
-    return (a.role === 'everyday-card' || a.role === 'old-card') && raw !== undefined ? [{ card: a.role, result: cardStatement(a.role, raw) }] : [];
+    if ((a.role !== 'everyday-card' && a.role !== 'old-card') || raw === undefined) return [];
+    // 9.8: read with the days from statement to due date set for that card.
+    const days = book === null ? null : a.role === 'everyday-card' ? book.settings().everydayCardStatementDays : book.settings().oldCardStatementDays;
+    return [{ card: a.role, result: cardStatement(a.role, raw, days) }];
   });
   const selfCheck = book !== null && bank !== null && bank.ok ? book.selfCheck(bank.view.withPending) : null;
   const oldCard =

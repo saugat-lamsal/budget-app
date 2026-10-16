@@ -18,7 +18,7 @@ import type { BankRule } from '../bank/reading.js';
 import type { Totals } from '../history/history.js';
 import type { BankRuleLogLine } from './bank-rules.js';
 import type { RuleView } from './choice.js';
-import type { CheckedAt } from './home.js';
+import type { CardRemindersOff, CheckedAt } from './home.js';
 import type { LoginView } from './login.js';
 import type { PushView } from './push.js';
 import type { ServerLogLine } from './server-log.js';
@@ -51,6 +51,8 @@ export interface SettingsInput {
   readonly alerts?: AlertsCount;
   // Phase 5: the Notifications card, for the device asking, on the real server only.
   readonly push?: PushView;
+  // 9.8 (A52): the cards whose reminders are off. None when left out (the demo).
+  readonly cardsOff?: readonly CardRemindersOff[];
 }
 
 // Phase 5: how many alerts the app worked out, how many were sent, and how
@@ -151,6 +153,8 @@ export type SettingsView =
       readonly settings: Settings;
       // 9.5: on once the promo end date is entered.
       readonly payoff: PayoffCountdown;
+      // 9.8 (A52): the cards whose reminders are off, and why, as on Home.
+      readonly cardsOff: readonly CardRemindersOff[];
       // Each kind of rule in the order they are tried.
       readonly rules: { readonly purchase: readonly RuleRow[]; readonly deposit: readonly RuleRow[]; readonly person: readonly RuleRow[] };
       // What each kind of rule can pick, from the money math.
@@ -206,6 +210,7 @@ export function settingsView(input: SettingsInput): SettingsView {
     split: { thisPayPeriod, fromNextPaycheck, waiting, payPeriodStarted: book.period().startDate, nextPayday: { date: safe.nextPayday, days: safe.daysToPayday } },
     settings,
     payoff: payoffCountdown(book, today),
+    cardsOff: [...(input.cardsOff ?? [])],
     rules: { purchase: rows('purchase'), deposit: rows('deposit'), person: rows('person') },
     ruleChoices: RULE_CHOICES,
     bankRules: input.bankRules?.rules ?? [],
