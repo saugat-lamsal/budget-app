@@ -2144,9 +2144,30 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/notifications-card.tsx",
-    "find": "<Button wide disabled={busy} onClick={() => void run(() => turnOn(push.publicKey), NOTIFICATION_DONE.on)} testId=\"notifications-on\">",
-    "replace": "<Button wide onClick={() => void run(() => turnOn(push.publicKey), NOTIFICATION_DONE.on)} testId=\"notifications-on\">",
+    "find": "<Button wide disabled={doing !== null} onClick={() => void run('on', () => turnOn(push.publicKey), NOTIFICATION_DONE.on)} testId=\"notifications-on\">",
+    "replace": "<Button wide onClick={() => void run('on', () => turnOn(push.publicKey), NOTIFICATION_DONE.on)} testId=\"notifications-on\">",
     "why": "[push] a double tap on Turn on sends two"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/notifications-card.tsx",
+    "find": "const doing = busy ?? (answered !== null && answered.on === push ? answered.act : null);",
+    "replace": "const doing = busy;",
+    "why": "[notifications-b92] B244 after an answer the card takes taps again before Settings shows the numbers asked for after it"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/notifications-card.tsx",
+    "find": "setAnswered({ on: shown.current, act: which });",
+    "replace": "setAnswered({ on: push, act: which });",
+    "why": "[notifications-b92] B244 numbers read again while a request was on its way let the card take taps before the numbers asked for after it"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/notifications-card.tsx",
+    "find": "{doing === 'on' ? 'Turning on…' : 'Turn on'}",
+    "replace": "{doing !== null ? 'Turning on…' : 'Turn on'}",
+    "why": "[notifications-b92] B244 after Turn off, Turn on says Turning on… until the fresh numbers are shown"
   },
   {
     "section": "home",

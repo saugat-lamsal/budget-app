@@ -2881,3 +2881,17 @@ B243. The deploy check's first real run: Fly built and pushed the new image,
       that run: the throwaway machine was new (in iad), with no volume, no
       ports, the server never started (it sleeps until the check runs),
       removed when it ended; the app's own machine was not touched.
+B244. Settings' Notifications card, the same gap B192 closed for Review, the
+      bucket lists and Payday (found on CI's WebKit runner, PR #31, run
+      38829682106: "a double tap on Turn on" sent two). After Turn on, Send a
+      test alert or Turn off was answered, the card's buttons took taps
+      again before Settings showed the numbers asked for after it. In that
+      moment the card still said Off after Turn on (a second /api/push/on,
+      harmless: the server kept the same subscription again), sent a second
+      test alert, and after Turn off it already said Off with Turn on taking
+      taps, so the second tap of a double tap on Turn off turned them back
+      on. Now the buttons stay off until those numbers are shown, also when
+      the numbers were read again while the request was on its way (back
+      from the background); after Turn on the button says "Turning on…"
+      until then, and after Turn off, "Turn on" (off). Phone side only:
+      nothing on the server changed.

@@ -1849,6 +1849,17 @@ long). It replaces running everything before every commit:
   cards' statements come through without the statement date, and the app
   drops a card with none silently: no card reminders at all (QUESTIONS.md
   A50, A52).
+- The Notifications card's double tap (Oct 15, 2026, branch
+  notifications-double-tap, B244): after Turn on, Send a test alert or Turn
+  off was answered, the card took taps again before Settings showed the
+  numbers asked for after it (CI's WebKit, PR #31: two /api/push/on; after
+  Turn off a second tap could turn them back on). Its buttons now stay off
+  until those numbers are shown, as useChoiceFlow and Setup day's useSender
+  do (notifications-card.tsx answered). notifications.test.ts holds the
+  numbers at that moment for each button, and with the numbers read again
+  mid-request. Break-it "[notifications-b92]": 3 of 3 caught, and "[push] a
+  double tap on Turn on" pointed again, caught (Chromium, --only
+  test/browser/notifications.test.ts). Not deployed.
 - Waiting on: A52 (the statement date Bank of America leaves out: card
   reminders are off until it is built, needed before the old card's
   November cycle); A51 (the shape of the weekly

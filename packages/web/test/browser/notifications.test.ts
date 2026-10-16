@@ -66,6 +66,33 @@ describe.each(ENGINES)('Settings, Notifications, on the real server, in %s', (_n
   const subscriptions = (): { endpoint: string; device: string }[] => real.life.h.db.prepare('SELECT endpoint, device FROM push_subscriptions ORDER BY created_at').all() as { endpoint: string; device: string }[];
   const logTitles = async (page: Page): Promise<string[]> => page.getByTestId('log').locator('.row__title').allInnerTexts();
 
+  // The card's requests, as the page sent them.
+  function pushPosts(page: Page): string[] {
+    const sent: string[] = [];
+    page.on('request', (r) => {
+      if (r.method() === 'POST' && new URL(r.url()).pathname.startsWith('/api/push/')) sent.push(new URL(r.url()).pathname);
+    });
+    return sent;
+  }
+
+  // Settings' numbers, held from the moment they are asked for until the test lets them go.
+  async function holdSettings(page: Page): Promise<{ readonly asked: () => boolean; readonly release: () => void }> {
+    let release = (): void => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    let asked = false;
+    await page.route('**/api/settings', async (route) => {
+      asked = true;
+      await held;
+      await route.continue();
+    });
+    return { asked: () => asked, release };
+  }
+
+  // Two frames and a task: whatever the answer redraws is drawn.
+  const frames = async (page: Page): Promise<void> => {
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 0)))));
+  };
+
   it('Phase 5 off: Turn on asks the phone, subscribes with the app\'s public key, and the server keeps this device; the card says On, and the change log says so', async () => {
     const t = service.newPhone();
     const { context, page } = await openOn(t);
@@ -100,6 +127,134 @@ describe.each(ENGINES)('Settings, Notifications, on the real server, in %s', (_n
     expect((await pushAsked(page)).permissionAsks).toBe(1);
     await page.waitForFunction(() => document.querySelector('[data-testid="notifications-state"]')?.textContent?.includes('On for this phone') === true);
     expect(await turnedOn()).toBe(before + 1);
+    await context.close();
+  });
+
+  // What the double tap above did once on CI's WebKit runner (PR #31, run
+  // 38829682106): the second tap came after the first answer was back but
+  // before Settings showed the numbers asked for after it, while the card
+  // still said Off with Turn on taking taps again, and it sent a second
+  // /api/push/on. Here those numbers are held at exactly that moment, whatever
+  // the timing of the taps (B92, as on Review, the bucket lists and Payday).
+  // Each button: Turn on, Send a test alert, and Turn off (whose card says Off
+  // again at that moment, with Turn on where a second tap could land).
+  it('Phase 5 B92 Turn on cannot be sent again while Settings still shows the numbers from before it', async () => {
+    const t = service.newPhone();
+    const { context, page } = await openOn(t);
+    const sent = pushPosts(page);
+    const hold = await holdSettings(page);
+    const button = page.getByTestId('notifications-on');
+    await button.click();
+    // The answer is back and the screen has asked for its fresh numbers.
+    await expect.poll(hold.asked).toBe(true);
+    await frames(page);
+    const shown = { disabled: await button.isDisabled(), words: await button.innerText() };
+    await button.click({ force: true });
+    hold.release();
+    await page.waitForFunction(() => document.querySelector('[data-testid="notifications-state"]')?.textContent?.includes('On for this phone') === true);
+    await page.unrouteAll({ behavior: 'wait' });
+    await untilQuiet(page);
+    expect(sent).toEqual(['/api/push/on']);
+    expect((await pushAsked(page)).permissionAsks).toBe(1);
+    expect(shown).toEqual({ disabled: true, words: 'Turning on…' });
+    // Once the fresh numbers are shown, the card takes a tap again.
+    expect(await page.getByTestId('notifications-test').isDisabled()).toBe(false);
+    expect(await page.getByTestId('notifications-off').isDisabled()).toBe(false);
+    await context.close();
+  });
+
+  // The numbers read again while Turn on was on its way (back from the
+  // background): what counts is the numbers shown when its answer came, not
+  // those shown at the tap.
+  it('Phase 5 B92 Turn on, with Settings read again while it was on its way, still cannot be sent again before the numbers asked for after it are shown', async () => {
+    const t = service.newPhone();
+    const { context, page } = await openOn(t);
+    const sent = pushPosts(page);
+    let releaseOn = (): void => undefined;
+    const heldOn = new Promise<void>((resolve) => (releaseOn = resolve));
+    let onAsked = false;
+    await page.route('**/api/push/on', async (route) => {
+      onAsked = true;
+      await heldOn;
+      await route.continue();
+    });
+    const button = page.getByTestId('notifications-on');
+    await button.click();
+    await expect.poll(() => onAsked).toBe(true);
+    const readAgain = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/settings');
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+      document.dispatchEvent(new Event('visibilitychange'));
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await (await readAgain).finished();
+    await frames(page);
+    const hold = await holdSettings(page);
+    releaseOn();
+    await expect.poll(hold.asked).toBe(true);
+    await frames(page);
+    const shown = { disabled: await button.isDisabled(), words: await button.innerText() };
+    await button.click({ force: true });
+    hold.release();
+    await page.waitForFunction(() => document.querySelector('[data-testid="notifications-state"]')?.textContent?.includes('On for this phone') === true);
+    await page.unrouteAll({ behavior: 'wait' });
+    await untilQuiet(page);
+    expect(sent).toEqual(['/api/push/on']);
+    expect(shown).toEqual({ disabled: true, words: 'Turning on…' });
+    await context.close();
+  });
+
+  it('Phase 5 B92 Send a test alert cannot be sent again while Settings still shows the numbers from before it', async () => {
+    const t = service.newPhone();
+    const { context, page } = await openOn(t);
+    await page.getByTestId('notifications-on').click();
+    await page.getByTestId('notifications-test').waitFor();
+    await untilQuiet(page);
+    const sent = pushPosts(page);
+    const hold = await holdSettings(page);
+    const button = page.getByTestId('notifications-test');
+    await button.click();
+    await expect.poll(hold.asked).toBe(true);
+    await frames(page);
+    const disabled = { test: await button.isDisabled(), off: await page.getByTestId('notifications-off').isDisabled() };
+    await button.click({ force: true });
+    hold.release();
+    await page.unrouteAll({ behavior: 'wait' });
+    await untilQuiet(page);
+    await expect.poll(() => button.isDisabled()).toBe(false);
+    expect(sent).toEqual(['/api/push/test']);
+    expect(t.shown.map((s) => s.title)).toEqual(['Test alert']);
+    expect(disabled).toEqual({ test: true, off: true });
+    await context.close();
+  });
+
+  it('Phase 5 B92 Turn off: Turn on, back on the card before Settings shows the numbers asked for after it, takes no tap until they are shown', async () => {
+    const t = service.newPhone();
+    const { context, page } = await openOn(t);
+    await page.getByTestId('notifications-on').click();
+    await page.getByTestId('notifications-off').waitFor();
+    await untilQuiet(page);
+    const sent = pushPosts(page);
+    const hold = await holdSettings(page);
+    await page.getByTestId('notifications-off').click();
+    await expect.poll(hold.asked).toBe(true);
+    await frames(page);
+    // This browser's subscription is gone, so the card says Off again, with Turn on.
+    const turnOn = page.getByTestId('notifications-on');
+    const shown = { disabled: await turnOn.isDisabled(), words: await turnOn.innerText() };
+    await turnOn.click({ force: true });
+    hold.release();
+    await page.unrouteAll({ behavior: 'wait' });
+    await untilQuiet(page);
+    // Whatever the card shows now takes a tap: the fresh numbers are shown.
+    await page.getByTestId('notifications-card').locator('button:not([disabled])').first().waitFor();
+    // Not turned on again by the second tap.
+    expect(sent).toEqual(['/api/push/off']);
+    expect(subscriptions().map((s) => s.endpoint)).not.toContain(t.endpoint);
+    expect(await textAt(page, 'notifications-state')).toContain('Off on this phone');
+    expect(await turnOn.isDisabled()).toBe(false);
+    expect(shown).toEqual({ disabled: true, words: 'Turn on' });
     await context.close();
   });
 
