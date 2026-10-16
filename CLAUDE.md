@@ -1829,6 +1829,22 @@ long). It replaces running everything before every commit:
   - With the fix, on Fly: 62 events, every one replays to its totals, "The
     backup works." Break-it "[deploy-check]": 7 of 7 caught, and the two
     "[a48] 0.6" breaks (one pointed at the code again), caught.
+  - PR #31 merged (Oct 15, 2026; WebKit failed once in notifications.test.ts
+    "Phase 5 B92 a double tap on Turn on", not touched, two /api/push/on sent;
+    the rerun passed).
+- Deployed Oct 15, 2026 (8:57 PM), at his word, PRs #29 to #31: the exact image
+  the deploy check passed (fly deploy --ha=false --image
+  registry.fly.io/budget-app-x7q2:deploy-check-20261016t002402z), so what was
+  checked is what runs. One machine on budget_real, a clean stop (Litestream's
+  last copy) and start; /health and /health/backups ok, /api 401, http sent to
+  https, /plaid/webhook 405 for GET and 401 unsigned. The restore check on the
+  machine: 63 events, every one replays, "The backup works." The way back is
+  the image deployment-01M4SGVFJG6GBZTRNGB75V2A7K.
+  - The webhook command at his word: /item/webhook/update 200, the same
+    connection. Plaid's first signed webhook (ITEM WEBHOOK_UPDATE_ACKNOWLEDGED)
+    came the same second, checked with Plaid's production key: "webhook
+    address confirmed by Plaid".
+  - His step: Settings, Pay schedule, "Twice a month".
 - Waiting on: A50c (the read
   of both cards' statements, his OK at the time); A51 (the shape of the weekly
   statement check); his check of part B (the list at its top), and the items

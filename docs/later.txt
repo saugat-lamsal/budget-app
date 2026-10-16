@@ -82,10 +82,9 @@ HIS STEPS
 
 IDEAS FOR AFTER PHASE 7
 
-11. BUILT Oct 15 (branch webhooks-and-payday, PR #30; his OK to the
-    section 2 wording and jose, Oct 15). After the deploy, at his
-    word: fly ssh console -C "node /app/serve/webhook-address.mjs", then
-    watch the log for "webhook address confirmed by Plaid".
+11. DONE Oct 15 (PR #30; his OK to the section 2 wording and jose).
+    Deployed that evening; his connection points at the address, and
+    Plaid confirmed it ("webhook address confirmed by Plaid").
     Was: NEXT (his call, Oct 14, with item 3). Plaid webhooks: Plaid tells the app the moment it has new data,
     so it syncs then instead of waiting for the hourly timer (the timer
     stays as a backup). Free. About a day of work: a signed address for
@@ -156,8 +155,8 @@ IDEAS ADDED OCT 14
     BUILT Oct 14 (branch accuracy-and-webhooks, rulebook draft 22). After
     the deploy he picks "Twice a month" on Settings, Pay schedule.
 
-22. BUILT Oct 15 as rule 10.14 (branch webhooks-and-payday, PR #30; his
-    OK to the rule text, Oct 15). A payday alert: the amount to move to
+22. DONE Oct 15 as rule 10.14 (PR #30; his OK to the rule text),
+    deployed that evening. A payday alert: the amount to move to
     savings, and the old card's share this payday.
 
 23. HIS. A recurring transfer in Bank of America on paydays for the amount
