@@ -11,7 +11,9 @@ call first), HIS (a step only he can do), LATER (an idea for after Phase 7).
 
 FIXES FOUND ON CONNECTION DAY
 
-1. FIX. Setup day and pending card payments (QUESTIONS.md B226).
+1. BUILT Oct 15 (branch webhooks-and-payday; QUESTIONS.md B241): Setup day
+   points it out with a rule for its wording, and Review says it too.
+   Was: FIX. Setup day and pending card payments (QUESTIONS.md B226).
    A card payment still pending is worded differently by the bank
    ("PAYMENT TO ACCT #nnnn ON mm/dd VIA WEB") from the posted one ("Mobile
    Banking payment to CRD nnnn Confirmation#"). No bank rule fit it, so it
@@ -80,7 +82,11 @@ HIS STEPS
 
 IDEAS FOR AFTER PHASE 7
 
-11. NEXT (his call, Oct 14, with item 3). Plaid webhooks: Plaid tells the app the moment it has new data,
+11. BUILT Oct 15 (branch webhooks-and-payday, PR #30; his OK to the
+    section 2 wording and jose, Oct 15). After the deploy, at his
+    word: fly ssh console -C "node /app/serve/webhook-address.mjs", then
+    watch the log for "webhook address confirmed by Plaid".
+    Was: NEXT (his call, Oct 14, with item 3). Plaid webhooks: Plaid tells the app the moment it has new data,
     so it syncs then instead of waiting for the hourly timer (the timer
     stays as a backup). Free. About a day of work: a signed address for
     Plaid to call, the check of Plaid's signature, one setting call to
@@ -140,9 +146,9 @@ IDEAS ADDED OCT 14
 19. Small, with the next session. The rehearsal's connect card wording
     (item 16).
 
-20. LATER. A weekly statement check for Phase 7: pick an account and a date
+20. DECIDE (QUESTIONS.md A51, Oct 15). A weekly statement check for Phase 7: pick an account and a date
     range, and the app lists what it counted, to tick off against the bank
-    statement.
+    statement. Three shapes in A51; recommended: by week, from Settings.
 
 21. NEXT (his call, Oct 14, QUESTIONS.md A48). The pay schedule as a
     setting: twice a month (the 15th and the last day, the Friday before a
@@ -150,7 +156,8 @@ IDEAS ADDED OCT 14
     BUILT Oct 14 (branch accuracy-and-webhooks, rulebook draft 22). After
     the deploy he picks "Twice a month" on Settings, Pay schedule.
 
-22. NEXT (his yes, Oct 14, A49). A payday alert: the amount to move to
+22. BUILT Oct 15 as rule 10.14 (branch webhooks-and-payday, PR #30; his
+    OK to the rule text, Oct 15). A payday alert: the amount to move to
     savings, and the old card's share this payday.
 
 23. HIS. A recurring transfer in Bank of America on paydays for the amount
@@ -173,3 +180,4 @@ IDEAS ADDED OCT 14
     Tests: pending-posted-readings (linked and not).
 
 26. NEXT (A50c, his OK at the time). Both cards' statements came through.
+    Not done Oct 15: he was away, and it reads his real books.

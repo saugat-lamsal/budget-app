@@ -7,6 +7,7 @@ import type { StoredItem } from './sync/plan.js';
 import type { BankMeaning, BankRuleChange, BankRuleSpec, MatchExample, RuleMatches } from './views/bank-rules.js';
 
 export type { BankMeaning, BankRuleChange, BankRuleSpec, MatchExample, RuleMatches } from './views/bank-rules.js';
+import type { BankRuleHint } from './views/review.js';
 
 // Bank rules (rulebook section 2, 20a, 24c): suggesting them on Setup day
 // from the labels the bank sends, what a rule would match, and changing the
@@ -146,6 +147,10 @@ export interface BankRuleSuggestion {
   readonly matches: RuleMatches;
   // Every item it matches is already read this way by his bank rules.
   readonly covered: boolean;
+  // B226: made for a pending item the bank labels as a card payment, a
+  // transfer or a payment to a person that his bank rules read as a purchase
+  // now (the newest such): its text is the item's wording. Null otherwise.
+  readonly pending: { readonly description: string; readonly amount: Cents; readonly date: IsoDate } | null;
 }
 
 // What a label says an item is, from the labels Plaid's test bank really
@@ -187,25 +192,31 @@ export function suggestBankRules(lines: readonly BankLine[], rules: readonly Ban
     const meaning = meaningOfLabel(l);
     if (meaning === null || l.label === null) return [];
     const other = meaning.means !== 'transfer' ? null : meaning.other === 'pair-card' || meaning.other === 'pair-bank' ? pairOf(l, meaning.other, lines) : meaning.other;
-    return [{ l, label: l.label.detailed, means: meaning.means, other }];
+    // B226: pending, and read as a purchase by his bank rules now.
+    const misread = l.pending && readBankItemWithRule(l.account, l.amount, l.description, rules).reading.kind === 'purchase';
+    return [{ l, label: l.label.detailed, means: meaning.means, other, misread }];
   });
   // One still on its way has no other side yet: it takes the other account
   // of one with the same label and description whose other side shows.
   const sameKind = (a: (typeof read)[number], b: (typeof read)[number]): boolean => a.label === b.label && a.l.account === b.l.account && a.means === b.means && a.l.description.toLowerCase() === b.l.description.toLowerCase();
   const withOther = read.map((r) => (r.means !== 'transfer' || r.other !== null ? r : { ...r, other: read.find((o) => o.other !== null && sameKind(o, r))?.other ?? null }));
-  const groups = new Map<string, { label: string; account: AccountId; means: BankMeaning; other: AccountId | null; descriptions: string[] }>();
-  for (const { l, label, means, other } of withOther) {
+  const groups = new Map<string, { label: string; account: AccountId; means: BankMeaning; other: AccountId | null; descriptions: string[]; misread: BankLine[] }>();
+  for (const { l, label, means, other, misread } of withOther) {
     // A transfer whose other account is not known is suggested for its own
     // description only: one wider text could cover transfers with different accounts.
+    // B226: a pending item read as a purchase, for its wording, pointed out.
     const unknown = means === 'transfer' && other === null;
-    const key = JSON.stringify([label, l.account, means, other, unknown ? l.description.toLowerCase() : '']);
-    const group = groups.get(key) ?? { label, account: l.account, means, other, descriptions: [] };
+    const key = JSON.stringify([label, l.account, means, other, misread ? `wording ${wordingOf(l.description).toLowerCase()}` : unknown ? l.description.toLowerCase() : '']);
+    const group = groups.get(key) ?? { label, account: l.account, means, other, descriptions: [], misread: [] };
     group.descriptions.push(l.description);
+    if (misread) group.misread.push(l);
     groups.set(key, group);
   }
   const suggestions: BankRuleSuggestion[] = [];
   for (const group of groups.values()) {
-    for (const contains of sharedTexts(group.descriptions)) {
+    const newest = group.misread.toSorted((a, b) => daysBetween(a.date, b.date))[0];
+    const texts = newest === undefined ? sharedTexts(group.descriptions) : [wordingOf(newest.description)];
+    for (const contains of texts) {
       const spec: BankRuleSpec = { account: group.account, contains, means: group.means, ...(group.other === null ? {} : { other: group.other }) };
       const matches = matchesOf(spec, rules, lines, { today: '2000-01-01' });
       suggestions.push({
@@ -217,6 +228,7 @@ export function suggestBankRules(lines: readonly BankLine[], rules: readonly Ban
         other: group.other,
         matches,
         covered: coveredBy(spec, rules, lines),
+        pending: newest === undefined ? null : { description: newest.description, amount: newest.amount, date: newest.date },
       });
     }
   }
@@ -234,6 +246,31 @@ function compareText(a: string, b: string): number {
   const x = a.toUpperCase();
   const y = b.toUpperCase();
   return x < y ? -1 : x > y ? 1 : 0;
+}
+
+// B226, in Review: each pending item the bank labels as a card payment, a
+// transfer or a payment to a person that his bank rules read as a purchase
+// now, by its id, with the bank rule for its wording (the other account as
+// the history shows it, or null for him to pick).
+export function misreadHints(lines: readonly BankLine[], rules: readonly BankRule[]): Map<string, BankRuleHint> {
+  const hints = new Map<string, BankRuleHint>();
+  for (const l of lines) {
+    const meaning = meaningOfLabel(l);
+    if (meaning === null || !l.pending || readBankItemWithRule(l.account, l.amount, l.description, rules).reading.kind !== 'purchase') continue;
+    const other = meaning.means !== 'transfer' ? null : meaning.other === 'pair-card' || meaning.other === 'pair-bank' ? pairOf(l, meaning.other, lines) : meaning.other;
+    hints.set(l.id, { account: l.account, contains: wordingOf(l.description), means: meaning.means, other });
+  }
+  return hints;
+}
+
+// B226: a description's wording: the words before the first that holds a
+// digit or # (an account's digits, a date, a confirmation number), with its
+// own spacing; all of it when it starts with one.
+export function wordingOf(description: string): string {
+  const text = description.trim();
+  const changing = /(^|\s)\S*[0-9#]/.exec(text);
+  const words = changing === null ? text : text.slice(0, changing.index).trim();
+  return words === '' ? text : words;
 }
 
 // The text the descriptions share, from the start, ending at a whole word,

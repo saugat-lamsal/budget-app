@@ -31,6 +31,19 @@ const ruleTexts = async (page: Page, within: string): Promise<string[]> => page.
 describe.each(ENGINES)('Bank rules in %s', (_name, engine) => {
   const { browser, base } = useEngine(engine);
 
+  it('B226 a card payment still pending, read as a purchase, is pointed out with a rule for its wording; the others are not', async () => {
+    const twin = twinOf('setup-pending-payment');
+    const page = await openSetup(await browser().newContext(phone()), base(), 'setup-pending-payment', 'rules');
+    const flagged = ready(twin).suggestions.filter((s) => s.pending !== null);
+    expect(flagged.map((s) => [s.contains, s.pending?.description])).toEqual([['PAYMENT TO ACCT', 'PAYMENT TO ACCT #3333 ON 10/08 VIA WEB']]);
+    const card = page.getByTestId(`suggestion-${flagged[0]?.id ?? ''}`);
+    expect(await card.getByTestId('suggestion-pending').innerText()).toBe(
+      'Pending now, and read as a purchase until a rule fits it: “PAYMENT TO ACCT #3333 ON 10/08 VIA WEB”, $60.00, Thu, Oct 8. This rule reads its wording, so the next one is read right too.',
+    );
+    expect(await card.innerText()).toContain('“PAYMENT TO ACCT”');
+    expect(await page.getByTestId('suggestion-pending').count()).toBe(1);
+  });
+
   it('20a every suggestion is the server\'s, with what it matches; add, skip, and change-first do what the twin does, and the transfers step follows the rules', async () => {
     const twin = twinOf('setup-suggest');
     const page = await openSetup(await browser().newContext(phone()), base(), 'setup-suggest', 'rules');

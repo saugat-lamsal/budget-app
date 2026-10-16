@@ -1,4 +1,5 @@
-import type { Book, Cents, IsoDate, ReviewDetail } from '@budget-app/money';
+import type { AccountId, Book, Cents, IsoDate, ReviewDetail } from '@budget-app/money';
+import type { BankMeaning } from './bank-rules.js';
 import { itemKey } from '../item-key.js';
 
 // What the Review screen shows, worked out on the server from the book:
@@ -10,6 +11,8 @@ export interface ReviewInput {
   // Null before setup day (section 14).
   readonly book: Book | null;
   readonly madeUpData: boolean;
+  // B226: by item id, the bank rule for a pending item read as a purchase that the bank labels otherwise.
+  readonly labeled?: ReadonlyMap<string, BankRuleHint>;
 }
 
 export type ReviewView =
@@ -26,8 +29,20 @@ export type ReviewView =
     };
 
 // Step 3: an item with its key, sent back with an answer about it (seen), so
-// an answer about an item a sync has changed since is refused.
-export type KeyedDetail = ReviewDetail & { readonly key: string };
+// an answer about an item a sync has changed since is refused. B226: a
+// pending item the bank labels as a card payment, a transfer or a payment to
+// a person, which his bank rules read as a purchase, has the bank rule for
+// its wording (labeled).
+export type KeyedDetail = ReviewDetail & { readonly key: string; readonly labeled?: BankRuleHint };
+
+// B226: the bank rule that would read such an item, and the next ones, right.
+export interface BankRuleHint {
+  readonly account: AccountId;
+  readonly contains: string;
+  readonly means: BankMeaning;
+  // A transfer's other account as the history shows it; null for him to pick.
+  readonly other: AccountId | null;
+}
 
 export function keyed(detail: ReviewDetail): KeyedDetail {
   return { ...detail, key: itemKey(detail) };
@@ -42,6 +57,9 @@ export function reviewView(input: ReviewInput): ReviewView {
     .reviewDetails()
     // Array.prototype.sort is stable, so items of the same group and day stay in the book's order.
     .sort((a, b) => GROUPS.indexOf(a.item.type) - GROUPS.indexOf(b.item.type) || (a.item.date < b.item.date ? -1 : a.item.date > b.item.date ? 1 : 0))
-    .map(keyed);
+    .map((detail) => {
+      const hint = detail.item.type === 'spending' && detail.pending ? input.labeled?.get(detail.item.id) : undefined;
+      return hint === undefined ? keyed(detail) : { ...keyed(detail), labeled: hint };
+    });
   return { state: 'tracking', madeUpData, today, heldBack: book.pots().unsortedOut, items };
 }

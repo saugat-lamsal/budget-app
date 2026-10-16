@@ -69,6 +69,38 @@ describe.each(ENGINES)('Review in %s', (_name, engine) => {
     await page.context().close();
   });
 
+  it('B226 a pending item the bank labels as a card payment, read as a purchase, names the bank rule for its wording and links to Settings', async () => {
+    const context = await browser().newContext(phone());
+    const page = await context.newPage();
+    page.setDefaultTimeout(15_000);
+    // The real server adds what the bank's label says (keeper.review); the demo has no labels, so it is added here.
+    let marked = '';
+    await page.route('**/api/review', async (route: Route) => {
+      const response = await route.fetch();
+      const view = (await response.json()) as { items: { item: { id: string; type: string }; pending: boolean | null; labeled?: unknown }[] };
+      const target = view.items.find((d) => d.item.type === 'spending' && d.pending === true);
+      if (target !== undefined) {
+        marked = target.item.id;
+        target.labeled = { account: 'checking', contains: 'PAYMENT TO ACCT', means: 'transfer', other: null };
+      }
+      await route.fulfill({ response, json: view });
+    });
+    await page.goto(`${base()}/demo/review-busy`);
+    await page.locator('main[aria-busy="false"]').waitFor();
+    await page.goto(`${base()}/review`);
+    await page.getByTestId('item-labeled').waitFor();
+    expect(marked).not.toBe('');
+    const card = page.getByTestId(`item-${marked}`);
+    expect(await card.getByTestId('item-labeled').innerText()).toBe(
+      'Your bank labels this a transfer between your accounts (a card payment is one), but no bank rule reads it as one, so it counts as spending while it is pending. A bank rule for “PAYMENT TO ACCT” on checking reads the next ones right: add it on Settings, Bank rules. This one you can mark “Transfer between my accounts” once it posts.',
+    );
+    expect(await card.getByTestId('item-labeled-settings').getAttribute('href')).toBe('/settings');
+    // Only that item says it.
+    expect(await page.getByTestId('item-labeled').count()).toBe(1);
+    await untilQuiet(page);
+    await context.close();
+  });
+
   it('3.4 payday questions come first, then money in, spending, and old card flags', async () => {
     const page = await openReview(await browser().newContext(phone()), base(), 'review-busy');
     const groups = await page.locator('[data-testid^="group-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));

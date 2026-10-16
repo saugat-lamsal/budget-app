@@ -18,6 +18,8 @@ export const COMMANDS = {
   'login-code': 'packages/server/src/serve/login-code.ts',
   start: 'packages/server/src/serve/start.ts',
   'restore-check': 'packages/server/src/serve/restore-check.ts',
+  // Section 2 (A47): points his connection's webhooks at the hosted address, once, at his word.
+  'webhook-address': 'packages/server/src/serve/webhook-address.ts',
 };
 
 // outDir: packages/server/dist/serve unless a test builds them somewhere of its own.

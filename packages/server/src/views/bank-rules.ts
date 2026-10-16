@@ -134,4 +134,8 @@ export interface SuggestionLine {
   // rules already read every item it matches this way, so nothing is asked.
   readonly status: 'open' | 'added' | 'changed' | 'skipped' | 'covered';
   readonly ruleId: string | null;
+  // B226: made for a pending item the bank labels as a card payment, a
+  // transfer or a payment to a person, which his bank rules read as a
+  // purchase now: its text is that item's wording. Null otherwise.
+  readonly pending: { readonly description: string; readonly amount: Cents; readonly date: IsoDate } | null;
 }

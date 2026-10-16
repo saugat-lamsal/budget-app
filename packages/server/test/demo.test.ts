@@ -373,6 +373,8 @@ describe('the demo is made-up data only', () => {
       // The made-up "Checked at" in his home time zone (Step 3): no clock, no database.
       'history/today.ts',
       'http/server.ts',
+      // A47: the address Plaid sends its webhooks to (the web server names it); the demo has no bank.
+      'http/webhook-path.ts',
       // An item's key as a screen shows it (Step 3): no Node, no database.
       'item-key.ts',
       'plaid/types.ts',

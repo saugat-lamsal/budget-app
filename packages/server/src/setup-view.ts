@@ -78,7 +78,7 @@ export function setupView(input: SetupViewInput): SetupView {
     const answer = answers.suggestions.get(s.id);
     const added = answer !== undefined && answer.answer !== 'skipped' && bank.rules.some((r) => r.id === answer.ruleId);
     const status = answer?.answer === 'skipped' ? 'skipped' : added ? answer.answer : s.covered ? 'covered' : 'open';
-    return { id: s.id, label: s.label, account: s.account, contains: s.contains, means: s.means, other: s.other, matches: s.matches, status, ruleId: added ? answer.ruleId : null };
+    return { id: s.id, label: s.label, account: s.account, contains: s.contains, means: s.means, other: s.other, matches: s.matches, status, ruleId: added ? answer.ruleId : null, pending: s.pending };
   });
   const unansweredSuggestions = suggestions.filter((s) => s.status === 'open').length;
 

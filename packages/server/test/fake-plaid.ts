@@ -29,13 +29,16 @@ export interface FakeTransactionInput {
   readonly description: string;
   readonly authorizedDate?: string;
   readonly currency?: string;
+  // B226: Plaid's detailed label (personal_finance_category); none when left out.
+  readonly label?: string;
 }
 
 type Change = { readonly type: 'added' | 'modified'; readonly tx: PlaidTransaction } | { readonly type: 'removed'; readonly id: string; readonly account: string };
 
+// What beforeCall can make the bank answer instead: an error, or (A47) any other answer.
 interface FakeError {
   readonly status: number;
-  readonly body: { readonly error_type: string; readonly error_code: string; readonly error_message: string };
+  readonly body: { readonly error_type: string; readonly error_code: string; readonly error_message: string } | Readonly<Record<string, unknown>>;
 }
 
 export const dollars = (cents: Cents): number => Number((cents / 100).toFixed(2));
@@ -57,6 +60,9 @@ export class FakePlaid {
   needsLogin = false;
   // 10.13: when the bank's permission runs out, as /item/get gives it; null for a bank that sets none.
   consentExpiration: string | null = null;
+  // Section 2 (A47): the keys it signs webhooks with, by id, and where this connection's webhooks go.
+  readonly webhookKeys = new Map<string, unknown>();
+  webhook: string | null = null;
   // Runs before each call is answered; can change the bank or make the call fail.
   beforeCall: ((endpoint: string, body: Record<string, unknown>, callNumber: number) => FakeError | 'network' | undefined) | undefined;
   // Cursors handed out with has_more, and how many changes there were then.
@@ -238,6 +244,12 @@ export class FakePlaid {
       if (body['access_token'] !== undefined && body['access_token'] !== this.accessToken) return error(400, 'INVALID_INPUT', 'INVALID_ACCESS_TOKEN');
       return { status: 200, body: { link_token: `link-sandbox-made-up-${this.#requestCount}`, expiration: '2026-10-13T01:00:00Z', request_id: requestId } };
     }
+    // Section 2 (A47): the keys Plaid signs webhooks with, by id; no bank key is sent.
+    if (endpoint === '/webhook_verification_key/get') {
+      const key = typeof body['key_id'] === 'string' ? this.webhookKeys.get(body['key_id']) : undefined;
+      if (key === undefined) return error(400, 'INVALID_INPUT', 'INVALID_WEBHOOK_VERIFICATION_KEY_ID');
+      return { status: 200, body: { key, request_id: requestId } };
+    }
     if (endpoint === '/item/public_token/exchange') {
       if (body['public_token'] !== this.publicToken) return error(400, 'INVALID_INPUT', 'INVALID_PUBLIC_TOKEN');
       return { status: 200, body: { access_token: this.accessToken, item_id: this.itemId, request_id: requestId } };
@@ -257,6 +269,11 @@ export class FakePlaid {
         };
       case '/item/get':
         return { status: 200, body: { item, request_id: requestId } };
+      // Section 2 (A47): where this connection's webhooks go.
+      case '/item/webhook/update':
+        if (typeof body['webhook'] !== 'string') return error(400, 'INVALID_INPUT', 'INVALID_FIELD');
+        this.webhook = body['webhook'];
+        return { status: 200, body: { item: { ...item, webhook: this.webhook }, request_id: requestId } };
       default:
         return error(400, 'INVALID_REQUEST', 'UNKNOWN_FIELDS');
     }
@@ -329,7 +346,7 @@ export class FakePlaid {
       original_description: input.description,
       pending,
       pending_transaction_id: pendingId,
-      personal_finance_category: null,
+      personal_finance_category: input.label === undefined ? null : { primary: input.label.split('_').slice(0, 2).join('_'), detailed: input.label },
       transaction_id: input.id,
     };
   }

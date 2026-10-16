@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 22)
+# Budget App Rulebook (draft 23)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -69,8 +69,10 @@ number so a test can point at it. Nothing gets coded until you approve this.
 - Stay logged in: 30 days on a device, counted from the login. Logins, new
   passkeys and log outs are logged (13.5).
 - Sync with the bank: every 60 minutes, of real time, counted from when the
-  last sync started (a clock change does not move it). When the app starts,
-  it syncs at once if one is due. A sync that fails changes nothing and is
+  last sync started (a clock change does not move it), and also as soon as
+  Plaid says it has something new (a webhook): new transactions, new
+  statements, or a change to the connection. The timer stays, for a webhook
+  that never comes. When the app starts, it syncs at once if one is due. A sync that fails changes nothing and is
   tried again at the next time. A change to this is logged (13.5).
 - Bank permission ending: told 7 days before the bank's permission to read
   your accounts runs out (10.13).
@@ -361,6 +363,10 @@ number so a test can point at it. Nothing gets coded until you approve this.
       Logging in to the bank again before then moves the date, and nothing
       is lost. If it runs out anyway, the bank needs you to log in again
       (10.5).
+10.14 Payday: when a paycheck is counted, you are told how much to move
+      to savings (3.8) and, with the payoff countdown on, the old card's
+      share this payday (9.5). At once; quiet hours apply (10.8); a tap
+      opens Payday; amounts only if the lock-screen setting allows (10.10).
 
 
 ## 11. Safe to spend
@@ -743,3 +749,8 @@ b.  The bank side of the daily check uses the balance the bank shows as
     counts only once it posts put back. A difference is told only once it
     has lasted 12 hours; until then the bank is still catching up (12.1,
     10.4, section 2, QUESTIONS.md A47, B230, B231).
+c.  When a paycheck is counted, you are told what to move to savings and,
+    with the payoff countdown on, the old card's share this payday (10.14,
+    QUESTIONS.md A49).
+d.  The app also syncs as soon as Plaid says it has something new (a
+    webhook); the 60-minute timer stays (section 2, QUESTIONS.md A47).

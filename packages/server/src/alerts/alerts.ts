@@ -32,7 +32,13 @@ export type AlertFacts =
   // review time. ends: the day it runs out, on his clock.
   | { readonly kind: 'bank-permission'; readonly ends: IsoDate }
   // 10.6: once, when it happens.
-  | { readonly kind: 'bank-took-back'; readonly id: string; readonly date: IsoDate; readonly description: string; readonly amount: Cents };
+  | { readonly kind: 'bank-took-back'; readonly id: string; readonly date: IsoDate; readonly description: string; readonly amount: Cents }
+  // 10.14 (A49): once per paycheck, the pay period it began, when it is
+  // counted. date: the paycheck's day. toSavings: what is still to move into
+  // the savings account (3.8), null when the bank cannot be read;
+  // extraInSavings: what it holds over what it should. oldCard: the old
+  // card's share this payday (9.5), null while the payoff countdown is off.
+  | { readonly kind: 'payday'; readonly period: number; readonly date: IsoDate; readonly toSavings: Cents | null; readonly extraInSavings: Cents; readonly oldCard: Cents | null };
 
 export type AlertKind = AlertFacts['kind'];
 
@@ -74,6 +80,8 @@ export function alertKey(f: AlertFacts): string {
       return `bank-took-back ${f.id}`;
     case 'bank-permission':
       return `bank-permission ends ${f.ends}`;
+    case 'payday':
+      return `payday pay period ${f.period}`;
   }
 }
 
@@ -91,6 +99,9 @@ export function alertScreen(f: AlertFacts | null): string {
     // 10.13: where he logs in to the bank again (1.3).
     case 'bank-permission':
       return '/bank';
+    // 10.14: what the paycheck did, and what to move.
+    case 'payday':
+      return '/payday';
     default:
       return '/home';
   }
@@ -171,5 +182,21 @@ export function alertWords(f: AlertFacts, options: { readonly amounts?: boolean;
         title: `The bank has not been read for ${f.hours} ${f.hours === 1 ? 'hour' : 'hours'}`,
         body: `Last read ${dayWords(f.lastReadLocal.slice(0, 10))} at ${clockWords(f.lastReadLocal)}. Your numbers may be out of date until it is read again.`,
       };
+    case 'payday':
+      return { title: 'Payday', body: amounts ? paydayAmounts(f) : `Open Payday to see what to move to savings${f.oldCard === null ? '' : ' and pay on the old card'}.` };
   }
+}
+
+// 10.14: what is still to move to savings (3.8), and the old card's share this payday (9.5).
+function paydayAmounts(f: Extract<AlertFacts, { kind: 'payday' }>): string {
+  const savings =
+    f.toSavings === null
+      ? 'Open Payday to see what to move to savings once the bank can be read.'
+      : f.toSavings > 0
+        ? `Move ${formatDollars(f.toSavings)} to savings.`
+        : f.extraInSavings > 0
+          ? `Nothing to move to savings: it holds ${formatDollars(f.extraInSavings)} more than it should.`
+          : 'Nothing to move to savings.';
+  if (f.oldCard === null) return savings;
+  return `${savings} ${f.oldCard > 0 ? `Old card: ${formatDollars(f.oldCard)} this payday.` : 'Nothing is owed on the old card.'}`;
 }
