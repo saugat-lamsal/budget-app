@@ -856,8 +856,8 @@
   {
     "section": "review",
     "file": "packages/server/src/http/server.ts",
-    "find": "export const SCREEN_PATHS: readonly string[] = ['/payday', '/alerts', '/bank', ...",
-    "replace": "export const SCREEN_PATHS: readonly string[] = ['/alerts', '/bank', ...",
+    "find": "export const SCREEN_PATHS: readonly string[] = ['/payday', '/alerts', '/bank', '/status', ...",
+    "replace": "export const SCREEN_PATHS: readonly string[] = ['/alerts', '/bank', '/status', ...",
     "why": "[activity] B104 Payday has no address of its own"
   },
   {
@@ -4272,8 +4272,8 @@
   {
     "section": "history",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "    keeper.reload();\n    keeper.#noteGap();",
-    "replace": "    keeper.reload();",
+    "find": "    keeper.#eventsWhenOpened = countEvents(input.db);\n    keeper.#noteGap();",
+    "replace": "    keeper.#eventsWhenOpened = countEvents(input.db);",
     "why": "[a47] 10.4 books from before the update do not note a gap already there when they open"
   },
   {
@@ -5451,5 +5451,110 @@
     "find": "    if (pending === undefined || used.has(pending.transactionId)) continue;",
     "replace": "    if (pending === undefined) continue;",
     "why": "[layer1] 11.4 one pending one the bank linked to two posted ones taken twice"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      lastRead: lastRead === null ? null : local(lastRead),",
+    "replace": "      lastRead: null,",
+    "why": "[layer1] 0.7 the last good read never shown"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "result: result.needsLogin ? 'needs-login' : result.changed ? 'new' : 'nothing-new' };",
+    "replace": "result: result.needsLogin ? 'needs-login' : result.changed ? 'nothing-new' : 'new' };",
+    "why": "[layer1] 0.7 new activity and nothing new swapped"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "result: result.needsLogin ? 'needs-login' : result.changed ? 'new' : 'nothing-new' };",
+    "replace": "result: result.changed ? 'new' : 'nothing-new' };",
+    "why": "[layer1] 0.7 the bank wanting a new login said as a sync that went well"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "          this.#lastSync = { at: this.#now(), result: 'failed' };\n",
+    "replace": "",
+    "why": "[layer1] 0.7 a failed sync not shown"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "{ copying: backups.healthy(), lastBeat:",
+    "replace": "{ copying: true, lastBeat:",
+    "why": "[layer1] 0.7 A43 the backups always said to be copying"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "lastBeat: backups.lastBeat === null ? null : local(backups.lastBeat) },",
+    "replace": "lastBeat: null },",
+    "why": "[layer1] 0.7 A43 the last heartbeat never shown"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      started: local(this.#startedAt),",
+    "replace": "      started: local(this.#now()),",
+    "why": "[layer1] 0.7 the server said to have started just now"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      history: { whenOpened: this.#eventsWhenOpened, now: countEvents(this.#db) },",
+    "replace": "      history: { whenOpened: countEvents(this.#db), now: countEvents(this.#db) },",
+    "why": "[layer1] 0.7 0.6 every event now said to have replayed when the books opened"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "    keeper.#eventsWhenOpened = countEvents(input.db);\n",
+    "replace": "",
+    "why": "[layer1] 0.7 0.6 the events when the books opened not counted"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      mismatchSince: since === null ? null : local(since),",
+    "replace": "      mismatchSince: null,",
+    "why": "[layer1] 0.7 10.4 a difference with the bank not shown"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      alertsWaiting: outboxCounts(this.#db).notSent,",
+    "replace": "      alertsWaiting: outboxCounts(this.#db).total,",
+    "why": "[layer1] 0.7 alerts already sent counted as waiting"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      state: this.book() === null ? 'not-set-up' : 'tracking',",
+    "replace": "      state: 'tracking',",
+    "why": "[layer1] 0.7 said to be tracking before setup day"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      status: () => this.statusView(backups),",
+    "replace": "      status: () => this.statusView(),",
+    "why": "[layer1] 0.7 A43 the hosted server's page not told of the backups"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      ['status', options.status],\n",
+    "replace": "",
+    "why": "[layer1] 0.7 /api/status not served"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/http/server.ts",
+    "find": "'/bank', '/status', ...Object.keys(POT_SLUGS)",
+    "replace": "'/bank', ...Object.keys(POT_SLUGS)",
+    "why": "[layer1] 0.7 /status not a screen of the app"
   }
 ]

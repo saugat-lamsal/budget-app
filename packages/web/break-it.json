@@ -1059,8 +1059,8 @@
   {
     "section": "home",
     "file": "packages/web/src/app/routes.ts",
-    "find": "return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : route.screen === 'alerts' || route.screen === 'bank' ? 'settings' : 'buckets';",
-    "replace": "return route.screen === 'tab' ? route.tab : route.screen === 'setup' ? 'home' : route.screen === 'alerts' || route.screen === 'bank' ? 'settings' : 'home';",
+    "find": "route.screen === 'alerts' || route.screen === 'bank' || route.screen === 'status' ? 'settings' : 'buckets';",
+    "replace": "route.screen === 'alerts' || route.screen === 'bank' || route.screen === 'status' ? 'settings' : 'home';",
     "why": "[activity] B97 a bucket's screen lights the wrong tab"
   },
   {
@@ -2595,5 +2595,89 @@
     "find": "const words = onItsWayInText(item, view.today, view.timeZone);",
     "replace": "const words = onItsWayInText(item, view.today, 'UTC');",
     "why": "[layer1] 11.4 Home says pending since in UTC"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/status-text.ts",
+    "find": "  failed: { words: 'it failed, so nothing changed. It is tried again at the next time.', look: true },",
+    "replace": "  failed: { words: 'it failed, so nothing changed. It is tried again at the next time.', look: false },",
+    "why": "[layer1] 0.7 a failed sync not marked as needing a look"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/status-text.ts",
+    "find": "      look: view.mismatchSince !== null,",
+    "replace": "      look: false,",
+    "why": "[layer1] 0.7 a difference with the bank not marked as needing a look"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/status-text.ts",
+    "find": "look: view.alertsWaiting > 0 },",
+    "replace": "look: false },",
+    "why": "[layer1] 0.7 alerts waiting not marked as needing a look"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/status-text.ts",
+    "find": "none confirmed since ${b.lastBeat === null ? 'the server started' : when(b.lastBeat)}.`, look: true };",
+    "replace": "none confirmed since ${b.lastBeat === null ? 'the server started' : when(b.lastBeat)}.`, look: false };",
+    "why": "[layer1] 0.7 backups not copying not marked as needing a look"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/status-text.ts",
+    "find": "  const when = (at: string): string => checkedAtText(at, view.today, view.timeZone);",
+    "replace": "  const when = (at: string): string => checkedAtText(at, view.today, 'UTC');",
+    "why": "[layer1] 0.7 the times said in UTC"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/status-text.ts",
+    "find": "  if (since === 0) return `${kept}. All ${whenOpened} replayed to their totals when the books opened.`;",
+    "replace": "",
+    "why": "[layer1] 0.7 0.6 none since the books opened said as some since"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/screens/status-text.ts",
+    "find": "  const kept = `${now} ${now === 1 ? 'event' : 'events'} kept`;",
+    "replace": "  const kept = `${now} events kept`;",
+    "why": "[layer1] 0.7 1 event said as 1 events"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Status.tsx",
+    "find": "icon={l.look ? 'alert' : ICONS[l.id]}",
+    "replace": "icon={ICONS[l.id]}",
+    "why": "[layer1] 0.7 what needs a look has no warning icon"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Status.tsx",
+    "find": "{looks === 0 ? 'All working' : looks === 1 ? '1 thing needs a look' : `${looks} things need a look`}",
+    "replace": "{'All working'}",
+    "why": "[layer1] 0.7 the page says all working whatever it shows"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Status.tsx",
+    "find": "            .filter((l) => group.ids.includes(l.id))",
+    "replace": "            .filter((l) => group.ids.includes(l.id) && !l.look)",
+    "why": "[layer1] 0.7 what needs a look left off the page"
+  },
+  {
+    "section": "settings",
+    "file": "packages/web/src/app/routes.ts",
+    "find": "  if (path === '/status') return { screen: 'status' };\n",
+    "replace": "",
+    "why": "[layer1] 0.7 /status opens nothing"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/sync-card.tsx",
+    "find": "href=\"/status\" testId=\"row-status\"",
+    "replace": "href=\"/alerts\" testId=\"row-status\"",
+    "why": "[layer1] 0.7 the Status row opens the alerts"
   }
 ]

@@ -101,8 +101,8 @@ describe('B97 B104 the screens\' addresses', () => {
     }
   });
 
-  it('1.1 there is a screen for each of the five buckets, Payday, the alerts and the bank connection, and they are not tabs', () => {
-    expect([...SCREEN_PATHS].sort()).toEqual(['/buckets/held-for-others', '/buckets/mom-reserve', '/buckets/needs', '/buckets/savings', '/buckets/wants', '/payday', '/alerts', '/bank'].sort());
+  it('1.1 0.7 there is a screen for each of the five buckets, Payday, the alerts, the bank connection and the status page, and they are not tabs', () => {
+    expect([...SCREEN_PATHS].sort()).toEqual(['/buckets/held-for-others', '/buckets/mom-reserve', '/buckets/needs', '/buckets/savings', '/buckets/wants', '/payday', '/alerts', '/bank', '/status'].sort());
     for (const path of SCREEN_PATHS) expect(APP_PATHS).not.toContain(path);
   });
 

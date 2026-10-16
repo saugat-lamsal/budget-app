@@ -9,6 +9,7 @@ import type { BankAnswer, BankConnectedRequest, BankConnectionView, BankLinkAnsw
 import { parseRequest } from '../choices.js';
 import { POT_SLUGS, potOfSlug, type ActivityView } from '../views/activity.js';
 import type { AlertsView } from '../views/alerts.js';
+import type { StatusView } from '../views/status.js';
 import type { BucketsView } from '../views/buckets.js';
 import type { BankRuleRequest, BankRuleResponse } from '../views/bank-rules.js';
 import type { ChoiceRequest, ChoiceResponse, MoveRequest, MoveResponse, RuleRequest, RuleResponse, SettingsRequest, SettingsResponse, SetupRequest, SetupResponse } from '../views/choice.js';
@@ -34,7 +35,7 @@ export const APP_PATHS: readonly string[] = ['/', '/home', '/buckets', '/review'
 // The screens that are not tabs: the activity of each bucket, Payday, and the
 // alerts sent (Phase 5). They get the app too. Must match
 // packages/web/src/app/routes.ts (a test checks).
-export const SCREEN_PATHS: readonly string[] = ['/payday', '/alerts', '/bank', ...Object.keys(POT_SLUGS).map((slug) => `/buckets/${slug}`)];
+export const SCREEN_PATHS: readonly string[] = ['/payday', '/alerts', '/bank', '/status', ...Object.keys(POT_SLUGS).map((slug) => `/buckets/${slug}`)];
 
 // 1.1 to 1.3: the Bank connection screen, the one page Plaid Link opens on
 // (its page rules let Plaid's login in: bankPageHeaders), and its numbers and
@@ -102,7 +103,7 @@ export const ROUTES: readonly Route[] = [
   { method: 'GET', path: BACKUP_BEAT_PATH, login: false },
   // Section 2 (A47): Plaid's webhooks. Plaid has no login: each call is checked by Plaid's own signature instead.
   { method: 'POST', path: WEBHOOK_PATH, login: false },
-  ...['home', 'buckets', 'review', 'settings', 'setup', 'payday', 'alerts', ...Object.keys(POT_SLUGS).map((slug) => `activity/${slug}`)].map((name): Route => ({ method: 'GET', path: `/api/${name}`, login: true })),
+  ...['home', 'buckets', 'review', 'settings', 'setup', 'payday', 'alerts', 'status', ...Object.keys(POT_SLUGS).map((slug) => `activity/${slug}`)].map((name): Route => ({ method: 'GET', path: `/api/${name}`, login: true })),
   { method: 'POST', path: '/api/choice', login: true },
   { method: 'POST', path: '/api/seen', login: true },
   { method: 'POST', path: SYNC_EVERY_PATH, login: true },
@@ -171,6 +172,9 @@ export interface AppServerOptions {
   // Phase 5: the alerts the real server worked out and sent. Without it (the
   // demo, which sends none), /api/alerts is not there.
   readonly alerts?: (request: IncomingMessage) => AlertsView | Promise<AlertsView>;
+  // 0.7 (A57): the status page, the real server only. Without it (the demo),
+  // /api/status is not there.
+  readonly status?: (request: IncomingMessage) => StatusView | Promise<StatusView>;
   // Phase 5, the phone: the Notifications card, for the device asking. Without
   // it (the demo, which sends no alerts), the addresses are not there.
   readonly push?: PushHandlers;
@@ -580,9 +584,10 @@ export function createAppServer(options: AppServerOptions): Server {
       ['settings', options.settings],
       ['setup', options.setupView],
       ['alerts', options.alerts],
+      ['status', options.status],
     ] as const) {
       if (path !== `/api/${name}` || make === undefined) continue;
-      let view: BucketsView | ReviewView | SettingsView | SetupView | AlertsView;
+      let view: BucketsView | ReviewView | SettingsView | SetupView | AlertsView | StatusView;
       try {
         view = await make(request);
       } catch (error) {

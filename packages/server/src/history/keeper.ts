@@ -44,9 +44,15 @@ import { paydayView, type PaydayView } from '../views/payday.js';
 import { reviewView, type ReviewView } from '../views/review.js';
 import { settingsView, type SettingsView } from '../views/settings.js';
 import type { SetupView } from '../views/setup.js';
+import type { StatusView } from '../views/status.js';
 import { recorderOf, totalsOf, type Answer, type Recorder, type SavedSetupAnswers } from './history.js';
 import { appendEvent, lastSeqOf, readDecision, readHistory, readLastChecked, replayHistory, saveDecision, saveLastChecked, sealHistory, type DeskName } from './history-db.js';
 import { timeIn, todayIn } from './today.js';
+
+// 0.7: how many events the books' history holds.
+function countEvents(db: Db): number {
+  return (statement(db, 'SELECT COUNT(*) AS n FROM book_events').get() as { n: number }).n;
+}
 
 // The bank's balances and the card statements as the database has them.
 interface BankNow {
@@ -143,6 +149,11 @@ export class Keeper {
   #onChange: (() => void) | null = null;
   // The bank's balances and statements last read from the database (#bankNow).
   #bankRead: BankNow | null = null;
+  // 0.7 (A57): when the books opened, how many events the history had then
+  // (every one replayed to its totals, 0.6), and how the last sync since went.
+  readonly #startedAt: Date;
+  #eventsWhenOpened = 0;
+  #lastSync: { readonly at: Date; readonly result: 'new' | 'nothing-new' | 'needs-login' | 'failed' } | null = null;
 
   private constructor(input: KeeperInput) {
     this.#db = input.db;
@@ -161,6 +172,7 @@ export class Keeper {
     });
     const lastRead = readLastRead(input.db);
     this.#lastTry = lastRead === null ? null : Date.parse(lastRead);
+    this.#startedAt = input.now();
   }
 
   // Opens the books kept in the database, after checking that the history
@@ -168,6 +180,7 @@ export class Keeper {
   static open(input: KeeperInput): Keeper {
     const keeper = new Keeper(input);
     keeper.reload();
+    keeper.#eventsWhenOpened = countEvents(input.db);
     keeper.#noteGap();
     return keeper;
   }
@@ -582,11 +595,19 @@ export class Keeper {
         this.#changed();
       },
     })
-      .then((result) => {
-        // 10.5: the bank wants a new login; the sync saved only that.
-        if (result.needsLogin) this.#changed();
-        return result;
-      })
+      .then(
+        (result) => {
+          // 0.7: how it went.
+          this.#lastSync = { at: this.#now(), result: result.needsLogin ? 'needs-login' : result.changed ? 'new' : 'nothing-new' };
+          // 10.5: the bank wants a new login; the sync saved only that.
+          if (result.needsLogin) this.#changed();
+          return result;
+        },
+        (error: unknown) => {
+          this.#lastSync = { at: this.#now(), result: 'failed' };
+          throw error;
+        },
+      )
       .finally(() => {
       this.#syncing = null;
     });
@@ -783,6 +804,27 @@ export class Keeper {
     };
   }
 
+  // 0.7 (A57): the status page, in his home time zone. No amounts. backups:
+  // the watch on Litestream's heartbeat, hosted only.
+  statusView(backups?: { readonly healthy: () => boolean; readonly lastBeat: number | null }): StatusView {
+    const zone = this.timeZone();
+    const local = (at: Date | string | number): string => timeIn(zone, new Date(at));
+    const lastRead = this.lastRead();
+    const since = this.mismatchSince();
+    return {
+      state: this.book() === null ? 'not-set-up' : 'tracking',
+      today: this.today(),
+      timeZone: zone,
+      lastRead: lastRead === null ? null : local(lastRead),
+      lastSync: this.#lastSync === null ? null : { at: local(this.#lastSync.at), result: this.#lastSync.result },
+      backups: backups === undefined ? null : { copying: backups.healthy(), lastBeat: backups.lastBeat === null ? null : local(backups.lastBeat) },
+      started: local(this.#startedAt),
+      history: { whenOpened: this.#eventsWhenOpened, now: countEvents(this.#db) },
+      mismatchSince: since === null ? null : local(since),
+      alertsWaiting: outboxCounts(this.#db).notSent,
+    };
+  }
+
   // Phase 6, /health: the books can be read now. Says nothing of what is in them.
   healthy(): boolean {
     try {
@@ -798,7 +840,12 @@ export class Keeper {
   // A43: hosted, `backups` watches Litestream's heartbeat for /health/backups.
   // 1.1 to 1.3: with `bank`, the Bank connection screen (the real server always has it).
   // Section 2 (A47): with `webhook`, Plaid's webhooks (the real server always has it).
-  server(webRoot: string, origin: () => string, onError?: (error: unknown) => void, extras: { readonly backups?: { readonly beat: () => void; readonly healthy: () => boolean }; readonly bank?: SyncBank; readonly webhook?: WebhookHandler } = {}): Server {
+  server(
+    webRoot: string,
+    origin: () => string,
+    onError?: (error: unknown) => void,
+    extras: { readonly backups?: { readonly beat: () => void; readonly healthy: () => boolean; readonly lastBeat: number | null }; readonly bank?: SyncBank; readonly webhook?: WebhookHandler } = {},
+  ): Server {
     const { backups, bank, webhook } = extras;
     const desk = bank === undefined ? null : this.bankDesk(bank);
     this.#origin = origin;
@@ -827,6 +874,7 @@ export class Keeper {
       seen: (_request, what) => this.seen(what),
       syncEvery: (_request, minutes) => this.changeSyncEvery(minutes),
       alerts: () => this.alertsView(),
+      status: () => this.statusView(backups),
       health: () => this.healthy(),
       ...(backups === undefined ? {} : { backups }),
       ...(webhook === undefined ? {} : { webhook }),

@@ -2,6 +2,7 @@ import type { Pot } from '@budget-app/money';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityScreen, type Back } from '../screens/Activity.js';
 import { AlertsScreen } from '../screens/Alerts.js';
+import { StatusScreen } from '../screens/Status.js';
 import { BankScreen } from '../screens/Bank.js';
 import { BucketsScreen } from '../screens/Buckets.js';
 import { HomeScreen } from '../screens/Home.js';
@@ -10,7 +11,7 @@ import { ReviewScreen } from '../screens/Review.js';
 import { SettingsScreen } from '../screens/Settings.js';
 import { SetupScreen } from '../screens/Setup.js';
 import { TabBar } from '../ui/TabBar.js';
-import { useActivity, useAlerts, useBank, useBuckets, useHome, usePayday, useReview, useSettings, useSetup, type Reload } from './api.js';
+import { useActivity, useAlerts, useBank, useBuckets, useHome, usePayday, useReview, useSettings, useSetup, useStatus, type Reload } from './api.js';
 import { backTarget, pathOfRoute, routeLabel, routeOf, routeTitle, tabOfRoute, type Route, type SetupStepName, type Tab } from './routes.js';
 
 // Each of these loads its numbers when its screen opens, so it is always fresh.
@@ -45,6 +46,12 @@ function PaydayTab({ onChanged, back }: { readonly onChanged: Reload; readonly b
 function AlertsTab({ back }: { readonly back: Back }) {
   const [load, reload] = useAlerts();
   return <AlertsScreen load={load} onRetry={reload} back={back} />;
+}
+
+// 0.7 (A57): the status page, opened from Settings. It only reads.
+function StatusTab({ back }: { readonly back: Back }) {
+  const [load, reload] = useStatus();
+  return <StatusScreen load={load} onRetry={reload} back={back} />;
 }
 
 // 1.1 to 1.3: the Bank connection screen, opened from Settings and Setup day.
@@ -143,6 +150,8 @@ export function App() {
         <AlertsTab back={back} />
       ) : route.screen === 'bank' ? (
         <BankTab back={back} />
+      ) : route.screen === 'status' ? (
+        <StatusTab back={back} />
       ) : route.screen === 'setup' ? (
         <SetupTab
           step={route.step}
