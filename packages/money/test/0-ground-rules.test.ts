@@ -140,6 +140,8 @@ describe('0.2 every number and rule is a setting', () => {
       totalsMismatchAlertHours: 12,
       amountsOnLockScreen: false,
       bankPermissionWarnDays: 7,
+      everydayCardStatementDays: null,
+      oldCardStatementDays: null,
     } satisfies Settings);
   });
 
@@ -252,6 +254,19 @@ describe('0.2 every number and rule is a setting', () => {
     expect(DEFAULT_SETTINGS.bankPermissionWarnDays).toBe(7);
     expect(changeSettings(DEFAULT_SETTINGS, { bankPermissionWarnDays: 14 }).bankPermissionWarnDays).toBe(14);
     for (const days of [0, 61, 7.5, Number.NaN]) expect(codeOf(() => changeSettings(DEFAULT_SETTINGS, { bankPermissionWarnDays: days })), String(days)).toBe('bad-setting');
+  });
+
+  it('section 2 9.8 the days from statement to due date are a setting for each card: none to start, a whole number from 1 to 60, or none again; the money math only keeps them', () => {
+    expect(DEFAULT_SETTINGS.everydayCardStatementDays).toBeNull();
+    expect(DEFAULT_SETTINGS.oldCardStatementDays).toBeNull();
+    const set = changeSettings(DEFAULT_SETTINGS, { everydayCardStatementDays: 25, oldCardStatementDays: 1 });
+    expect([set.everydayCardStatementDays, set.oldCardStatementDays]).toEqual([25, 1]);
+    expect(changeSettings(set, { oldCardStatementDays: 60 }).oldCardStatementDays).toBe(60);
+    // Cleared again: that card's reminders are off until it is set (9.8).
+    expect(changeSettings(set, { everydayCardStatementDays: null }).everydayCardStatementDays).toBeNull();
+    for (const key of ['everydayCardStatementDays', 'oldCardStatementDays'] as const) {
+      for (const days of [0, -1, 61, 2.5, Number.NaN, '25' as unknown as number]) expect(codeOf(() => changeSettings(DEFAULT_SETTINGS, { [key]: days })), `${key} ${String(days)}`).toBe('bad-setting');
+    }
   });
 
   it('section 2 10.7 10.8 10.10 quiet hours, the bank-not-read alert and amounts on the lock screen are settings; the money math only keeps them', () => {

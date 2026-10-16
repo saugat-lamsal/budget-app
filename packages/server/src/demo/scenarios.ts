@@ -15,7 +15,7 @@ import {
 } from '@budget-app/money';
 import { checkBankRules, type BankRule } from '../bank/reading.js';
 import { timeIn } from '../history/today.js';
-import type { HomeInput } from '../views/home.js';
+import type { CardRemindersOff, HomeInput } from '../views/home.js';
 import type { MadeUpBank } from './made-up-bank.js';
 import { SETUP_OWES_MORE, SETUP_PENDING, SETUP_PENDING_PAYMENT, SETUP_SUGGEST } from './setup-lives.js';
 
@@ -94,6 +94,8 @@ interface Story {
   readonly catchingUp?: boolean;
   readonly needsLogin?: boolean;
   readonly statements?: readonly CardStatement[];
+  // 9.8 (A52): cards whose statement the bank sent but the app cannot read.
+  readonly cardsOff?: readonly CardRemindersOff[];
   // A restaurant charge the bank shows twice, then takes the copy back (4.10).
   readonly chargedTwice?: boolean;
   // The bank cannot be read today; it was last checked this morning (0.5).
@@ -342,6 +344,7 @@ function story(s: Story): HomeInput {
     statements: statements.map((st) => ({ ...st, statementBalance: x(st.statementBalance), minimumPayment: x(st.minimumPayment) })),
     madeUpData: true,
     seenTakeBacks: new Set(),
+    ...(s.cardsOff === undefined ? {} : { cardsOff: s.cardsOff }),
     lastChecked: s.bankNotRead === true ? { amount: checkedThisMorning, at: LAST_CHECKED_AT } : null,
     // Step 3: when the made-up bank was last read: this morning.
     catchingUp: s.catchingUp ?? false,
@@ -387,6 +390,7 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   { name: 'payday', title: 'Payday is today', input: () => story({ today: '2026-10-16', allDone: true, statements: [] }) },
   { name: 'late', title: 'The paycheck is two days late', input: () => story({ today: '2026-10-18', allDone: true, statements: [] }) },
   { name: 'trouble', title: 'Bank needs a login, old card overdue', input: () => story({ needsLogin: true, statements: [OLD_CARD_OVERDUE] }) },
+  { name: 'cards-off', title: 'Card reminders off: no statement date for the old card, one that cannot be read for the everyday card (9.8)', input: () => story({ statements: [], cardsOff: [{ card: 'everyday-card', why: 'unreadable' }, { card: 'old-card', why: 'no-statement-date' }] }) },
   { name: 'took-back', title: 'The bank took back a charge it showed twice', input: () => story({ chargedTwice: true }) },
   { name: 'bank-not-read', title: "The bank can't be read: safe to spend as of this morning", input: () => story({ bankNotRead: true }) },
   { name: 'big', title: 'Very large numbers', input: () => story({ scale: 100_000 }) },

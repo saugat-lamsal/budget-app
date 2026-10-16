@@ -2,7 +2,7 @@
 // expected numbers come from its "Check:" lines, so the file checked by hand
 // and the test can never drift apart.
 import { readFileSync } from 'node:fs';
-import { Book, DEFAULT_SETTINGS, bankSide, parseDollars, type Cents } from '@budget-app/money';
+import { Book, DEFAULT_SETTINGS, bankSide, cardDue, cardNotices, parseDollars, type CardPayment, type Cents } from '@budget-app/money';
 import { describe, expect, it, vi } from 'vitest';
 import { readHistory } from '../src/history/history-db.js';
 import { acceptRetotal, checkRetotal } from '../src/history/retotal.js';
@@ -21,6 +21,7 @@ import { plaidKeysFromEnv } from '../src/plaid/sandbox-lock.js';
 import { setUpTracking, setupPreview } from '../src/setup-day.js';
 import { bankStatus } from '../src/status.js';
 import { bankView } from '../src/bank/balances.js';
+import { cardStatement } from '../src/bank/statements.js';
 import { SyncTimer } from '../src/serve/sync-timer.js';
 import { syncBank } from '../src/sync/sync.js';
 import { FakeClock } from './fake-clock.js';
@@ -763,5 +764,36 @@ describe('worked examples: the bank side (Phase 7)', () => {
     } finally {
       life.done();
     }
+  });
+});
+
+describe('worked examples: card statements (Phase 7)', () => {
+  it('example 17, 9.8 a card statement sent without its statement date: the due date less the days he entered, and which payments count (9.3, B28)', () => {
+    const checks = checksOf(17);
+    const dates = datesOf(17);
+    const minimum = checks.get('minimum') ?? 0;
+    const read = cardStatement('old-card', { account_id: ACCOUNT_IDS.old, is_overdue: false, last_payment_amount: null, last_payment_date: null, last_statement_issue_date: null, last_statement_balance: 1_500, minimum_payment_amount: minimum / 100, next_payment_due_date: '2026-11-24' }, 25);
+    if (!read.ok) throw new Error(read.why);
+    expect(read.statement.closingDate).toBe(dates.get('statement date'));
+    const first = dates.get('first reminder') ?? '';
+    const second = dates.get('second reminder') ?? '';
+    const paid: CardPayment[] = [
+      { date: '2026-10-30', amount: 2_000 },
+      { date: '2026-10-31', amount: 2_500 },
+    ];
+    // What is counted, read off where the reminders stop: one cent short of the rest still reminds, the rest exactly does not.
+    const toPay = checks.get('still to pay') ?? 0;
+    expect(minimum - (checks.get('counted at the first reminder') ?? 0)).toBe(toPay);
+    expect(cardNotices(first, read.statement, paid, DEFAULT_SETTINGS)).toEqual([{ kind: 'reminder', card: 'old-card', daysBefore: 7, dueDate: '2026-11-24', minimumPayment: minimum }]);
+    expect(cardNotices(first, read.statement, [...paid, { date: first, amount: toPay - 1 }], DEFAULT_SETTINGS)).toHaveLength(1);
+    expect(cardNotices(first, read.statement, [...paid, { date: first, amount: toPay }], DEFAULT_SETTINGS)).toEqual([]);
+    expect(cardDue(first, read.statement, paid, DEFAULT_SETTINGS)).toMatchObject({ kind: 'due', daysLeft: 7 });
+    const later = [...paid, { date: '2026-11-18', amount: 2_000 }];
+    // Counted exactly: a minimum one cent above it would still remind, one equal to it does not.
+    const counted = checks.get('counted at the second reminder') ?? 0;
+    expect(cardNotices(second, { ...read.statement, minimumPayment: counted + 1 }, later, DEFAULT_SETTINGS)).toHaveLength(1);
+    expect(cardNotices(second, { ...read.statement, minimumPayment: counted }, later, DEFAULT_SETTINGS)).toEqual([]);
+    expect(cardNotices(second, read.statement, later, DEFAULT_SETTINGS)).toEqual([]);
+    expect(cardDue(second, read.statement, later, DEFAULT_SETTINGS)).toBeNull();
   });
 });
