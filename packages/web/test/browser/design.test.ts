@@ -105,21 +105,19 @@ describe.each(ENGINES)('design rules in %s', (engineName, engine) => {
       const tabs = await page.locator('.tab').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().bottom));
       expect(tabs).toHaveLength(4);
       for (const bottom of tabs) expect(bottom, state).toBeLessThanOrEqual(IPHONE.height - IPHONE_INSETS.bottom + 0.5);
-      // What scrolls up goes under a dark frosted strip, not into the clock
-      // and battery, and the tab bar is dark glass (blurred, nearly opaque):
+      // What scrolls up goes under a dark strip, not into the clock
+      // and battery, and the tab bar is dark glass (nearly opaque):
       // what scrolls under it cannot be read through it.
       const alphaOf = (color: string): number => Number(/,\s*([\d.]+)\)$/.exec(color)?.[1] ?? 1);
       const strip = await page.locator('.statusbar').evaluate((e) => {
         const s = getComputedStyle(e);
-        return { position: s.position, height: s.height, background: s.backgroundColor, blur: s.backdropFilter };
+        return { position: s.position, height: s.height, background: s.backgroundColor };
       });
       expect(strip.position, state).toBe('fixed');
       expect(strip.height, state).toBe(`${IPHONE_INSETS.top}px`);
       expect(alphaOf(strip.background), state).toBeGreaterThanOrEqual(0.7);
-      expect(strip.blur, state).toContain('blur');
-      const glass = await page.locator('.tabbar').evaluate((e) => ({ background: getComputedStyle(e).backgroundColor, blur: getComputedStyle(e).backdropFilter }));
+      const glass = await page.locator('.tabbar').evaluate((e) => ({ background: getComputedStyle(e).backgroundColor }));
       expect(alphaOf(glass.background), state).toBeGreaterThanOrEqual(0.9);
-      expect(glass.blur, state).toContain('blur');
       // The end of the screen scrolls clear of the tab bar.
       await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
       const bar = await page.locator('.tabbar').boundingBox();

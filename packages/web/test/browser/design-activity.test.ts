@@ -124,7 +124,8 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
     });
   }
 
-  it('every tap target is at least 44 by 44 points, in every state and every sheet', async () => {
+  // Two tests for the same pages: together they went past the time limit on the CI machines.
+  it('every tap target is at least 44 by 44 points, in every state', async () => {
     const small: string[] = [];
     const context = await browser().newContext(phone());
     const page = await context.newPage();
@@ -132,6 +133,14 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
       await showScenario(page, base(), life, path);
       for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`${path} ${life}: ${t.what} is ${t.width}x${t.height}`);
     }
+    await context.close();
+    expect(small).toEqual([]);
+  });
+
+  it('every tap target is at least 44 by 44 points, in every sheet', async () => {
+    const small: string[] = [];
+    const context = await browser().newContext(phone());
+    const page = await context.newPage();
     await showScenario(page, base(), 'activity-marked', '/buckets/needs');
     const names = await activitySheets(page);
     for (const name of names) {

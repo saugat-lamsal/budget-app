@@ -10,7 +10,7 @@
 }
 
 /* Behind the iPhone's status bar: the screen scrolls under it, not into the
-   clock and battery. Frosted, fading out below, so the light behind it shows. */
+   clock and battery. */
 .statusbar {
   position: fixed;
   inset: 0 0 auto;
@@ -18,8 +18,6 @@
   height: var(--safe-top);
   pointer-events: none;
   background: rgb(5 5 6 / 0.72);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
   -webkit-mask-image: linear-gradient(#000 55%, transparent);
   mask-image: linear-gradient(#000 55%, transparent);
 }
@@ -646,10 +644,9 @@ a.bucket:active {
   display: flex;
   justify-content: center;
   padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
-  /* Frosted glass: the light behind it shows through, blurred. */
+  /* Dark glass, nearly opaque. (No blur filter: it is slow where there is no
+     graphics chip, and at this opacity nothing would show of it.) */
   background: var(--tabbar-bg);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  backdrop-filter: blur(20px) saturate(1.4);
   border-top: 1px solid var(--separator);
 }
 
