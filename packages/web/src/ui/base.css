@@ -39,11 +39,12 @@ body {
 }
 
 /* ----- The ambient light (the Backdrop block): fixed behind everything, and
-   it takes no touch. The glow, the grid and the noise are one still SVG; the
-   blobs are flat translucent circles, blurred, that only move with transform,
-   which is cheap on an iPhone. They stand still with reduced motion (below).
-   No gradient or image is ever a CSS background here: the contrast check
-   cannot read the color behind text through one. ----- */
+   it takes no touch. Everything here is cheap to draw: CSS gradients, a small
+   tiled noise image (drawn once), and blobs that are soft radial gradients
+   (no blur filter, which is slow where there is no graphics chip, such as the
+   test machines) and only move with transform. They stand still with reduced
+   motion (below). The contrast check cannot read a color through a gradient or
+   an image, so it hides this layer; test/ambient-light.test.ts checks it. ----- */
 
 .ambient {
   position: fixed;
@@ -51,13 +52,14 @@ body {
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-}
-
-.ambient__still {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  background:
+    /* faint noise */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.1 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E") 0 0 / 160px 160px,
+    /* faint 64px grid */
+    linear-gradient(rgb(255 255 255 / 0.025) 1px, transparent 1px) 0 0 / 64px 64px,
+    linear-gradient(90deg, rgb(255 255 255 / 0.025) 1px, transparent 1px) 0 0 / 64px 64px,
+    /* the glow at the top, falling off to near black */
+    radial-gradient(ellipse at top, #0c0c13 0%, var(--bg) 50%, var(--bg-deep) 100%);
 }
 
 .ambient__blob {
@@ -68,32 +70,29 @@ body {
 }
 
 .ambient__blob--a {
-  left: -60px;
-  top: -260px;
-  width: 510px;
-  height: 560px;
-  background: rgb(94 106 210 / 0.24);
-  filter: blur(90px);
+  left: -200px;
+  top: -380px;
+  width: 760px;
+  height: 800px;
+  background: radial-gradient(closest-side, rgb(94 106 210 / 0.24), transparent);
 }
 
 .ambient__blob--b {
-  left: -240px;
-  top: 40%;
-  width: 380px;
-  height: 460px;
-  background: rgb(150 90 200 / 0.12);
-  filter: blur(80px);
+  left: -380px;
+  top: 30%;
+  width: 600px;
+  height: 680px;
+  background: radial-gradient(closest-side, rgb(150 90 200 / 0.12), transparent);
   animation-duration: 10s;
   animation-delay: -3s;
 }
 
 .ambient__blob--c {
-  right: -260px;
-  top: 14%;
-  width: 360px;
-  height: 440px;
-  background: rgb(70 110 220 / 0.1);
-  filter: blur(80px);
+  right: -400px;
+  top: 8%;
+  width: 600px;
+  height: 680px;
+  background: radial-gradient(closest-side, rgb(70 110 220 / 0.1), transparent);
   animation-duration: 10s;
   animation-delay: -6s;
 }

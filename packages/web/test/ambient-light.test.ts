@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 // The light behind the page (base.css, the Backdrop block) is decoration the
 // accessibility check cannot read a color through, so it is hidden while that
 // check runs (design-helpers.ts). This checks it on its own, in the worst
-// case: each blob at its full strength, which its blur only ever lowers (the
+// case: each blob at its full strength, which fades out from its center (the
 // blobs sit apart, so they are not stacked), with a card's 3% white over it. Every text
 // color the app uses on the page must still be readable there (WCAG AA, 4.5:1).
 
@@ -42,7 +42,7 @@ function contrast(a: Rgb, b: Rgb): number {
 }
 
 describe('the light behind the page', () => {
-  const blobs = [...base.matchAll(/\.ambient__blob--[abc] \{[^}]*?background:\s*rgb\((\d+) (\d+) (\d+) \/ ([\d.]+)\)/g)].map((m) => ({ color: [Number(m[1]), Number(m[2]), Number(m[3])] as Rgb, alpha: Number(m[4]) }));
+  const blobs = [...base.matchAll(/\.ambient__blob--[abc] \{[^}]*?background:\s*radial-gradient\(closest-side, rgb\((\d+) (\d+) (\d+) \/ ([\d.]+)\)/g)].map((m) => ({ color: [Number(m[1]), Number(m[2]), Number(m[3])] as Rgb, alpha: Number(m[4]) }));
 
   it('has the three blobs', () => {
     expect(blobs).toHaveLength(3);

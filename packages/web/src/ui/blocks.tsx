@@ -218,25 +218,6 @@ export function Backdrop() {
   return (
     <>
       <div className="ambient" aria-hidden="true">
-        <svg className="ambient__still" focusable="false">
-          <defs>
-            <radialGradient id="ambient-glow" cx="50%" cy="0%" r="100%" fx="50%" fy="0%">
-              <stop offset="0" stopColor="#0c0c13" />
-              <stop offset="0.5" stopColor="#050506" />
-              <stop offset="1" stopColor="#020203" />
-            </radialGradient>
-            <pattern id="ambient-grid" width="64" height="64" patternUnits="userSpaceOnUse">
-              <path d="M64 0H0V64" fill="none" stroke="#ffffff" strokeOpacity="0.025" />
-            </pattern>
-            <filter id="ambient-noise">
-              <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" />
-              <feColorMatrix values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.1 0 0 0 0" />
-            </filter>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#ambient-glow)" />
-          <rect width="100%" height="100%" fill="url(#ambient-grid)" />
-          <rect width="100%" height="100%" filter="url(#ambient-noise)" opacity="0.5" />
-        </svg>
         <div className="ambient__blob ambient__blob--a" />
         <div className="ambient__blob ambient__blob--b" />
         <div className="ambient__blob ambient__blob--c" />
