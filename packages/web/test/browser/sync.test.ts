@@ -164,10 +164,8 @@ describe.each(ENGINES)('syncing on the real server in %s', (_name, engine) => {
             const look = (): void => {
               const card = document.querySelector('[data-testid="item-cinema-1"]');
               const amount = card?.querySelector('[data-testid="item-amount"]')?.textContent ?? '';
-              if (!amount.includes('21.50')) {
-                requestAnimationFrame(look);
-                return;
-              }
+              if (!amount.includes('21.50')) return;
+              watcher.disconnect();
               const pick = card?.querySelector<HTMLButtonElement>('[data-testid="pick-wants"]');
               const at = performance.now();
               // A tap the moment the new amount shows.
@@ -175,6 +173,10 @@ describe.each(ENGINES)('syncing on the real server in %s', (_name, engine) => {
               pick?.click();
               resolve({ changed: card?.querySelector('[data-testid="changed"]')?.textContent ?? '', disabled: pick?.disabled ?? false, at });
             };
+            // Looks at each change to the page the moment it is made (not on the next frame, which a slow machine
+            // may draw late), so the time taken is the time the card showed the new amount.
+            const watcher = new MutationObserver(look);
+            watcher.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
             look();
           }),
       );
