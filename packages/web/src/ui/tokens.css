@@ -53,9 +53,9 @@
   --ok-bg: #11231f;
 
   --backdrop: rgb(0 0 0 / 0.6);
-  /* Border highlight, soft diffuse, ambient, the 1px top edge, and a sheen: white fading out downward from the top (an inset shadow, not a gradient, so the contrast check can read the card). */
-  --shadow: 0 0 0 1px rgb(255 255 255 / 0.06), 0 2px 20px rgb(0 0 0 / 0.4), 0 0 40px rgb(0 0 0 / 0.2), inset 0 1px 0 0 rgb(255 255 255 / 0.1), inset 0 70px 70px -70px rgb(255 255 255 / 0.07);
-  --shadow-raised: 0 0 0 1px rgb(255 255 255 / 0.1), 0 8px 40px rgb(0 0 0 / 0.5), 0 0 80px rgb(94 106 210 / 0.12), inset 0 1px 0 0 rgb(255 255 255 / 0.12), inset 0 110px 90px -90px rgb(255 255 255 / 0.09);
+  /* Border highlight, a soft shadow, the 1px top edge, and a sheen: white fading out downward from the top (an inset shadow, not a gradient, so the contrast check can read the card). Kept small: big blurs are slow to draw where there is no graphics chip. */
+  --shadow: 0 0 0 1px rgb(255 255 255 / 0.06), 0 2px 10px rgb(0 0 0 / 0.4), inset 0 1px 0 0 rgb(255 255 255 / 0.1), inset 0 50px 40px -50px rgb(255 255 255 / 0.07);
+  --shadow-raised: 0 0 0 1px rgb(255 255 255 / 0.1), 0 6px 20px rgb(0 0 0 / 0.45), inset 0 1px 0 0 rgb(255 255 255 / 0.12), inset 0 80px 60px -80px rgb(255 255 255 / 0.1);
   --tabbar-bg: rgb(10 10 14 / 0.97);
   /* The same white text on it as everywhere. */
   --badge-bg: #d02c1f;
