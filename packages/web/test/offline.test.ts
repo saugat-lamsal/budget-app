@@ -54,8 +54,9 @@ describe('0.8 when the app cannot be reached', () => {
     expect(html).not.toContain('$');
     const words = html.replace(/<style>[\s\S]*<\/style>/, '').replace(/<[^>]+>/g, ' ');
     expect(words).not.toMatch(/\d/);
-    // Light and dark, the notch and the home bar, and the phone's text size.
-    expect(html).toContain('prefers-color-scheme: dark');
+    // Dark only (the app's look), the notch and the home bar, and the phone's text size.
+    expect(html).toContain('color-scheme: dark');
+    expect(html).not.toContain('prefers-color-scheme');
     expect(html).toContain('viewport-fit=cover');
     expect(html).toContain('env(safe-area-inset-top)');
     expect(html).toContain('env(safe-area-inset-bottom)');

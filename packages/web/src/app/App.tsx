@@ -10,6 +10,7 @@ import { PaydayScreen } from '../screens/Payday.js';
 import { ReviewScreen } from '../screens/Review.js';
 import { SettingsScreen } from '../screens/Settings.js';
 import { SetupScreen } from '../screens/Setup.js';
+import { Backdrop } from '../ui/blocks.js';
 import { TabBar } from '../ui/TabBar.js';
 import { useActivity, useAlerts, useBank, useBuckets, useHome, usePayday, useReview, useSettings, useSetup, useStatus, type Reload } from './api.js';
 import { backTarget, pathOfRoute, routeLabel, routeOf, routeTitle, tabOfRoute, type Route, type SetupStepName, type Tab } from './routes.js';
@@ -142,6 +143,7 @@ export function App() {
   const waiting = home.status === 'ready' && home.value.state === 'tracking' ? home.value.waitingInReview : 0;
   return (
     <div className="app">
+      <Backdrop />
       {route.screen === 'activity' ? (
         <ActivityTab key={route.pot} pot={route.pot} onChanged={retryHome} back={back} />
       ) : route.screen === 'payday' ? (

@@ -236,7 +236,7 @@ describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
   });
 
   it('with reduced motion on, the sheet does not slide', async () => {
-    const page = await openSettings(await browser().newContext(phone()), base(), 'normal');
+    const page = await openSettings(await browser().newContext(phone({ reducedMotion: 'no-preference' })), base(), 'normal');
     await page.getByTestId('row-split').click();
     expect(await page.getByTestId('settings-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('sheet-in');
     // The same page with motion reduced, the life started over.
@@ -292,12 +292,12 @@ describe.each(ENGINES)('design rules on Settings in %s', (_engine, engine) => {
     await context.close();
   });
 
-  it('light and dark follow the phone on Settings', async () => {
+  it('dark only, whatever the phone is set to, on Settings', async () => {
     const context = await browser().newContext(phone());
     const page = await context.newPage();
     for (const [scheme, background] of [
-      ['light', 'rgb(242, 242, 247)'],
-      ['dark', 'rgb(0, 0, 0)'],
+      ['light', 'rgb(5, 5, 6)'],
+      ['dark', 'rgb(5, 5, 6)'],
     ] as const) {
       await emulatePhone(page, { colorScheme: scheme });
       await showSettings(page, base(), 'normal');

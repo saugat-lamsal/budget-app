@@ -3,21 +3,31 @@
 /* ----- Screen ----- */
 
 .app {
+  position: relative;
+  /* Above the ambient light fixed behind the page (base.css). */
+  z-index: 1;
   min-height: 100dvh;
 }
 
 /* Behind the iPhone's status bar: the screen scrolls under it, not into the
-   clock and battery. */
-.app::before {
-  content: '';
+   clock and battery. Frosted, fading out below, so the light behind it shows. */
+.statusbar {
   position: fixed;
   inset: 0 0 auto;
   z-index: 10;
   height: var(--safe-top);
-  background: var(--bg);
+  pointer-events: none;
+  background: rgb(5 5 6 / 0.72);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  -webkit-mask-image: linear-gradient(#000 55%, transparent);
+  mask-image: linear-gradient(#000 55%, transparent);
 }
 
 .screen {
+  /* Above the light behind the page. */
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
@@ -30,8 +40,25 @@
 .screen-title {
   font-size: var(--text-title);
   font-weight: var(--weight-bold);
+  letter-spacing: -0.03em;
   line-height: 1.15;
   padding-top: var(--space-2);
+  /* Light text fading toward the bottom. A mask on solid text, not a gradient
+     background, so the contrast check can still read its color. */
+  -webkit-mask-image: var(--fade);
+  mask-image: var(--fade);
+}
+
+/* The small uppercase labels, in Geist Mono. */
+.eyebrow,
+.hero__label,
+.section-title {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-2);
 }
 
 .eyebrow {
@@ -41,14 +68,9 @@
   justify-content: space-between;
   gap: var(--space-2);
   min-height: var(--tap);
-  font-size: var(--text-sub);
-  font-weight: var(--weight-medium);
-  color: var(--text-2);
 }
 
 .section-title {
-  font-size: var(--text-headline);
-  font-weight: var(--weight-bold);
   margin: 0 0 var(--space-2) var(--space-1);
 }
 
@@ -73,44 +95,53 @@
   /* As big as the text size asks, but never wider than the screen. */
   font-size: min(var(--text-hero), calc((100vw - 2 * var(--gutter) - var(--safe-left) - var(--safe-right)) / (var(--chars, 9) * 0.62)));
   font-weight: var(--weight-bold);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.045em;
   line-height: 1.1;
+  -webkit-mask-image: var(--fade);
+  mask-image: var(--fade);
+}
+
+/* The cents of the main number: smaller and quieter. */
+.money__cents {
+  font-size: 0.5em;
+  font-weight: var(--weight-medium);
+  letter-spacing: -0.02em;
+  color: var(--text-2);
 }
 
 /* ----- Card ----- */
 
 .card {
+  position: relative;
   background: var(--surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
 }
 
-.card--padded {
-  padding: var(--space-4);
-}
-
 /* ----- Hero: the one main number ----- */
 
 .hero {
+  position: relative;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  text-align: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-1) 0;
-}
-
-.hero__label {
-  font-size: var(--text-body);
-  font-weight: var(--weight-medium);
-  color: var(--text-2);
+  padding: var(--space-6) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-raised);
+  overflow: hidden;
 }
 
 .hero__sub {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: var(--space-1) var(--space-2);
-  font-size: var(--text-body);
+  font-size: var(--text-sub);
   color: var(--text-2);
 }
 
@@ -133,7 +164,7 @@
   content: '';
   position: absolute;
   top: 0;
-  left: calc(var(--space-4) + 28px + var(--space-3));
+  left: calc(var(--space-4) + 32px + var(--space-3));
   right: 0;
   border-top: 1px solid var(--separator);
 }
@@ -158,11 +189,12 @@ button.row:active {
   flex: none;
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
   background: var(--accent-soft);
-  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--accent-text);
 }
 
 .row__icon--danger {
@@ -240,33 +272,36 @@ button.row:active {
   min-height: var(--tap);
   min-width: var(--tap);
   padding: var(--space-2) var(--space-5);
-  border-radius: 12px;
+  border-radius: 10px;
   border: 0;
   font-weight: var(--weight-bold);
   /* A link made to look like a button (LinkButton) has no underline. */
   text-decoration: none;
   cursor: pointer;
-  transition: opacity var(--duration) var(--ease), transform var(--duration) var(--ease);
+  transition: opacity var(--duration) var(--ease), transform var(--duration) var(--ease), box-shadow var(--duration) var(--ease);
 }
 
 .button:active {
-  opacity: 0.8;
+  opacity: 0.85;
   transform: scale(0.98);
 }
 
+/* The accent glows. */
 .button--primary {
   background: var(--accent);
   color: var(--on-accent);
+  box-shadow: 0 0 0 1px var(--accent-ring), 0 4px 16px var(--accent-glow), inset 0 1px 0 0 rgb(255 255 255 / 0.2);
 }
 
 .button--secondary {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: rgb(255 255 255 / 0.05);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
 }
 
 .button--plain {
   background: none;
-  color: var(--accent);
+  color: var(--accent-text);
   padding: var(--space-2);
 }
 
@@ -311,7 +346,7 @@ button.row:active {
 
 .status--info {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* ----- Bucket bar ----- */
@@ -396,9 +431,9 @@ a.bucket:active {
 }
 
 .bar {
-  height: 8px;
+  height: 4px;
   border-radius: 999px;
-  background: var(--surface-2);
+  background: var(--track);
   overflow: hidden;
 }
 
@@ -406,16 +441,19 @@ a.bucket:active {
   height: 100%;
   border-radius: inherit;
   background: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
   transform-origin: left center;
   transition: width var(--duration-sheet) var(--ease);
 }
 
 .bar__fill--low {
   background: var(--warning-fill);
+  box-shadow: 0 0 10px rgb(229 172 95 / 0.6);
 }
 
 .bar__fill--empty {
   background: var(--danger-fill);
+  box-shadow: 0 0 10px rgb(255 94 80 / 0.6);
 }
 
 /* ----- Banner: a state that must not be missed ----- */
@@ -491,7 +529,8 @@ a.bucket:active {
   height: 56px;
   border-radius: 50%;
   background: var(--accent-soft);
-  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--accent-text);
 }
 
 .state__icon--danger {
@@ -512,6 +551,8 @@ a.bucket:active {
 .skeleton {
   border-radius: 8px;
   background: var(--surface-2);
+  /* Centered in a hero card, like the number it stands for. */
+  max-width: 100%;
   animation: pulse 1.4s ease-in-out infinite;
 }
 
@@ -532,8 +573,9 @@ a.bucket:active {
   margin: 0 auto;
   padding: 0;
   border: 0;
-  border-radius: 18px 18px 0 0;
-  background: var(--bg);
+  border-radius: 20px 20px 0 0;
+  background: var(--surface-solid);
+  box-shadow: 0 -1px 0 0 var(--hairline), 0 -20px 60px rgb(0 0 0 / 0.6);
   color: var(--text);
   overflow: auto;
 }
@@ -571,7 +613,7 @@ a.bucket:active {
   height: 5px;
   margin: 0 auto;
   border-radius: 999px;
-  background: var(--separator);
+  background: var(--hairline);
 }
 
 .sheet__head {
@@ -604,7 +646,10 @@ a.bucket:active {
   display: flex;
   justify-content: center;
   padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
+  /* Frosted glass: the light behind it shows through, blurred. */
   background: var(--tabbar-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: blur(20px) saturate(1.4);
   border-top: 1px solid var(--separator);
 }
 
@@ -637,7 +682,12 @@ a.bucket:active {
 }
 
 .tab[aria-current='page'] {
-  color: var(--accent);
+  color: var(--accent-text);
+}
+
+/* A small glowing accent line over the active tab (a shadow, so nothing sits over its words). */
+.tab[aria-current='page'] {
+  box-shadow: inset 0 2px 0 0 var(--accent), inset 0 14px 14px -14px var(--accent-glow);
 }
 
 .tab__icon {
@@ -835,6 +885,7 @@ a.bucket:active {
 .toggle__input:checked + .toggle__track {
   background: var(--accent);
   border-color: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
 }
 
 .toggle__input:checked + .toggle__track .toggle__thumb {
@@ -843,7 +894,7 @@ a.bucket:active {
 }
 
 .toggle__input:focus-visible + .toggle__track {
-  outline: 3px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
 
@@ -864,9 +915,9 @@ a.bucket:active {
 .field__input {
   min-height: var(--tap);
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--text-2);
+  border: 1px solid var(--field-border);
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background: var(--surface-solid);
   color: var(--text);
   width: 100%;
 }
@@ -893,7 +944,7 @@ a.bucket:active {
   gap: var(--space-1);
   min-height: var(--tap);
   align-self: flex-start;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: var(--weight-medium);
   text-decoration: none;
 }
@@ -1139,4 +1190,136 @@ a.bucket:active {
 .compare__sub {
   display: block;
   font-weight: var(--weight-regular);
+}
+
+/* ----- Tiles: buckets and counts side by side (Home) ----- */
+
+/* The grid asks how much room it has (in the text's own size), so at a large
+   text size the tiles stack instead of squeezing their amounts. */
+.tiles-wrap {
+  container-type: inline-size;
+}
+
+/* An uneven grid: the tall tile (Wants) beside two short ones. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(104px, auto);
+  gap: var(--space-3);
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  transition: transform var(--duration) var(--ease), box-shadow var(--duration) var(--ease);
+}
+
+a.tile:active {
+  transform: scale(0.985);
+}
+
+.tile--tall {
+  grid-row: span 2;
+  padding: var(--space-4);
+}
+
+.tile__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-2);
+}
+
+.tile__name {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.tile__figure {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* As big as the text size asks, but never wider than its tile: the amount
+   (--chars long) is scaled to the room, as the main number is. Half the
+   container, less the gap and the tile's padding. */
+.tile__amount {
+  font-size: min(var(--text-tile), calc((50cqw - 34px) / (var(--chars, 9) * 0.62)));
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  -webkit-mask-image: var(--fade);
+  mask-image: var(--fade);
+}
+
+.tile--tall .tile__amount {
+  font-size: min(var(--text-tall), calc((50cqw - 38px) / (var(--chars, 9) * 0.62)));
+}
+
+.tile__of {
+  font-size: var(--text-caption);
+  color: var(--text-2);
+}
+
+.tile .bar {
+  margin-top: var(--space-2);
+}
+
+.tile__go {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--accent-text);
+}
+
+.tile__count {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.tile__count .tile__amount {
+  font-size: 1.625rem;
+}
+
+@container (max-width: 16em) {
+  .tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tile--tall {
+    grid-row: auto;
+  }
+
+  /* One column: the whole container, less the tile's padding. */
+  .tile__amount {
+    font-size: min(var(--text-tile), calc((100cqw - 30px) / (var(--chars, 9) * 0.62)));
+  }
+
+  .tile--tall .tile__amount {
+    font-size: min(var(--text-tall), calc((100cqw - 34px) / (var(--chars, 9) * 0.62)));
+  }
+
+  .tile__count .tile__amount {
+    font-size: 1.625rem;
+  }
 }

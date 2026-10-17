@@ -21,7 +21,7 @@ describe('design rules in the style sheets', () => {
       for (const [, value = ''] of css(file).matchAll(/(?:font-size|--text-[a-z]+):\s*([^;]+);/g)) {
         // Relative sizes, the size tokens, or a small cap on a relative
         // size (tab labels and the badge stay small, as iOS keeps them).
-        const relative = /^(?:[\d.]+(?:rem|em|%)|var\(--text-[a-z]+\)|inherit|min\(var\(--text-[a-z]+\), \d+px\)|min\(var\(--text-hero\), calc\(.*\)\))$/.test(value);
+        const relative = /^(?:[\d.]+(?:rem|em|%)|var\(--text-[a-z]+\)|inherit|min\(var\(--text-[a-z]+\), \d+px\)|min\(var\(--text-(?:hero|tile|tall)\), calc\(.*\)\))$/.test(value);
         const badge = file === 'blocks.css' && value === '11px';
         expect(relative || badge, `${file}: font-size ${value}`).toBe(true);
       }
@@ -34,12 +34,12 @@ describe.each(ENGINES)('design rules in %s', (engineName, engine) => {
 
   // Each test has one page, moved from state to state and the life started
   // over each time (showLive in live.ts says why).
-  it('light and dark mode follow the phone', async () => {
+  it('dark only: the same dark background whatever the phone is set to', async () => {
     const context = await browser().newContext(phone());
     const page = await context.newPage();
     for (const [scheme, background] of [
-      ['light', 'rgb(242, 242, 247)'],
-      ['dark', 'rgb(0, 0, 0)'],
+      ['light', 'rgb(5, 5, 6)'],
+      ['dark', 'rgb(5, 5, 6)'],
     ] as const) {
       await emulatePhone(page, { colorScheme: scheme });
       await showScenario(page, base(), 'normal');
@@ -105,16 +105,21 @@ describe.each(ENGINES)('design rules in %s', (engineName, engine) => {
       const tabs = await page.locator('.tab').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().bottom));
       expect(tabs).toHaveLength(4);
       for (const bottom of tabs) expect(bottom, state).toBeLessThanOrEqual(IPHONE.height - IPHONE_INSETS.bottom + 0.5);
-      // What scrolls up goes under a solid strip, not into the clock and
-      // battery, and nothing shows through the tab bar.
-      const strip = await page.locator('.app').evaluate((e) => {
-        const s = getComputedStyle(e, '::before');
-        return { position: s.position, height: s.height, background: s.backgroundColor, page: getComputedStyle(document.body).backgroundColor };
+      // What scrolls up goes under a dark frosted strip, not into the clock
+      // and battery, and the tab bar is dark glass (blurred, nearly opaque):
+      // what scrolls under it cannot be read through it.
+      const alphaOf = (color: string): number => Number(/,\s*([\d.]+)\)$/.exec(color)?.[1] ?? 1);
+      const strip = await page.locator('.statusbar').evaluate((e) => {
+        const s = getComputedStyle(e);
+        return { position: s.position, height: s.height, background: s.backgroundColor, blur: s.backdropFilter };
       });
       expect(strip.position, state).toBe('fixed');
       expect(strip.height, state).toBe(`${IPHONE_INSETS.top}px`);
-      expect(strip.background, state).toBe(strip.page);
-      expect(await page.locator('.tabbar').evaluate((e) => getComputedStyle(e).backgroundColor), state).toMatch(/^rgb\(\d+, \d+, \d+\)$/);
+      expect(alphaOf(strip.background), state).toBeGreaterThanOrEqual(0.7);
+      expect(strip.blur, state).toContain('blur');
+      const glass = await page.locator('.tabbar').evaluate((e) => ({ background: getComputedStyle(e).backgroundColor, blur: getComputedStyle(e).backdropFilter }));
+      expect(alphaOf(glass.background), state).toBeGreaterThanOrEqual(0.9);
+      expect(glass.blur, state).toContain('blur');
       // The end of the screen scrolls clear of the tab bar.
       await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
       const bar = await page.locator('.tabbar').boundingBox();
@@ -130,7 +135,7 @@ describe.each(ENGINES)('design rules in %s', (engineName, engine) => {
   });
 
   it('with reduced motion on, nothing slides or fades', async () => {
-    const page = await openScenario(await browser().newContext(phone()), base(), 'normal');
+    const page = await openScenario(await browser().newContext(phone({ reducedMotion: 'no-preference' })), base(), 'normal');
     await page.getByTestId('attention-move-to-savings').click();
     await page.getByTestId('savings-sheet').waitFor();
     expect(await page.getByTestId('savings-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('sheet-in');

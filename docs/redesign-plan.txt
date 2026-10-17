@@ -1,0 +1,110 @@
+THE REDESIGN (started Oct 17, 2026)
+
+His pick: the "Linear" look in docs/design/linear-mockup-app.html and
+linear-mockup-payday.html (made-up numbers; the .dc.html wrapper is ignored,
+the visual design and motion are copied, not the code). Five pull requests,
+one per session, in this order. Each one stops for his review.
+
+  PR 1. Bug check, then the new look (no motion library yet).
+  PR 2. Motion.
+  PR 3. Swipe to sort in Review, and the payday moment.
+  PR 4. Trends tab: Past and Now.
+  PR 5. Trends tab: Future and Habits.
+
+Held for all five:
+- Nothing in packages/money changes in PRs 1 to 3.
+- The app stays read-only toward the bank (rule 0.4).
+- The Content Security Policy is not loosened. Fonts and libraries are
+  bundled and served from the app itself.
+- Dark only. Reduced motion turns every animation off, and every screen
+  works the same with none.
+- Color is never the only signal; 44-point taps; readable contrast (AA);
+  the phone's text size is respected; one shared set of building blocks.
+- Tests: only for what is new or changed; one SKIP_BROWSER_TESTS=1 npm test
+  before each push; browser tests for the screens touched, in Chromium; CI
+  runs the rest. An old test that checks the old look may be updated to the
+  new look (listed in the PR with why); no test of behavior or numbers is
+  ever weakened, skipped or deleted.
+- Break-it only for the new code. No long simulations.
+- Deploy only at his word: npm run deploy-check, then
+  fly deploy --ha=false --remote-only, then docs/phase-7-connection-day.txt.
+
+
+PR 1: THE BUG, THEN THE NEW LOOK
+
+1. The bug he reported: "nothing shows on the home screen of the phone when
+   things are low, no amount or nothing." Checked first (read-only on the
+   live books, his OK). The report is in the PR.
+
+2. The new look, through ui/tokens.css, base.css, blocks.css and blocks.tsx
+   only (screens keep using the shared blocks):
+   - Colors: background #050506 with a radial top glow to #020203; surfaces
+     as soft white gradients (6% to 2%) with hairline borders (6 to 10%
+     white); text #EDEDEF, muted #8A8F98; accent #5E6AD2 for fills (white on
+     it passes AA). Accent as text uses a lighter shade (#8F98E8), since
+     #5E6AD2 on the dark background is under 4.5:1. Status colors stay
+     meaningful and come with a word or icon: amber low/warning, teal
+     good/savings, red danger/mismatch.
+   - Layered shadows on cards (border highlight, soft diffuse, ambient, and
+     a 1px top edge highlight); accent glow on primary buttons.
+   - Ambient background: indigo/violet blobs floating slowly (8 to 10 s), a
+     faint 64px grid and faint noise, fixed behind the content, transform and
+     opacity only, off with reduced motion.
+   - Type: Geist for text, Geist Mono for small uppercase labels, self-hosted
+     (@fontsource/geist and @fontsource/geist-mono, pinned, latin subset).
+     Gradient on the hero number and screen titles. Tabular figures.
+   - Tab bar: frosted glass, a small glowing accent line over the active tab.
+   - Home: a hero card for safe to spend, then an uneven grid: Wants tall
+     beside Needs and To sort.
+   - The pay-period ring on the hero draws in with PR 2 (it needs the pay
+     period's start from the server; the hero is built to take it).
+
+Notes on how the gradients are done, so the contrast test can still read
+them: axe cannot read a text color over a CSS gradient, so a card's gradient
+is a pseudo-element behind its content (the card itself has a flat
+translucent background) and gradient text is a mask on solid light text.
+
+
+PR 2: MOTION
+"motion" (Motion for React) and "@number-flow/react", pinned. Rolling digits
+on safe to spend and bucket amounts; the pay-period ring draws in on Home;
+screen change fade and rise; staggered card entrances; bottom sheets slide up
+and can be dragged down to close; tab indicator and segmented controls slide;
+the Home hero fades, scales and sinks slightly on scroll; a touch spotlight
+follows the finger on the hero and bucket cards. Quick, precise: 200 to 300 ms,
+expo-out cubic-bezier(.16,1,.3,1), entrances up to 600 ms, movements 4 to 8 px,
+no bounce or spring overshoot.
+
+
+PR 3
+- Review: the top item as a card dragged right to accept the suggested bucket
+  or left for later, hint words fading in as you drag. The buttons stay, and
+  every choice goes through the same answers as today (Done, "always do
+  this", B101). "All sorted" at the end.
+- Payday: the paycheck amount rolls in, the mom reserve comes off, the split
+  bar divides, savings lights up with a soft glow, a light sweep and a few
+  rising sparks. Celebrate saving only, never spending. No "Move it" button
+  without asking him first (docs/later.txt item 13).
+
+
+PR 4 AND PR 5: THE TRENDS TAB (fifth tab, between Review and Settings)
+Before building: a new rulebook section drafted and QUESTIONS.md asked; wait
+for his OK on the text.
+- Every number is worked out on the server in tested code, never in the
+  screens; tests show the Trends totals equal the books, to the cent, for the
+  same period.
+- Read-only: it never changes the books, and the history still replays
+  exactly (0.6). Nothing leaves the server, no AI.
+- The 90 days before setup day come from the stored bank items, sorted for
+  display only by his current bank rules and sorting rules (unsorted ones
+  shown as "unsorted"), never written into the books.
+- Anything about the future is labeled "Estimate".
+PR 4, Past: spending per pay period (needs and wants), savings over time,
+where it went (top categories, 90 days). Now: this period against his usual,
+and a burn line of Wants left against an even pace.
+PR 5, Future: where each bucket lands by payday at this pace, savings a year
+out as a range, the old card payoff countdown (waits on the promo end date).
+Habits: the payday effect (first 3 days after payday against the rest),
+spending by day of the week, repeat charges spotted, a streak of periods with
+Wants under. Charts with @visx packages (pinned), animated with Motion; tap a
+bar or point to see the items behind it.

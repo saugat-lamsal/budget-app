@@ -26,6 +26,26 @@ describe.each(ENGINES)('Home in %s', (_name, engine) => {
     await page.context().close();
   });
 
+  it('redesign: Home shows Wants tall beside Needs and To sort, each a link, with what is waiting in review counted from the money math', async () => {
+    const { book } = life('normal');
+    const page = await openScenario(await browser().newContext(phone()), base(), 'normal');
+    const box = async (id: string): Promise<{ x: number; y: number; width: number; height: number }> => (await page.getByTestId(id).boundingBox())!;
+    const [wants, needs, sort] = [await box('bucket-wants'), await box('bucket-needs'), await box('to-sort')];
+    // Wants on the left, as tall as the other two and the gap between them.
+    expect(wants.x).toBeLessThan(needs.x);
+    expect(Math.abs(needs.x - sort.x)).toBeLessThan(1);
+    expect(sort.y).toBeGreaterThan(needs.y);
+    expect(Math.abs(wants.y + wants.height - (sort.y + sort.height))).toBeLessThan(1.5);
+    expect(await page.getByTestId('bucket-wants').getAttribute('href')).toBe('/buckets/wants');
+    expect(await page.getByTestId('bucket-needs').getAttribute('href')).toBe('/buckets/needs');
+    expect(await page.getByTestId('to-sort').getAttribute('href')).toBe('/review');
+    expect(Number(await textAt(page, 'to-sort-count'))).toBe(book.reviewItems().length);
+    // The main number is one amount whole: the cents are smaller, the text the same.
+    expect(await textAt(page, 'safe-to-spend')).toBe('$622.44');
+    expect(await page.getByTestId('safe-to-spend').locator('.money__cents').innerText()).toBe('.44');
+    await page.context().close();
+  });
+
   it('Step 3 Checked at says when the bank was last read, in his home time zone, with a clock: the time only, on the same day', async () => {
     const input = demoScenario('normal')!.input!();
     expect(input.checkedAt).toEqual({ at: '2026-10-07T09:41:00-04:00', timeZone: 'America/New_York' });
@@ -71,7 +91,7 @@ describe.each(ENGINES)('Home in %s', (_name, engine) => {
     // Under each amount: left of what the bucket started the pay period with.
     expect(await centsAt(page, 'bucket-needs-of')).toBe(book.startedPeriodWith().needs);
     expect(await centsAt(page, 'bucket-wants-of')).toBe(book.startedPeriodWith().wants);
-    expect(await textAt(page, 'bucket-needs')).toBe('Needs $930.75 left of $1,058.38');
+    expect(await textAt(page, 'bucket-needs')).toBe('NEEDS $930.75 left of $1,058.38');
     const amount = await page.getByTestId('bucket-needs-left').boundingBox();
     const of = await page.getByTestId('bucket-needs-of').boundingBox();
     expect(of!.y).toBeGreaterThan(amount!.y + amount!.height - 1);
@@ -336,7 +356,7 @@ describe.each(ENGINES)('Home in %s', (_name, engine) => {
 
   it('the made-up numbers say they are made up', async () => {
     const page = await openScenario(await browser().newContext(phone()), base(), 'normal');
-    expect(await textAt(page, 'made-up')).toBe('Made-up data');
+    expect(await textAt(page, 'made-up')).toBe('MADE-UP DATA');
     await page.context().close();
   });
 

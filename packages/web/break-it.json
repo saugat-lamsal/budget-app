@@ -51,16 +51,30 @@
   {
     "section": "home",
     "file": "packages/web/src/ui/blocks.tsx",
-    "find": "{level !== 'ok' && <StatusLabel status={level} />}",
-    "replace": "{level === 'empty' && <StatusLabel status={level} />}",
+    "find": "{level !== 'ok' && <StatusLabel status={level} />}\n        <span className=\"bucket__left\">",
+    "replace": "{level === 'empty' && <StatusLabel status={level} />}\n        <span className=\"bucket__left\">",
     "why": "10.1 a low bucket no longer says Low"
   },
   {
     "section": "home",
     "file": "packages/web/src/ui/blocks.tsx",
-    "find": "{level !== 'ok' && <StatusLabel status={level} />}",
-    "replace": "",
+    "find": "{level !== 'ok' && <StatusLabel status={level} />}\n      </span>\n      <span className=\"tile__figure\">",
+    "replace": "{level === 'empty' && <StatusLabel status={level} />}\n      </span>\n      <span className=\"tile__figure\">",
+    "why": "10.1 a low bucket tile no longer says Low"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "{level !== 'ok' && <StatusLabel status={level} />}\n        <span className=\"bucket__left\">",
+    "replace": "\n        <span className=\"bucket__left\">",
     "why": "10.1 10.2 low and empty shown by color only"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "{level !== 'ok' && <StatusLabel status={level} />}\n      </span>\n      <span className=\"tile__figure\">",
+    "replace": "\n      </span>\n      <span className=\"tile__figure\">",
+    "why": "10.1 10.2 low and empty tiles shown by color only"
   },
   {
     "section": "home",
@@ -247,16 +261,30 @@
   {
     "section": "home",
     "file": "packages/web/src/ui/blocks.tsx",
-    "find": "left of <Money cents={startedWith}",
-    "replace": "<Money cents={startedWith}",
+    "find": "{' '}\n            left of <Money cents={startedWith}",
+    "replace": "{' '}\n            <Money cents={startedWith}",
     "why": "10.1 the bar no longer says left of"
   },
   {
     "section": "home",
     "file": "packages/web/src/ui/blocks.tsx",
-    "find": "left of <Money cents={startedWith}",
-    "replace": "left of <Money cents={left}",
+    "find": "<span className=\"tile__of\">\n          left of <Money cents={startedWith}",
+    "replace": "<span className=\"tile__of\">\n          <Money cents={startedWith}",
+    "why": "10.1 the tile no longer says left of"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "{' '}\n            left of <Money cents={startedWith}",
+    "replace": "{' '}\n            left of <Money cents={left}",
     "why": "10.1 left of shows what is left, not the start"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "<span className=\"tile__of\">\n          left of <Money cents={startedWith}",
+    "replace": "<span className=\"tile__of\">\n          left of <Money cents={left}",
+    "why": "10.1 the tile shows what is left, not the start"
   },
   {
     "section": "home",
@@ -359,23 +387,16 @@
   {
     "section": "home",
     "file": "packages/web/src/ui/tokens.css",
-    "find": "  --text-2: #5c5c63;",
-    "replace": "  --text-2: #a3a3aa;",
-    "why": "design: grey text too faint to read in light mode"
+    "find": "  --text-2: #8a8f98;",
+    "replace": "  --text-2: #4a4a50;",
+    "why": "design: grey text too faint to read"
   },
   {
     "section": "home",
     "file": "packages/web/src/ui/tokens.css",
-    "find": "    --text-2: #a3a3aa;",
-    "replace": "    --text-2: #4a4a50;",
-    "why": "design: grey text too faint to read in dark mode"
-  },
-  {
-    "section": "home",
-    "file": "packages/web/src/ui/tokens.css",
-    "find": "    --bg: #000000;",
-    "replace": "    --bg: #f2f2f7;",
-    "why": "design: dark mode ignored"
+    "find": "  --bg: #050506;",
+    "replace": "  --bg: #f2f2f7;",
+    "why": "design: the dark background is lost"
   },
   {
     "section": "home",
@@ -408,15 +429,15 @@
   {
     "section": "home",
     "file": "packages/web/src/ui/blocks.css",
-    "find": "  height: var(--safe-top);\n  background: var(--bg);",
-    "replace": "  height: var(--safe-top);\n  background: transparent;",
+    "find": "  pointer-events: none;\n  background: rgb(5 5 6 / 0.72);",
+    "replace": "  pointer-events: none;\n  background: transparent;",
     "why": "design: the screen scrolls into the clock and battery"
   },
   {
     "section": "home",
     "file": "packages/web/src/ui/tokens.css",
-    "find": "  --tabbar-bg: #f9f9fb;",
-    "replace": "  --tabbar-bg: rgb(249 249 251 / 0.5);",
+    "find": "--tabbar-bg: rgb(10 10 14 / 0.97);",
+    "replace": "--tabbar-bg: rgb(10 10 14 / 0.5);",
     "why": "design: the screen shows through the tab bar"
   },
   {
@@ -2760,9 +2781,9 @@
   {
     "section": "home",
     "file": "packages/web/src/sw/offline.ts",
-    "find": "@media (prefers-color-scheme: dark) { :root { --bg: #000000; --surface: #1c1c1e; --text: #f5f5f7; --text-2: #a3a3aa; --accent: #6f9dff; --on-accent: #0a1430; } }\n",
-    "replace": "",
-    "why": "[layer1] 0.8 the plain page ignores dark mode"
+    "find": "--bg: #050506; --surface: #0e0f14; --text: #ededef;",
+    "replace": "--bg: #f2f2f7; --surface: #ffffff; --text: #111114;",
+    "why": "[layer1] 0.8 the plain page is not dark"
   },
   {
     "section": "home",
@@ -2812,5 +2833,40 @@
     "find": "if (window.location.protocol === 'https:' && 'serviceWorker' in navigator) void navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => undefined);",
     "replace": "if (window.location.protocol === 'https:' && 'serviceWorker' in navigator && Notification.permission === 'granted') void navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => undefined);",
     "why": "[layer1] 0.8 the background part only where notifications are on"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "count={view.waitingInReview}",
+    "replace": "count={0}",
+    "why": "[redesign] the To sort tile counts nothing"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "href={activityPath('wants')} tall",
+    "replace": "href={activityPath('needs')} tall",
+    "why": "[redesign] the Wants tile opens Needs"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Home.tsx",
+    "find": "href={activityPath('wants')} tall testId",
+    "replace": "href={activityPath('wants')} testId",
+    "why": "[redesign] Wants is not the tall tile"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "{text.slice(0, dot)}",
+    "replace": "{text.slice(0, dot + 1)}",
+    "why": "[redesign] the main number shows its dot twice"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "<Money cents={left} testId={testId === undefined ? undefined : `${testId}-left`} />\n        </span>\n        <span className=\"tile__of\">",
+    "replace": "<Money cents={startedWith} testId={testId === undefined ? undefined : `${testId}-left`} />\n        </span>\n        <span className=\"tile__of\">",
+    "why": "[redesign] the tile shows what it started with as what is left"
   }
 ]

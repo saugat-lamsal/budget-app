@@ -105,7 +105,7 @@ describe.each(ENGINES)('Review in %s', (_name, engine) => {
     const page = await openReview(await browser().newContext(phone()), base(), 'review-busy');
     const groups = await page.locator('[data-testid^="group-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
     expect(groups).toEqual(['group-leftover', 'group-money-in', 'group-spending', 'group-old-card-purchase']);
-    expect(await page.locator('[data-testid^="group-"] h2').allInnerTexts()).toEqual(['Payday questions', 'Money in', 'Spending', 'Old card']);
+    expect(await page.locator('[data-testid^="group-"] h2').allInnerTexts()).toEqual(['PAYDAY QUESTIONS', 'MONEY IN', 'SPENDING', 'OLD CARD']);
     await page.context().close();
   });
 
@@ -1077,7 +1077,7 @@ describe.each(ENGINES)('Review in %s', (_name, engine) => {
 
   it('the made-up numbers say they are made up', async () => {
     const page = await openReview(await browser().newContext(phone()), base(), 'normal');
-    expect(await textAt(page, 'made-up')).toBe('Made-up data');
+    expect(await textAt(page, 'made-up')).toBe('MADE-UP DATA');
     await page.context().close();
   });
 });

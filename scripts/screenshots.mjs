@@ -1,7 +1,7 @@
 // npm run screenshots [-- --out <folder>] [-- --only <name prefix>]
 //
-// iPhone-size pictures of the screens on the demo's made-up lives, in light
-// and dark mode, for pull requests. Taken in WebKit (iPhone Safari's
+// iPhone-size pictures of the screens on the demo's made-up lives, in the
+// app's one (dark) look, for pull requests. Taken in WebKit (iPhone Safari's
 // engine) at the iPhone 15's size, with its notch and home bar areas, and
 // saved to screenshots/ (kept out of git) unless --out says otherwise.
 import { spawn, spawnSync } from 'node:child_process';
@@ -467,7 +467,8 @@ const SHOTS = [
 mkdirSync(out, { recursive: true });
 const browser = await webkit.launch();
 try {
-  for (const scheme of ['light', 'dark']) {
+  // Dark only (the app has no light mode since the redesign).
+  for (const scheme of ['dark']) {
     const context = await browser.newContext({
       viewport: { width: 393, height: 852 },
       deviceScaleFactor: 2,

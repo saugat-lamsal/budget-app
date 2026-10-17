@@ -136,10 +136,15 @@ long). It replaces running everything before every commit:
 
 - Built for an iPhone first. Respect the notch and the home bar. Tap
   targets are at least 44 points. Bottom tab bar: Home, Buckets, Review,
-  Settings.
-- Clean and modern, not flashy. System font, plenty of spacing, one accent
-  color, subtle motion only. No charts yet.
-- Light and dark mode, following the phone's setting.
+  Settings (the Trends tab joins it between Review and Settings in the
+  redesign's PR 4).
+- The "Linear" look (his pick, Oct 17, 2026; docs/redesign-plan.txt and the
+  mockups in docs/design). Clean and modern: Geist and Geist Mono, plenty of
+  spacing, one accent color. Quick, precise motion: 200 to 300 ms, expo-out
+  easing cubic-bezier(.16,1,.3,1), entrances up to 600 ms, movements of 4 to
+  8 px, no bounce or spring overshoot. Charts are allowed on the Trends tab
+  and nowhere else. Reduced motion turns every animation off.
+- Dark only. No light mode, and the phone's setting does not change it.
 - One main number per screen. On Home it is safe to spend.
 - Money is always formatted the same way, digits aligned, negatives
   obvious.

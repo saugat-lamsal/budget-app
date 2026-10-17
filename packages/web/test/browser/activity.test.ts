@@ -106,7 +106,7 @@ describe.each(ENGINES)('what went in and out of a bucket, in %s', (_name, engine
     await showScenario(page, base(), 'normal', '/buckets/held-for-others');
     expect(await textAt(page, 'activity-empty')).toBe('Nothing has gone in or out of Held for others yet this pay period');
     // Nothing came in and nothing went out: no plus and no minus on zero.
-    expect(await textAt(page, 'activity-figures')).toBe('This pay period Carried in $0.00 Came in $0.00 Went out $0.00 Now $0.00');
+    expect(await textAt(page, 'activity-figures')).toBe('THIS PAY PERIOD Carried in $0.00 Came in $0.00 Went out $0.00 Now $0.00');
     expect((await readActivity(page)).rows).toEqual([]);
     await context.close();
   });

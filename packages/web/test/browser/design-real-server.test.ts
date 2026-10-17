@@ -367,7 +367,7 @@ describe.each(ENGINES)('design rules on what only the real server shows (login, 
 
   it('with reduced motion on, the loading page does not shimmer and the sheet does not slide', async () => {
     // One page, with motion on and then reduced, each screen loaded afresh (showLive in live.ts says why).
-    const context = await contextFor({}, true);
+    const context = await contextFor({ reducedMotion: 'no-preference' }, true);
     const page = await context.newPage();
     await settingsPage(page, real('passkey').base);
     await page.getByTestId('row-stay-logged-in').click();
@@ -413,13 +413,13 @@ describe.each(ENGINES)('design rules on what only the real server shows (login, 
     await context.close();
   });
 
-  it('light and dark follow the phone on the login page', async () => {
+  it('dark only, whatever the phone is set to, on the login page', async () => {
     // One page, loaded afresh in each scheme (showLive in live.ts says why).
     const context = await contextFor({}, false);
     const page = await context.newPage();
     for (const [scheme, background] of [
-      ['light', 'rgb(242, 242, 247)'],
-      ['dark', 'rgb(0, 0, 0)'],
+      ['light', 'rgb(5, 5, 6)'],
+      ['dark', 'rgb(5, 5, 6)'],
     ] as const) {
       await emulatePhone(page, { colorScheme: scheme });
       await loginPage(page, real('passkey').base, '[data-testid="login-passkey"]');

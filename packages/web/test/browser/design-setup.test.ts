@@ -193,7 +193,7 @@ describe.each(ENGINES)('design rules on Setup day in %s', (_engine, engine) => {
   });
 
   it('with reduced motion on, the sheet does not slide', async () => {
-    const page = await openSetup(await browser().newContext(phone()), base(), 'setup-day', 'assign');
+    const page = await openSetup(await browser().newContext(phone({ reducedMotion: 'no-preference' })), base(), 'setup-day', 'assign');
     await page.getByTestId('assign-needs').click();
     expect(await page.getByTestId('amount-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('sheet-in');
     // The same page with motion reduced, the life started over.
@@ -264,12 +264,12 @@ describe.each(ENGINES)('design rules on Setup day in %s', (_engine, engine) => {
     await context.close();
   });
 
-  it('light and dark follow the phone on Setup day', async () => {
+  it('dark only, whatever the phone is set to, on Setup day', async () => {
     const context = await browser().newContext(phone());
     const page = await context.newPage();
     for (const [scheme, background] of [
-      ['light', 'rgb(242, 242, 247)'],
-      ['dark', 'rgb(0, 0, 0)'],
+      ['light', 'rgb(5, 5, 6)'],
+      ['dark', 'rgb(5, 5, 6)'],
     ] as const) {
       await emulatePhone(page, { colorScheme: scheme });
       await showSetup(page, base(), 'setup-day', 'bank');

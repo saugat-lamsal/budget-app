@@ -82,7 +82,7 @@ describe.each(ENGINES)('Buckets in %s', (_name, engine) => {
     expect(await centsAt(page, 'mom-sent')).toBe(month.sent);
     expect(await centsAt(page, 'mom-target-low')).toBe(month.target.low);
     expect(await centsAt(page, 'mom-target-high')).toBe(month.target.high);
-    expect(await textAt(page, 'mom-month')).toBe('Sent to mom October so far $500.00 Target $2,000.00 to $3,000.00 a month. Under target');
+    expect(await textAt(page, 'mom-month')).toBe('SENT TO MOM October so far $500.00 Target $2,000.00 to $3,000.00 a month. Under target');
     expect(await page.getByTestId('mom').getAttribute('data-position')).toBe('under');
     expect(await page.getByTestId('mom').locator('[data-status="under-target"] [data-icon]').count()).toBe(1);
     await page.context().close();

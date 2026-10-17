@@ -12,8 +12,9 @@ import { ENGINES, openScenario, phone, useEngine } from './harness.js';
 // sure of, so faint text there passed unseen. Small made-up pages check the
 // rest: a see-through pinned notice, and text axe cannot check at all.
 
-const FAINT = '#c7c7cc';
 const CLEAR = '#1c1c1e';
+// Faint on the app's dark look (the real screens).
+const FAINT = '#3b3e46';
 
 function app(body: string): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Made up</title><style>

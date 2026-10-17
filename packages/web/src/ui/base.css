@@ -13,24 +13,99 @@ html {
   line-height: 1.35;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  background: var(--bg);
+  background: var(--bg-deep);
   color: var(--text);
+  -webkit-font-smoothing: antialiased;
 }
 
 /* On the iPhone this is the body text at the phone's own text size setting,
-   so every rem on every screen grows and shrinks with it. */
+   so every rem on every screen grows and shrinks with it. The shorthand also
+   resets the family to the system font, so Geist is put back after it. */
 @supports (font: -apple-system-body) {
   html {
     font: -apple-system-body;
+    font-family: var(--font);
   }
 }
 
 body {
   margin: 0;
   min-height: 100dvh;
+  /* Flat, so the contrast check can read it; the light on it is drawn below. */
   background: var(--bg);
   -webkit-tap-highlight-color: transparent;
   overflow-wrap: break-word;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----- The ambient light (the Backdrop block): fixed behind everything, and
+   it takes no touch. The glow, the grid and the noise are one still SVG; the
+   blobs are flat translucent circles, blurred, that only move with transform,
+   which is cheap on an iPhone. They stand still with reduced motion (below).
+   No gradient or image is ever a CSS background here: the contrast check
+   cannot read the color behind text through one. ----- */
+
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ambient__still {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ambient__blob {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform;
+  animation: ambient-float 9s ease-in-out infinite;
+}
+
+.ambient__blob--a {
+  left: -60px;
+  top: -260px;
+  width: 510px;
+  height: 560px;
+  background: rgb(94 106 210 / 0.24);
+  filter: blur(90px);
+}
+
+.ambient__blob--b {
+  left: -240px;
+  top: 40%;
+  width: 380px;
+  height: 460px;
+  background: rgb(150 90 200 / 0.12);
+  filter: blur(80px);
+  animation-duration: 10s;
+  animation-delay: -3s;
+}
+
+.ambient__blob--c {
+  right: -260px;
+  top: 14%;
+  width: 360px;
+  height: 440px;
+  background: rgb(70 110 220 / 0.1);
+  filter: blur(80px);
+  animation-duration: 10s;
+  animation-delay: -6s;
+}
+
+@keyframes ambient-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -20px, 0);
+  }
 }
 
 h1,
@@ -60,7 +135,7 @@ a {
 }
 
 :focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
   border-radius: 6px;
 }
