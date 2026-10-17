@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Budget app, Linear style</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#020203}
+a{color:#8F98E8}a:hover{color:#B4BBF2}
+.lx{font-family:'Geist',system-ui,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+.lx button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.lx button:focus-visible{outline:2px solid rgba(94,106,210,0.7);outline-offset:2px}
+.mono{font-family:'Geist Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:#8A8F98}
+.card{position:relative;overflow:hidden;border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,0.065),rgba(255,255,255,0.02));box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 2px 20px rgba(0,0,0,0.4),0 0 40px rgba(0,0,0,0.2),inset 0 1px 0 0 rgba(255,255,255,0.07);transition:box-shadow 300ms cubic-bezier(.16,1,.3,1),transform 300ms cubic-bezier(.16,1,.3,1)}
+.card:active{transform:scale(.985)}
+.hot{box-shadow:0 0 0 1px rgba(255,255,255,0.1),0 8px 40px rgba(0,0,0,0.5),0 0 80px rgba(94,106,210,0.12),inset 0 1px 0 0 rgba(255,255,255,0.09)}
+.edge{position:absolute;left:16px;right:16px;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent)}
+.gtext{background:linear-gradient(180deg,#FFFFFF 0%,rgba(255,255,255,0.95) 45%,rgba(255,255,255,0.62) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.shimmer{background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 4s linear infinite}
+@keyframes shimmer{to{background-position:-200% 0}}
+.blob{position:absolute;border-radius:50%;pointer-events:none;animation:float 9s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-20px) rotate(1deg)}}
+.blob2{animation-duration:10s;animation-delay:-3s}
+.blob3{animation:breathe 8s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.6}50%{opacity:1}}
+.screen{animation:screenIn 300ms cubic-bezier(.16,1,.3,1) both}
+@keyframes screenIn{from{opacity:0;transform:translateY(6px)}}
+.up{animation:up 600ms cubic-bezier(.16,1,.3,1) both}
+@keyframes up{from{opacity:0;transform:translateY(24px)}}
+.s1{animation-delay:80ms}.s2{animation-delay:160ms}.s3{animation-delay:240ms}.s4{animation-delay:320ms}.s5{animation-delay:400ms}.s6{animation-delay:480ms}
+.fill{animation:fill 900ms cubic-bezier(.16,1,.3,1) both;animation-delay:200ms}
+@keyframes fill{from{width:0}}
+.grow{transform-origin:bottom;animation:grow 700ms cubic-bezier(.16,1,.3,1) both}
+@keyframes grow{from{transform:scaleY(0)}}
+.growx{transform-origin:left;animation:growx 800ms cubic-bezier(.16,1,.3,1) both}
+@keyframes growx{from{transform:scaleX(0)}}
+.ring{animation:ring 1400ms cubic-bezier(.16,1,.3,1) both;animation-delay:150ms}
+@keyframes ring{from{stroke-dashoffset:653}}
+.draw{animation:draw 1400ms cubic-bezier(.16,1,.3,1) both;animation-delay:200ms}
+@keyframes draw{from{stroke-dashoffset:1000}}
+.fadein{animation:fadein 800ms ease-out both;animation-delay:600ms}
+@keyframes fadein{from{opacity:0}}
+.pulse{transform-box:fill-box;transform-origin:center;animation:pulse 2s cubic-bezier(.16,1,.3,1) infinite}
+@keyframes pulse{from{transform:scale(1);opacity:.6}to{transform:scale(3.4);opacity:0}}
+.sheet{animation:sheetIn 420ms cubic-bezier(.16,1,.3,1) both}
+@keyframes sheetIn{from{transform:translateY(100%)}}
+.backdrop{animation:fadein2 300ms ease-out both}
+@keyframes fadein2{from{opacity:0}}
+.scalein{animation:scalein 500ms cubic-bezier(.16,1,.3,1) both}
+@keyframes scalein{from{opacity:0;transform:scale(.95)}}
+.cardin{animation:cardin 400ms cubic-bezier(.16,1,.3,1) both}
+@keyframes cardin{from{opacity:0;transform:translateY(8px) scale(.97)}}
+.spin{animation:spin 800ms cubic-bezier(.16,1,.3,1)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.cta{position:relative;overflow:hidden;transition:transform 200ms cubic-bezier(.16,1,.3,1),box-shadow 200ms}
+.cta:active{transform:scale(.98)}
+.cta::after{content:'';position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,0.22) 50%,transparent 70%);transform:translateX(-120%);animation:sweep 3.6s cubic-bezier(.16,1,.3,1) infinite;animation-delay:1.2s}
+@keyframes sweep{0%{transform:translateX(-120%)}35%,100%{transform:translateX(120%)}}
+.ghost{transition:background 200ms ease-out,color 200ms ease-out}
+.ghost:active{background:rgba(255,255,255,0.08)}
+.scroll::-webkit-scrollbar{display:none}
+@media (prefers-reduced-motion:reduce){.lx *,.lx *::after{animation:none !important;transition:none !important}}
+</style>
+</helmet>
+<div class="lx" style="width: 390px; height: 844px; position: relative; overflow: hidden; border-radius: 44px; color: #EDEDEF; background: radial-gradient(ellipse at top, #0c0c13 0%, #050506 50%, #020203 100%)">
+
+<!-- ambient light -->
+<div aria-hidden="true" style="position: absolute; inset: 0; pointer-events: none">
+  <div class="blob" style="left: -60px; top: -260px; width: 510px; height: 560px; background: rgba(94,106,210,0.30); filter: blur(90px)"></div>
+  <div class="blob blob2" style="left: -240px; top: 260px; width: 380px; height: 460px; background: rgba(150,90,200,0.16); filter: blur(80px)"></div>
+  <div class="blob blob2" style="right: -260px; top: 120px; width: 360px; height: 440px; background: rgba(70,110,220,0.14); filter: blur(80px)"></div>
+  <div class="blob3" style="position: absolute; left: 40px; bottom: -200px; width: 320px; height: 300px; border-radius: 50%; background: rgba(94,106,210,0.12); filter: blur(70px)"></div>
+  <div style="position: absolute; inset: 0; opacity: 0.025; background-image: linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px); background-size: 64px 64px"></div>
+  <svg width="390" height="844" style="position: absolute; inset: 0; opacity: 0.05; mix-blend-mode: overlay"><filter id="nz"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"></feTurbulence></filter><rect width="390" height="844" filter="url(#nz)"></rect></svg>
+</div>
+
+<div class="scroll" onScroll="{{onScroll}}" style="position: absolute; inset: 0; overflow-y: auto; padding: 58px 20px 116px; box-sizing: border-box">
+
+<!-- HOME -->
+<sc-if value="{{isHome}}" hint-placeholder-val="{{true}}">
+<div class="screen" style="display: flex; flex-direction: column; gap: 12px">
+  <div style="display: flex; align-items: center; justify-content: space-between">
+    <div>
+      <div class="mono">Fri · Oct 17</div>
+      <div class="gtext" style="font-size: 28px; font-weight: 600; letter-spacing: -0.03em; margin-top: 2px">Home</div>
+    </div>
+    <button class="ghost" onClick="{{sync}}" aria-label="Sync with the bank" style="height: 34px; padding: 0 12px 0 10px; border-radius: 999px; border: 0; background: rgba(255,255,255,0.05); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08); color: #8A8F98; display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 500">
+      <span style="width: 6px; height: 6px; border-radius: 3px; background: #4CC3A5; box-shadow: 0 0 8px #4CC3A5"></span>
+      <sc-if value="{{syncing}}" hint-placeholder-val="{{false}}"><svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg></sc-if>
+      {{syncLabel}}
+    </button>
+  </div>
+
+  <div class="card up" onPointerMove="{{spotHero}}" onPointerLeave="{{spotOff}}" style="height: 330px; display: flex; align-items: center; justify-content: center; {{heroParallax}}">
+    <div class="edge"></div>
+    <div style="position: absolute; inset: 0; pointer-events: none; transition: opacity 300ms ease-out; {{heroSpot}}"></div>
+    <svg width="248" height="248" viewBox="0 0 240 240" style="position: absolute; transform: rotate(-90deg); filter: drop-shadow(0 0 10px {{accentGlow}})" aria-hidden="true">
+      <circle cx="120" cy="120" r="104" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="6"></circle>
+      <circle class="ring" cx="120" cy="120" r="104" fill="none" stroke="{{accent}}" stroke-width="6" stroke-linecap="round" stroke-dasharray="653.45" stroke-dashoffset="280"></circle>
+    </svg>
+    <div style="position: relative; text-align: center">
+      <div class="mono">Safe to spend</div>
+      <div style="display: flex; align-items: baseline; justify-content: center; margin-top: 6px">
+        <span class="gtext" style="font-size: 56px; font-weight: 600; letter-spacing: -0.045em; line-height: 1">{{heroDollars}}</span><span style="font-size: 24px; font-weight: 500; color: #5F6470; letter-spacing: -0.02em">{{heroCents}}</span>
+      </div>
+      <div style="font-size: 13px; color: #8A8F98; margin-top: 8px">until payday · <span style="color: #EDEDEF">6 days</span></div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 104px; gap: 12px">
+    <button class="card up s1" onClick="{{openWants}}" onPointerMove="{{spotWants}}" onPointerLeave="{{spotOff}}" style="grid-row: span 2; border: 0; padding: 16px; text-align: left; color: #EDEDEF; display: flex; flex-direction: column">
+      <div class="edge"></div>
+      <div style="position: absolute; inset: 0; pointer-events: none; transition: opacity 300ms ease-out; {{wantsSpot}}"></div>
+      <div style="display: flex; align-items: center; justify-content: space-between; position: relative">
+        <span class="mono">Wants</span>
+        <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: #E5AC5F; padding: 3px 8px; border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(229,172,95,0.3); background: rgba(229,172,95,0.08)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 5v9"/><path d="M12 19h.01"/></svg>Low</span>
+      </div>
+      <div style="flex: 1"></div>
+      <div class="gtext" style="position: relative; font-size: 30px; font-weight: 600; letter-spacing: -0.035em">{{wantsLeft}}</div>
+      <div style="position: relative; font-size: 12px; color: #8A8F98; margin-top: 2px">left of $428.00</div>
+      <div style="position: relative; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.06); margin-top: 12px; overflow: hidden"><div class="fill" style="height: 100%; width: 22%; border-radius: 2px; background: #E5AC5F; box-shadow: 0 0 10px rgba(229,172,95,0.6)"></div></div>
+    </button>
+    <button class="card up s2" onClick="{{openNeeds}}" style="border: 0; padding: 14px; text-align: left; color: #EDEDEF; display: flex; flex-direction: column; justify-content: space-between">
+      <div class="edge"></div>
+      <span class="mono">Needs</span>
+      <span><span class="gtext" style="display: block; font-size: 22px; font-weight: 600; letter-spacing: -0.03em">{{needsLeft}}</span><span style="display: block; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.06); margin-top: 8px; overflow: hidden"><span class="fill" style="display: block; height: 100%; width: 50%; border-radius: 2px; background: {{accent}}"></span></span></span>
+    </button>
+    <button class="card up s3" onClick="{{goReview}}" style="border: 0; padding: 14px; text-align: left; color: #EDEDEF; display: flex; flex-direction: column; justify-content: space-between">
+      <div class="edge"></div>
+      <span class="mono">To sort</span>
+      <span style="display: flex; align-items: baseline; justify-content: space-between"><span class="gtext" style="font-size: 26px; font-weight: 600; letter-spacing: -0.03em">{{queueLen}}</span><span style="font-size: 12px; color: {{accentText}}; font-weight: 500">Review →</span></span>
+    </button>
+  </div>
+
+  <div class="card up s4" style="padding: 14px 16px; display: flex; align-items: center; gap: 12px">
+    <div class="edge"></div>
+    <span style="width: 36px; height: 36px; border-radius: 12px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); display: flex; align-items: center; justify-content: center; color: #E5AC5F"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/></svg></span>
+    <span style="flex: 1"><span style="display: block; font-size: 14px; font-weight: 600">Everyday card due Oct 28</span><span style="display: block; font-size: 12px; color: #8A8F98">Statement balance · 11 days</span></span>
+    <span style="font-size: 14px; font-weight: 600">$486.20</span>
+  </div>
+
+  <div class="up s5" style="margin-top: 10px; display: flex; align-items: center; gap: 10px"><span class="mono">Recent</span><span style="flex: 1; height: 1px; background: linear-gradient(90deg, rgba(255,255,255,0.1), transparent)"></span></div>
+  <div class="card up s5" style="padding: 4px 0">
+    <div class="edge"></div>
+    <sc-for list="{{recent}}" as="r" hint-placeholder-count="5">
+      <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px">
+        <span style="width: 8px; height: 8px; border-radius: 4px; {{r.dot}}"></span>
+        <span style="flex: 1"><span style="display: block; font-size: 14px; font-weight: 500">{{r.name}}</span><span style="display: block; font-size: 12px; color: #8A8F98">{{r.meta}}</span></span>
+        <span style="font-size: 14px; font-weight: 500; {{r.amtStyle}}">{{r.amt}}</span>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<!-- BUCKETS -->
+<sc-if value="{{isBuckets}}" hint-placeholder-val="{{false}}">
+<div class="screen" style="display: flex; flex-direction: column; gap: 12px">
+  <div>
+    <div class="mono">Oct 15 — Oct 30</div>
+    <div class="gtext" style="font-size: 28px; font-weight: 600; letter-spacing: -0.03em; margin-top: 2px">Buckets</div>
+  </div>
+  <sc-for list="{{buckets}}" as="b" hint-placeholder-count="5">
+    <button class="card up {{b.delay}} {{b.hot}}" onClick="{{b.open}}" onPointerMove="{{b.spot}}" onPointerLeave="{{spotOff}}" style="border: 0; padding: 16px; text-align: left; color: #EDEDEF; display: flex; flex-direction: column; gap: 10px">
+      <div class="edge"></div>
+      <div style="position: absolute; inset: 0; pointer-events: none; transition: opacity 300ms ease-out; {{b.spotStyle}}"></div>
+      <div style="position: relative; display: flex; align-items: center; gap: 10px">
+        <span style="width: 8px; height: 8px; border-radius: 4px; {{b.dotStyle}}"></span>
+        <span style="flex: 1; font-size: 14px; font-weight: 600">{{b.name}}</span>
+        <span style="font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; {{b.chipStyle}}">{{b.status}}</span>
+      </div>
+      <div style="position: relative; display: flex; align-items: baseline; justify-content: space-between">
+        <span class="gtext" style="font-size: 28px; font-weight: 600; letter-spacing: -0.035em">{{b.leftText}}</span>
+        <span style="font-size: 12px; color: #8A8F98">{{b.sub}}</span>
+      </div>
+      <div style="position: relative; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.06); overflow: hidden"><div class="fill" style="height: 100%; border-radius: 2px; {{b.barStyle}}"></div></div>
+    </button>
+  </sc-for>
+</div>
+</sc-if>
+
+<!-- REVIEW -->
+<sc-if value="{{isReview}}" hint-placeholder-val="{{false}}">
+<div class="screen" style="display: flex; flex-direction: column; gap: 14px">
+  <div>
+    <div class="mono">{{reviewSub}}</div>
+    <div class="gtext" style="font-size: 28px; font-weight: 600; letter-spacing: -0.03em; margin-top: 2px">Review</div>
+  </div>
+  <sc-if value="{{hasCard}}" hint-placeholder-val="{{true}}">
+  <div style="position: relative; height: 380px">
+    <div style="position: absolute; left: 16px; right: 16px; top: 16px; height: 340px; border-radius: 18px; background: rgba(255,255,255,0.02); box-shadow: 0 0 0 1px rgba(255,255,255,0.04)"></div>
+    <div style="position: absolute; left: 8px; right: 8px; top: 8px; height: 340px; border-radius: 18px; background: rgba(255,255,255,0.03); box-shadow: 0 0 0 1px rgba(255,255,255,0.05)"></div>
+    <sc-if value="{{cardOn}}" hint-placeholder-val="{{true}}">
+    <div class="cardin" style="position: absolute; inset: 0 0 auto 0; height: 350px">
+      <div onPointerDown="{{onDown}}" onPointerMove="{{onMove}}" onPointerUp="{{onUp}}" onPointerCancel="{{onUp}}" style="position: relative; height: 100%; touch-action: none; user-select: none; cursor: grab; border-radius: 18px; padding: 22px; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: linear-gradient(180deg, #13141B, #0B0C10); box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 20px 60px rgba(0,0,0,0.6), 0 0 80px {{cardGlow}}, inset 0 1px 0 0 rgba(255,255,255,0.08); {{cardStyle}}">
+        <div class="edge"></div>
+        <div style="display: flex; justify-content: space-between"><span class="mono">{{card.when}}</span><span class="mono">{{card.account}}</span></div>
+        <div class="gtext" style="font-size: 42px; font-weight: 600; letter-spacing: -0.04em; margin-top: 30px">{{card.amount}}</div>
+        <div style="font-family: 'Geist Mono', monospace; font-size: 13px; color: #B9BCC4; margin-top: 8px">{{card.desc}}</div>
+        <div style="flex: 1"></div>
+        <div style="border-radius: 12px; padding: 14px; background: rgba(255,255,255,0.03); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06)">
+          <div class="mono">Suggested</div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px"><span style="width: 8px; height: 8px; border-radius: 4px; {{card.dotStyle}}"></span><span style="font-size: 17px; font-weight: 600">{{card.bucket}}</span></div>
+          <div style="font-size: 12px; color: #8A8F98; margin-top: 4px">{{card.why}}</div>
+        </div>
+        <div style="position: absolute; top: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; pointer-events: none">
+          <span style="font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 999px; color: #4CC3A5; background: rgba(76,195,165,0.1); box-shadow: inset 0 0 0 1px rgba(76,195,165,0.35); opacity: {{acceptHint}}">Accept</span>
+          <span style="font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 999px; color: #EDEDEF; background: rgba(255,255,255,0.06); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); opacity: {{laterHint}}">Later</span>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+  </div>
+  <div style="display: flex; gap: 10px">
+    <button class="ghost" onClick="{{later}}" style="flex: 1; height: 48px; border-radius: 10px; border: 0; background: rgba(255,255,255,0.05); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08); color: #EDEDEF; font-size: 15px; font-weight: 500">Later</button>
+    <button class="cta" onClick="{{accept}}" style="flex: 2; height: 48px; border-radius: 10px; border: 0; color: #FFFFFF; font-size: 15px; font-weight: 600; background: {{accent}}; box-shadow: 0 0 0 1px {{accentRing}}, 0 4px 16px {{accentGlow}}, inset 0 1px 0 0 rgba(255,255,255,0.2)">Accept {{card.bucket}}</button>
+  </div>
+  <div class="mono" style="text-align: center; color: #5F6470">Drag right to accept · left for later</div>
+  </sc-if>
+  <sc-if value="{{noCard}}" hint-placeholder-val="{{false}}">
+  <div style="height: 460px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center">
+    <div class="scalein" style="width: 84px; height: 84px; border-radius: 24px; display: flex; align-items: center; justify-content: center; background: rgba(76,195,165,0.08); box-shadow: inset 0 0 0 1px rgba(76,195,165,0.3), 0 0 60px rgba(76,195,165,0.25)">
+      <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#4CC3A5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+    </div>
+    <div class="gtext up s1" style="font-size: 24px; font-weight: 600; letter-spacing: -0.03em">All sorted</div>
+    <div class="up s2" style="font-size: 14px; color: #8A8F98">Every number on Home is up to date.</div>
+    <button class="ghost up s3" onClick="{{resetReview}}" style="margin-top: 6px; height: 40px; padding: 0 16px; border-radius: 10px; border: 0; background: rgba(255,255,255,0.05); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08); color: #EDEDEF; font-size: 13px; font-weight: 500">Reset the demo</button>
+  </div>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- TRENDS -->
+<sc-if value="{{isTrends}}" hint-placeholder-val="{{false}}">
+<div class="screen" style="display: flex; flex-direction: column; gap: 12px">
+  <div>
+    <div class="mono">Since Jul 15</div>
+    <div class="gtext" style="font-size: 28px; font-weight: 600; letter-spacing: -0.03em; margin-top: 2px">Trends</div>
+  </div>
+  <div style="position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); height: 36px; padding: 3px; box-sizing: border-box; border-radius: 10px; background: rgba(255,255,255,0.04); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06)">
+    <div style="position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(25% - 1.5px); border-radius: 7px; background: rgba(255,255,255,0.08); box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.1), 0 2px 8px rgba(0,0,0,0.4); transition: transform 300ms cubic-bezier(.16,1,.3,1); transform: translateX({{segX}})"></div>
+    <sc-for list="{{segs}}" as="s" hint-placeholder-count="4">
+      <button onClick="{{s.pick}}" style="position: relative; border: 0; background: transparent; font-size: 13px; font-weight: 500; transition: color 200ms; {{s.style}}">{{s.label}}</button>
+    </sc-for>
+  </div>
+
+  <sc-if value="{{segPast}}" hint-placeholder-val="{{true}}">
+  <div style="display: flex; flex-direction: column; gap: 12px">
+    <div class="card up" style="padding: 16px">
+      <div class="edge"></div>
+      <div class="mono">Spent each pay period</div>
+      <div class="gtext" style="font-size: 30px; font-weight: 600; margin-top: 6px; letter-spacing: -0.035em">{{selPeriodTotal}}</div>
+      <div style="font-size: 12px; color: #8A8F98">{{selPeriodLabel}}</div>
+      <div style="display: flex; align-items: flex-end; gap: 8px; height: 150px; margin-top: 16px">
+        <sc-for list="{{periods}}" as="p" hint-placeholder-count="7">
+          <button onClick="{{p.pick}}" aria-label="{{p.aria}}" style="flex: 1; height: 100%; border: 0; padding: 0; background: transparent; display: flex; flex-direction: column; justify-content: flex-end">
+            <div class="grow" style="display: flex; flex-direction: column; gap: 2px; {{p.colStyle}}">
+              <div style="border-radius: 4px 4px 2px 2px; background: rgba(237,237,239,0.55); {{p.wantsStyle}}"></div>
+              <div style="border-radius: 2px 2px 4px 4px; {{p.needsStyle}}"></div>
+            </div>
+          </button>
+        </sc-for>
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 8px">
+        <sc-for list="{{periods}}" as="p" hint-placeholder-count="7">
+          <div class="mono" style="flex: 1; text-align: center; font-size: 9px; letter-spacing: 0.06em; color: #5F6470">{{p.short}}</div>
+        </sc-for>
+      </div>
+      <div style="display: flex; gap: 14px; margin-top: 12px; font-size: 12px; color: #8A8F98">
+        <span style="display: flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 2px; background: {{accent}}"></span>Needs</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 2px; background: rgba(237,237,239,0.55)"></span>Wants</span>
+        <span style="margin-left: auto; color: #5F6470">Tap a bar</span>
+      </div>
+    </div>
+    <div class="card up s2" style="padding: 16px">
+      <div class="edge"></div>
+      <div class="mono">Savings</div>
+      <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 6px">
+        <span class="gtext" style="font-size: 30px; font-weight: 600; letter-spacing: -0.035em">{{savingsNow}}</span>
+        <span style="font-size: 12px; font-weight: 600; color: #4CC3A5">+$1,070 this payday</span>
+      </div>
+      <svg width="318" height="120" viewBox="0 0 318 120" style="display: block; margin-top: 12px; overflow: visible" role="img" aria-label="Savings rising from $5,200 in July to $8,940 now">
+        <defs><linearGradient id="lsav" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{{accent}}" stop-opacity="0.28"></stop><stop offset="1" stop-color="{{accent}}" stop-opacity="0"></stop></linearGradient></defs>
+        <path class="fadein" d="{{savArea}}" fill="url(#lsav)"></path>
+        <path class="draw" d="{{savLine}}" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" pathLength="1000" stroke-dasharray="1000" style="filter: drop-shadow(0 0 6px {{accentGlow}})"></path>
+        <circle class="fadein" cx="{{savEndX}}" cy="{{savEndY}}" r="4" fill="#EDEDEF"></circle>
+      </svg>
+    </div>
+    <div class="card up s3" style="padding: 16px">
+      <div class="edge"></div>
+      <div class="mono">Where it went · 90 days</div>
+      <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 14px">
+        <sc-for list="{{cats}}" as="c" hint-placeholder-count="4">
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 500"><span>{{c.name}}</span><span>{{c.amount}}</span></div>
+            <div style="height: 4px; border-radius: 2px; background: rgba(255,255,255,0.06); margin-top: 7px; overflow: hidden"><div class="growx" style="height: 100%; border-radius: 2px; {{c.style}}"></div></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{segNow}}" hint-placeholder-val="{{false}}">
+  <div style="display: flex; flex-direction: column; gap: 12px">
+    <div class="card up" style="padding: 16px">
+      <div class="edge"></div>
+      <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: #E5AC5F"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 16H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg><span class="mono" style="color: #E5AC5F">Ahead of pace</span></div>
+      <div style="font-size: 20px; font-weight: 600; margin-top: 8px; letter-spacing: -0.02em; line-height: 1.25">Wants is <span style="color: #E5AC5F">{{aheadText}}</span> ahead of a normal period</div>
+      <svg width="318" height="150" viewBox="0 0 318 150" style="display: block; margin-top: 14px; overflow: visible" role="img" aria-label="Wants money left by day, compared with an even pace">
+        <line x1="0" y1="140" x2="318" y2="140" stroke="rgba(255,255,255,0.06)"></line>
+        <path d="M0,5 L318,140" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5" stroke-dasharray="4 6"></path>
+        <path class="draw" d="{{burnLine}}" fill="none" stroke="#E5AC5F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" pathLength="1000" stroke-dasharray="1000" style="filter: drop-shadow(0 0 6px rgba(229,172,95,0.5))"></path>
+        <path class="fadein" d="{{burnProj}}" fill="none" stroke="#E5AC5F" stroke-opacity="0.45" stroke-width="2" stroke-dasharray="2 5" stroke-linecap="round"></path>
+        <circle class="pulse" cx="{{burnX}}" cy="{{burnY}}" r="4" fill="#E5AC5F"></circle>
+        <circle cx="{{burnX}}" cy="{{burnY}}" r="4" fill="#E5AC5F"></circle>
+      </svg>
+      <div style="display: flex; gap: 14px; margin-top: 10px; font-size: 12px; color: #8A8F98">
+        <span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 2px; background: #E5AC5F"></span>Wants left</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; border-top: 1.5px dashed rgba(255,255,255,0.3)"></span>Even pace</span>
+        <span class="mono" style="margin-left: auto">Day 8/14</span>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+      <div class="card up s2" style="padding: 14px">
+        <div class="edge"></div>
+        <div class="mono">Per day</div>
+        <div class="gtext" style="font-size: 24px; font-weight: 600; margin-top: 6px; letter-spacing: -0.03em">{{perDay}}</div>
+        <div style="font-size: 12px; color: #E5AC5F; margin-top: 2px">↑ usual $31</div>
+      </div>
+      <div class="card up s3" style="padding: 14px">
+        <div class="edge"></div>
+        <div class="mono">Needs</div>
+        <div class="gtext" style="font-size: 24px; font-weight: 600; margin-top: 6px; letter-spacing: -0.03em">On track</div>
+        <div style="font-size: 12px; color: #4CC3A5; margin-top: 2px">✓ $318 left</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{segFuture}}" hint-placeholder-val="{{false}}">
+  <div style="display: flex; flex-direction: column; gap: 12px">
+    <div class="card up" style="padding: 16px">
+      <div class="edge"></div>
+      <div style="display: flex; justify-content: space-between; align-items: center"><span class="mono">Savings · a year out</span><span style="font-size: 11px; font-weight: 500; padding: 2px 9px; border-radius: 999px; color: {{accentText}}; box-shadow: inset 0 0 0 1px {{accentRing}}">Estimate</span></div>
+      <div style="font-size: 30px; font-weight: 600; margin-top: 6px; letter-spacing: -0.035em"><span style="color: #8A8F98; font-weight: 500; font-size: 20px">About </span><span class="shimmer" style="background-image: linear-gradient(90deg, {{accentText}}, #EDEDEF, {{accentText}})">{{futureSav}}</span></div>
+      <div style="font-size: 12px; color: #8A8F98">by next October, if paydays stay like this</div>
+      <svg width="318" height="130" viewBox="0 0 318 130" style="display: block; margin-top: 12px; overflow: visible" role="img" aria-label="Savings so far, then an estimated range for the next year">
+        <path class="fadein" d="{{futBand}}" fill="{{accent}}" fill-opacity="0.12"></path>
+        <path class="draw" d="{{futPast}}" fill="none" stroke="#EDEDEF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" pathLength="1000" stroke-dasharray="1000"></path>
+        <path class="fadein" d="{{futLine}}" fill="none" stroke="{{accent}}" stroke-width="2" stroke-dasharray="3 6" stroke-linecap="round" style="filter: drop-shadow(0 0 6px {{accentGlow}})"></path>
+        <line x1="{{futNowX}}" y1="0" x2="{{futNowX}}" y2="130" stroke="rgba(255,255,255,0.08)"></line>
+      </svg>
+      <div class="mono" style="display: flex; justify-content: space-between; font-size: 9px; margin-top: 6px; color: #5F6470"><span>Jul</span><span>Today</span><span>Oct 2027</span></div>
+    </div>
+    <div class="card up s2" style="padding: 4px 0">
+      <div class="edge"></div>
+      <div class="mono" style="padding: 12px 16px 4px">By payday · at this pace</div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px"><span style="width: 8px; height: 8px; border-radius: 4px; background: {{accent}}"></span><span style="flex: 1; font-size: 14px; font-weight: 500">Needs</span><span style="font-size: 13px; color: #4CC3A5">✓ About $42 left</span></div>
+      <div style="height: 1px; margin: 0 16px; background: rgba(255,255,255,0.05)"></div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px"><span style="width: 8px; height: 8px; border-radius: 4px; background: rgba(237,237,239,0.55)"></span><span style="flex: 1; font-size: 14px; font-weight: 500">Wants</span><span style="font-size: 13px; color: #E5AC5F">! Runs out 4 days early</span></div>
+      <div style="height: 1px; margin: 0 16px; background: rgba(255,255,255,0.05)"></div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px"><span style="width: 8px; height: 8px; border-radius: 4px; background: #4CC3A5"></span><span style="flex: 1; font-size: 14px; font-weight: 500">Savings</span><span style="font-size: 13px; color: #EDEDEF">+ about $1,070 Oct 31</span></div>
+    </div>
+    <div class="card up s3" style="padding: 14px 16px; display: flex; gap: 12px; align-items: center">
+      <div class="edge"></div>
+      <span style="width: 36px; height: 36px; border-radius: 12px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; color: #8A8F98"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+      <span style="flex: 1"><span style="display: block; font-size: 14px; font-weight: 600">Old card payoff countdown</span><span style="display: block; font-size: 12px; color: #8A8F98">Needs the promo end date: [PROMO END DATE]</span></span>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{segHabits}}" hint-placeholder-val="{{false}}">
+  <div style="display: flex; flex-direction: column; gap: 12px">
+    <div class="card up" style="padding: 16px">
+      <div class="edge"></div>
+      <div class="mono">The payday effect</div>
+      <div style="font-size: 20px; font-weight: 600; margin-top: 8px; letter-spacing: -0.02em; line-height: 1.25">You spend <span style="color: #E5AC5F">2.4×</span> more in the 3 days after payday</div>
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px">
+        <div><div style="display: flex; justify-content: space-between; font-size: 13px"><span>First 3 days</span><span>$46 / day</span></div><div style="height: 6px; border-radius: 3px; background: rgba(255,255,255,0.06); margin-top: 7px; overflow: hidden"><div class="growx" style="height: 100%; width: 100%; border-radius: 3px; background: #E5AC5F; box-shadow: 0 0 10px rgba(229,172,95,0.5)"></div></div></div>
+        <div><div style="display: flex; justify-content: space-between; font-size: 13px"><span>The rest</span><span>$19 / day</span></div><div style="height: 6px; border-radius: 3px; background: rgba(255,255,255,0.06); margin-top: 7px; overflow: hidden"><div class="growx" style="height: 100%; width: 41%; border-radius: 3px; background: rgba(237,237,239,0.55); animation-delay: 120ms"></div></div></div>
+      </div>
+    </div>
+    <div class="card up s2" style="padding: 16px">
+      <div class="edge"></div>
+      <div class="mono">By day of week</div>
+      <div style="display: flex; align-items: flex-end; gap: 10px; height: 90px; margin-top: 14px">
+        <sc-for list="{{week}}" as="w" hint-placeholder-count="7"><div class="grow" style="flex: 1; border-radius: 4px; {{w.style}}"></div></sc-for>
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 8px">
+        <sc-for list="{{week}}" as="w" hint-placeholder-count="7"><div class="mono" style="flex: 1; text-align: center; letter-spacing: 0; {{w.labelStyle}}">{{w.d}}</div></sc-for>
+      </div>
+      <div style="font-size: 12px; color: #8A8F98; margin-top: 10px">Saturdays are your biggest day, about $52.</div>
+    </div>
+    <div class="card up s3" style="padding: 4px 0">
+      <div class="edge"></div>
+      <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 12px 16px 4px"><span class="mono">Repeat charges</span><span style="font-size: 13px; font-weight: 600">$59.96 / mo</span></div>
+      <sc-for list="{{subs}}" as="s" hint-placeholder-count="4">
+        <div style="display: flex; justify-content: space-between; padding: 11px 16px; font-size: 13px"><span>{{s.name}}</span><span style="color: #8A8F98">{{s.amt}}</span></div>
+      </sc-for>
+    </div>
+    <div class="card up s4" style="padding: 16px">
+      <div class="edge"></div>
+      <div class="mono">Streak</div>
+      <div style="font-size: 17px; font-weight: 600; margin-top: 6px">Wants stayed under 3 periods in a row</div>
+      <div style="display: flex; gap: 8px; margin-top: 12px">
+        <sc-for list="{{streak}}" as="s" hint-placeholder-count="6">
+          <div class="scalein" style="width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; {{s.style}}">
+            <sc-if value="{{s.ok}}" hint-placeholder-val="{{true}}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4CC3A5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- SETTINGS -->
+<sc-if value="{{isSettings}}" hint-placeholder-val="{{false}}">
+<div class="screen" style="display: flex; flex-direction: column; gap: 12px">
+  <div class="gtext" style="font-size: 28px; font-weight: 600; letter-spacing: -0.03em">Settings</div>
+  <div class="card up" style="padding: 4px 0">
+    <div class="edge"></div>
+    <div class="mono" style="padding: 12px 16px 4px">Appearance</div>
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px">
+      <span><span style="display: block; font-size: 14px; font-weight: 600">Always dark</span><span style="display: block; font-size: 12px; color: #8A8F98">Even when the phone is in light mode</span></span>
+      <button onClick="{{toggleDark}}" aria-label="Always dark" aria-pressed="{{darkOn}}" style="width: 46px; height: 28px; border-radius: 14px; border: 0; padding: 0; position: relative; transition: background 200ms ease-out, box-shadow 200ms; {{switchStyle}}">
+        <span style="position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 11px; background: #EDEDEF; box-shadow: 0 1px 4px rgba(0,0,0,0.4); transition: transform 300ms cubic-bezier(.16,1,.3,1); transform: translateX({{switchX}})"></span>
+      </button>
+    </div>
+    <div style="height: 1px; margin: 0 16px; background: rgba(255,255,255,0.05)"></div>
+    <div style="padding: 12px 16px">
+      <div style="font-size: 14px; font-weight: 600">Accent</div>
+      <div style="display: flex; gap: 12px; margin-top: 12px">
+        <sc-for list="{{swatches}}" as="s" hint-placeholder-count="4">
+          <button onClick="{{s.pick}}" aria-label="{{s.label}}" style="width: 44px; height: 44px; border-radius: 12px; padding: 0; border: 0; transition: box-shadow 200ms ease-out; {{s.style}}"></button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="height: 1px; margin: 0 16px; background: rgba(255,255,255,0.05)"></div>
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px">
+      <span><span style="display: block; font-size: 14px; font-weight: 600">Ambient light</span><span style="display: block; font-size: 12px; color: #8A8F98">The slow glow behind the screens</span></span>
+      <span style="font-size: 13px; color: #8A8F98">On</span>
+    </div>
+  </div>
+  <div class="card up s2" style="padding: 4px 0">
+    <div class="edge"></div>
+    <sc-for list="{{settingRows}}" as="r" hint-placeholder-count="4">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; font-size: 14px; font-weight: 500"><span>{{r.name}}</span><span style="display: flex; align-items: center; gap: 6px; color: #8A8F98; font-size: 13px">{{r.val}}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5F6470" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></div>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+</div>
+
+<!-- TAB BAR -->
+<div style="position: absolute; left: 14px; right: 14px; bottom: 22px; height: 64px; border-radius: 20px; background: rgba(10,10,12,0.6); backdrop-filter: blur(24px) saturate(150%); -webkit-backdrop-filter: blur(24px) saturate(150%); box-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 10px 40px rgba(0,0,0,0.6), inset 0 1px 0 0 rgba(255,255,255,0.06); display: flex">
+  <div style="position: absolute; top: 0; bottom: 0; left: 0; width: 20%; display: flex; justify-content: center; transition: transform 300ms cubic-bezier(.16,1,.3,1); transform: translateX({{tabX}})">
+    <div style="position: absolute; top: 0; width: 28px; height: 2px; border-radius: 0 0 2px 2px; background: {{accent}}; box-shadow: 0 0 12px 2px {{accentGlow}}"></div>
+    <div style="position: absolute; top: 0; width: 64px; height: 40px; background: radial-gradient(ellipse at top, {{accentGlow}}, transparent 70%)"></div>
+  </div>
+  <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+    <button onClick="{{t.pick}}" aria-label="{{t.label}}" style="position: relative; flex: 1; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; transition: color 200ms ease-out; {{t.style}}">
+      <sc-if value="{{t.home}}" hint-placeholder-val="{{false}}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-5h4v5"/></svg></sc-if>
+      <sc-if value="{{t.buckets}}" hint-placeholder-val="{{false}}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></sc-if>
+      <sc-if value="{{t.review}}" hint-placeholder-val="{{false}}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M5 5h14l1 8v6H4v-6z"/></svg></sc-if>
+      <sc-if value="{{t.trends}}" hint-placeholder-val="{{false}}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19h16"/><path d="M5 15l4-5 4 3 6-7"/></svg></sc-if>
+      <sc-if value="{{t.settings}}" hint-placeholder-val="{{false}}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></sc-if>
+      <span style="font-size: 10px; font-weight: 500">{{t.label}}</span>
+      <sc-if value="{{t.badge}}" hint-placeholder-val="{{false}}"><span class="scalein" style="position: absolute; top: 9px; left: 50%; margin-left: 5px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; background: {{accent}}; box-shadow: 0 0 10px {{accentGlow}}; color: #FFFFFF; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center">{{t.count}}</span></sc-if>
+    </button>
+  </sc-for>
+</div>
+
+<!-- SHEET -->
+<sc-if value="{{sheetOpen}}" hint-placeholder-val="{{false}}">
+<div class="backdrop" onClick="{{closeSheet}}" style="position: absolute; inset: 0; background: rgba(2,2,3,0.7); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px)"></div>
+<div class="sheet" style="position: absolute; left: 8px; right: 8px; bottom: 8px; border-radius: 28px 28px 38px 38px; padding: 10px 20px 30px; background: linear-gradient(180deg, #121219, #0A0A0D); box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 -20px 80px rgba(0,0,0,0.7), 0 0 100px {{accentGlowSoft}}, inset 0 1px 0 0 rgba(255,255,255,0.1)">
+  <div style="width: 36px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.18); margin: 0 auto 16px"></div>
+  <div style="display: flex; align-items: center; gap: 10px">
+    <span style="width: 10px; height: 10px; border-radius: 5px; {{sheet.dotStyle}}"></span>
+    <span style="font-size: 20px; font-weight: 600; flex: 1; letter-spacing: -0.02em">{{sheet.name}}</span>
+    <button class="ghost" onClick="{{closeSheet}}" aria-label="Close" style="width: 32px; height: 32px; border-radius: 10px; border: 0; background: rgba(255,255,255,0.06); color: #8A8F98; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="gtext" style="font-size: 36px; font-weight: 600; margin-top: 12px; letter-spacing: -0.04em">{{sheet.leftText}}</div>
+  <div style="font-size: 13px; color: #8A8F98">{{sheet.sub}}</div>
+  <div style="margin-top: 14px">
+    <sc-for list="{{sheet.items}}" as="it" hint-placeholder-count="3">
+      <div class="up {{it.delay}}" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 1px solid rgba(255,255,255,0.05)">
+        <span><span style="display: block; font-size: 14px; font-weight: 500">{{it.name}}</span><span style="display: block; font-size: 12px; color: #8A8F98">{{it.when}}</span></span>
+        <span style="font-size: 14px; font-weight: 500">{{it.amt}}</span>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#5E6AD2","options":["#5E6AD2","#7A4FD1","#2F7FC1","#C2416B"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'home', seg: 'past', p: 0, sheet: null, syncing: false, queue: [0, 1, 2], dx: 0, dragging: false, leaving: false, cardOn: true, period: 5, accent: null, dark: true, sy: 0, spot: null };
+    this.startX = 0;
+  }
+  componentDidMount() { this.animate(); }
+  componentWillUnmount() { cancelAnimationFrame(this.raf); clearTimeout(this.t1); clearTimeout(this.t2); clearTimeout(this.t3); }
+  animate() {
+    cancelAnimationFrame(this.raf);
+    const t0 = performance.now();
+    const step = (t) => {
+      const k = Math.min(1, (t - t0) / 1200);
+      this.setState({ p: k === 1 ? 1 : 1 - Math.pow(2, -10 * k) });
+      if (k < 1) this.raf = requestAnimationFrame(step);
+    };
+    this.raf = requestAnimationFrame(step);
+  }
+  setTab(tab) { this.setState({ tab, sheet: null, sy: 0, spot: null }); this.animate(); }
+  setSeg(seg) { this.setState({ seg }); this.animate(); }
+  commit(dir) {
+    if (this.state.leaving || this.state.queue.length === 0) return;
+    this.setState({ dragging: false, dx: dir * 460, leaving: true });
+    clearTimeout(this.t1);
+    this.t1 = setTimeout(() => {
+      const q = this.state.queue;
+      const next = dir > 0 ? q.slice(1) : q.slice(1).concat([q[0]]);
+      this.setState({ queue: next, dx: 0, leaving: false, cardOn: false });
+      clearTimeout(this.t2);
+      this.t2 = setTimeout(() => this.setState({ cardOn: true }), 30);
+    }, 220);
+  }
+  spotFor(id) {
+    return (e) => {
+      const el = e.currentTarget;
+      const r = el.getBoundingClientRect();
+      const k = el.offsetWidth ? r.width / el.offsetWidth : 1;
+      this.setState({ spot: { id, x: (e.clientX - r.left) / k, y: (e.clientY - r.top) / k } });
+    };
+  }
+  renderVals() {
+    const s = this.state;
+    const accent = s.accent || this.props.accent || '#5E6AD2';
+    const hex = accent.replace('#', '');
+    const rgb = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    const rgba = (a) => 'rgba(' + rgb.join(',') + ',' + a + ')';
+    const lighten = 'rgb(' + rgb.map((v) => Math.round(v + (255 - v) * 0.35)).join(',') + ')';
+    const p = s.p;
+    const money = (c) => (c < 0 ? '−' : '') + '$' + (Math.abs(c) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const whole = (d) => '$' + Math.round(d).toLocaleString('en-US');
+    const heroStr = money(Math.round(41238 * p));
+    const dot = heroStr.indexOf('.');
+    const spotStyle = (id) => {
+      const on = s.spot && s.spot.id === id;
+      const x = on ? s.spot.x : 0, y = on ? s.spot.y : 0;
+      return 'opacity: ' + (on ? 1 : 0) + '; background: radial-gradient(150px circle at ' + Math.round(x) + 'px ' + Math.round(y) + 'px, ' + rgba(0.18) + ', transparent 70%)';
+    };
+    const sy = s.sy;
+    const k = Math.min(1, sy / 320);
+    const heroParallax = 'opacity: ' + (1 - k * 0.9).toFixed(3) + '; transform: translateY(' + Math.round(sy * 0.3) + 'px) scale(' + (1 - k * 0.05).toFixed(3) + ')';
+
+    const chip = (kind) => kind === 'low' ? 'color: #E5AC5F; background: rgba(229,172,95,0.08); box-shadow: inset 0 0 0 1px rgba(229,172,95,0.3)' : kind === 'ok' ? 'color: #4CC3A5; background: rgba(76,195,165,0.08); box-shadow: inset 0 0 0 1px rgba(76,195,165,0.3)' : 'color: #8A8F98; background: rgba(255,255,255,0.04); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1)';
+    const sampleItems = {
+      needs: [['Groceries', 'Oct 16 · Debit card', '−$64.18'], ['Electric bill', 'Oct 15 · Checking', '−$121.40'], ['Gas', 'Oct 15 · Everyday card', '−$41.02']],
+      wants: [['Dinner out', 'Oct 16 · Everyday card', '−$48.60'], ['Game purchase', 'Oct 15 · Everyday card', '−$69.99'], ['Coffee', 'Oct 15 · Debit card', '−$6.45']],
+      savings: [['Moved on payday', 'Oct 15', '+$1,070.00'], ['Moved on payday', 'Sep 30', '+$1,000.00'], ['Leftover wants', 'Sep 30', '+$38.12']],
+      mom: [['Set aside on payday', 'Oct 15', '+$150.00'], ['Sent to mom', 'Oct 3', '−$200.00'], ['Set aside on payday', 'Sep 30', '+$150.00']],
+      others: [['Friend’s cash in', 'Oct 14', '+$60.00'], ['Sent back', 'Oct 9', '−$25.00'], ['Friend’s cash in', 'Oct 8', '+$25.00']]
+    };
+    const B = [
+      { id: 'needs', name: 'Needs', left: 31840, of: 64200, color: accent, glow: true, status: 'On track', kind: 'ok', sub: 'of $642.00' },
+      { id: 'wants', name: 'Wants', left: 9398, of: 42800, color: '#E5AC5F', glow: true, status: '! Low', kind: 'low', sub: 'of $428.00' },
+      { id: 'savings', name: 'Savings', left: 894000, of: 894000, color: '#4CC3A5', glow: true, status: '+$1,070', kind: 'ok', sub: 'total' },
+      { id: 'mom', name: 'Mom reserve', left: 15000, of: 15000, color: '#D58DB4', glow: false, status: 'Set aside', kind: 'n', sub: 'this month' },
+      { id: 'others', name: 'Held for others', left: 6000, of: 6000, color: '#8A8F98', glow: false, status: '1 person', kind: 'n', sub: 'friends’ cash' }
+    ];
+    const toB = (b, i) => ({
+      name: b.name, status: b.status, sub: b.sub,
+      leftText: money(Math.round(b.left * p)),
+      chipStyle: chip(b.kind),
+      dotStyle: 'background: ' + b.color + (b.glow ? '; box-shadow: 0 0 8px ' + b.color : ''),
+      barStyle: 'width: ' + Math.max(3, Math.round(100 * b.left / b.of)) + '%; background: ' + b.color + (b.glow ? '; box-shadow: 0 0 10px ' + b.color : ''),
+      delay: 's' + Math.min(6, i + 1),
+      hot: s.spot && s.spot.id === b.id ? 'hot' : '',
+      spot: this.spotFor(b.id),
+      spotStyle: spotStyle(b.id),
+      open: () => this.setState({ sheet: b.id })
+    });
+    const buckets = B.map(toB);
+    let sheet = null;
+    if (s.sheet) {
+      const b = B.find((x) => x.id === s.sheet);
+      const v = toB(b, 0);
+      v.leftText = money(b.left);
+      v.sub = b.id === 'savings' ? 'Saved in total' : 'left ' + b.sub;
+      v.items = sampleItems[b.id].map((it, i) => ({ name: it[0], when: it[1], amt: it[2], delay: 's' + (i + 1) }));
+      sheet = v;
+    }
+    const recent = [
+      ['Groceries', 'Needs · Debit card · today', '−$64.18', accent],
+      ['Dinner out', 'Wants · Everyday card · today', '−$48.60', '#E5AC5F'],
+      ['Moved to savings', 'Savings · Oct 15', '+$1,070.00', '#4CC3A5'],
+      ['Electric bill', 'Needs · Checking · Oct 15', '−$121.40', accent],
+      ['Friend’s cash in', 'Held for others · Oct 14', '+$60.00', '#8A8F98']
+    ].map((r) => ({ name: r[0], meta: r[1], amt: r[2], dot: 'background: ' + r[3], amtStyle: r[2].charAt(0) === '+' ? 'color: #4CC3A5' : 'color: #EDEDEF' }));
+
+    const cards = [
+      { when: 'Oct 16', account: 'Debit card', amount: '−$38.21', desc: 'SHEETZ #0412', bucket: 'Needs', color: accent, why: 'Plaid labels it a gas station' },
+      { when: 'Oct 16', account: 'Everyday card', amount: '−$19.99', desc: 'STEAM PURCHASE', bucket: 'Wants', color: '#E5AC5F', why: 'You sorted this place as Wants twice' },
+      { when: 'Oct 15', account: 'Checking', amount: '+$40.00', desc: 'ZELLE FROM J RIVERA', bucket: 'Held for others', color: '#8A8F98', why: 'Friend’s cash, held until you send it back' }
+    ];
+    const hasCard = s.queue.length > 0;
+    const c = hasCard ? cards[s.queue[0]] : cards[0];
+    const card = Object.assign({}, c, { dotStyle: 'background: ' + c.color });
+    const dx = s.dx;
+    const cardStyle = 'transform: translateX(' + dx + 'px) rotate(' + (dx / 24).toFixed(2) + 'deg); transition: ' + (s.dragging ? 'none' : 'transform 300ms cubic-bezier(.16,1,.3,1), opacity 220ms ease-out') + '; opacity: ' + (s.leaving ? 0 : 1);
+    const clamp = (x) => Math.max(0, Math.min(1, x));
+    const cardGlow = dx > 0 ? 'rgba(76,195,165,' + (clamp(dx / 120) * 0.25).toFixed(3) + ')' : rgba((0.08 + clamp(-dx / 120) * 0.0).toFixed(3));
+
+    const tabIds = ['home', 'buckets', 'review', 'trends', 'settings'];
+    const tabLabels = ['Home', 'Buckets', 'Review', 'Trends', 'Settings'];
+    const ti = tabIds.indexOf(s.tab);
+    const tabs = tabIds.map((id, i) => ({
+      label: tabLabels[i], home: id === 'home', buckets: id === 'buckets', review: id === 'review', trends: id === 'trends', settings: id === 'settings',
+      style: 'color: ' + (i === ti ? '#EDEDEF' : '#5F6470'),
+      badge: id === 'review' && s.queue.length > 0, count: s.queue.length,
+      pick: () => this.setTab(id)
+    }));
+    const segIds = ['past', 'now', 'future', 'habits'];
+    const segLabels = ['Past', 'Now', 'Future', 'Habits'];
+    const si = segIds.indexOf(s.seg);
+    const segs = segIds.map((id, i) => ({ label: segLabels[i], style: 'color: ' + (i === si ? '#EDEDEF' : '#6B7080'), pick: () => this.setSeg(id) }));
+
+    const P = [['Jul 15', 590, 310], ['Jul 31', 612, 356], ['Aug 15', 575, 402], ['Aug 29', 630, 288], ['Sep 15', 598, 341], ['Sep 30', 641, 298], ['Oct 15', 324, 334]];
+    const scale = 140 / 1000;
+    const periods = P.map((x, i) => ({
+      short: x[0].split(' ')[0] + ' ' + x[0].split(' ')[1],
+      aria: x[0] + ': $' + (x[1] + x[2]),
+      colStyle: 'animation-delay: ' + (i * 80) + 'ms; opacity: ' + (i === s.period ? 1 : 0.4) + '; transition: opacity 200ms ease-out',
+      wantsStyle: 'height: ' + Math.round(x[2] * scale) + 'px',
+      needsStyle: 'height: ' + Math.round(x[1] * scale) + 'px; background: ' + accent + (i === s.period ? '; box-shadow: 0 0 16px ' + rgba(0.6) : '') + (i === 6 ? '; background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.3) 0 3px, transparent 3px 7px)' : ''),
+      pick: () => this.setState({ period: i })
+    }));
+    const sp = P[s.period];
+    const selPeriodTotal = whole((sp[1] + sp[2]) * p);
+    const selPeriodLabel = (s.period === 6 ? 'This period so far · ' : 'From ' + sp[0] + ' · ') + '$' + sp[1] + ' needs, $' + sp[2] + ' wants';
+    const sav = [5200, 5900, 6450, 7120, 7700, 8300, 8940];
+    const sx = (i) => 8 + i * (302 / 6);
+    const syv = (v) => 110 - (v - 4500) / (9200 - 4500) * 100;
+    const savLine = sav.map((v, i) => (i ? 'L' : 'M') + sx(i).toFixed(1) + ',' + syv(v).toFixed(1)).join(' ');
+    const savArea = savLine + ' L' + sx(6).toFixed(1) + ',120 L' + sx(0).toFixed(1) + ',120 Z';
+    const burn = [428, 402, 330, 301, 280, 240, 190, 120, 94];
+    const bx = (d) => d / 14 * 318;
+    const by = (v) => 5 + (1 - v / 428) * 135;
+    const burnLine = burn.map((v, d) => (d ? 'L' : 'M') + bx(d).toFixed(1) + ',' + by(v).toFixed(1)).join(' ');
+    const burnProj = 'M' + bx(8).toFixed(1) + ',' + by(94).toFixed(1) + ' L' + bx(10.25).toFixed(1) + ',' + by(0).toFixed(1);
+    const all = sav.slice();
+    for (let i = 1; i <= 26; i++) all.push(8940 + 623 * i);
+    const fx = (i) => 4 + i * (310 / 32);
+    const fy = (v) => 122 - (v - 4000) / (29000 - 4000) * 115;
+    const futPast = sav.map((v, i) => (i ? 'L' : 'M') + fx(i).toFixed(1) + ',' + fy(v).toFixed(1)).join(' ');
+    const futLine = 'M' + fx(6).toFixed(1) + ',' + fy(8940).toFixed(1) + ' L' + fx(32).toFixed(1) + ',' + fy(all[32]).toFixed(1);
+    const futBand = 'M' + fx(6).toFixed(1) + ',' + fy(8940).toFixed(1) + ' L' + fx(32).toFixed(1) + ',' + fy(all[32] * 1.12).toFixed(1) + ' L' + fx(32).toFixed(1) + ',' + fy(all[32] * 0.86).toFixed(1) + ' Z';
+    const cats = [['Groceries', 412], ['Dining out', 286], ['Gas', 198], ['Games', 142]].map((x, i) => ({
+      name: x[0], amount: whole(x[1] * p),
+      style: 'width: ' + Math.round(100 * x[1] / 412) + '%; animation-delay: ' + (200 + i * 80) + 'ms; background: ' + (i === 1 || i === 3 ? 'rgba(237,237,239,0.55)' : accent)
+    }));
+    const W = [['M', 14], ['T', 18], ['W', 22], ['T', 26], ['F', 38], ['S', 52], ['S', 31]];
+    const week = W.map((x, i) => ({ d: x[0], style: 'height: ' + Math.round(x[1] / 52 * 90) + 'px; animation-delay: ' + (i * 80) + 'ms; background: ' + (i === 5 ? '#E5AC5F; box-shadow: 0 0 14px rgba(229,172,95,0.5)' : 'rgba(255,255,255,0.12)'), labelStyle: 'color: ' + (i === 5 ? '#E5AC5F' : '#5F6470') }));
+    const subs = [['Music subscription', '$11.99'], ['Cloud storage', '$2.99'], ['Game subscription', '$19.99'], ['Gym', '$24.99']].map((x) => ({ name: x[0], amt: x[1] }));
+    const streak = [false, true, false, true, true, true].map((ok, i) => ({ ok, style: (ok ? 'background: rgba(76,195,165,0.1); box-shadow: inset 0 0 0 1px rgba(76,195,165,0.35)' : 'background: rgba(255,255,255,0.03); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08)') + '; animation-delay: ' + (300 + i * 80) + 'ms' }));
+    const swatchList = ['#5E6AD2', '#7A4FD1', '#2F7FC1', '#C2416B'];
+    const swatchNames = ['Indigo', 'Violet', 'Blue', 'Rose'];
+    const swatches = swatchList.map((col, i) => ({ label: swatchNames[i], style: 'background: ' + col + '; box-shadow: ' + (col === accent ? '0 0 0 2px #050506, 0 0 0 4px ' + col + ', 0 0 20px ' + col : 'inset 0 1px 0 0 rgba(255,255,255,0.2)'), pick: () => this.setState({ accent: col }) }));
+    const settingRows = [['Pay schedule', 'Twice a month'], ['Split', '50 / 30 / 20'], ['Mom reserve', '$150 a payday'], ['Bank connection', 'Connected']].map((x) => ({ name: x[0], val: x[1] }));
+
+    return {
+      accent, accentGlow: rgba(0.45), accentGlowSoft: rgba(0.1), accentRing: rgba(0.5), accentText: lighten,
+      isHome: s.tab === 'home', isBuckets: s.tab === 'buckets', isReview: s.tab === 'review', isTrends: s.tab === 'trends', isSettings: s.tab === 'settings',
+      onScroll: (e) => { const top = e.currentTarget.scrollTop; if (Math.abs(top - this.state.sy) > 2) this.setState({ sy: top }); },
+      heroParallax, heroSpot: spotStyle('hero'), spotHero: this.spotFor('hero'), spotOff: () => this.setState({ spot: null }),
+      wantsSpot: spotStyle('wantsHome'), spotWants: this.spotFor('wantsHome'),
+      heroDollars: dot < 0 ? heroStr : heroStr.slice(0, dot), heroCents: dot < 0 ? '' : heroStr.slice(dot),
+      wantsLeft: money(Math.round(9398 * p)), needsLeft: money(Math.round(31840 * p)), queueLen: String(s.queue.length),
+      openWants: () => this.setState({ sheet: 'wants' }), openNeeds: () => this.setState({ sheet: 'needs' }),
+      syncing: s.syncing, syncLabel: s.syncing ? 'Syncing' : 'Synced 4m ago',
+      sync: () => { if (s.syncing) return; this.setState({ syncing: true }); clearTimeout(this.t3); this.t3 = setTimeout(() => { this.setState({ syncing: false }); this.animate(); }, 800); },
+      goReview: () => this.setTab('review'),
+      recent, buckets,
+      sheetOpen: !!sheet, sheet: sheet || { items: [] }, closeSheet: () => this.setState({ sheet: null }),
+      reviewSub: hasCard ? s.queue.length + ' to sort' : 'Up to date',
+      hasCard, noCard: !hasCard, cardOn: s.cardOn, card, cardStyle, cardGlow,
+      acceptHint: clamp(dx / 90).toFixed(2), laterHint: clamp(-dx / 90).toFixed(2),
+      onDown: (e) => { if (s.leaving) return; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} this.startX = e.clientX; this.setState({ dragging: true, dx: 0 }); },
+      onMove: (e) => { if (!this.state.dragging) return; this.setState({ dx: e.clientX - this.startX }); },
+      onUp: () => { if (!this.state.dragging) return; const d = this.state.dx; if (d > 90) this.commit(1); else if (d < -90) this.commit(-1); else this.setState({ dragging: false, dx: 0 }); },
+      accept: () => this.commit(1), later: () => this.commit(-1),
+      resetReview: () => this.setState({ queue: [0, 1, 2], cardOn: true, dx: 0 }),
+      tabs, tabX: (ti * 100) + '%', segs, segX: (si * 100) + '%',
+      segPast: s.seg === 'past', segNow: s.seg === 'now', segFuture: s.seg === 'future', segHabits: s.seg === 'habits',
+      periods, selPeriodTotal, selPeriodLabel,
+      savingsNow: whole(8940 * p), savLine, savArea, savEndX: sx(6).toFixed(1), savEndY: syv(8940).toFixed(1),
+      cats, aheadText: whole(89 * p), burnLine, burnProj, burnX: bx(8).toFixed(1), burnY: by(94).toFixed(1), perDay: whole(42 * p),
+      futureSav: whole(all[32] * p), futPast, futLine, futBand, futNowX: fx(6).toFixed(1),
+      week, subs, streak,
+      darkOn: s.dark ? 'true' : 'false',
+      switchStyle: s.dark ? 'background: ' + accent + '; box-shadow: 0 0 14px ' + rgba(0.5) + ', inset 0 1px 0 0 rgba(255,255,255,0.2)' : 'background: rgba(255,255,255,0.1); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08)',
+      switchX: s.dark ? '18px' : '0px', toggleDark: () => this.setState({ dark: !s.dark }),
+      swatches, settingRows
+    };
+  }
+}
+</script>
+</body>
+</html>
