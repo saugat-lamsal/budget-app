@@ -111,7 +111,7 @@ describe('11.2 days to payday on Home', () => {
   // The last paycheck was Sep 25 and paydays are every 14 days: Oct 9.
   it('11.2 counts the days to the next payday from the pay schedule', () => {
     const view = tracking(homeView(input(openTestBook(), { today: '2026-10-01' })));
-    expect(view.payday).toEqual({ next: '2026-10-09', days: 8 });
+    expect(view.payday).toEqual({ next: '2026-10-09', days: 8, periodStart: START_DATE });
   });
 
   it('11.2 one day before payday is 1', () => {
@@ -124,18 +124,28 @@ describe('11.2 days to payday on Home', () => {
 
   it('11.2 a late paycheck makes the days negative instead of jumping ahead (B35)', () => {
     const view = tracking(homeView(input(openTestBook(), { today: '2026-10-11' })));
-    expect(view.payday).toEqual({ next: '2026-10-09', days: -2 });
+    expect(view.payday).toEqual({ next: '2026-10-09', days: -2, periodStart: START_DATE });
   });
 
   it('11.2 a paycheck that arrives starts the count again', () => {
     const book = openTestBook();
     book.receive(paycheck('pay1', '2026-10-09', 200_000));
-    expect(tracking(homeView(input(book, { today: '2026-10-09' }))).payday).toEqual({ next: '2026-10-23', days: 14 });
+    expect(tracking(homeView(input(book, { today: '2026-10-09' }))).payday).toEqual({ next: '2026-10-23', days: 14, periodStart: '2026-10-09' });
+  });
+
+  it('11.2 the pay period start is the day the book counted the paycheck (the ring on Home)', () => {
+    const book = openTestBook();
+    expect(tracking(homeView(input(book, { today: '2026-10-05' }))).payday.periodStart).toBe(START_DATE);
+    book.receive(paycheck('pay1', '2026-10-09', 200_000));
+    expect(tracking(homeView(input(book, { today: '2026-10-12' }))).payday.periodStart).toBe('2026-10-09');
+    // A paycheck 11 days later starts the next one.
+    book.receive(paycheck('pay2', '2026-10-20', 200_000));
+    expect(tracking(homeView(input(book, { today: '2026-10-21' }))).payday.periodStart).toBe('2026-10-20');
   });
 
   it('11.2 the pay schedule is the setting, not a fixed 14', () => {
     const book = openTestBook({ settings: { payScheduleDays: 7 } });
-    expect(tracking(homeView(input(book, { today: LAST_PAYCHECK }))).payday).toEqual({ next: '2026-10-02', days: 7 });
+    expect(tracking(homeView(input(book, { today: LAST_PAYCHECK }))).payday).toEqual({ next: '2026-10-02', days: 7, periodStart: START_DATE });
   });
 });
 
@@ -174,7 +184,7 @@ describe('0.5 Home when the totals do not match the bank', () => {
     const book = openTestBook();
     const bank = matchingBank(book);
     const view = tracking(homeView(input(book, { bank: { ...bank, savings: bank.savings + 5 } })));
-    expect(view.payday).toEqual({ next: '2026-10-09', days: 8 });
+    expect(view.payday).toEqual({ next: '2026-10-09', days: 8, periodStart: START_DATE });
   });
 
   it('0.5 with the bank not read and never checked, safe to spend is held back with nothing to show', () => {

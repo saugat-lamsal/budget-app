@@ -606,6 +606,14 @@ a.bucket:active {
   padding: var(--space-2) calc(var(--safe-right) + var(--gutter)) calc(var(--safe-bottom) + var(--space-5)) calc(var(--safe-left) + var(--gutter));
 }
 
+.sheet__drag {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  /* The finger drags the sheet here; it does not scroll it. */
+  touch-action: none;
+}
+
 .sheet__grabber {
   width: 36px;
   height: 5px;
@@ -682,9 +690,15 @@ a.bucket:active {
   color: var(--accent-text);
 }
 
-/* A small glowing accent line over the active tab (a shadow, so nothing sits over its words). */
-.tab[aria-current='page'] {
-  box-shadow: inset 0 2px 0 0 var(--accent), inset 0 14px 14px -14px var(--accent-glow);
+/* A small glowing accent line over the active tab. One line that slides from
+   tab to tab (TabBar.tsx); it sits at the top edge, over no words. */
+.tab__line {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: var(--accent);
+  box-shadow: 0 8px 14px -2px var(--accent-glow);
+  pointer-events: none;
 }
 
 .tab__icon {
@@ -1318,5 +1332,141 @@ a.tile:active {
 
   .tile__count .tile__amount {
     font-size: 1.625rem;
+  }
+}
+
+
+/* ----- Motion (redesign PR 2) ----- */
+
+/* Rolling digits: the real text stays for the screen reader and copying; the
+   digits drawn over it are NumberFlow's. */
+.money--roll {
+  position: relative;
+}
+
+.money__text {
+  /* In the flow, not absolute: WebKit's innerText drops the space after an amount whose text is out of the flow. */
+  display: inline-block;
+  width: 1px;
+  height: 1px;
+  margin-right: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  vertical-align: top;
+  /* No width of its own, so the text inside never pokes out past the screen's edge at a large text size. */
+  font-size: 0em;
+  line-height: 0;
+}
+
+.roll {
+  display: inline-flex;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+
+.roll__small {
+  font-size: 0.5em;
+}
+
+.money--hero .roll__small {
+  color: var(--text-2);
+}
+
+.roll__digit {
+  display: inline-block;
+  height: 1.2em;
+  line-height: 1.2;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+
+.roll__col {
+  display: flex;
+  flex-direction: column;
+  transform: translateY(calc(var(--digit, 0) * -1.2em));
+  transition: transform 300ms var(--ease) var(--delay, 0ms);
+}
+
+.roll__col > span {
+  height: 1.2em;
+}
+
+.roll__col > span::before,
+.roll__char::before {
+  content: attr(data-d);
+}
+
+.roll__char {
+  line-height: 1.2;
+}
+
+/* The pay-period ring on the Home hero. */
+.ring {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 36px;
+  height: 36px;
+  pointer-events: none;
+}
+
+.ring__track,
+.ring__arc {
+  fill: none;
+  stroke-width: 3;
+}
+
+.ring__track {
+  stroke: var(--hairline);
+}
+
+.ring__arc {
+  stroke: var(--accent-text);
+  stroke-linecap: round;
+}
+
+/* The light that follows a finger on the hero and the bucket cards. It exists
+   only while a finger is on the card: the contrast check cannot read a color
+   through a pseudo-element, so there is none at rest. */
+.spot[data-spot='on']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(180px circle at var(--spot-x, 50%) var(--spot-y, 50%), rgb(255 255 255 / 0.07), transparent 70%);
+}
+
+/* Screens come in with a short fade and rise, and their cards one after
+   another (up to 600 ms in all, 6 px of travel). */
+.screen > * {
+  animation: rise 360ms var(--ease) backwards;
+}
+
+.screen > :nth-child(2) {
+  animation-delay: 40ms;
+}
+
+.screen > :nth-child(3) {
+  animation-delay: 80ms;
+}
+
+.screen > :nth-child(4) {
+  animation-delay: 120ms;
+}
+
+.screen > :nth-child(5) {
+  animation-delay: 160ms;
+}
+
+.screen > :nth-child(n + 6) {
+  animation-delay: 200ms;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
 }

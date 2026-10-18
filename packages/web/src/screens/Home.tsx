@@ -3,7 +3,7 @@ import type { Attention, BankDetail, HomeView } from '@budget-app/server/views';
 import { Fragment, useState } from 'react';
 import { markTakeBackSeen, type Load, type Reload } from '../app/api.js';
 import { activityPath, pathOf, setupPath } from '../app/routes.js';
-import { Banner, BottomSheet, BucketTile, Button, Card, CountTile, LinkButton, ListRow, MadeUpPill, Money, Skeleton, StateMessage, StatusLabel, Tiles } from '../ui/blocks.js';
+import { Banner, BottomSheet, BucketTile, Button, Card, CountTile, LinkButton, ListRow, MadeUpPill, Money, PeriodRing, ScrollHero, Skeleton, StateMessage, StatusLabel, Tiles } from '../ui/blocks.js';
 import { asOfText, checkedAtText, longDate, shortDate } from '../ui/dates.js';
 import { Icon } from '../ui/Icon.js';
 import { cardsOffText, dueText, onItsWayInText, paydayText, stillToSetText, waitingText } from './home-text.js';
@@ -79,6 +79,8 @@ function HomeReady({ view, onChanged }: { readonly view: Tracking; readonly onCh
     </p>
   );
 
+  const ring = <PeriodRing start={payday.periodStart} today={view.today} next={payday.next} testId="period-ring" />;
+
   return (
     <>
       <div className="eyebrow">
@@ -87,13 +89,13 @@ function HomeReady({ view, onChanged }: { readonly view: Tracking; readonly onCh
       </div>
 
       {safeToSpend.shown ? (
-        <section className="hero" aria-labelledby="safe-to-spend-label">
+        <ScrollHero labelledBy="safe-to-spend-label" ring={ring}>
           <h2 id="safe-to-spend-label" className="hero__label">
             Safe to spend
           </h2>
-          <Money cents={safeToSpend.amount} hero testId="safe-to-spend" />
+          <Money cents={safeToSpend.amount} hero roll testId="safe-to-spend" />
           {paydayLine}
-        </section>
+        </ScrollHero>
       ) : safeToSpend.why === 'totals-do-not-match' && safeToSpend.catchingUp ? (
         // 10.4 (A47): a difference younger than the setting's hours, said calmly, with the amount.
         <Banner tone="warning" icon="clock" title="The bank is still catching up" testId="catching-up">
@@ -123,7 +125,7 @@ function HomeReady({ view, onChanged }: { readonly view: Tracking; readonly onCh
         </Banner>
       ) : safeToSpend.lastChecked !== null ? (
         // B82: the bank cannot be read; the last checked number, greyed, with when.
-        <section className="hero" aria-labelledby="safe-to-spend-label" data-testid="stale">
+        <ScrollHero labelledBy="safe-to-spend-label" ring={ring} testId="stale">
           <h2 id="safe-to-spend-label" className="hero__label">
             Safe to spend
           </h2>
@@ -133,7 +135,7 @@ function HomeReady({ view, onChanged }: { readonly view: Tracking; readonly onCh
             <span>As of {asOfText(safeToSpend.lastChecked.at, view.timeZone)}. Can't reach the bank to check it now.</span>
           </p>
           {paydayLine}
-        </section>
+        </ScrollHero>
       ) : (
         <Banner tone="warning" icon="alert" title="Can't check against the bank" testId="bank-not-read">
           <p className="banner__body">Safe to spend is hidden until the bank can be read again.</p>
