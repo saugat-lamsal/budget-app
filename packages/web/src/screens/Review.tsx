@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import type { PickTo, ReviewDetail } from '@budget-app/money';
 import type { KeyedDetail, ReviewView } from '@budget-app/server/views';
 import { newDecisionId, type Load, type Reload } from '../app/api.js';
-import { Button, ButtonRow, Card, Decision, Hero, HeroCount, LinkButton, MadeUpPill, Money, Skeleton, StateMessage } from '../ui/blocks.js';
+import { Button, ButtonRow, Card, Decision, Hero, HeroCount, LinkButton, MadeUpPill, Money, Skeleton, StateMessage, SwipeSort } from '../ui/blocks.js';
 import { longDate, shortDate } from '../ui/dates.js';
 import { ChoiceSheet, LeftoverDecision, LikelyPurchases, RuleOfferSheet, SaidNotice, askFor, subjectOfReview, useChoiceFlow, type Choose, type Kind, type Pending, type Target } from './choose.js';
 import { ACCOUNT_NAMES, changedWords, groupTitle, labeledText, pickLabel, reasonText, titleOf } from './review-text.js';
@@ -62,6 +63,9 @@ const targetOf = (detail: KeyedDetail): Target => ({ id: detail.item.id, label: 
 function ReviewReady({ view, reload, onChanged }: { readonly view: Tracking; readonly reload: Reload; readonly onChanged: Reload }) {
   const flow = useChoiceFlow({ resort: false, reload, onChanged, keys: new Map(view.items.map((d) => [d.item.id, d.key])), view });
   const { sheet, said, sending, setSaid, submit, choose, openSheet } = flow;
+  // "Later" (a swipe to the left, or its button) only moves a card to the end
+  // of the list on this screen. It answers nothing and sends nothing.
+  const [later, setLater] = useState<readonly string[]>([]);
 
   const byId = new Map(view.items.map((d) => [d.item.id, d]));
   const open = sheet === null ? undefined : byId.get(sheet.item);
@@ -72,8 +76,11 @@ function ReviewReady({ view, reload, onChanged }: { readonly view: Tracking; rea
     if (last?.type === d.item.type) last.items.push(d);
     else groups.push({ type: d.item.type, items: [d] });
   }
+  // A card put off goes to the end of its own group.
+  for (const g of groups) g.items.sort((x, y) => Number(later.includes(x.item.id)) - Number(later.includes(y.item.id)) || later.indexOf(x.item.id) - later.indexOf(y.item.id));
 
   const waiting = view.items.length;
+  const putOff = waiting > 1 ? (id: string): void => setLater((l) => [...l.filter((x) => x !== id), id]) : undefined;
   return (
     <>
       <div className="eyebrow">
@@ -106,12 +113,12 @@ function ReviewReady({ view, reload, onChanged }: { readonly view: Tracking; rea
         <HeroCount count={waiting} testId="review-count" />
       </Hero>
 
-      {waiting === 0 && <StateMessage icon="check" title="Nothing is waiting" detail="New activity that needs a decision shows up here." testId="review-empty" />}
+      {waiting === 0 && <StateMessage icon="check" title="All sorted" detail="New activity that needs a decision shows up here." testId="review-empty" />}
 
-      {groups.map((group) => (
-        <Card key={group.type} title={groupTitle(group.type)} testId={`group-${group.type}`}>
+      {groups.map((group, i) => (
+        <Card key={`${group.type}-${i}`} title={groupTitle(group.type)} testId={`group-${group.type}`}>
           {group.items.map((d) => (
-            <ItemCard key={d.item.id} detail={d} busy={sending || flow.holding(d.item.id)} changed={flow.changed(d.item.id)} onChoose={choose} onSend={submit} onMore={() => openSheet(d.item.id)} />
+            <ItemCard key={d.item.id} detail={d} busy={sending || flow.holding(d.item.id)} changed={flow.changed(d.item.id)} onChoose={choose} onSend={submit} onLater={putOff} onMore={() => openSheet(d.item.id)} />
           ))}
         </Card>
       ))}
@@ -147,6 +154,7 @@ function ItemCard({
   changed,
   onChoose,
   onSend,
+  onLater,
   onMore,
 }: {
   readonly detail: KeyedDetail;
@@ -155,6 +163,7 @@ function ItemCard({
   readonly changed: boolean;
   readonly onChoose: Choose;
   readonly onSend: (pending: Pending) => void;
+  readonly onLater: ((id: string) => void) | undefined;
   readonly onMore: () => void;
 }) {
   const { item, options } = detail;
@@ -193,7 +202,20 @@ function ItemCard({
     const kind = item.type;
     const picks = quickPicks(detail);
     const subject = subjectOfReview(detail);
+    // A swipe to the right does what the suggested button does, and only
+    // when that button sends at once. Anything the button would ask about
+    // first (a final choice, a paycheck) takes the button.
+    const suggested = item.type === 'spending' && item.suggestion !== null && picks[0]?.to === item.suggestion ? picks[0] : undefined;
+    const askedFirst = suggested === undefined || suggested.final || askFor(detail.paycheckPreview, item.date, suggested.to) !== undefined;
+    const accept = suggested === undefined || askedFirst ? undefined : suggested;
+    const later = onLater === undefined ? undefined : () => onLater(item.id);
     return (
+      <SwipeSort
+        busy={busy}
+        rightLabel={accept === undefined ? undefined : pickLabel(kind, accept.to, true)}
+        onRight={accept === undefined ? undefined : () => onChoose(targetOf(detail), { to: accept.to }, { final: accept.final, ask: askFor(detail.paycheckPreview, item.date, accept.to) })}
+        onLater={later}
+      >
       <Decision
         testId={testId}
         title={titleOf(item)}
@@ -216,9 +238,16 @@ function ItemCard({
                 </Button>
               ))}
             </ButtonRow>
-            <Button variant="plain" wide onClick={onMore} disabled={busy} testId="more">
-              More choices
-            </Button>
+            <ButtonRow>
+              <Button variant="plain" onClick={onMore} disabled={busy} testId="more">
+                More choices
+              </Button>
+              {later !== undefined && (
+                <Button variant="plain" onClick={later} disabled={busy} testId="later">
+                  Later
+                </Button>
+              )}
+            </ButtonRow>
           </>
         }
       >
@@ -236,6 +265,7 @@ function ItemCard({
           </>
         )}
       </Decision>
+      </SwipeSort>
     );
   }
   return null;

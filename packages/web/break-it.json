@@ -1059,8 +1059,8 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Payday.tsx",
-    "find": "<Money cents={report.paycheck.amount} hero testId=\"paycheck-amount\" />",
-    "replace": "<Money cents={report.paycheck.split.savings} hero testId=\"paycheck-amount\" />",
+    "find": "<Money cents={report.paycheck.amount} hero roll testId=\"paycheck-amount\" />",
+    "replace": "<Money cents={report.paycheck.split.savings} hero roll testId=\"paycheck-amount\" />",
     "why": "[activity] 3.1 the paycheck is shown as what savings got"
   },
   {
@@ -2980,5 +2980,47 @@
     "find": "reducedMotion=\"user\"",
     "replace": "reducedMotion=\"never\"",
     "why": "[motion] Motion ignores reduced motion"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/swipe.ts",
+    "find": "return far > SWIPE_COMMIT_PX ||",
+    "replace": "return far >= SWIPE_COMMIT_PX ||",
+    "why": "[pr3] a swipe exactly at the commit distance answers"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/swipe.ts",
+    "find": "if (!sides[side]) return 'back';",
+    "replace": "",
+    "why": "[pr3] a side that may not answer answers"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Review.tsx",
+    "find": "suggested.final || askFor(detail.paycheckPreview, item.date, suggested.to) !== undefined",
+    "replace": "false",
+    "why": "[pr3] a swipe answers what the button would ask about first"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Review.tsx",
+    "find": "item.type === 'spending' && item.suggestion !== null && picks[0]?.to === item.suggestion ? picks[0] : undefined",
+    "replace": "picks[0]",
+    "why": "[pr3] a swipe accepts a first pick that was not suggested"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Payday.tsx",
+    "find": "const drawn = parts.filter((p) => p.cents > 0);",
+    "replace": "const drawn = parts.filter((p) => p.key !== 'wants' && p.cents > 0);",
+    "why": "[pr3] the payday bar leaves out wants"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Payday.tsx",
+    "find": "{p.key === 'savings' && (",
+    "replace": "{p.key === 'needs' && (",
+    "why": "[pr3] sparks on spending instead of saving"
   }
 ]
