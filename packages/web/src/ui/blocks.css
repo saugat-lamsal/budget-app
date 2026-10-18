@@ -1355,7 +1355,7 @@ a.tile:active {
   white-space: nowrap;
   vertical-align: top;
   /* No width of its own, so the text inside never pokes out past the screen's edge at a large text size. */
-  font-size: 0;
+  font-size: 0em;
   line-height: 0;
 }
 
