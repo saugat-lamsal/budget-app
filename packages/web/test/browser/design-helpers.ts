@@ -60,7 +60,8 @@ export async function axeViolations(page: Page): Promise<string[]> {
     }
     // The light behind the page is decoration: a gradient, an image and a blur, which axe cannot read a color through. It is hidden while axe runs and
     // checked on its own (test/ambient-light.test.ts: even where it is brightest, the muted text still passes).
-    const decoration = [...document.querySelectorAll<HTMLElement>('.ambient, .statusbar')];
+    // The rolling digits (redesign PR 2) are drawn over the amount's real text, which axe reads: they are drawn from pseudo-elements, which it also cannot read through. They take the amount's own color (test/browser/motion.test.ts checks that).
+    const decoration = [...document.querySelectorAll<HTMLElement>('.ambient, .statusbar, .roll')];
     for (const e of decoration) e.style.visibility = 'hidden';
     // The tab bar is frosted glass: axe cannot say what is behind it, so it reads it flat, in the same color. How faint what shows through can be is checked in test/ambient-light.test.ts.
     const glass = document.querySelector<HTMLElement>('.tabbar');

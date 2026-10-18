@@ -1,4 +1,5 @@
 import type { Pot } from '@budget-app/money';
+import { MotionConfig } from 'motion/react';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityScreen, type Back } from '../screens/Activity.js';
 import { AlertsScreen } from '../screens/Alerts.js';
@@ -142,6 +143,8 @@ export function App() {
 
   const waiting = home.status === 'ready' && home.value.state === 'tracking' ? home.value.waitingInReview : 0;
   return (
+    // Reduced motion turns every Motion animation off (the CSS ones: base.css).
+    <MotionConfig reducedMotion="user">
     <div className="app">
       <Backdrop />
       {route.screen === 'activity' ? (
@@ -173,5 +176,6 @@ export function App() {
       )}
       <TabBar current={tabOfRoute(route)} onGo={(tab: Tab) => go({ screen: 'tab', tab })} waitingInReview={waiting} />
     </div>
+    </MotionConfig>
   );
 }

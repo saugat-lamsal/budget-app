@@ -149,8 +149,9 @@ export type HomeView =
       readonly madeUpData: boolean;
       readonly today: IsoDate;
       readonly safeToSpend: SafeToSpendView;
-      // 11.2: negative days when the paycheck is late (B35).
-      readonly payday: { readonly next: IsoDate; readonly days: number };
+      // 11.2: negative days when the paycheck is late (B35). periodStart is the
+      // day the current pay period began (the ring on Home, redesign PR 2).
+      readonly payday: { readonly next: IsoDate; readonly days: number; readonly periodStart: IsoDate };
       // Most urgent first.
       readonly attention: readonly Attention[];
       readonly buckets: { readonly needs: BucketBar; readonly wants: BucketBar };
@@ -285,7 +286,7 @@ export function homeView(input: HomeInput): HomeView {
     madeUpData,
     today,
     safeToSpend,
-    payday: { next: plain.nextPayday, days: plain.daysToPayday },
+    payday: { next: plain.nextPayday, days: plain.daysToPayday, periodStart: book.period().startDate },
     attention,
     buckets: { needs: bar(pots.needs, started.needs), wants: bar(pots.wants, started.wants) },
     waitingInReview,

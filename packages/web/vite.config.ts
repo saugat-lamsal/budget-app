@@ -40,8 +40,11 @@ function serviceWorker(): Plugin {
 
 export default defineConfig({
   // JSX through Vite's own transform, with React's automatic runtime.
-  oxc: { jsx: { runtime: 'automatic' } },
+  oxc: { jsx: { runtime: 'automatic', development: false } },
   plugins: [serviceWorker()],
+  // The libraries' development-only warnings and checks are left out of every
+  // build of the screens, including the tests' (their NODE_ENV is "test").
+  define: { 'process.env.NODE_ENV': JSON.stringify('production') },
   build: {
     outDir: 'dist',
     emptyOutDir: true,

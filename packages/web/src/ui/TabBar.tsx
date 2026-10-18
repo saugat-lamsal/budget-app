@@ -1,5 +1,7 @@
+import { motion } from 'motion/react';
 import { TAB_LABELS, TABS, pathOf, type Tab } from '../app/routes.js';
 import { Icon } from './Icon.js';
+import { EASE, QUICK_S } from './motion.js';
 
 // The bottom tab bar: Home, Buckets, Review, Settings. Each tab is a real
 // link to its own address. Review shows how many items wait.
@@ -22,6 +24,7 @@ export function TabBar({ current, onGo, waitingInReview }: { readonly current: T
                   onGo(tab);
                 }}
               >
+                {tab === current && <motion.span layoutId="tab-line" className="tab__line" aria-hidden="true" transition={{ duration: QUICK_S, ease: EASE }} />}
                 <span className="tab__icon">
                   <Icon name={tab} size={24} />
                   {badge !== null && (

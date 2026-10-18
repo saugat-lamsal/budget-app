@@ -170,8 +170,8 @@
   {
     "section": "home",
     "file": "packages/server/src/views/home.ts",
-    "find": "payday: { next: plain.nextPayday, days: plain.daysToPayday },",
-    "replace": "payday: { next: plain.nextPayday, days: Math.max(0, plain.daysToPayday) },",
+    "find": "days: plain.daysToPayday, periodStart",
+    "replace": "days: Math.max(0, plain.daysToPayday), periodStart",
     "why": "11.2 a late paycheck shows as payday today (B35)"
   },
   {
@@ -1115,8 +1115,8 @@
   {
     "section": "home",
     "file": "packages/web/src/ui/blocks.tsx",
-    "find": "    if (!open && dialog.open) {\n      dialog.close();\n      holdTaps();\n    }\n  }, [open]);",
-    "replace": "    if (!open && dialog.open) {\n      setTimeout(() => dialog.close(), 0);\n      holdTaps();\n    }\n  }, [open]);",
+    "find": "    if (!open && dialog.open) {\n      dialog.close();\n      dialog.style.transform = '';\n      holdTaps();\n    }\n  }, [open]);",
+    "replace": "    if (!open && dialog.open) {\n      setTimeout(() => dialog.close(), 0);\n      dialog.style.transform = '';\n      holdTaps();\n    }\n  }, [open]);",
     "why": "[activity] 13.3 the sheet closes a moment after the screen is redrawn, with its button enabled in between"
   },
   {
@@ -2032,8 +2032,8 @@
   {
     "section": "home",
     "file": "packages/web/src/ui/blocks.tsx",
-    "find": "      dialog.close();\n      holdTaps();\n",
-    "replace": "      dialog.close();\n",
+    "find": "      dialog.close();\n      dialog.style.transform = '';\n      holdTaps();\n",
+    "replace": "      dialog.close();\n      dialog.style.transform = '';\n",
     "why": "[b194] the rest of a double tap lands on the screen under a sheet that just closed"
   },
   {
@@ -2865,8 +2865,120 @@
   {
     "section": "home",
     "file": "packages/web/src/ui/blocks.tsx",
-    "find": "<Money cents={left} testId={testId === undefined ? undefined : `${testId}-left`} />\n        </span>\n        <span className=\"tile__of\">",
-    "replace": "<Money cents={startedWith} testId={testId === undefined ? undefined : `${testId}-left`} />\n        </span>\n        <span className=\"tile__of\">",
+    "find": "<Money cents={left} roll testId={testId === undefined ? undefined : `${testId}-left`} />\n        </span>\n        <span className=\"tile__of\">",
+    "replace": "<Money cents={startedWith} roll testId={testId === undefined ? undefined : `${testId}-left`} />\n        </span>\n        <span className=\"tile__of\">",
     "why": "[redesign] the tile shows what it started with as what is left"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/motion.ts",
+    "find": "Math.min(1, Math.max(0, daysBetween(start, today) / total))",
+    "replace": "Math.min(1, daysBetween(start, today) / total)",
+    "why": "[motion] the ring goes below empty before the start day"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/motion.ts",
+    "find": "if (total <= 0) return 0;",
+    "replace": "if (total < 0) return 0;",
+    "why": "[motion] a pay period of no length divides by zero"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/motion.ts",
+    "find": "Math.min(1, Math.max(0, daysBetween(start, today) / total))",
+    "replace": "Math.max(0, daysBetween(start, today) / total)",
+    "why": "[motion] the ring goes past full on a late paycheck"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/motion.ts",
+    "find": "if (reduced) return;",
+    "replace": "",
+    "why": "[motion] the light follows the finger with reduced motion on"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/motion.ts",
+    "find": "delete event.currentTarget.dataset['spot'];",
+    "replace": "",
+    "why": "[motion] the light stays on after the finger leaves"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/motion.ts",
+    "find": "return Math.round(day(to) - day(from));",
+    "replace": "return Math.round(day(to) - day(from)) + 1;",
+    "why": "[motion] the ring counts one day too many"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "const DRAG_CLOSE_PX = 110;",
+    "replace": "const DRAG_CLOSE_PX = 10;",
+    "why": "[motion] a sheet closes on a tiny pull"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "const DRAG_FLICK_SPEED = 0.6;",
+    "replace": "const DRAG_FLICK_SPEED = 0;",
+    "why": "[motion] a slow pull counts as a flick"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "dialog.close();\n      dialog.style.transform = '';",
+    "replace": "dialog.close();",
+    "why": "[motion] a sheet closed by a pull opens again pulled down"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "'--digit': shown ? Number(ch) : 0",
+    "replace": "'--digit': 0",
+    "why": "[motion] the rolling digits stay on zero"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "event.type !== 'pointercancel' && (d.dy",
+    "replace": "(d.dy",
+    "why": "[motion] a pull the system took over (cancelled) still closes the sheet"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": "transform: translateY(calc(var(--digit, 0) * -1.2em));",
+    "replace": "transform: translateY(calc(var(--digit, 0) * -1em));",
+    "why": "[motion] each digit column moves the wrong distance"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": "animation: rise 360ms var(--ease) backwards;",
+    "replace": "animation: rise 360ms var(--ease) both;",
+    "why": "[motion] the screens keep their rise forever (fill forwards)"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "useTransform(scrollY, [0, 180], [1, 0.55])",
+    "replace": "useTransform(scrollY, [0, 180], [1, 1])",
+    "why": "[motion] the hero does not fade as the screen scrolls"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/TabBar.tsx",
+    "find": "{tab === current && <motion.span",
+    "replace": "{<motion.span",
+    "why": "[motion] a tab line on every tab"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/app/App.tsx",
+    "find": "reducedMotion=\"user\"",
+    "replace": "reducedMotion=\"never\"",
+    "why": "[motion] Motion ignores reduced motion"
   }
 ]

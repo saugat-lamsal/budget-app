@@ -1,8 +1,10 @@
 import type { BucketLevel, Cents } from '@budget-app/money';
-import { useId, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react';
+import { animate, motion, useScroll, useTransform } from 'motion/react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { barFill } from './bar-fill.js';
 import { Icon, type IconName } from './Icon.js';
 import { moneyText, moneyWords } from './money-format.js';
+import { EASE, ENTRANCE_S, QUICK_S, ringFraction, useReducedMotion, useSpotlight } from './motion.js';
 
 // The shared building blocks (CLAUDE.md design rules). Screens are made of
 // these and the tokens in tokens.css; no screen makes up its own.
@@ -14,20 +16,74 @@ export type Tone = 'info' | 'warning' | 'danger' | 'ok';
 // Every amount on every screen. Tabular digits, a real minus sign, and the
 // negative color on top of the sign, never instead of it. A stale amount
 // (one that could not be checked today) is greyed, and the screen says why.
-export function Money({ cents, hero = false, stale = false, signed = false, testId }: { readonly cents: Cents; readonly hero?: boolean; readonly stale?: boolean; readonly signed?: boolean; readonly testId?: string | undefined }) {
+// roll: the digits roll to a new amount (redesign PR 2). The real text stays in
+// the page, unchanged, for the screen reader, copying and the tests; the rolling
+// digits are drawn over it and hidden from the screen reader.
+export function Money({ cents, hero = false, stale = false, signed = false, roll = false, testId }: { readonly cents: Cents; readonly hero?: boolean; readonly stale?: boolean; readonly signed?: boolean; readonly roll?: boolean; readonly testId?: string | undefined }) {
   // A list of money in and money out shows a plus on what came in, so the
   // direction is in the amount itself, not only in a color.
   const text = signed && cents > 0 ? `+${moneyText(cents)}` : moneyText(cents);
   const negative = cents < 0;
   return (
     <span
-      className={`money${hero ? ' money--hero' : ''}${negative ? ' is-negative' : ''}${stale ? ' money--stale' : ''}`}
+      className={`money${hero ? ' money--hero' : ''}${negative ? ' is-negative' : ''}${stale ? ' money--stale' : ''}${roll ? ' money--roll' : ''}`}
       data-money=""
       data-testid={testId}
       aria-label={negative ? moneyWords(cents) : signed && cents > 0 ? `plus ${moneyWords(cents)}` : undefined}
       style={hero ? ({ '--chars': text.length } as CSSProperties) : undefined}
     >
-      {hero ? <HeroText text={text} /> : text}
+      {roll ? (
+        <>
+          <span className="money__text">{hero ? <HeroText text={text} /> : text}</span>
+          <RollingDigits text={text} cents={hero} />
+        </>
+      ) : hero ? (
+        <HeroText text={text} />
+      ) : (
+        text
+      )}
+    </span>
+  );
+}
+
+// The digits of an amount, each a short column of 0 to 9 behind a window; a
+// new amount slides each column to its digit (200 to 300 ms, expo-out, a few
+// ms apart left to right). Written here, not with a library, because the
+// library draws in a shadow root and needs a style element the app's content
+// policy does not allow. On the first draw the columns start at 0 and roll in.
+// Drawn over the real text, so it is hidden from a screen reader; the digits
+// are drawn from data-d by the stylesheet, so they are no text to read or copy
+// (a card's own text stays just what it says).
+const DIGITS = '0123456789'.split('');
+
+function RollingDigits({ text, cents }: { readonly text: string; readonly cents: boolean }) {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setShown(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+  const dot = cents ? text.lastIndexOf('.') : -1;
+  return (
+    <span className="roll" aria-hidden="true" data-testid="rolling-digits">
+      {[...text].map((ch, i) => {
+        const small = dot !== -1 && i >= dot ? ' roll__small' : '';
+        if (ch < '0' || ch > '9') {
+          return (
+            <span key={`${i}-${ch}`} className={`roll__char${small}`} data-d={ch} />
+          );
+        }
+        // Counted from the right, so a digit keeps its column when the amount grows.
+        const place = text.length - i;
+        return (
+          <span key={place} className={`roll__digit${small}`}>
+            <span className="roll__col" style={{ '--digit': shown ? Number(ch) : 0, '--delay': `${Math.min(i, 8) * 20}ms` } as CSSProperties}>
+              {DIGITS.map((d) => (
+                <span key={d} data-d={d} />
+              ))}
+            </span>
+          </span>
+        );
+      })}
     </span>
   );
 }
@@ -192,7 +248,7 @@ export function BucketBar({ name, left, startedWith, level, href, testId }: { re
         <span className="bucket__name">{name}</span>
         {level !== 'ok' && <StatusLabel status={level} />}
         <span className="bucket__left">
-          <Money cents={left} testId={testId === undefined ? undefined : `${testId}-left`} />
+          <Money cents={left} roll testId={testId === undefined ? undefined : `${testId}-left`} />
           <span className="bucket__of">
             {' '}
             left of <Money cents={startedWith} testId={testId === undefined ? undefined : `${testId}-of`} />
@@ -249,15 +305,16 @@ export function Tiles({ title, children, testId }: { readonly title: string; rea
 // test ids. The tall one stands beside two short ones.
 export function BucketTile({ name, left, startedWith, level, href, tall = false, testId }: { readonly name: string; readonly left: Cents; readonly startedWith: Cents; readonly level: BucketLevel; readonly href: string; readonly tall?: boolean; readonly testId?: string | undefined }) {
   const fill = barFill(left, startedWith);
+  const spot = useSpotlight();
   return (
-    <a className={`tile${tall ? ' tile--tall' : ''}`} href={href} data-testid={testId} data-level={level}>
+    <a className={`tile spot${tall ? ' tile--tall' : ''}`} href={href} data-testid={testId} data-level={level} {...spot}>
       <span className="tile__top">
         <span className="tile__name">{name}</span>
         {level !== 'ok' && <StatusLabel status={level} />}
       </span>
       <span className="tile__figure">
         <span className="tile__amount" style={{ '--chars': moneyText(left).length } as CSSProperties}>
-          <Money cents={left} testId={testId === undefined ? undefined : `${testId}-left`} />
+          <Money cents={left} roll testId={testId === undefined ? undefined : `${testId}-left`} />
         </span>
         <span className="tile__of">
           left of <Money cents={startedWith} testId={testId === undefined ? undefined : `${testId}-of`} />
@@ -321,9 +378,43 @@ function holdTaps(): void {
   window.setTimeout(() => cover.remove(), TAP_HOLD_MS);
 }
 
+// Dragged down from its grabber or title, a sheet follows the finger and closes
+// when pulled far enough, or flicked (redesign PR 2). Anything less than that
+// and it slides back. The close button, a tap outside and Escape work as before.
+const DRAG_CLOSE_PX = 110;
+const DRAG_FLICK_PX = 40;
+const DRAG_FLICK_SPEED = 0.6;
+
 export function BottomSheet({ open, title, onClose, children, testId }: { readonly open: boolean; readonly title: string; readonly onClose: () => void; readonly children: ReactNode; readonly testId?: string | undefined }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
+  const reduced = useReducedMotion();
+  const drag = useRef<{ readonly pointer: number; readonly from: number; readonly at: number; dy: number; moving: boolean } | null>(null);
+  const finishDrag = (event: ReactPointerEvent<HTMLElement>): void => {
+    const d = drag.current;
+    const dialog = ref.current;
+    if (d === null || d.pointer !== event.pointerId || dialog === null) return;
+    drag.current = null;
+    if (!d.moving) return;
+    const speed = d.dy / Math.max(1, performance.now() - d.at);
+    const closes = event.type !== 'pointercancel' && (d.dy > DRAG_CLOSE_PX || (d.dy > DRAG_FLICK_PX && speed > DRAG_FLICK_SPEED));
+    const from = `translateY(${d.dy}px)`;
+    const back = (): void => {
+      void animate(dialog, { transform: [dialog.style.transform || from, 'translateY(0px)'] }, { duration: reduced ? 0 : QUICK_S, ease: EASE }).finished.then(() => (dialog.style.transform = ''));
+    };
+    if (closes) {
+      const finish = (): void => {
+        onClose();
+        // A sheet its screen keeps open (it was not allowed to close) comes back.
+        window.setTimeout(() => {
+          if (dialog.open) back();
+        }, 120);
+      };
+      if (reduced) finish();
+      else void animate(dialog, { transform: [from, 'translateY(100%)'] }, { duration: QUICK_S, ease: EASE }).finished.then(finish);
+      dialog.style.transform = 'translateY(100%)';
+    } else back();
+  };
   // Opens and closes in the same step that redraws the screen (not a moment
   // later), so a sheet whose job is done never sits open with its button
   // enabled again: a second tap in that moment would send the choice twice
@@ -339,6 +430,7 @@ export function BottomSheet({ open, title, onClose, children, testId }: { readon
     }
     if (!open && dialog.open) {
       dialog.close();
+      dialog.style.transform = '';
       holdTaps();
     }
   }, [open]);
@@ -363,14 +455,38 @@ export function BottomSheet({ open, title, onClose, children, testId }: { readon
       }}
     >
       <div className="sheet__inner">
-        <div className="sheet__grabber" aria-hidden="true" />
-        <div className="sheet__head">
-          <h2 id={id} className="sheet__title" tabIndex={-1}>
-            {title}
-          </h2>
-          <button type="button" className="button button--plain" onClick={onClose} aria-label="Close">
-            <Icon name="close" />
-          </button>
+        <div
+          className="sheet__drag"
+          data-testid={testId === undefined ? undefined : `${testId}-drag`}
+          onPointerDown={(event) => {
+            if ((event.pointerType === 'mouse' && event.button !== 0) || (event.target instanceof Element && event.target.closest('button') !== null)) return;
+            drag.current = { pointer: event.pointerId, from: event.clientY, at: performance.now(), dy: 0, moving: false };
+          }}
+          onPointerMove={(event) => {
+            const d = drag.current;
+            const dialog = ref.current;
+            if (d === null || d.pointer !== event.pointerId || dialog === null) return;
+            const dy = Math.max(0, event.clientY - d.from);
+            if (!d.moving) {
+              if (dy < 4) return;
+              d.moving = true;
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }
+            d.dy = dy;
+            dialog.style.transform = `translateY(${dy}px)`;
+          }}
+          onPointerUp={finishDrag}
+          onPointerCancel={finishDrag}
+        >
+          <div className="sheet__grabber" aria-hidden="true" />
+          <div className="sheet__head">
+            <h2 id={id} className="sheet__title" tabIndex={-1}>
+              {title}
+            </h2>
+            <button type="button" className="button button--plain" onClick={onClose} aria-label="Close">
+              <Icon name="close" />
+            </button>
+          </div>
         </div>
         {children}
       </div>
@@ -393,14 +509,47 @@ export function MadeUpPill() {
 
 export function Hero({ label, children, sub, testId }: { readonly label: string; readonly children: ReactNode; readonly sub?: ReactNode; readonly testId?: string | undefined }) {
   const id = useId();
+  const spot = useSpotlight();
   return (
-    <section className="hero" aria-labelledby={id} data-testid={testId}>
+    <section className="hero spot" aria-labelledby={id} data-testid={testId} {...spot}>
       <h2 id={id} className="hero__label">
         {label}
       </h2>
       {children}
       {sub !== undefined && <p className="hero__sub">{sub}</p>}
     </section>
+  );
+}
+
+// Home's hero: the same card, but it fades, scales and sinks a little as the
+// screen scrolls away from it, and it carries the pay period's ring. Nothing
+// moves with reduced motion.
+export function ScrollHero({ labelledBy, ring, children, testId }: { readonly labelledBy: string; readonly ring?: ReactNode; readonly children: ReactNode; readonly testId?: string | undefined }) {
+  const reduced = useReducedMotion();
+  const spot = useSpotlight();
+  const { scrollY } = useScroll();
+  const opacity = useTransform(scrollY, [0, 180], [1, 0.55]);
+  const scale = useTransform(scrollY, [0, 180], [1, 0.97]);
+  const y = useTransform(scrollY, [0, 180], [0, 6]);
+  return (
+    <motion.section className="hero spot" aria-labelledby={labelledBy} data-testid={testId} style={reduced ? {} : { opacity, scale, y }} {...spot}>
+      {ring}
+      {children}
+    </motion.section>
+  );
+}
+
+// How far through the pay period it is, drawn in once when Home opens. It
+// repeats what "N days to payday" already says, so it is hidden from a screen
+// reader; data-fraction is the number it draws.
+export function PeriodRing({ start, today, next, testId }: { readonly start: string; readonly today: string; readonly next: string; readonly testId?: string | undefined }) {
+  const reduced = useReducedMotion();
+  const fraction = ringFraction(start, today, next);
+  return (
+    <svg className="ring" viewBox="0 0 40 40" aria-hidden="true" data-testid={testId} data-fraction={fraction.toFixed(4)}>
+      <circle className="ring__track" cx="20" cy="20" r="16" />
+      {fraction > 0 && <motion.circle className="ring__arc" cx="20" cy="20" r="16" transform="rotate(-90 20 20)" initial={{ pathLength: reduced ? fraction : 0 }} animate={{ pathLength: fraction }} transition={{ duration: reduced ? 0 : ENTRANCE_S, ease: EASE }} />}
+    </svg>
   );
 }
 

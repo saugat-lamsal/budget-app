@@ -76,6 +76,24 @@ expo-out cubic-bezier(.16,1,.3,1), entrances up to 600 ms, movements 4 to 8 px,
 no bounce or spring overshoot.
 
 
+PR 2, as built (Oct 18):
+- "motion" 14.3.0 (pinned). @number-flow/react was tried and dropped: it draws
+  in a shadow root and writes a <style> element, which the Content Security
+  Policy (style-src 'self') blocks, so its digits were never clipped. The CSP is
+  not loosened; the rolling digits are written in the app (blocks.tsx
+  RollingDigits, blocks.css .roll): columns of 0 to 9 behind a window, moved by
+  a CSS transition (300 ms, expo-out). The amount stays in the page as plain
+  text under them (.money__text); the digits are drawn from data-d by CSS, so
+  they are no text to read or copy.
+- The server's Home view carries payday.periodStart (the day the book counted
+  the last paycheck, or setup day in the first pay period); nothing in
+  packages/money changed.
+- Screen change and staggered entrances are CSS (.screen > * rise, 360 ms,
+  6 px, 40 ms apart); the ring, the tab line, the hero on scroll and the sheet
+  drag use Motion. The spotlight is a CSS variable set on pointer move.
+- Sheets: a pull of more than 110 px, or more than 40 px faster than 0.6 px/ms,
+  closes; anything less slides back.
+
 PR 3
 - Review: the top item as a card dragged right to accept the suggested bucket
   or left for later, hint words fading in as you drag. The buttons stay, and
