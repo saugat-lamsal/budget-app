@@ -34,8 +34,8 @@ export function Money({ cents, hero = false, stale = false, signed = false, roll
     >
       {roll ? (
         <>
-          <span className="money__text">{hero ? <HeroText text={text} /> : text}</span>
           <RollingDigits text={text} cents={hero} />
+          <span className="money__text">{hero ? <HeroText text={text} /> : text}</span>
         </>
       ) : hero ? (
         <HeroText text={text} />

@@ -1341,17 +1341,19 @@ a.tile:active {
 /* Rolling digits: the real text stays for the screen reader and copying; the
    digits drawn over it are NumberFlow's. */
 .money--roll {
-  display: inline-block;
   position: relative;
 }
 
 .money__text {
-  position: absolute;
+  /* In the flow, not absolute: WebKit's innerText drops the space after an amount whose text is out of the flow. */
+  display: inline-block;
   width: 1px;
   height: 1px;
+  margin-right: -1px;
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+  vertical-align: top;
 }
 
 .roll {
@@ -1390,11 +1392,6 @@ a.tile:active {
 .roll__col > span::before,
 .roll__char::before {
   content: attr(data-d);
-}
-
-.roll {
-  user-select: none;
-  -webkit-user-select: none;
 }
 
 .roll__char {

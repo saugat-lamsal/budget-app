@@ -126,17 +126,19 @@ describe.each(ENGINES)('Motion in %s', (_name, engine) => {
 
   it('PR 2: with reduced motion the tab line is on its tab at once', async () => {
     const page = await openScenario(await browser().newContext(phone()), base(), 'normal');
-    await page.getByTestId('tab-buckets').click();
-    // Within a moment (a slide takes 250 ms): the line is already under its tab.
-    await page.waitForFunction(
-      () => {
+    // Measured in the first frame after the line appears, not after a time: a slide takes 250 ms, a slow machine takes any time.
+    await page.evaluate(() => {
+      const w = window as unknown as { gapAtFirstFrame?: number };
+      new MutationObserver((_, observer) => {
         const line = document.querySelector('[data-testid="tab-buckets"] .tab__line');
-        const tab = document.querySelector('[data-testid="tab-buckets"]');
-        return line !== null && tab !== null && Math.abs(line.getBoundingClientRect().x - tab.getBoundingClientRect().x) < 1;
-      },
-      undefined,
-      { timeout: 150 },
-    );
+        if (line === null) return;
+        observer.disconnect();
+        requestAnimationFrame(() => (w.gapAtFirstFrame = Math.abs(line.getBoundingClientRect().x - (document.querySelector('[data-testid="tab-buckets"]') as Element).getBoundingClientRect().x)));
+      }).observe(document.body, { childList: true, subtree: true });
+    });
+    await page.getByTestId('tab-buckets').click();
+    await page.waitForFunction(() => (window as unknown as { gapAtFirstFrame?: number }).gapAtFirstFrame !== undefined);
+    expect(await page.evaluate(() => (window as unknown as { gapAtFirstFrame: number }).gapAtFirstFrame)).toBeLessThan(1);
     await page.context().close();
   });
 
