@@ -1354,6 +1354,9 @@ a.tile:active {
   clip-path: inset(50%);
   white-space: nowrap;
   vertical-align: top;
+  /* No width of its own, so the text inside never pokes out past the screen's edge at a large text size. */
+  font-size: 0;
+  line-height: 0;
 }
 
 .roll {
