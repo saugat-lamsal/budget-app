@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { LeftoverReport, PaycheckReport, PeriodSummary } from '@budget-app/money';
 import type { PaydayView } from '@budget-app/server/views';
 import type { Load, Reload } from '../app/api.js';
@@ -89,13 +90,14 @@ function PaydayReady({ view, reload, onChanged }: { readonly view: Tracking; rea
               </>
             }
           >
-            <Money cents={report.paycheck.amount} hero testId="paycheck-amount" />
+            <Money cents={report.paycheck.amount} hero roll testId="paycheck-amount" />
           </Hero>
           {report.paycheck.takenBack && (
             <Banner tone="warning" icon="undo" title="The bank took this paycheck back" testId="paycheck-taken-back">
               <p className="banner__body">Its money came back out of your buckets. The pay period it began stays.</p>
             </Banner>
           )}
+          <PaydayMoment paycheck={report.paycheck} />
           <WhatItDid paycheck={report.paycheck} />
         </>
       )}
@@ -115,6 +117,56 @@ function PaydayReady({ view, reload, onChanged }: { readonly view: Tracking; rea
 
       <ChoiceSheet flow={flow} itemId={open?.item.id} subject={undefined} title={open === undefined ? 'Are you sure?' : titleOf(open.item)} testId="payday-sheet" />
     </>
+  );
+}
+
+// Redesign PR 3, the payday moment: the paycheck divides into its parts
+// (3.2, 3.3) and the savings part lights up, with one sweep of light and a few
+// sparks. Only saving is celebrated; nothing lights up for spending. The parts
+// are the money math's own, as the cards below show them, and the words and
+// amounts under the bar carry the same thing without color. All of it is CSS:
+// reduced motion shows the bar at rest, and nothing here is asked of the server.
+const SPARKS = ['12%', '32%', '50%', '70%', '88%'];
+
+function PaydayMoment({ paycheck }: { readonly paycheck: PaycheckReport }) {
+  const { split } = paycheck;
+  const parts = [
+    { key: 'mom', name: 'Mom reserve', cents: split.momReserve },
+    { key: 'savings', name: 'Savings', cents: split.savings },
+    { key: 'needs', name: 'Needs', cents: split.needs },
+    { key: 'wants', name: 'Wants', cents: split.wants },
+  ] as const;
+  // Parts that are zero or below take no room on the bar; the list still names them.
+  const drawn = parts.filter((p) => p.cents > 0);
+  if (drawn.length === 0) return null;
+  return (
+    <Card title="Where this paycheck went" testId="payday-moment">
+      <div className="moment">
+        <div className="moment__bar" aria-hidden="true" data-testid="moment-bar">
+          {drawn.map((p, i) => (
+            <div key={p.key} className="moment__cell" style={{ '--share': p.cents } as CSSProperties} data-testid={`moment-${p.key}`} data-cents={p.cents}>
+              <div className={`moment__seg moment__seg--${p.key}`} style={{ '--i': i } as CSSProperties} />
+              {p.key === 'savings' && (
+                <div className="moment__sparks" data-testid="moment-sparks">
+                  {SPARKS.map((at, n) => (
+                    <span key={at} className="moment__spark" style={{ '--at': at, '--n': n } as CSSProperties} />
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        <ul className="moment__legend" data-testid="moment-legend">
+          {parts.map((p) => (
+            <li key={p.key}>
+              <span className={`moment__swatch moment__swatch--${p.key}`} aria-hidden="true" />
+              <span>{p.name}</span>
+              <Money cents={p.cents} testId={`moment-got-${p.key}`} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Card>
   );
 }
 

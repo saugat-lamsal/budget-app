@@ -1032,7 +1032,7 @@ describe.each(ENGINES)('Review in %s', (_name, engine) => {
 
   it('with nothing waiting, Review says so and there is no badge', async () => {
     const page = await openReview(await browser().newContext(phone()), base(), 'all-clear');
-    expect(await textAt(page, 'review-empty')).toBe('Nothing is waiting New activity that needs a decision shows up here.');
+    expect(await textAt(page, 'review-empty')).toBe('All sorted New activity that needs a decision shows up here.');
     expect(await page.getByTestId('review-count').innerText()).toBe('0');
     expect(await textAt(page, 'review-hero')).toContain("You're all caught up.");
     expect(await page.getByTestId('review-badge').count()).toBe(0);

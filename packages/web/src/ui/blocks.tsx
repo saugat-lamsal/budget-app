@@ -5,6 +5,7 @@ import { barFill } from './bar-fill.js';
 import { Icon, type IconName } from './Icon.js';
 import { moneyText, moneyWords } from './money-format.js';
 import { EASE, ENTRANCE_S, QUICK_S, ringFraction, useReducedMotion, useSpotlight } from './motion.js';
+import { hintLevel, limitSwipe, swipeOutcome } from './swipe.js';
 
 // The shared building blocks (CLAUDE.md design rules). Screens are made of
 // these and the tokens in tokens.css; no screen makes up its own.
@@ -874,6 +875,142 @@ export function Decision({
       {children}
       <div className="decision__actions">{actions}</div>
     </article>
+  );
+}
+
+// ----- SwipeSort: a card dragged right to accept, or left for later (redesign PR 3) -----
+
+// The card follows the finger; hint words fade in on the side it is dragged
+// toward. A swipe is only ever another way to press a button: onRight is that
+// button's own call, and a side with no handler does not move at all. The
+// buttons stay on the card, so nothing is swipe-only. A cancelled drag (the
+// phone took the gesture for a scroll) answers nothing.
+export function SwipeSort({
+  rightLabel,
+  onRight,
+  onLater,
+  busy,
+  children,
+}: {
+  readonly rightLabel?: string | undefined;
+  readonly onRight?: (() => void) | undefined;
+  readonly onLater?: (() => void) | undefined;
+  readonly busy: boolean;
+  readonly children: ReactNode;
+}) {
+  const root = useRef<HTMLDivElement>(null);
+  const card = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion();
+  const drag = useRef<{ readonly pointer: number; readonly x: number; readonly y: number; readonly at: number; dx: number; moving: boolean } | null>(null);
+  const flown = useRef(false);
+  const sides = { right: onRight !== undefined && !busy, left: onLater !== undefined && !busy };
+  const latest = useRef({ sides, onRight, onLater });
+  latest.current = { sides, onRight, onLater };
+
+  const show = (dx: number): void => {
+    const el = root.current;
+    if (el === null) return;
+    el.dataset['swiping'] = dx === 0 ? 'off' : dx > 0 ? 'right' : 'left';
+    el.style.setProperty('--hint', String(hintLevel(dx)));
+  };
+  const bringBack = (): void => {
+    const el = card.current;
+    if (el === null) return;
+    flown.current = false;
+    const rest = (): void => {
+      el.style.transform = '';
+      show(0);
+    };
+    if (reduced) {
+      rest();
+      return;
+    }
+    const from = el.style.transform || 'translateX(0px)';
+    // A cancelled animation still ends at rest.
+    void animate(el, { transform: [from, 'translateX(0px)'] }, { duration: QUICK_S, ease: EASE }).finished.then(rest, rest);
+  };
+  // An answer that went through takes the card off the screen with its item.
+  // One that did not (it was refused, or nothing happened) brings it back.
+  useEffect(() => {
+    if (!busy && flown.current) bringBack();
+  });
+  useEffect(() => {
+    if (!flown.current) return undefined;
+    const timer = window.setTimeout(() => {
+      if (flown.current) bringBack();
+    }, 2_000);
+    return () => window.clearTimeout(timer);
+  });
+
+  const finish = (event: ReactPointerEvent<HTMLElement>): void => {
+    const d = drag.current;
+    const el = card.current;
+    if (d === null || d.pointer !== event.pointerId || el === null) return;
+    drag.current = null;
+    if (!d.moving) return;
+    const { sides: now, onRight: right, onLater: later } = latest.current;
+    const outcome = event.type === 'pointercancel' ? 'back' : swipeOutcome(d.dx, performance.now() - d.at, now);
+    if (outcome === 'back') {
+      el.style.transform = `translateX(${d.dx}px)`;
+      bringBack();
+      return;
+    }
+    const to = (outcome === 'right' ? 1 : -1) * el.offsetWidth;
+    const done = (): void => {
+      if (outcome === 'right') {
+        flown.current = true;
+        right?.();
+      } else {
+        // Later moves the card to the end of the list: it is shown there at rest.
+        el.style.transform = '';
+        show(0);
+        later?.();
+      }
+    };
+    el.style.transform = `translateX(${to}px)`;
+    if (reduced) done();
+    else void animate(el, { transform: [`translateX(${d.dx}px)`, `translateX(${to}px)`] }, { duration: QUICK_S, ease: EASE }).finished.then(done);
+  };
+
+  return (
+    <div ref={root} className="swipe" data-swiping="off" data-testid="swipe">
+      <div className="swipe__hints" aria-hidden="true">
+        {rightLabel !== undefined && <span className="swipe__hint swipe__hint--right">{rightLabel}</span>}
+        <span className="swipe__hint swipe__hint--left">Later</span>
+      </div>
+      <div
+        ref={card}
+        className="swipe__card"
+        data-testid="swipe-card"
+        onPointerDown={(event) => {
+          if (busy || (event.pointerType === 'mouse' && event.button !== 0) || (event.target instanceof Element && event.target.closest('button, a, input, select, textarea') !== null)) return;
+          drag.current = { pointer: event.pointerId, x: event.clientX, y: event.clientY, at: performance.now(), dx: 0, moving: false };
+        }}
+        onPointerMove={(event) => {
+          const d = drag.current;
+          const el = card.current;
+          if (d === null || d.pointer !== event.pointerId || el === null) return;
+          const raw = event.clientX - d.x;
+          if (!d.moving) {
+            // Mostly sideways, and far enough to be a drag, not a tap or a scroll.
+            if (Math.abs(raw) < 6 || Math.abs(raw) < Math.abs(event.clientY - d.y)) return;
+            d.moving = true;
+            try {
+              event.currentTarget.setPointerCapture(event.pointerId);
+            } catch {
+              // The drag still follows the finger over the card itself.
+            }
+          }
+          d.dx = limitSwipe(raw, latest.current.sides);
+          el.style.transform = `translateX(${d.dx}px)`;
+          show(d.dx);
+        }}
+        onPointerUp={finish}
+        onPointerCancel={finish}
+      >
+        {children}
+      </div>
+    </div>
   );
 }
 
