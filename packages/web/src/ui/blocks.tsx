@@ -917,11 +917,17 @@ export function SwipeSort({
     const el = card.current;
     if (el === null) return;
     flown.current = false;
-    const from = el.style.transform || 'translateX(0px)';
-    void animate(el, { transform: [from, 'translateX(0px)'] }, { duration: reduced ? 0 : QUICK_S, ease: EASE }).finished.then(() => {
+    const rest = (): void => {
       el.style.transform = '';
       show(0);
-    });
+    };
+    if (reduced) {
+      rest();
+      return;
+    }
+    const from = el.style.transform || 'translateX(0px)';
+    // A cancelled animation still ends at rest.
+    void animate(el, { transform: [from, 'translateX(0px)'] }, { duration: QUICK_S, ease: EASE }).finished.then(rest, rest);
   };
   // An answer that went through takes the card off the screen with its item.
   // One that did not (it was refused, or nothing happened) brings it back.
