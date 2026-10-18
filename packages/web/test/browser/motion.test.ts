@@ -256,21 +256,21 @@ describe.each(ENGINES)('Motion in %s', (_name, engine) => {
 
     it('PR 2: a pull the phone takes over (cancelled) does not close the sheet, however far it went', async () => {
       const page = await opened(MOVING);
-      await page.getByTestId('move-sheet-drag').evaluate((e) => {
-        (window as unknown as { lastPointer: number }).lastPointer = 1;
-        e.addEventListener('pointerdown', (event) => ((window as unknown as { lastPointer: number }).lastPointer = (event as PointerEvent).pointerId), { capture: true });
+      // Made-up pointer events, so the same pull happens on every machine.
+      await page.getByTestId('move-sheet-drag').evaluate(async (e) => {
+        const box = e.getBoundingClientRect();
+        const at = (type: string, dy: number): void => {
+          e.dispatchEvent(new PointerEvent(type, { pointerId: 7, pointerType: 'touch', isPrimary: true, bubbles: true, clientX: box.x + 20, clientY: box.y + 10 + dy }));
+        };
+        at('pointerdown', 0);
+        at('pointermove', 100);
+        at('pointermove', 220);
+        (window as unknown as { pulledTo: string }).pulledTo = (e.closest('dialog') as HTMLElement).style.transform;
+        at('pointercancel', 220);
       });
-      // The listener is added after a press would have started, so press again.
-      await pull(page, 5);
-      await page.mouse.up();
-      await pull(page, 200);
-      await page.getByTestId('move-sheet-drag').evaluate((e) => {
-        const id = (window as unknown as { lastPointer: number }).lastPointer;
-        e.dispatchEvent(new PointerEvent('pointercancel', { pointerId: id, bubbles: true }));
-      });
+      expect(await page.evaluate(() => (window as unknown as { pulledTo: string }).pulledTo)).toBe('translateY(220px)');
       await page.waitForFunction(() => (document.querySelector('[data-testid="move-sheet"]') as HTMLElement).style.transform === '');
       expect(await isOpen(page)).toBe(true);
-      await page.mouse.up();
       await page.context().close();
     });
 

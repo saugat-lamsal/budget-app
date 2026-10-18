@@ -470,7 +470,11 @@ export function BottomSheet({ open, title, onClose, children, testId }: { readon
             if (!d.moving) {
               if (dy < 4) return;
               d.moving = true;
-              event.currentTarget.setPointerCapture(event.pointerId);
+              try {
+                event.currentTarget.setPointerCapture(event.pointerId);
+              } catch {
+                // The pull still follows the finger over the sheet itself.
+              }
             }
             d.dy = dy;
             dialog.style.transform = `translateY(${dy}px)`;
