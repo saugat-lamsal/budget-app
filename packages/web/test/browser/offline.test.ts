@@ -86,8 +86,8 @@ describe.runIf(chromiumOnly.length > 0)('0.8 the plain page when the server cann
     await waitOrReport(page, '[data-testid="offline"]');
     const problems: string[] = [];
     for (const [scheme, background] of [
-      ['light', 'rgb(242, 242, 247)'],
-      ['dark', 'rgb(0, 0, 0)'],
+      ['light', 'rgb(5, 5, 6)'],
+      ['dark', 'rgb(5, 5, 6)'],
     ] as const) {
       await page.emulateMedia({ colorScheme: scheme });
       expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), scheme).toBe(background);

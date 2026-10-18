@@ -37,17 +37,16 @@ export function showOffline(answer: { readonly status: number } | 'failed' | 'no
 }
 
 // The app's look, written out here: the page cannot load the app's styles when
-// the server cannot be reached. Light and dark follow the phone; the text
+// the server cannot be reached. Dark, as the app is (dark only); the text
 // follows the phone's text size; the notch and the home bar are left clear;
 // Try again is at least 44 points.
 const STYLE = `
-:root { color-scheme: light dark; --bg: #f2f2f7; --surface: #ffffff; --text: #111114; --text-2: #5c5c63; --accent: #2459d6; --on-accent: #ffffff; }
-@media (prefers-color-scheme: dark) { :root { --bg: #000000; --surface: #1c1c1e; --text: #f5f5f7; --text-2: #a3a3aa; --accent: #6f9dff; --on-accent: #0a1430; } }
+:root { color-scheme: dark; --bg: #050506; --surface: #0e0f14; --text: #ededef; --text-2: #8a8f98; --accent: #5e6ad2; --on-accent: #ffffff; }
 html { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; font-size: 106.25%; line-height: 1.35; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @supports (font: -apple-system-body) { html { font: -apple-system-body; } }
 body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); }
 main { box-sizing: border-box; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: calc(env(safe-area-inset-top) + 1.5rem) calc(env(safe-area-inset-right) + 1rem) calc(env(safe-area-inset-bottom) + 1.5rem) calc(env(safe-area-inset-left) + 1rem); }
-.box { box-sizing: border-box; width: 100%; max-width: 28rem; background: var(--surface); border-radius: 14px; padding: 1.5rem; text-align: center; }
+.box { box-sizing: border-box; width: 100%; max-width: 28rem; background: var(--surface); border-radius: 16px; padding: 1.5rem; text-align: center; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08); }
 h1 { font-size: 1.25rem; line-height: 1.25; margin: 0 0 0.75rem; overflow-wrap: anywhere; }
 p { font-size: 1rem; color: var(--text-2); margin: 0 0 1.5rem; overflow-wrap: anywhere; }
 a { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0.625rem 1.5rem; border-radius: 10px; background: var(--accent); color: var(--on-accent); font-weight: 600; font-size: 1rem; text-decoration: none; }
@@ -59,7 +58,7 @@ const PAGE = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="dark">
 <title>Budget</title>
 <style>${STYLE}</style>
 </head>

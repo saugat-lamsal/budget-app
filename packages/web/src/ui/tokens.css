@@ -1,49 +1,82 @@
 /* The design tokens (CLAUDE.md design rules). Every screen takes its colors,
    type, spacing, and motion from here; nothing else defines its own.
 
+   The "Linear" look (his pick, Oct 17, 2026; docs/design). Dark only: the
+   phone's light or dark setting does not change it.
+
    One accent color. The status colors (low, empty, overdue, mismatch) always
    come with a word or an icon, never on their own. Text colors meet WCAG AA
-   contrast on every surface they sit on, in light and dark (a test checks). */
+   contrast on every surface they sit on (a test checks).
+
+   Backgrounds that text sits on are flat colors: a gradient or a glow is never
+   the background of an element holding text, and never a pseudo-element over
+   it, so the contrast check can still read the color. */
 
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
 
-  /* Light (the phone's light mode) */
-  --bg: #f2f2f7;
-  --surface: #ffffff;
-  --surface-2: #e8e8ee;
-  --text: #111114;
-  --text-2: #5c5c63;
-  --separator: #d8d8de;
-  --accent: #2459d6;
+  --bg: #050506;
+  --bg-deep: #020203;
+  /* Soft white on the dark: a card is 3% white with a sheen (--shadow). */
+  --surface: rgb(255 255 255 / 0.03);
+  /* Where a flat, solid surface is needed (inputs, sheets). */
+  --surface-solid: #0e0f14;
+  --surface-2: rgb(255 255 255 / 0.08);
+  --track: rgb(255 255 255 / 0.07);
+  --text: #ededef;
+  --text-2: #8a8f98;
+  --separator: rgb(255 255 255 / 0.07);
+  --field-border: #6b7079;
+  /* Solid light text fading toward the bottom: used as a mask, never as a
+     gradient background (see the top of this file). */
+  --fade: linear-gradient(180deg, #000 0%, rgb(0 0 0 / 0.95) 45%, rgb(0 0 0 / 0.62) 100%);
+  --hairline: rgb(255 255 255 / 0.1);
+
+  /* Indigo. --accent fills (white text on it is 4.7:1); --accent-text is the
+     same color lightened for text and icons on the dark. */
+  --accent: #5e6ad2;
   --on-accent: #ffffff;
-  --accent-soft: #e6edfc;
-  --danger: #c4281c;
-  --danger-bg: #fdeceb;
-  --danger-fill: #d93a2b;
-  --warning: #8a5300;
-  --warning-bg: #fff3dc;
-  --warning-fill: #c77700;
-  --ok: #1d7a39;
-  --ok-bg: #e6f4ea;
-  --backdrop: rgb(0 0 0 / 0.35);
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.06);
-  --shadow-raised: 0 2px 10px rgb(0 0 0 / 0.18);
-  --tabbar-bg: #f9f9fb;
-  /* The same in light and dark: white text on it stays readable in both. */
+  --accent-text: #8f98e8;
+  --accent-soft: #141526;
+  --accent-glow: rgb(94 106 210 / 0.45);
+  --accent-ring: rgb(94 106 210 / 0.6);
+
+  /* Status colors: always with a word or an icon. Their backgrounds are solid
+     (a notice pinned while the page scrolls under it must not show through). */
+  --danger: #ff7a6e;
+  --danger-bg: #271416;
+  --danger-fill: #ff5e50;
+  --warning: #e5ac5f;
+  --warning-bg: #241d18;
+  --warning-fill: #e5ac5f;
+  --ok: #4cc3a5;
+  --ok-bg: #11231f;
+
+  --backdrop: rgb(0 0 0 / 0.6);
+  /* Border highlight, a soft shadow, the 1px top edge, and a sheen: white fading out downward from the top (an inset shadow, not a gradient, so the contrast check can read the card). Kept small: big blurs are slow to draw where there is no graphics chip. */
+  --shadow: 0 0 0 1px rgb(255 255 255 / 0.06), 0 2px 10px rgb(0 0 0 / 0.4), inset 0 1px 0 0 rgb(255 255 255 / 0.1), inset 0 50px 40px -50px rgb(255 255 255 / 0.07);
+  --shadow-raised: 0 0 0 1px rgb(255 255 255 / 0.1), 0 6px 20px rgb(0 0 0 / 0.45), inset 0 1px 0 0 rgb(255 255 255 / 0.12), inset 0 80px 60px -80px rgb(255 255 255 / 0.1);
+  --tabbar-bg: rgb(10 10 14 / 0.97);
+  /* The same white text on it as everywhere. */
   --badge-bg: #d02c1f;
 
-  /* Type: sizes are rem, so they follow the phone's text size (base.css). */
-  --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  /* Type: sizes are rem, so they follow the phone's text size (base.css).
+     Geist for text, Geist Mono for the small uppercase labels, both served from
+     the app itself (main.tsx). */
+  --font: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --text-hero: 3.25rem;
-  --text-title: 2rem;
+  --text-title: 1.75rem;
   --text-headline: 1.0625rem;
   --text-body: 1rem;
   --text-sub: 0.875rem;
   --text-caption: 0.75rem;
+  --text-label: 0.66rem;
+  --text-tile: 1.375rem;
+  --text-tall: 1.75rem;
   --weight-regular: 400;
   --weight-medium: 500;
-  --weight-bold: 700;
+  --weight-bold: 600;
 
   /* Spacing */
   --space-1: 4px;
@@ -52,8 +85,8 @@
   --space-4: 16px;
   --space-5: 24px;
   --space-6: 32px;
-  --gutter: 16px;
-  --radius: 14px;
+  --gutter: 20px;
+  --radius: 16px;
   --radius-sm: 10px;
   --tap: 44px;
   --tabbar-height: 50px;
@@ -64,36 +97,11 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
 
-  /* Motion: short and quiet, and none at all with reduced motion. */
-  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --duration: 180ms;
-  --duration-sheet: 260ms;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #000000;
-    --surface: #1c1c1e;
-    --surface-2: #323236;
-    --text: #f5f5f7;
-    --text-2: #a3a3aa;
-    --separator: #38383c;
-    --accent: #6f9dff;
-    --on-accent: #0a1430;
-    --accent-soft: #1a2747;
-    --danger: #ff7a6e;
-    --danger-bg: #3b1613;
-    --danger-fill: #ff5e50;
-    --warning: #ffb84d;
-    --warning-bg: #33250d;
-    --warning-fill: #f2a23a;
-    --ok: #5ad48a;
-    --ok-bg: #11301d;
-    --backdrop: rgb(0 0 0 / 0.6);
-    --shadow: none;
-    --shadow-raised: 0 2px 10px rgb(0 0 0 / 0.6);
-    --tabbar-bg: #161618;
-  }
+  /* Motion: quick and precise, expo-out, no bounce. Entrances up to 600 ms.
+     None at all with reduced motion. */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration: 200ms;
+  --duration-sheet: 320ms;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -124,7 +124,8 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
     });
   }
 
-  it('every tap target is at least 44 by 44 points, in every state and every sheet', async () => {
+  // Two tests for the same pages: together they went past the time limit on the CI machines.
+  it('every tap target is at least 44 by 44 points, in every state', async () => {
     const small: string[] = [];
     const context = await browser().newContext(phone());
     const page = await context.newPage();
@@ -132,6 +133,14 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
       await showScenario(page, base(), life, path);
       for (const t of await tappable(page)) if (t.width < 44 || t.height < 44) small.push(`${path} ${life}: ${t.what} is ${t.width}x${t.height}`);
     }
+    await context.close();
+    expect(small).toEqual([]);
+  });
+
+  it('every tap target is at least 44 by 44 points, in every sheet', async () => {
+    const small: string[] = [];
+    const context = await browser().newContext(phone());
+    const page = await context.newPage();
     await showScenario(page, base(), 'activity-marked', '/buckets/needs');
     const names = await activitySheets(page);
     for (const name of names) {
@@ -181,7 +190,7 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
   });
 
   it('with reduced motion on, the move sheet does not slide', async () => {
-    const page = await openScenario(await browser().newContext(phone()), base(), 'activity-busy', '/buckets/needs');
+    const page = await openScenario(await browser().newContext(phone({ reducedMotion: 'no-preference' })), base(), 'activity-busy', '/buckets/needs');
     await page.getByTestId('move-open').click();
     expect(await page.getByTestId('move-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('sheet-in');
     // The same page with motion reduced, the life started over.
@@ -252,12 +261,12 @@ describe.each(ENGINES)('design rules on the bucket lists, moves and Payday in %s
     await context.close();
   });
 
-  it('light and dark follow the phone on the new screens', async () => {
+  it('dark only, whatever the phone is set to, on the new screens', async () => {
     const context = await browser().newContext(phone());
     const page = await context.newPage();
     for (const [scheme, background] of [
-      ['light', 'rgb(242, 242, 247)'],
-      ['dark', 'rgb(0, 0, 0)'],
+      ['light', 'rgb(5, 5, 6)'],
+      ['dark', 'rgb(5, 5, 6)'],
     ] as const) {
       await emulatePhone(page, { colorScheme: scheme });
       for (const path of ['/buckets/needs', '/payday']) {

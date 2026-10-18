@@ -27,8 +27,21 @@ export function Money({ cents, hero = false, stale = false, signed = false, test
       aria-label={negative ? moneyWords(cents) : signed && cents > 0 ? `plus ${moneyWords(cents)}` : undefined}
       style={hero ? ({ '--chars': text.length } as CSSProperties) : undefined}
     >
-      {text}
+      {hero ? <HeroText text={text} /> : text}
     </span>
+  );
+}
+
+// The main number: the cents smaller and quieter. The text is the same
+// characters, so it reads and copies as the one amount.
+function HeroText({ text }: { readonly text: string }) {
+  const dot = text.lastIndexOf('.');
+  if (dot === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, dot)}
+      <span className="money__cents">{text.slice(dot)}</span>
+    </>
   );
 }
 
@@ -195,6 +208,82 @@ export function BucketBar({ name, left, startedWith, level, href, testId }: { re
         <div className={`bar__fill${level === 'ok' ? '' : ` bar__fill--${level}`}`} style={{ width: `${(fill * 100).toFixed(2)}%` }} />
       </div>
     </Tag>
+  );
+}
+
+// ----- The light behind every screen (base.css, blocks.css) -----
+
+// Drawn once, fixed, and it takes no touch. It is decoration only.
+export function Backdrop() {
+  return (
+    <>
+      <div className="ambient" aria-hidden="true">
+        <div className="ambient__blob ambient__blob--a" />
+        <div className="ambient__blob ambient__blob--b" />
+        <div className="ambient__blob ambient__blob--c" />
+      </div>
+      <div className="statusbar" aria-hidden="true" />
+    </>
+  );
+}
+
+// ----- Tiles: buckets and counts side by side -----
+
+// A section of tiles under a small title (Home).
+export function Tiles({ title, children, testId }: { readonly title: string; readonly children: ReactNode; readonly testId?: string | undefined }) {
+  const id = useId();
+  return (
+    <section aria-labelledby={id} data-testid={testId}>
+      <h2 id={id} className="section-title">
+        {title}
+      </h2>
+      <div className="tiles-wrap">
+        <div className="tiles">{children}</div>
+      </div>
+    </section>
+  );
+}
+
+// A bucket as a tile: the same facts as the bucket bar (what is left, against
+// what it started the pay period with, Low and Empty in words), with the same
+// test ids. The tall one stands beside two short ones.
+export function BucketTile({ name, left, startedWith, level, href, tall = false, testId }: { readonly name: string; readonly left: Cents; readonly startedWith: Cents; readonly level: BucketLevel; readonly href: string; readonly tall?: boolean; readonly testId?: string | undefined }) {
+  const fill = barFill(left, startedWith);
+  return (
+    <a className={`tile${tall ? ' tile--tall' : ''}`} href={href} data-testid={testId} data-level={level}>
+      <span className="tile__top">
+        <span className="tile__name">{name}</span>
+        {level !== 'ok' && <StatusLabel status={level} />}
+      </span>
+      <span className="tile__figure">
+        <span className="tile__amount" style={{ '--chars': moneyText(left).length } as CSSProperties}>
+          <Money cents={left} testId={testId === undefined ? undefined : `${testId}-left`} />
+        </span>
+        <span className="tile__of">
+          left of <Money cents={startedWith} testId={testId === undefined ? undefined : `${testId}-of`} />
+        </span>
+        <span className="bar" aria-hidden="true">
+          <span className={`bar__fill${level === 'ok' ? '' : ` bar__fill--${level}`}`} style={{ display: 'block', width: `${(fill * 100).toFixed(2)}%` }} />
+        </span>
+      </span>
+    </a>
+  );
+}
+
+// A count as a tile that goes somewhere (what is waiting to be sorted).
+export function CountTile({ name, count, go, href, testId }: { readonly name: string; readonly count: number; readonly go: string; readonly href: string; readonly testId?: string | undefined }) {
+  return (
+    <a className="tile" href={href} data-testid={testId}>
+      <span className="tile__top">
+        <span className="tile__name">{name}</span>
+      </span>
+      <span className="tile__count">
+        <span className="tile__amount" data-testid={testId === undefined ? undefined : `${testId}-count`}>
+          {count}
+        </span>
+        <span className="tile__go">{go} →</span>
+      </span>
+    </a>
   );
 }
 

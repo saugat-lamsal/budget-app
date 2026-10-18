@@ -2,8 +2,8 @@ import type { SelfCheck } from '@budget-app/money';
 import type { Attention, BankDetail, HomeView } from '@budget-app/server/views';
 import { Fragment, useState } from 'react';
 import { markTakeBackSeen, type Load, type Reload } from '../app/api.js';
-import { pathOf, setupPath } from '../app/routes.js';
-import { Banner, BottomSheet, BucketBar, Button, Card, LinkButton, ListRow, MadeUpPill, Money, Skeleton, StateMessage, StatusLabel } from '../ui/blocks.js';
+import { activityPath, pathOf, setupPath } from '../app/routes.js';
+import { Banner, BottomSheet, BucketTile, Button, Card, CountTile, LinkButton, ListRow, MadeUpPill, Money, Skeleton, StateMessage, StatusLabel, Tiles } from '../ui/blocks.js';
 import { asOfText, checkedAtText, longDate, shortDate } from '../ui/dates.js';
 import { Icon } from '../ui/Icon.js';
 import { cardsOffText, dueText, onItsWayInText, paydayText, stillToSetText, waitingText } from './home-text.js';
@@ -167,9 +167,12 @@ function HomeReady({ view, onChanged }: { readonly view: Tracking; readonly onCh
         )}
       </Card>
 
-      <Card title="This pay period" testId="buckets">
-        <BucketBar name="Needs" {...view.buckets.needs} testId="bucket-needs" />
-        <BucketBar name="Wants" {...view.buckets.wants} testId="bucket-wants" />
+      <Tiles title="This pay period" testId="buckets">
+        <BucketTile name="Wants" {...view.buckets.wants} href={activityPath('wants')} tall testId="bucket-wants" />
+        <BucketTile name="Needs" {...view.buckets.needs} href={activityPath('needs')} testId="bucket-needs" />
+        <CountTile name="To sort" count={view.waitingInReview} go="Review" href={pathOf('review')} testId="to-sort" />
+      </Tiles>
+      <Card testId="home-links">
         <ListRow title="All buckets" href={pathOf('buckets')} testId="all-buckets" />
         <ListRow title="Payday" detail="What your last paycheck did" href="/payday" testId="home-payday" />
       </Card>

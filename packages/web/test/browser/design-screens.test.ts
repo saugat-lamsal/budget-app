@@ -195,7 +195,7 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
   });
 
   it('with reduced motion on, the sheet does not slide and the switch does not slide', async () => {
-    const page = await openScenario(await browser().newContext(phone()), base(), 'review-busy', '/review');
+    const page = await openScenario(await browser().newContext(phone({ reducedMotion: 'no-preference' })), base(), 'review-busy', '/review');
     await page.getByTestId(`item-${idOf('review-busy', 'CORNER STORE')}`).getByTestId('more').click();
     expect(await page.getByTestId('review-sheet').evaluate((e) => getComputedStyle(e).animationName)).toBe('sheet-in');
 
@@ -278,12 +278,12 @@ describe.each(ENGINES)('design rules on Buckets and Review in %s', (_engine, eng
     await context.close();
   });
 
-  it('light and dark follow the phone on the new screens', async () => {
+  it('dark only, whatever the phone is set to, on the new screens', async () => {
     const context = await browser().newContext(phone());
     const page = await context.newPage();
     for (const [scheme, background] of [
-      ['light', 'rgb(242, 242, 247)'],
-      ['dark', 'rgb(0, 0, 0)'],
+      ['light', 'rgb(5, 5, 6)'],
+      ['dark', 'rgb(5, 5, 6)'],
     ] as const) {
       await emulatePhone(page, { colorScheme: scheme });
       for (const path of ['/buckets', '/review']) {

@@ -320,7 +320,7 @@ describe.each(ENGINES)('the list of alerts sent, on the real server, in %s', (_n
     await letGo();
     await page.unrouteAll({ behavior: 'wait' });
     // The same page with motion on, loaded afresh (showLive in live.ts says why).
-    await emulatePhone(page, {});
+    await emulatePhone(page, { reducedMotion: 'no-preference' });
     const letGoToo = await holdAlerts(page);
     await page.goto(`${real('alerts').base}/alerts`);
     await waitOrReport(page, '[data-testid="alerts-loading"]');

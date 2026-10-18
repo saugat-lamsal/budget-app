@@ -24,7 +24,9 @@ interface AxeViolation {
 export async function atRest(page: Page): Promise<void> {
   await page.evaluate(async () => {
     await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
-    await Promise.all(document.getAnimations().map((animation) => animation.finished.catch(() => undefined)));
+    // Not the ones that never end (the light floating behind the page, a skeleton's pulse): they have no rest to wait for.
+    const ends = document.getAnimations().filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity);
+    await Promise.all(ends.map((animation) => animation.finished.catch(() => undefined)));
     while (document.querySelector('.tap-hold') !== null) await new Promise((done) => setTimeout(done, 20));
   });
 }
@@ -56,6 +58,14 @@ export async function axeViolations(page: Page): Promise<string[]> {
       const alpha = /rgba\([^)]*,\s*([\d.]+)\)$/.exec(getComputedStyle(notice).backgroundColor)?.[1];
       if (alpha !== undefined && Number(alpha) < 1) problems.push(`pinned notice: ${notice.getAttribute('data-testid') ?? ''} has a see-through background, so what scrolls under it shows through`);
     }
+    // The light behind the page is decoration: a gradient, an image and a blur, which axe cannot read a color through. It is hidden while axe runs and
+    // checked on its own (test/ambient-light.test.ts: even where it is brightest, the muted text still passes).
+    const decoration = [...document.querySelectorAll<HTMLElement>('.ambient, .statusbar')];
+    for (const e of decoration) e.style.visibility = 'hidden';
+    // The tab bar is frosted glass: axe cannot say what is behind it, so it reads it flat, in the same color. How faint what shows through can be is checked in test/ambient-light.test.ts.
+    const glass = document.querySelector<HTMLElement>('.tabbar');
+    const glassWas = glass?.style.backgroundColor ?? '';
+    if (glass !== null) glass.style.backgroundColor = getComputedStyle(glass).backgroundColor.replace(/rgba\((\d+), (\d+), (\d+), [\d.]+\)/, 'rgb($1, $2, $3)');
     for (const e of under) e.style.visibility = 'hidden';
     for (const e of pinned) e.style.position = 'static';
     try {
@@ -63,6 +73,8 @@ export async function axeViolations(page: Page): Promise<string[]> {
       const unchecked = result.incomplete.filter((v) => v.id === 'color-contrast');
       return [...problems, ...[...result.violations, ...unchecked.map((v) => ({ ...v, id: 'color-contrast (could not be checked)' }))].flatMap((v) => v.nodes.map((n) => `${v.id}: ${n.target.join(' ')} ${n.failureSummary ?? ''}`))];
     } finally {
+      for (const e of decoration) e.style.visibility = '';
+      if (glass !== null) glass.style.backgroundColor = glassWas;
       for (const e of under) e.style.visibility = '';
       for (const e of pinned) e.style.position = '';
     }

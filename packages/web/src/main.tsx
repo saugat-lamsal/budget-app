@@ -3,6 +3,12 @@ import { createRoot } from 'react-dom/client';
 import { App } from './app/App.js';
 import { LOGIN_PATH, pathOf, routeOf } from './app/routes.js';
 import { LoginScreen } from './screens/Login.js';
+import { Backdrop } from './ui/blocks.js';
+// Geist and Geist Mono, served from the app itself (the Content Security Policy allows nothing else).
+import '@fontsource/geist/latin-400.css';
+import '@fontsource/geist/latin-500.css';
+import '@fontsource/geist/latin-600.css';
+import '@fontsource/geist-mono/latin-500.css';
 import './ui/tokens.css';
 import './ui/base.css';
 import './ui/blocks.css';
@@ -20,4 +26,13 @@ if (window.location.protocol === 'https:' && 'serviceWorker' in navigator) void 
 
 const root = document.getElementById('root');
 if (root === null) throw new Error('index.html has no #root');
-createRoot(root).render(<StrictMode>{login ? <LoginScreen /> : <App />}</StrictMode>);
+createRoot(root).render(<StrictMode>
+    {login ? (
+      <div className="app">
+        <Backdrop />
+        <LoginScreen />
+      </div>
+    ) : (
+      <App />
+    )}
+  </StrictMode>);

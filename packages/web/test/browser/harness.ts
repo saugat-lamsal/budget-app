@@ -30,6 +30,7 @@ export const IPHONE_INSETS = { top: 59, bottom: 34 } as const;
 
 export interface PhoneOptions {
   readonly colorScheme?: 'light' | 'dark';
+  // Reduced by default: the page's light floats forever, and animations must never make a test flaky.
   readonly reducedMotion?: 'reduce' | 'no-preference';
   // Only to add test styles (the notch, a bigger text size); the app itself
   // always runs under its own content security policy.
@@ -46,7 +47,7 @@ export function phone(options: PhoneOptions = {}): BrowserContextOptions {
     isMobile: true,
     hasTouch: true,
     colorScheme: options.colorScheme ?? 'light',
-    reducedMotion: options.reducedMotion ?? 'no-preference',
+    reducedMotion: options.reducedMotion ?? 'reduce',
     bypassCSP: options.bypassCSP ?? false,
     // Times on the screens are in the phone's time zone; the tests pin one.
     timezoneId: 'America/Chicago',
@@ -501,7 +502,7 @@ export function useEngine(engine: BrowserType): { browser: () => Browser; base: 
 // address, loaded afresh, then shows as a new page with those options would
 // (the screens read both from CSS only).
 export async function emulatePhone(page: Page, options: Pick<PhoneOptions, 'colorScheme' | 'reducedMotion'> = {}): Promise<void> {
-  await page.emulateMedia({ colorScheme: options.colorScheme ?? 'light', reducedMotion: options.reducedMotion ?? 'no-preference' });
+  await page.emulateMedia({ colorScheme: options.colorScheme ?? 'light', reducedMotion: options.reducedMotion ?? 'reduce' });
 }
 
 // Opens Home with one of the demo's made-up lives.
