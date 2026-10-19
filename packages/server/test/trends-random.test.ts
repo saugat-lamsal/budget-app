@@ -79,11 +79,58 @@ function check(book: Book, today: IsoDate, bank: BankBalances): void {
   expect(v.now.spentSoFar).toBe(subtractCents(here?.total ?? 0, here?.spent['old-card'] ?? 0));
   // 40.9: the same check the books make.
   expect(v.check.state === 'matches').toBe(book.selfCheck(bank).ok);
+
+  // 40.11: what Needs and Wants hold is the books'; it lands at that less the pace.
+  const landing = v.future.landing;
+  for (const bucket of ['needs', 'wants'] as const) {
+    const l = landing[bucket];
+    expect(l.holds).toBe(book.pots()[bucket]);
+    if (l.state === 'estimate') {
+      expect(l.lands).toBe(subtractCents(l.holds, l.pace));
+      // Rounded up: the pace is at least the exact one, and less than a cent over.
+      expect(BigInt(l.pace) * BigInt(l.daysSoFar)).toBeGreaterThanOrEqual(BigInt(l.spentSoFar) * BigInt(l.daysLeft));
+      expect(BigInt(l.pace - 1) * BigInt(l.daysSoFar)).toBeLessThan(BigInt(l.spentSoFar) * BigInt(l.daysLeft));
+    }
+  }
+  expect(landing.waitingInReview).toBe(book.pots().unsortedOut);
+  // 40.12: the range starts from the savings bucket now; low never above high.
+  const sav = v.future.savings;
+  expect(sav.now).toBe(book.pots().savings);
+  if (sav.state === 'estimate') {
+    expect(sav.least).toBeLessThanOrEqual(sav.most);
+    expect(sav.low).toBeLessThanOrEqual(sav.high);
+    expect(sav.points).toHaveLength(sav.paydays);
+    sav.points.forEach((p, k) => expect([p.low, p.high]).toEqual([sav.now + (k + 1) * sav.least, sav.now + (k + 1) * sav.most]));
+  }
+  // 40.13: what the old card owed, the books' own.
+  const owed = v.future.oldCard.owed;
+  expect(owed[0]?.owed).toBe(book.oldCardDebtIn(0).opening);
+  expect(owed.at(-1)?.owed).toBe(book.oldCardDebt());
+  expect(owed.filter((o) => o.at === 'end').map((o) => o.owed)).toEqual(Array.from({ length: current }, (_, n) => book.oldCardDebtIn(n).closing));
+  // 40.15: the seven totals are the 90 days' spending without old card payments, to the cent.
+  // The old card payments, wherever they are (past the five biggest they are in everything else).
+  const oldCard = addCents(0, ...v.places.groups.flatMap((g) => g.items).filter((i) => i.part === 'old-card').map((i) => i.amount));
+  const week = v.habits.weekdays;
+  expect(week.total).toBe(subtractCents(v.places.total, oldCard));
+  expect(addCents(0, ...week.days.map((d) => d.total))).toBe(week.total);
+  expect(week.days.reduce((n, d) => n + d.days, 0)).toBe(90);
+  // 40.14: each side is its items added up.
+  const effect = v.habits.paydayEffect;
+  if (effect.state === 'known') for (const side of [effect.first, effect.rest]) expect(addCents(0, ...side.items.map((i) => i.amount))).toBe(side.total);
+  // 40.17: the books' own pay periods.
+  const streak = v.habits.streak;
+  expect(streak.ended).toBe(current);
+  expect(streak.current).toBeLessThanOrEqual(streak.best);
+  // 40.16: every repeat is at least 3 charges, still going.
+  for (const r of v.habits.repeats) {
+    expect(r.items.length).toBeGreaterThanOrEqual(3);
+    expect(daysBetween(r.newestDate, today)).toBeLessThanOrEqual(33);
+  }
 }
 
 describe('40.1 to 40.9 Trends on random made-up lives, against the books', () => {
   for (let seed = FIRST; seed < FIRST + LIVES; seed += 1) {
-    it(`40.1 40.2 40.5 40.6 40.8 seed ${seed}: every number is the books' own, every few evenings for a year, and working it out changes nothing`, () => {
+    it(`40.1 40.2 40.5 40.6 40.8 40.11 to 40.17 seed ${seed}: every number is the books' own, every few evenings for a year, and working it out changes nothing`, () => {
       let day = 0;
       let checked = 0;
       const result = liveALife({

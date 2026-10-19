@@ -593,6 +593,8 @@ interface PeriodRecord {
   readonly number: number;
   readonly startDate: IsoDate;
   readonly opening: Readonly<Record<Pot, Cents>>;
+  // 40.13: what the old card owed then (12.4).
+  readonly openingDebt: Cents;
   readonly split: SplitSettings;
   readonly leftoverSetting: Readonly<Record<SplitBucket, LeftoverChoice>> | null;
   readonly paycheckId: string | null;
@@ -696,7 +698,7 @@ export class Book {
     this.#rules = checkRules(input.rules ?? []);
     this.#lastPaycheckDate = input.lastPaycheckDate;
     this.#period = { number: 0, startDate: input.date };
-    this.#periods.push({ number: 0, startDate: input.date, opening: this.#potTotals(), split: this.#periodSplit, leftoverSetting: null, paycheckId: null });
+    this.#periods.push({ number: 0, startDate: input.date, opening: this.#potTotals(), openingDebt: this.#totals.oldCardDebt, split: this.#periodSplit, leftoverSetting: null, paycheckId: null });
     this.#ledger.push([]);
     this.#periodStart = { needs, wants };
     for (const txn of input.countedAtSetup ?? []) this.#countAtSetup(txn);
@@ -1055,6 +1057,17 @@ export class Book {
       closing: Object.freeze(next === undefined ? this.#potTotals() : { ...next.opening }),
       byKind: Object.freeze(byKind),
     });
+  }
+
+  // 40.13 (QUESTIONS.md A59): what the old card owed (12.4) when a pay period
+  // (the current one unless one is named) began, and when it ended: what it
+  // owed when the next paycheck was counted, or now. Only reads.
+  oldCardDebtIn(period?: number): { readonly opening: Cents; readonly closing: Cents } {
+    const number = this.#payPeriod(period);
+    const record = this.#periods[number];
+    if (record === undefined) throw new MoneyError('broken-book', `pay period ${number} has no record`);
+    const next = this.#periods[number + 1];
+    return Object.freeze({ opening: record.openingDebt, closing: next === undefined ? this.#totals.oldCardDebt : next.openingDebt });
   }
 
   // 40.2 (QUESTIONS.md A58): what each item spent out of needs and out of
@@ -2023,7 +2036,7 @@ export class Book {
       this.#periodSplit = splitSettingsOf(this.#settings);
       this.#period = { number: this.#period.number + 1, startDate: txn.date };
       const { needs, wants } = this.#settings.leftoverAtPayday;
-      this.#periods.push({ number: this.#period.number, startDate: txn.date, opening: this.#potTotals(), split: this.#periodSplit, leftoverSetting: { needs, wants }, paycheckId: txn.id });
+      this.#periods.push({ number: this.#period.number, startDate: txn.date, opening: this.#potTotals(), openingDebt: this.#totals.oldCardDebt, split: this.#periodSplit, leftoverSetting: { needs, wants }, paycheckId: txn.id });
       this.#ledger.push([]);
       this.#closePeriod('needs', txn);
       this.#closePeriod('wants', txn);

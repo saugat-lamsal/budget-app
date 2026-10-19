@@ -10,7 +10,7 @@ export {
   subtractCents,
   type Cents,
 } from './cents.js';
-export { addDays, assertIsoDate, daysBetween, monthOf, type IsoDate } from './dates.js';
+export { addDays, assertIsoDate, dayOfWeek, daysBetween, monthOf, type IsoDate } from './dates.js';
 export {
   DEFAULT_SETTINGS,
   FROM_NEXT_PAYCHECK,

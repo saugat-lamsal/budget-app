@@ -720,3 +720,47 @@ and rounded down to the cent: (40.01 + 45.00) / 2 = 42.505, so 42.50; and
 (40.01 + 100.00) / 2 = 70.005, so 70.00.
 
 Check: needs 32.50 | wants 10.00 | old card 200.00 | unsorted 5.00 | bar 247.50 | so far 47.50 | even pace today 75.00 | wants now 285.00 | more left 210.00 | usual by today 40.01 | usual whole 60.00 | four by today 42.50 | four whole 70.00
+
+
+EXAMPLE 21. The Trends tab, Future and Habits: where Needs and Wants land,
+the old card's plan, the payday effect and the busiest weekday (40.10 to
+40.17; QUESTIONS.md A59)
+
+Made-up numbers. The same books and history as example 20 (on Oct 6), but the
+old card owed 3,000.00 on setup day and the promo ends Nov 20, 2026.
+
+Where Needs and Wants land by payday (40.11). Oct 6 is day 6 of the pay
+period (setup day, Oct 1, is day 1). The next payday is Oct 9, so the days
+left after today are Oct 7 and Oct 8: 2.
+  Needs holds 500.00 - 32.50 - 200.00 + 5.00 (moved in) = 272.50.
+  Spent from it so far, the old card left out: 32.50.
+  Its pace: 32.50 x 2 / 6 = 10.8333..., rounded up to 10.84.
+  It lands at about 272.50 - 10.84 = 261.66.
+  Wants holds 300.00 - 10.00 - 5.00 (moved out) = 285.00. Spent: 10.00.
+  Its pace: 10.00 x 2 / 6 = 3.333..., rounded up to 3.34. Lands at 281.66.
+  Not counted in either: the shop's 5.00, waiting in review.
+
+The old card (40.13). It owed 3,000.00, less the 200.00 paid on Oct 5:
+2,800.00. The paydays after Oct 6 and before Nov 20: Oct 9, Oct 23 and Nov 6.
+9.5's share: 2,800.00 / 3 = 933.333..., rounded up to 933.34.
+  After Oct 9: 2,800.00 - 933.34 = 1,866.66.
+  After Oct 23: 1,866.66 - 933.34 = 933.32.
+  After Nov 6: 933.32 - 933.34 is below zero, so 0.00: paid off by Nov 6.
+
+The payday effect (40.14). The five full pay periods from the history:
+  Days 1 to 3: 10.00 (Jul 17) + 20.00 (Jul 31) + 30.00 (Aug 14)
+    + 40.01 (Aug 28) + 100.00 (Sep 11) = 200.01, over 5 x 3 = 15 days:
+    13.334, rounded down to 13.33 a day.
+  The rest: 50.00 (Jul 30) + 5.00 (Aug 11) + 15.00 (Aug 25) + 90.00 (Aug 26)
+    = 160.00, over 5 x 11 = 55 days: 2.909, rounded down to 2.90 a day.
+  (The 300.00 to the old card on Aug 29 is left out.)
+
+Day of the week (40.15). The 90 days are Jul 9 to Oct 6: 13 of every weekday
+but Wednesday, which has 12.
+  Fridays: 10.00 + 20.00 + 30.00 + 40.01 + 100.00 + 32.50 = 232.51; an
+    average Friday 232.51 / 13 = 17.885, down to 17.88. The most.
+  Wednesdays: 90.00 / 12 = 7.50. Thursdays: 50.00 / 13 = 3.846, so 3.84.
+
+The Wants streak (40.17): no pay period has ended in the books yet.
+
+Check: needs holds 272.50 | needs pace 10.84 | needs lands 261.66 | wants holds 285.00 | wants pace 3.34 | wants lands 281.66 | waiting 5.00 | owed now 2,800.00 | share 933.34 | after first 1,866.66 | after second 933.32 | after third 0.00 | first per day 13.33 | rest per day 2.90 | friday total 232.51 | average friday 17.88 | average wednesday 7.50 | average thursday 3.84
