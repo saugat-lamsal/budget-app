@@ -3726,8 +3726,8 @@
   {
     "section": "11",
     "file": "packages/money/src/payday.ts",
-    "find": "yield onAWeekday(`${month}-15`);",
-    "replace": "yield onAWeekday(`${month}-14`);",
+    "find": "    yield onAWeekday(`${month}-15`);\n    yield onAWeekday(lastDayOfMonth(month));",
+    "replace": "    yield onAWeekday(`${month}-14`);\n    yield onAWeekday(lastDayOfMonth(month));",
     "why": "[a48] section 2 pay on the 14th, not the 15th"
   },
   {
@@ -3768,15 +3768,15 @@
   {
     "section": "11",
     "file": "packages/money/src/payday.ts",
-    "find": "typeof schedule === 'number' ? { paySchedule: 'every-n-days', payScheduleDays: schedule }",
-    "replace": "typeof schedule === 'number' ? { paySchedule: 'twice-a-month', payScheduleDays: schedule }",
+    "find": "export function* paydaysAfter(lastPaycheckDate: IsoDate, schedule: number | PayScheduleSettings): Generator<IsoDate> {\n  assertIsoDate(lastPaycheckDate, 'last paycheck date');\n  const { paySchedule, payScheduleDays } = typeof schedule === 'number' ? { paySchedule: 'every-n-days', payScheduleDays: schedule }",
+    "replace": "export function* paydaysAfter(lastPaycheckDate: IsoDate, schedule: number | PayScheduleSettings): Generator<IsoDate> {\n  assertIsoDate(lastPaycheckDate, 'last paycheck date');\n  const { paySchedule, payScheduleDays } = typeof schedule === 'number' ? { paySchedule: 'twice-a-month', payScheduleDays: schedule }",
     "why": "[a48] 11.2 a number of days read as twice a month"
   },
   {
     "section": "11",
     "file": "packages/money/src/payday.ts",
-    "find": "if (paySchedule === 'every-n-days') {",
-    "replace": "if (paySchedule !== 'twice-a-month' && payScheduleDays !== 14) {",
+    "find": "if (paySchedule === 'every-n-days') {\n    for (let payday = addDays(lastPaycheckDate, payScheduleDays);",
+    "replace": "if (paySchedule !== 'twice-a-month' && payScheduleDays !== 14) {\n    for (let payday = addDays(lastPaycheckDate, payScheduleDays);",
     "why": "[a48] section 2 every 14 days read as twice a month"
   },
   {
@@ -3939,5 +3939,61 @@
     "find": "      return name ?? original.description;",
     "replace": "      return original.description;",
     "why": "[a55] 13.8 A20 a marked payment starts from the whole description"
+  },
+  {
+    "section": "40",
+    "file": "packages/money/src/book.ts",
+    "find": "const spending = lines.filter((line) => line.kind === 'spending');",
+    "replace": "const spending = lines.filter((line) => line.kind !== 'paycheck');",
+    "why": "[trends] 40.2 a hand move counted as spending"
+  },
+  {
+    "section": "40",
+    "file": "packages/money/src/book.ts",
+    "find": "const amount = subtractCents(0, item.net);",
+    "replace": "const amount = item.net;",
+    "why": "[trends] 40.2 what was spent has the wrong sign"
+  },
+  {
+    "section": "40",
+    "file": "packages/money/src/book.ts",
+    "find": "    for (const pot of ['needs', 'wants'] as const) {\n      for (const item of foldLines(spending, pot)) {",
+    "replace": "    for (const pot of ['needs'] as const) {\n      for (const item of foldLines(spending, pot)) {",
+    "why": "[trends] 40.2 wants left out"
+  },
+  {
+    "section": "40",
+    "file": "packages/money/src/book.ts",
+    "find": "items.push(Object.freeze({ id: item.entry, pot, amount, date: entry.txn.date,",
+    "replace": "items.push(Object.freeze({ id: item.entry, pot, amount, date: this.#period.startDate,",
+    "why": "[trends] 40.2 an item dated the day its pay period began"
+  },
+  {
+    "section": "40",
+    "file": "packages/money/src/book.ts",
+    "find": "const place = this.#placeOf(entry);\n    return place === null ? null : this.#placeNameOf(place);",
+    "replace": "const place = this.#placeOf(entry);\n    return place === null ? null : place.first;",
+    "why": "[trends] 40.6 the whole description as the place"
+  },
+  {
+    "section": "40",
+    "file": "packages/money/src/payday.ts",
+    "find": "addDays(lastPaycheckDate, -payScheduleDays)",
+    "replace": "addDays(lastPaycheckDate, -payScheduleDays + 1)",
+    "why": "[trends] 40.3 every N days one day off going back"
+  },
+  {
+    "section": "40",
+    "file": "packages/money/src/payday.ts",
+    "find": "const nearest = daysBetween(before, lastPaycheckDate) <= daysBetween(lastPaycheckDate, after) ? before : after;",
+    "replace": "const nearest = daysBetween(before, lastPaycheckDate) < daysBetween(lastPaycheckDate, after) ? before : after;",
+    "why": "[trends] 40.3 halfway counts as the later payday"
+  },
+  {
+    "section": "40",
+    "file": "packages/money/src/payday.ts",
+    "find": "let payday = nearest === before ? (scheduled.next().value as IsoDate) : before;",
+    "replace": "let payday = before;",
+    "why": "[trends] 40.3 a late paycheck's own payday given again"
   }
 ]
