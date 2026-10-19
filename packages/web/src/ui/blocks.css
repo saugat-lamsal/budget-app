@@ -117,6 +117,25 @@
   overflow: hidden;
 }
 
+/* A card with its own text and charts (Trends, the bank, the login). The
+   rows in it line up with that text instead of adding their own inset. */
+.card--padded {
+  padding: var(--space-4);
+}
+
+.card--padded .row {
+  padding-inline: 0;
+}
+
+.card--padded .row + .row::before {
+  left: calc(32px + var(--space-3));
+}
+
+.card--padded .row--plain + .row::before,
+.card--padded .row--plain::before {
+  left: 0;
+}
+
 /* ----- Hero: the one main number ----- */
 
 .hero {

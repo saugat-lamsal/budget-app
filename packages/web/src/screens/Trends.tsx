@@ -81,7 +81,7 @@ function TrendsReady({ view }: { readonly view: Tracking }) {
       <CheckBanner check={view.check} />
 
       <Hero label="Spent this pay period" testId="trends-hero" sub={<span data-testid="trends-hero-sub">{periodRange(here)}, so far. Old card payments left out.</span>}>
-        <Money cents={view.now.spentSoFar} hero testId="trends-spent-so-far" />
+        <Money cents={view.now.spentSoFar} hero roll testId="trends-spent-so-far" />
       </Hero>
 
       <Segmented<Segment>
@@ -131,7 +131,7 @@ function Past({ view, picked, onPick, onPlace }: { readonly view: Tracking; read
         <div className="trend-total">
           <span data-testid="period-range">{periodRange(selected)}</span>
           <span className="trend-total__amount">
-            <Money cents={selected.total} testId="period-total" />
+            <Money cents={selected.total} roll testId="period-total" />
           </span>
         </div>
         {note !== null && (
