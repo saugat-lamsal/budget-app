@@ -1032,3 +1032,22 @@ export function StateMessage({ icon, tone = 'info', title, detail, children, tes
 export function Skeleton({ width, height }: { readonly width: string; readonly height: string }) {
   return <div className="skeleton" style={{ width, height }} />;
 }
+
+// ----- Segmented control -----
+
+// A few views of one screen, one shown at a time (Trends: Past and Now). Each
+// is a button that says whether it is the one shown; the light behind the
+// one shown slides to it (none with reduced motion).
+export function Segmented<T extends string>({ label, options, value, onChange, testId }: { readonly label: string; readonly options: readonly { readonly value: T; readonly label: string }[]; readonly value: T; readonly onChange: (value: T) => void; readonly testId?: string | undefined }) {
+  const id = useId();
+  return (
+    <div className="segmented" role="group" aria-label={label} data-testid={testId}>
+      {options.map((option) => (
+        <button key={option.value} type="button" className="segmented__option" aria-pressed={option.value === value} onClick={() => onChange(option.value)} data-testid={`${testId ?? 'segment'}-${option.value}`}>
+          {option.value === value && <motion.span layoutId={`segmented-${id}`} className="segmented__light" aria-hidden="true" transition={{ duration: QUICK_S, ease: EASE }} />}
+          <span className="segmented__label">{option.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}

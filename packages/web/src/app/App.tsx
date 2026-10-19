@@ -10,10 +10,11 @@ import { HomeScreen } from '../screens/Home.js';
 import { PaydayScreen } from '../screens/Payday.js';
 import { ReviewScreen } from '../screens/Review.js';
 import { SettingsScreen } from '../screens/Settings.js';
+import { TrendsScreen } from '../screens/Trends.js';
 import { SetupScreen } from '../screens/Setup.js';
 import { Backdrop } from '../ui/blocks.js';
 import { TabBar } from '../ui/TabBar.js';
-import { useActivity, useAlerts, useBank, useBuckets, useHome, usePayday, useReview, useSettings, useSetup, useStatus, type Reload } from './api.js';
+import { useActivity, useAlerts, useBank, useBuckets, useHome, usePayday, useReview, useSettings, useSetup, useStatus, useTrends, type Reload } from './api.js';
 import { backTarget, pathOfRoute, routeLabel, routeOf, routeTitle, tabOfRoute, type Route, type SetupStepName, type Tab } from './routes.js';
 
 // Each of these loads its numbers when its screen opens, so it is always fresh.
@@ -27,6 +28,12 @@ function BucketsTab({ onChanged }: { readonly onChanged: Reload }) {
 function ReviewTab({ onChanged }: { readonly onChanged: Reload }) {
   const [load, reload] = useReview();
   return <ReviewScreen load={load} onRetry={reload} onChanged={onChanged} />;
+}
+
+// Section 40: the Trends tab. It only reads.
+function TrendsTab() {
+  const [load, reload] = useTrends();
+  return <TrendsScreen load={load} onRetry={reload} />;
 }
 
 function SettingsTab({ onChanged }: { readonly onChanged: Reload }) {
@@ -171,6 +178,8 @@ export function App() {
         <BucketsTab onChanged={retryHome} />
       ) : route.tab === 'review' ? (
         <ReviewTab onChanged={retryHome} />
+      ) : route.tab === 'trends' ? (
+        <TrendsTab />
       ) : (
         <SettingsTab onChanged={retryHome} />
       )}

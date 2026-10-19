@@ -11,6 +11,7 @@ import type {
   BankRuleRequest,
   BankRuleResponse,
   BucketsView,
+  TrendsView,
   ChoiceRequest,
   ChoiceResponse,
   HomeView,
@@ -39,6 +40,7 @@ const READ = { cache: 'no-store', headers: { Accept: 'application/json' } } as c
 const READS = {
   '/api/home': () => fetch('/api/home', READ),
   '/api/buckets': () => fetch('/api/buckets', READ),
+  '/api/trends': () => fetch('/api/trends', READ),
   '/api/review': () => fetch('/api/review', READ),
   '/api/payday': () => fetch('/api/payday', READ),
   '/api/settings': () => fetch('/api/settings', READ),
@@ -264,6 +266,7 @@ function useView<T extends { readonly state: string }>(url: ViewUrl): [Load<T>, 
 
 export const useHome = (): [Load<HomeView>, Reload] => useView<HomeView>('/api/home');
 export const useBuckets = (): [Load<BucketsView>, Reload] => useView<BucketsView>('/api/buckets');
+export const useTrends = (): [Load<TrendsView>, Reload] => useView<TrendsView>('/api/trends');
 export const useReview = (): [Load<ReviewView>, Reload] => useView<ReviewView>('/api/review');
 export const usePayday = (): [Load<PaydayView>, Reload] => useView<PaydayView>('/api/payday');
 export const useSettings = (): [Load<SettingsView>, Reload] => useView<SettingsView>('/api/settings');

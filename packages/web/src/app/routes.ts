@@ -4,14 +4,14 @@ import { POT_NAMES } from '../ui/names.js';
 // The tabs, each at its own address, so a refresh or a notification link
 // opens the right screen. The server answers each of these addresses with
 // the app (packages/server/src/http/server.ts, APP_PATHS; a test checks).
-export const TABS = ['home', 'buckets', 'review', 'settings'] as const;
+export const TABS = ['home', 'buckets', 'review', 'trends', 'settings'] as const;
 
 // The login page, on the real server only (Step 2). Must match
 // packages/server/src/http/server.ts LOGIN_PATH (a test checks).
 export const LOGIN_PATH = '/login';
 export type Tab = (typeof TABS)[number];
 
-export const TAB_LABELS: Readonly<Record<Tab, string>> = { home: 'Home', buckets: 'Buckets', review: 'Review', settings: 'Settings' };
+export const TAB_LABELS: Readonly<Record<Tab, string>> = { home: 'Home', buckets: 'Buckets', review: 'Review', trends: 'Trends', settings: 'Settings' };
 
 export function pathOf(tab: Tab): string {
   return `/${tab}`;

@@ -3,7 +3,7 @@ import { TAB_LABELS, TABS, pathOf, type Tab } from '../app/routes.js';
 import { Icon } from './Icon.js';
 import { EASE, QUICK_S } from './motion.js';
 
-// The bottom tab bar: Home, Buckets, Review, Settings. Each tab is a real
+// The bottom tab bar: Home, Buckets, Review, Trends, Settings. Each tab is a real
 // link to its own address. Review shows how many items wait.
 export function TabBar({ current, onGo, waitingInReview }: { readonly current: Tab; readonly onGo: (tab: Tab) => void; readonly waitingInReview: number }) {
   return (
