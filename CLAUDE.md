@@ -2096,7 +2096,7 @@ long). It replaces running everything before every commit:
 - The redesign's PR 5, Trends Future and Habits, and the finishing pass (Oct
   19, 2026, branch redesign-pr5-trends-future-habits): rulebook draft 30,
   40.10 to 40.17 with his OK (QUESTIONS.md A59; readings B266 to B273),
-  built test first (docs/redesign-plan.txt "PR 5, as built"). Not deployed.
+  built test first (docs/redesign-plan.txt "PR 5, as built").
   - Money: Book.oldCardDebtIn (read-only), dayOfWeek exported. Server:
     trends-future.ts, trends-habits.ts; tests trends-future, trends-habits
     (by hand), trends-random (the random lives check them against the books),
@@ -2120,6 +2120,15 @@ long). It replaces running everything before every commit:
     file (screens in Chromium; the digit break and B264/B265 in both
     engines). Four server breaks survived at first and got tests; one made
     no real mistake and was re-pointed.
+- PR #50 merged and deployed Oct 19, 2026 (1:50 AM), at his word ("deploy
+  it"): CI green on Linux (run 39204025267, all four jobs), main's tree after
+  the merge checked to be the branch's, the deploy check on main (112 events,
+  every one replays, "The backup works."), then that exact image
+  (deploy-check-20261019t054805z). /health and /health/backups ok, /api/trends
+  and /api/home 401 without a login, http sent to https, the webhook address
+  refuses GET and an unsigned call; the restore check on the machine: 112
+  events, "The backup works." The way back is the image
+  deploy-check-20261019t034511z (PR #48).
 - Waiting on: each card's statement closing day (his, on Settings, from a
   statement, before the old card's November reminders); Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);
