@@ -976,6 +976,45 @@ A57. ADDED Oct 16 (his ask, "Layer 1": the app explains itself, with no AI
      ANSWERED Oct 16 (his OK to the text as written, "OK, build it"):
      rulebook draft 28, 0.7, 0.8, 11.4, 12.6 and section 39.
 
+A58. ADDED Oct 18 (the redesign's PR 4, docs/redesign-plan.txt): the Trends
+     tab, Past and Now. Drafted as rulebook section 40 (40.1 to 40.9); the
+     text is the question. Nothing about money changes: Trends only reads
+     the books and the bank history the app already keeps, nothing is sent
+     anywhere, and the history still replays exactly (0.6). The choices in
+     it, each with the recommendation as written:
+     1. The 90 days before setup day (40.1, 40.3). Recommended: shown,
+        read by today's bank rules and sorting rules, marked "Before setup
+        day", never put in the books. Without it Trends has almost nothing
+        for weeks (the books began Oct 12), and no usual until about the
+        end of November.
+     2. What "where it went" groups by (40.6). Recommended: the place's
+        name, found the same way as the rule offers (13.8), five biggest
+        then "Everything else". Other choices: Plaid's own category labels
+        ("Food and drink"; broad, but Plaid's guesses, which he cannot
+        correct), or only needs and wants.
+     3. Old card payments (40.2, 40.7). Recommended: their own part of
+        needs on the bars, and left out of "against your usual", so a
+        planned payoff does not look like spending more. Other choice:
+        counted like any other needs spending.
+     4. Your usual (40.7). Recommended: the middle one of the last 5 full
+        pay periods, by the same day of the pay period, so one odd pay
+        period does not move it. Other choice: the average.
+     5. The Wants line (40.8). Recommended: by the day each thing happened,
+        so a tip that posts later lands on the day of the meal. Other
+        choice: what Wants held each evening as the books stood then, which
+        never changes after the day but jumps when late items post.
+     6. The fixed numbers (90 days, five places, 5 and 3 pay periods) are
+        not settings, like 4.5's five and A57's numbers. Recommended as
+        written; each could be a setting instead.
+     Worked into the draft from a second look (Oct 18), still waiting on
+     his OK: the even pace rounded down to the cent, with payday as day 1
+     (40.8); today said in words with the amount ("$42.10 less left than
+     an even pace") instead of "Ahead of pace", which reads either way; the
+     Wants line is not safe to spend (40.8); savings and the mom reserve
+     as two amounts, never added (40.5); one place across accounts (40.6).
+     ANSWERED Oct 18 ("I've read section 40 and A58. OK to the text as
+     written."): rulebook draft 29, section 40 and 41a.
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 WAITING FOR YOU TO CHECK (Oct 10, 2026, the end of Phase 4). Each was

@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 28)
+# Budget App Rulebook (draft 29)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -889,3 +889,94 @@ b.  Money on its way in says since when it has been pending, and once
 c.  A status page on Settings, with no amounts (0.7).
 d.  A plain page instead of a blank screen when the app's server cannot be
     reached (0.8).
+
+
+## 40. Trends
+
+The Trends tab (between Review and Settings) shows what the books already
+hold, over time. It only reads: it never changes a bucket, a rule, a
+setting, or the history, which still replays exactly (0.6). Every number on
+it is worked out on the server, and nothing on it is sent anywhere.
+
+40.1  Two sources. From setup day on, Trends reads the books: every amount
+      is what the books counted, in the pay period they counted it in
+      (B97), and adds up to the books' own totals to the cent. Before setup
+      day, it reads the bank history the app keeps (the 90 days asked for
+      at connection, section 2), read for this tab only by today's bank
+      rules and sorting rules, the same way new activity would be read;
+      what no rule sorts is "unsorted". That history never goes into the
+      books, and everything from it is marked "Before setup day: read by
+      today's rules". A rule changed later changes how the history reads,
+      never the books.
+40.2  What counts as spending. Spending in needs and wants as the books
+      count it (4.1 to 4.10, 5.2, 7.6, 8.3), less what was refunded, and
+      spending still waiting in review, shown as "unsorted" in the current
+      pay period until it is sorted. A payment to the old card is its own
+      part of needs, "Old card payment". Payments to mom from the reserve
+      (8.1), money held for others (7.1, 7.2), transfers between your
+      accounts (5.1, 5.3), and money in are not spending. Before setup day
+      the same: a transfer a bank rule names, a payment the mom rule
+      matches, and money in to checking or savings are left out; money back
+      on a card counts against the bucket its rule sorts it to; a charge
+      still pending on setup day counts once, at the amount setup day
+      counted (14.2), and any later difference is in the books.
+40.3  Pay periods. From setup day on, the books' pay periods (3.1, B53).
+      Before setup day, a pay period begins at the last paycheck you gave on
+      setup day, and before that at each payday the pay schedule gives
+      (section 2), going back from it. The pay period setup day fell in is
+      one pay period: its part before setup day from the history, the rest
+      from the books. The oldest, cut off by the 90 days, is marked "Part of
+      a pay period". A pay period is full once it has ended, unless it was
+      cut off.
+40.4  Past: spending per pay period. A bar for each pay period in the last
+      90 days and the current one, with needs, wants, old card payments,
+      and unsorted, each with its amount. Tapping a bar lists the items
+      behind it, which add up to it to the cent.
+40.5  Past: savings over time. What the savings bucket held when tracking
+      started, at the end of each pay period since, and now, as the books
+      hold it, with the mom reserve beside it the same way, each its own
+      amount (they are not added together). Nothing before setup day: the buckets did
+      not exist then.
+40.6  Past: where it went. The last 90 days of spending (40.2), grouped by
+      place: the name in each item's description, found as in 13.8; the
+      same name on any account is one place. Old
+      card payments are one group, "Old card payment"; an item with no name
+      goes in "Everything else". The five biggest places, each with its
+      amount, then "Everything else". Together they add up to the 90 days'
+      spending to the cent. Tapping a place lists its items.
+40.7  Now: this pay period against your usual. What was spent so far this
+      pay period (40.2, without old card payments, which are planned, 9.5),
+      against your usual by the same day of a pay period, counting payday as
+      day 1: the middle one of what each of the last 5 full pay periods had
+      spent by that day (with 4, the average of the middle two, rounded down
+      to the cent), and the middle one of their whole totals. With fewer
+      than 3 full pay periods: "Not enough pay periods yet to know your
+      usual."
+40.8  Now: Wants left against an even pace. A line of what Wants held at the
+      end of each day of this pay period, by the day each thing happened
+      (anything dated before the pay period counts on its first day),
+      ending at what Wants holds now, to the cent. Beside it, the even pace:
+      a straight line from what Wants started the pay period with (10.1)
+      down to $0.00 at the end of the day before the next payday (11.2). At
+      the end of day n of a pay period of D days (payday is day 1, the day
+      before the next payday is day D), the even pace leaves what Wants
+      started with times (D - n) / D, rounded down to the cent. Today says,
+      in words with the amount, not only color: "$42.10 less left than an
+      even pace", "$42.10 more left than an even pace", or "On an even
+      pace" when they are equal. Spending waiting in review is not in Wants
+      until it is sorted, so the line is not safe to spend (11.1). If Wants
+      started at zero or below, there is no even pace, and it says why. If
+      the next payday passes with no paycheck, the even pace stays at $0.00.
+40.9  When the totals do not match the bank (12.3), Trends shows the same
+      banner as Home and Buckets; its numbers still come from the books.
+
+
+## 41. Answers on Trends (Oct 18, 2026)
+
+a.  The Trends tab, Past and Now, as section 40: it only reads the books
+    and the bank history the app already keeps; the 90 days before setup
+    day are read by today's rules and marked so; "where it went" groups by
+    place (13.8); old card payments are their own part of needs and are
+    left out of "against your usual"; the usual is the middle one of the
+    last 5 full pay periods; the Wants line is by the day each thing
+    happened (QUESTIONS.md A58).
