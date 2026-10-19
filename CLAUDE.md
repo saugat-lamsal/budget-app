@@ -2076,6 +2076,13 @@ long). It replaces running everything before every commit:
     screens 7, each judged with --only by its own test files; the screens'
     in Chromium). Three survived at first and got tests or a real mistake.
     12 older breaks on moved lines pointed at the code again, all caught.
+  - Found on its CI (Linux, Chromium, 3 runs of 3): PR 3's "a swipe that is
+    refused brings the card back" timed out. Probe runs on throwaway branches
+    caught the card at translateX(0px): Motion wrote its last frame after
+    telling it had ended. B264: the swipe card's place is set first and the
+    way out and back are the browser's own animations drawn over it; test
+    first, breaks "[b264]" 2 of 2. The sheet (BottomSheet) still uses
+    Motion the same way; nothing has failed there.
 - Waiting on: each card's statement closing day (his, on Settings, from a
   statement, before the old card's November reminders); Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);

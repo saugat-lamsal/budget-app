@@ -230,6 +230,32 @@ describe.each(ENGINES)('Swipe to sort in %s', (_name, engine) => {
     await page.context().close();
   });
 
+  it('PR 3 B264 a refused swipe’s card is at rest the moment the refusal shows, while the way back is still drawn', async () => {
+    const { book } = life('review-busy');
+    const id = idOf(book, 'LATE FEE');
+    const page = await open('review-busy', MOVING);
+    await page.route('**/api/choice', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: false, code: 'refused', why: 'Made up: refused.' }) }));
+    await drag(page, id, 200);
+    // At the first frame the refusal is on the screen, no card is left off its place by its own style:
+    // nothing that finishes later (an animation's last write) can leave it there.
+    const atFirstFrame = await page.evaluate(
+      () =>
+        new Promise<string[]>((done) => {
+          const look = (): void => {
+            if (document.querySelector('[data-testid="notice"]') === null) {
+              requestAnimationFrame(look);
+              return;
+            }
+            done([...document.querySelectorAll<HTMLElement>('[data-testid="swipe-card"]')].map((e) => e.style.transform));
+          };
+          look();
+        }),
+    );
+    expect(atFirstFrame.filter((t) => t !== '')).toEqual([]);
+    expect(await listed(page)).toContain(id);
+    await page.context().close();
+  });
+
   it('PR 3 with nothing left waiting, Review says "All sorted"', async () => {
     const page = await open('all-clear');
     expect(await textAt(page, 'review-empty')).toContain('All sorted');

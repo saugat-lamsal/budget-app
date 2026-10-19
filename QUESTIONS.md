@@ -3240,3 +3240,13 @@ B263. A58 as built (the screen). Trends' one main number is what was spent so
       the app itself (no chart library): the redesign plan names @visx for
       PR 5's charts. Bars from before setup day are drawn lighter and say so
       in words.
+B264. Found on Linux CI with PR #48, fixed with a test first (the redesign's
+      PR 3 swipe). A refused swipe could leave the card off its place by its
+      own style (translateX(0px)) after it came back: Motion wrote the last
+      frame of an animation after telling it had ended, over the card already
+      put back. It looked at rest, but the app (and PR 3's test) never saw it
+      at rest; on a busy machine only. The card's own place is now set first
+      and the way out and the way back are only drawn over it, by the
+      browser's own animations, so nothing that ends later can move it; a way
+      back still being drawn gives way to the finger. Test: swipe.test.ts
+      "B264". Breaks "[b264]", both caught.

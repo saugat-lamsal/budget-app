@@ -3099,5 +3099,19 @@
     "find": "'/api/trends': () => fetch('/api/trends', READ),",
     "replace": "'/api/trends': () => fetch('/api/buckets', READ),",
     "why": "[trends] 40.1 Trends reads the wrong address"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "    el.style.transform = '';\n    show(0);\n    if (!reduced && from !== 'translateX(0px)')",
+    "replace": "    show(0);\n    if (!reduced && from !== 'translateX(0px)')",
+    "why": "[b264] a refused card is not at rest until its way back ends"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "else void el.animate([{ transform: `translateX(${d.dx}px)` }, { transform: `translateX(${to}px)` }], { duration: QUICK_S * 1000, easing: `cubic-bezier(${EASE.join(', ')})` }).finished.then(done, done);",
+    "replace": "else void animate(el, { transform: [`translateX(${d.dx}px)`, `translateX(${to}px)`] }, { duration: QUICK_S, ease: EASE }).finished.then(done);",
+    "why": "[b264] the way out drawn by Motion, whose last write can land after the card came back"
   }
 ]
