@@ -61,7 +61,8 @@ type Tracking = Extract<SettingsView, { state: 'tracking' }>;
 export function SettingsScreen({ load, onRetry, onChanged }: { readonly load: Load<SettingsView>; readonly onRetry: Reload; readonly onChanged: Reload }) {
   return (
     <main className="screen" aria-busy={load.status === 'loading'} data-testid="settings">
-      <h1 className="screen-title">Settings</h1>
+      {/* With the books open, the day comes first and the title under it, as on every other screen. */}
+      {!(load.status === 'ready' && load.value.state === 'tracking') && <h1 className="screen-title">Settings</h1>}
       {load.status === 'loading' && <SettingsLoading />}
       {load.status === 'error' && (
         <StateMessage icon="alert" tone="danger" title="Couldn't load your settings" detail="Check your connection, then try again." testId="settings-error">
@@ -166,6 +167,7 @@ function SettingsReady({ view, reload, onChanged }: { readonly view: Tracking; r
         <span>{longDate(view.today)}</span>
         {view.madeUpData && <MadeUpPill />}
       </div>
+      <h1 className="screen-title">Settings</h1>
 
       {said !== null && <SaidNotice said={said} sending={false} onRetry={() => undefined} onDismiss={() => setSaid(null)} sticky />}
 

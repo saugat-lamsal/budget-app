@@ -1015,6 +1015,126 @@ A58. ADDED Oct 18 (the redesign's PR 4, docs/redesign-plan.txt): the Trends
      ANSWERED Oct 18 ("I've read section 40 and A58. OK to the text as
      written."): rulebook draft 29, section 40 and 41a.
 
+A59. ADDED Oct 18 (the redesign's PR 5, docs/redesign-plan.txt): the Trends
+     tab, Future and Habits. Section 40 covers only Past and Now, so the
+     new parts need rule text. Drafted below as 40.10 to 40.17; the text is
+     the question. It goes in the rulebook (draft 30) only with his OK.
+     Nothing about money changes: like the rest of Trends it only reads the
+     books and the bank history the app already keeps, nothing is sent
+     anywhere, and the history still replays exactly (0.6).
+
+     THE DRAFT
+
+     40.10 Future and Habits. Trends has four parts: Past and Now (40.4 to
+           40.8), Future (40.11 to 40.13) and Habits (40.14 to 40.17).
+           Anything about the future is worked out from what the books
+           hold, is marked "Estimate", and is never a promise. Habits read
+           the last 90 days (40.6), the books and the history from before
+           setup day both, and leave out old card payments, which are
+           planned (9.5), unless a rule says otherwise.
+     40.11 Future: where Needs and Wants land by payday. For each, what it
+           holds now less what it would spend at this pay period's pace:
+           what was spent from it so far this pay period (40.2, old card
+           payments left out), divided by the days so far (payday is day 1,
+           today counted; in the books' first pay period, from setup day),
+           times the days left after today up to the day before the next
+           payday (11.2), rounded up to the cent, so the estimate leans
+           low. "Estimate: Wants lands at about $84.20 by payday."
+           Spending waiting in review is in neither until it is sorted, and
+           is said beside them: "Not counting $35.00 waiting in review."
+           Before day 3: "Too early in the pay period to tell." Once the
+           next payday has passed with no paycheck, no estimate.
+     40.12 Future: savings a year out. A range, "Estimate: $X to $Y": what
+           the savings bucket holds now, plus, for each payday in the next
+           365 days (the pay schedule, section 2), what it gained in a pay
+           period: the least of them for the low end and the most for the
+           high end, from the last 5 pay periods the books ended that began
+           on or after setup day. What it gained is what it held at the end
+           of that pay period less what it held at the end of the one
+           before, or when tracking started (40.5): moves out of savings
+           count, so a gain can be negative. With fewer than 3 such pay
+           periods: "Not enough pay periods yet to estimate." The mom
+           reserve is not part of it.
+     40.13 Future: the old card. What it owes (12.4) when tracking started,
+           at the end of each pay period since, and now, as the books hold
+           it. With the payoff countdown on (9.5), its plan: at each payday
+           left before the promo end date, what it would owe once that
+           payday's share is paid, down to $0.00 at the last one.
+           "Estimate, if each payday's share is paid: paid off by Mar 31,
+           2027, at $412.50 a payday." With no promo end date, only what it
+           owed, and "The plan starts once the promo end date is entered."
+           With nothing owed: "The old card is paid off."
+     40.14 Habits: the payday effect. Over the full pay periods in the last
+           90 days (40.3), what was spent per day on payday and the 2 days
+           after (days 1 to 3), against per day on the rest of the pay
+           period: each the total spent on those days, by the day each item
+           is dated, divided by how many such days there were, rounded down
+           to the cent. "Payday and the 2 days after: $48.20 a day. The
+           rest of the pay period: $31.75 a day." With fewer than 3 full pay
+           periods: "Not enough pay periods yet." Tapping either lists its
+           items.
+     40.15 Habits: day of the week. For each day of the week, what was spent
+           on it in the last 90 days, by the day each item is dated: the
+           total, and an average one (the total divided by how many of that
+           weekday the 90 days hold, rounded down to the cent). The weekday
+           with the most on average is named in words: "Most on Saturdays:
+           $52.10 on an average Saturday." The seven totals add up to the
+           90 days' spending without old card payments, to the cent.
+           Tapping a day lists its items.
+     40.16 Habits: repeat charges. Charges from one place (40.6) that come
+           again and again, found in everything Trends reads (the history
+           from before setup day and the books, not only 90 days): at least
+           3 charges (spending, 40.2; not money back), every gap from one
+           to the next within the same one of 6 to 8 days (every week), 13
+           to 15 days (every 2 weeks) or 27 to 33 days (every month), and
+           each amount within 10% of the newest one's. Listed while it is
+           still going: today is no later than the newest charge plus the
+           longest gap of its kind (8, 15 or 33 days). Each shows how
+           often, the newest amount and day, the next one ("Estimate:
+           around Nov 3", the newest day plus the gap before it) and a year
+           of it ("Estimate: about $155.88 a year", the newest amount times
+           52, 26 or 12). The biggest year first. Tapping one lists its
+           charges. It only points them out: nothing is changed or
+           cancelled.
+     40.17 Habits: the Wants streak. Of the pay periods the books have
+           ended (Wants did not exist before setup day), how many in a row,
+           newest back, ended with Wants at $0.00 or more (not overspent,
+           3.5), and the longest such run. "Wants not overspent: 3 pay
+           periods in a row. Best: 4." When the newest ended below zero:
+           "Wants went over last pay period. A new run starts with this
+           one." With none ended: "No pay period has ended in the books
+           yet." The current pay period counts once it ends.
+
+     THE CHOICES IN IT, each with the recommendation as written:
+     1. The pace for Needs and Wants (40.11). Recommended: this pay period's
+        own pace, from day 3. Other choice: your usual (40.7) for the days
+        left, which is steadier but needs 3 full pay periods first (about
+        the end of November for the books).
+     2. Savings a year out (40.12). Recommended: the least and most a pay
+        period actually added to savings (paycheck share, leftovers moved,
+        less moves out), times the paydays in a year. Other choice: from the
+        split only (50% of the last paychecks), which ignores moves out and
+        leftovers and so is usually too high.
+     3. The old card (40.13). Recommended: the 9.5 plan drawn as a line to
+        $0.00, and what it owed so far. Other choice: also "at the pace
+        you have paid", a payoff date from what was paid in recent pay
+        periods.
+     4. Habits leave out old card payments (40.10), as "against your usual"
+        does (40.7, A58 3).
+     5. Repeat charges (40.16). Recommended: at least 3 charges, the three
+        kinds of gap, amounts within 10%, and only the ones still going.
+        Other choices: 2 charges are enough (more found, more wrong ones),
+        or list stopped ones too.
+     6. The streak (40.17). Recommended: Wants not overspent ($0.00 or
+        more at the end). Other choice: Wants ended at or above its low
+        alert level (10.1), a harder bar.
+     7. The fixed numbers (day 3, 365 days, 5 and 3 pay periods, the 3
+        days after payday, 3 charges, the gaps, 10%) are not settings, like
+        A58's. Recommended as written; each could be a setting instead.
+     ANSWERED Oct 19 ("I've read A59. OK to 40.10 to 40.17 as written, with
+     all the recommended choices."): rulebook draft 30, 40.10 to 40.17 and
+     42a.
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 WAITING FOR YOU TO CHECK (Oct 10, 2026, the end of Phase 4). Each was
@@ -3250,3 +3370,58 @@ B264. Found on Linux CI with PR #48, fixed with a test first (the redesign's
       browser's own animations, so nothing that ends later can move it; a way
       back still being drawn gives way to the finger. Test: swipe.test.ts
       "B264". Breaks "[b264]", both caught.
+B265. Found looking at B264 (the redesign's PR 5, his ask). The bottom
+      sheet's pull to close had the same late write: its way back and its way
+      out were Motion animations that wrote the sheet's own style when they
+      ended. A short pull left the sheet off its place by its own style until
+      the way back ended, and a late write could land on a sheet already
+      closed. Its own place is now set first and the way there only drawn
+      over it by the browser's own animation; a new pull takes the sheet from
+      a way back still being drawn. Test first, Chromium and WebKit:
+      motion.test.ts "B265" (two failed before). Breaks "[b265]".
+
+## Part B, added with Trends Future and Habits (A59, Oct 19). Tell me if any is wrong.
+
+B266. A59 as built (40.11). "Before day 3" counts the days so far the way
+      the pace does: from payday, or from setup day in the books' first pay
+      period, so the first two days after setup day have no estimate either.
+      On the next payday itself, with no paycheck yet, there are no days left,
+      so each lands at what it holds; from the day after, no estimate.
+B267. A59 as built (40.12). The books' first pay period counts only when it
+      began on setup day (with no bank history kept, as in the demo); his
+      began on his last paycheck before setup day, so it does not. The
+      paydays a year out are those after today up to the same date next year.
+      The chart's range starts at what savings holds now and has one point a
+      payday.
+B268. A59 as built (40.13). The plan ends at the payday it reaches $0.00
+      (each share is rounded up, so it can get there before the last payday),
+      and "paid off by" is that payday. Nothing owed is "paid off" with or
+      without a promo end date.
+B269. A59 as built (40.14). The full pay periods are those 40.4 shows for
+      the last 90 days, so the oldest can begin a little before the 90 days.
+      An item counts in the pay period whose days hold its date. A per-day
+      amount below zero (more money back than spent) is rounded down, away
+      from zero.
+B270. A59 as built (40.15). The days run Monday to Sunday; a tie for the most
+      goes to the first from Monday; with nothing above $0.00, none is named.
+B271. A59 as built (40.16). What one item charged is all of it added up (a
+      split, or a refund counted in a later pay period); its day is the day it
+      happened. All the charges from one place are taken together, so a place
+      with a one-off purchase among its monthly ones, or two subscriptions at
+      one place, is not spotted. The list is ordered by a year of it, then by
+      name.
+B272. A59 as built (40.17). The books' first pay period counts (Wants existed
+      from setup day; how it ended is all the streak asks).
+B273. A59 as built (the screens). Future and Habits are two more parts of
+      the segmented control; at a large text size the four go two to a row.
+      The days of the week are rows with a bar each, not columns: seven
+      44-point columns do not fit across the phone. The most says "the most"
+      on its row. A repeat charge's sheet lists its charges without a total
+      (the server gives none, and the screens add nothing up).
+B274. Found in the WebKit pictures (PR 5's finishing pass), fixed with a test
+      first. The rolling digits draw each digit from generated text, and
+      WebKit (the iPhone's engine) draws that without tabular widths: a narrow
+      "1" sat at the left of a wider cell, with a gap after it ("$1 58.23").
+      Every rolling amount with a 1 in it, since PR 2. Each digit is now
+      centred in its cell, as a tabular figure is. Test: rolling-amounts.test.ts
+      (a drawn "1" sits in the middle of its cell; failed in WebKit before).

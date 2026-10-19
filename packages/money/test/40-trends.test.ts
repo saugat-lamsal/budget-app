@@ -171,3 +171,39 @@ describe('40.2 what each item spent in a pay period, from the ledger', () => {
     expect(codeOf(() => openTestBook().spentIn(1))).toBe('unknown-period');
   });
 });
+
+describe('40.13 what the old card owed at the start and end of each pay period', () => {
+  it('40.13 when tracking started, at each paycheck, and now, as the books held it then', () => {
+    const b = openTestBook({ oldCardDebt: 300_000, pots: { savings: 100_000, needs: 80_000, wants: 30_000 } });
+    expect(b.oldCardDebtIn(0)).toEqual({ opening: 300_000, closing: 300_000 });
+    // A payment to the old card from checking lowers it once it lands (5.2, 12.5).
+    b.receive(transfer('t1', '2026-10-05', 25_000, 'checking', 'old-card'));
+    // Interest raises it (5.5).
+    b.receive({ kind: 'card-charge', id: 'i1', account: 'old-card', date: '2026-10-06', amount: 1_234, charge: 'interest', description: 'INTEREST CHARGE' });
+    expect(b.oldCardDebtIn(0)).toEqual({ opening: 300_000, closing: 276_234 });
+    b.receive(paycheck('pay1', '2026-10-09', 200_000));
+    expect(b.oldCardDebtIn(0)).toEqual({ opening: 300_000, closing: 276_234 });
+    expect(b.oldCardDebtIn(1)).toEqual({ opening: 276_234, closing: 276_234 });
+    b.receive(transfer('t2', '2026-10-12', 1, 'checking', 'old-card'));
+    // One cent: the pay period already ended keeps what it held at its end.
+    expect(b.oldCardDebtIn(0).closing).toBe(276_234);
+    expect(b.oldCardDebtIn(1)).toEqual({ opening: 276_234, closing: 276_233 });
+    // The current one when none is named.
+    expect(b.oldCardDebtIn()).toEqual(b.oldCardDebtIn(1));
+    expect(b.oldCardDebtIn().closing).toBe(b.oldCardDebt());
+  });
+
+  it('40.13 nothing owed stays at zero, and a pay period that does not exist is refused', () => {
+    const b = openTestBook();
+    expect(b.oldCardDebtIn(0)).toEqual({ opening: 0, closing: 0 });
+    expect(codeOf(() => b.oldCardDebtIn(1))).toBe('unknown-period');
+    expect(codeOf(() => b.oldCardDebtIn(-1))).toBe('unknown-period');
+  });
+
+  it('40.13 a busy book: each pay period opens with what the one before closed with, and the last closes with the debt now', () => {
+    const b: Book = busyBook();
+    const n = b.period().number;
+    for (let k = 1; k <= n; k += 1) expect(b.oldCardDebtIn(k).opening).toBe(b.oldCardDebtIn(k - 1).closing);
+    expect(b.oldCardDebtIn(n).closing).toBe(b.oldCardDebt());
+  });
+});

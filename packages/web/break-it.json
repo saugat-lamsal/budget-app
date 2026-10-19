@@ -779,8 +779,8 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Buckets.tsx",
-    "find": "<Money cents={view.total} hero testId=\"buckets-total\" />",
-    "replace": "<Money cents={view.savings} hero testId=\"buckets-total\" />",
+    "find": "<Money cents={view.total} hero roll testId=\"buckets-total\" />",
+    "replace": "<Money cents={view.savings} hero roll testId=\"buckets-total\" />",
     "why": "[review] 12.2 the main number is only savings"
   },
   {
@@ -961,8 +961,8 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Buckets.tsx",
-    "find": "trailing={<Money cents={momReserve.amount} testId=\"mom-reserve\" />}",
-    "replace": "trailing={<Money cents={momReserve.sent} testId=\"mom-reserve\" />}",
+    "find": "trailing={<Money cents={momReserve.amount} roll testId=\"mom-reserve\" />}",
+    "replace": "trailing={<Money cents={momReserve.sent} roll testId=\"mom-reserve\" />}",
     "why": "[review] [pre-merge] 8.1 the mom reserve row shows what was sent"
   },
   {
@@ -975,8 +975,8 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Activity.tsx",
-    "find": "<Money cents={activity.closing} hero testId=\"activity-now\" />",
-    "replace": "<Money cents={activity.opening} hero testId=\"activity-now\" />",
+    "find": "<Money cents={activity.closing} hero roll testId=\"activity-now\" />",
+    "replace": "<Money cents={activity.opening} hero roll testId=\"activity-now\" />",
     "why": "[activity] B97 the main number is what the bucket held at the start"
   },
   {
@@ -3054,8 +3054,8 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Trends.tsx",
-    "find": "<Money cents={view.now.spentSoFar} hero testId=\"trends-spent-so-far\" />",
-    "replace": "<Money cents={here.total} hero testId=\"trends-spent-so-far\" />",
+    "find": "<Money cents={view.now.spentSoFar} hero roll testId=\"trends-spent-so-far\" />",
+    "replace": "<Money cents={here.total} hero roll testId=\"trends-spent-so-far\" />",
     "why": "[trends] 40.7 the hero counts the old card"
   },
   {
@@ -3068,8 +3068,8 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Trends.tsx",
-    "find": "{ key: 'savings', tone: 'savings', values: view.savings.map((p) => p.savings) },",
-    "replace": "{ key: 'savings', tone: 'savings', values: view.savings.map((p) => p.momReserve) },",
+    "find": "{ key: 'savings', tone: 'savings', values: view.savings.map((p) => p.savings), area: true },",
+    "replace": "{ key: 'savings', tone: 'savings', values: view.savings.map((p) => p.momReserve), area: true },",
     "why": "[trends] 40.5 the savings line draws the mom reserve"
   },
   {
@@ -3111,7 +3111,224 @@
     "section": "home",
     "file": "packages/web/src/ui/blocks.tsx",
     "find": "else void el.animate([{ transform: `translateX(${d.dx}px)` }, { transform: `translateX(${to}px)` }], { duration: QUICK_S * 1000, easing: `cubic-bezier(${EASE.join(', ')})` }).finished.then(done, done);",
-    "replace": "else void animate(el, { transform: [`translateX(${d.dx}px)`, `translateX(${to}px)`] }, { duration: QUICK_S, ease: EASE }).finished.then(done);",
-    "why": "[b264] the way out drawn by Motion, whose last write can land after the card came back"
+    "replace": "else void el.animate([{ transform: `translateX(${d.dx}px)` }, { transform: `translateX(${to}px)` }], { duration: QUICK_S * 1000, easing: `cubic-bezier(${EASE.join(', ')})` }).finished.then(() => { done(); window.setTimeout(() => (el.style.transform = `translateX(${to}px)`), 11); }, done);",
+    "why": "[b264] the way out's last write lands 11 ms after the card came back (what Motion did)"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "      const at = dialog.style.transform || from;\n      dialog.style.transform = '';\n      if (!reduced) draw(dialog, at, 'translateY(0px)');",
+    "replace": "      const at = dialog.style.transform || from;\n      if (!reduced) void draw(dialog, at, 'translateY(0px)').finished.then(() => (dialog.style.transform = ''), () => undefined);\n      else dialog.style.transform = '';",
+    "why": "[b265] a short pull is not at rest until its way back ends"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "      else void draw(dialog, from, 'translateY(100%)').finished.then(finish, () => undefined);",
+    "replace": "      else void draw(dialog, from, 'translateY(100%)').finished.then(() => { finish(); window.setTimeout(() => (dialog.style.transform = 'translateY(100%)'), 11); }, () => undefined);",
+    "why": "[b265] the way out's last write lands on the sheet 11 ms after it closed"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "              // A way back still being drawn gives way to the finger (B265).\n              drawn.current?.cancel();\n              drawn.current = null;\n",
+    "replace": "",
+    "why": "[b265] a new pull does not take the sheet from a way back still being drawn"
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/trends-text.ts",
+    "find": "const below = landing.lands < 0;",
+    "replace": "const below = false;",
+    "why": "[a59] 40.11 below zero not said in words"
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/trends-text.ts",
+    "find": "return cents === 0 ? null : `Not counting",
+    "replace": "return cents < 0 ? null : `Not counting",
+    "why": "[a59] 40.11 \"not counting $0.00\" said"
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/trends-text.ts",
+    "find": "there ${s.periods === 1 ? 'is 1' : `are ${s.periods}`} so far.`];\n  return [",
+    "replace": "there are ${s.periods} so far.`];\n  return [",
+    "why": "[a59] 40.12 \"there are 1\""
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/trends-text.ts",
+    "find": "at ${moneyText(plan.perPayday)} a payday.`",
+    "replace": "at ${moneyText(plan.perPayday * plan.paydaysLeft)} a payday.`",
+    "why": "[a59] 40.13 the whole debt said as a payday's share"
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/trends-text.ts",
+    "find": "${difference > 0 ? 'more' : 'less'} just after payday",
+    "replace": "${difference > 0 ? 'less' : 'more'} just after payday",
+    "why": "[a59] 40.14 more and less swapped"
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/trends-text.ts",
+    "find": "return `Most on ${weekdayName(most.weekday)}s: ${moneyText(most.average)}",
+    "replace": "return `Most on ${weekdayName(most.weekday)}s: ${moneyText(most.total)}",
+    "why": "[a59] 40.15 the total said as an average one"
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/trends-text.ts",
+    "find": "'two-weeks': 'Every 2 weeks'",
+    "replace": "'two-weeks': 'Every week'",
+    "why": "[a59] 40.16 every 2 weeks said as every week"
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/trends-text.ts",
+    "find": "${s.current === 1 ? '1 pay period' : `${s.current} pay periods`} in a row",
+    "replace": "${s.current} pay periods in a row",
+    "why": "[a59] 40.17 \"1 pay periods\""
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Trends.tsx",
+    "find": "By payday <Money cents={landing.lands} roll",
+    "replace": "By payday <Money cents={landing.holds} roll",
+    "why": "[a59] 40.11 lands shows what it holds now"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Trends.tsx",
+    "find": "<Money cents={savings.low} roll testId=\"savings-low\" />",
+    "replace": "<Money cents={savings.high} roll testId=\"savings-low\" />",
+    "why": "[a59] 40.12 the low end shows the high"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Trends.tsx",
+    "find": "points: [{ date: view.today, low: savings.now, high: savings.now }, ...savings.points] }}",
+    "replace": "points: [...savings.points] }}",
+    "why": "[a59] 40.12 the range drawn without its start at now"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Trends.tsx",
+    "find": "<Money cents={plan.perPayday} roll testId=\"old-card-share\" />",
+    "replace": "<Money cents={owedNow?.owed ?? 0} roll testId=\"old-card-share\" />",
+    "why": "[a59] 40.13 the share shows what it owes"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Trends.tsx",
+    "find": "          <span>Where each lands by {monthDay(landing.nextPayday)}</span>\n          <StatusLabel status=\"estimate\" />",
+    "replace": "          <span>Where each lands by {monthDay(landing.nextPayday)}</span>",
+    "why": "[a59] 40.10 where each lands not marked Estimate"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Trends.tsx",
+    "find": "const side = key === 'first' ? paydayEffect.first : paydayEffect.rest;",
+    "replace": "const side = paydayEffect.rest;",
+    "why": "[a59] 40.14 payday and the 2 days after opens the rest"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Trends.tsx",
+    "find": "title: d.weekday === weekdays.most ? `${weekdayName(d.weekday)} · the most` : weekdayName(d.weekday),",
+    "replace": "title: weekdayName(d.weekday),",
+    "why": "[a59] 40.15 the most only in its color"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Trends.tsx",
+    "find": "data-testid={`repeat-year-${i}`}>\n                        {words.year}",
+    "replace": "data-testid={`repeat-year-${i}`}>\n                        {words.next}",
+    "why": "[a59] 40.16 a year of it not said"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": "animation: chart-ping 600ms var(--ease) 300ms both;",
+    "replace": "animation: chart-ping 600ms var(--ease) 300ms infinite both;",
+    "why": "[a59] 40.10 a line's end pings for ever"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": "animation: landing-drain 600ms var(--ease) 120ms both;",
+    "replace": "animation: landing-drain 900ms var(--ease) 120ms both;",
+    "why": "[a59] 40.10 the landing bar drains slowly"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": ".card--padded {\n  padding: var(--space-4);\n}",
+    "replace": ".card--padded {\n  padding: 0;\n}",
+    "why": "[finishing] a padded card without its padding (PR 1)"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Trends.tsx",
+    "find": "<Money cents={plan.perPayday} roll testId=\"old-card-share\" />",
+    "replace": "<Money cents={plan.perPayday} testId=\"old-card-share\" />",
+    "why": "[finishing] the old card's share does not roll"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Buckets.tsx",
+    "find": "<Money cents={view.total} hero roll testId=\"buckets-total\" />",
+    "replace": "<Money cents={view.total} hero testId=\"buckets-total\" />",
+    "why": "[finishing] the Buckets total does not roll"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Activity.tsx",
+    "find": "<Money cents={activity.closing} hero roll testId=\"activity-now\" />",
+    "replace": "<Money cents={activity.closing} hero testId=\"activity-now\" />",
+    "why": "[finishing] a bucket's list does not roll"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Trends.tsx",
+    "find": "<Money cents={view.now.spentSoFar} hero roll testId=\"trends-spent-so-far\" />",
+    "replace": "<Money cents={view.now.spentSoFar} hero testId=\"trends-spent-so-far\" />",
+    "why": "[finishing] Trends' main number does not roll"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Settings.tsx",
+    "find": "      </div>\n      <h1 className=\"screen-title\">Settings</h1>\n",
+    "replace": "      </div>\n",
+    "why": "[finishing] Settings without its title once open"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": "  font-variant-numeric: tabular-nums;\n  letter-spacing: -0.045em;\n  line-height: 1.1;\n  -webkit-mask-image: var(--fade);\n  mask-image: var(--fade);\n}",
+    "replace": "  font-variant-numeric: tabular-nums;\n  letter-spacing: -0.02em;\n  line-height: 1.1;\n}",
+    "why": "[finishing] the count hero in the old type"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": "  margin-inline: calc(-1 * var(--space-4));\n  padding: var(--space-3) var(--space-4) var(--space-1);",
+    "replace": "  padding: var(--space-3) 2px var(--space-1);",
+    "why": "[finishing] the bar row stops at the card's padding"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": "font-size: min(var(--text-tall), calc((100vw - 2 * var(--gutter) - 2 * var(--space-4)) / 7));",
+    "replace": "font-size: var(--text-tall);",
+    "why": "[finishing] a big range runs past its card at the largest text size"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.css",
+    "find": ".roll__col > span {\n  height: 1.2em;\n  text-align: center;\n}",
+    "replace": ".roll__col > span {\n  height: 1.2em;\n}",
+    "why": "[finishing] a drawn digit at the left of its cell, a gap after a \"1\" in WebKit"
   }
 ]

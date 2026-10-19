@@ -99,7 +99,7 @@ function BucketsReady({ view, reload, onChanged }: { readonly view: Tracking; re
           ) : undefined
         }
       >
-        <Money cents={view.total} hero testId="buckets-total" />
+        <Money cents={view.total} hero roll testId="buckets-total" />
       </Hero>
 
       <Card title="This pay period" testId="pay-period">
@@ -109,12 +109,12 @@ function BucketsReady({ view, reload, onChanged }: { readonly view: Tracking; re
       </Card>
 
       <Card title="Savings and reserves" testId="reserves">
-        <ListRow icon="bank" title="Savings" trailing={<Money cents={view.savings} testId="savings" />} href={activityPath('savings')} testId="row-savings" />
+        <ListRow icon="bank" title="Savings" trailing={<Money cents={view.savings} roll testId="savings" />} href={activityPath('savings')} testId="row-savings" />
         <ListRow
           icon="heart"
           title="Mom reserve"
           detail="Set aside from each paycheck. What you send her comes out of it."
-          trailing={<Money cents={momReserve.amount} testId="mom-reserve" />}
+          trailing={<Money cents={momReserve.amount} roll testId="mom-reserve" />}
           href={activityPath('momReserve')}
           testId="row-mom-reserve"
         />
@@ -122,7 +122,7 @@ function BucketsReady({ view, reload, onChanged }: { readonly view: Tracking; re
           icon="people"
           title="Held for others"
           detail={HELD_WORDS[heldForOthers.meaning]}
-          trailing={<Money cents={heldForOthers.heldForOthers} testId="held-for-others" />}
+          trailing={<Money cents={heldForOthers.heldForOthers} roll testId="held-for-others" />}
           href={activityPath('heldForOthers')}
           testId="row-held"
         />

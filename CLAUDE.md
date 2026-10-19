@@ -162,8 +162,9 @@ long). It replaces running everything before every commit:
 
 ## Status
 
-- Rulebook: draft 29 (sections 40 and 41, Oct 18: the Trends tab,
-  A58); draft 28 (section 39, Oct 16: 0.7 the status page, 0.8 the
+- Rulebook: draft 30 (40.10 to 40.17 and section 42, Oct 19: Trends,
+  Future and Habits, A59); draft 29 (sections 40 and 41, Oct 18: the
+  Trends tab, A58); draft 28 (section 39, Oct 16: 0.7 the status page, 0.8 the
   page when the app cannot be reached, 11.4 pending since and usually
   posts within, 12.6 why it does not match, A57; draft 27, section 38,
   Oct 16: 11.4, money still pending in shown on Home, A56; draft 26, section 37, Oct 16: 13.8, a rule offered
@@ -2092,6 +2093,33 @@ long). It replaces running everything before every commit:
   refuses GET and an unsigned call; the restore check on the machine: 112
   events, "The backup works." The way back is the image
   deploy-check-20261018t134131z (PR #47).
+- The redesign's PR 5, Trends Future and Habits, and the finishing pass (Oct
+  19, 2026, branch redesign-pr5-trends-future-habits): rulebook draft 30,
+  40.10 to 40.17 with his OK (QUESTIONS.md A59; readings B266 to B273),
+  built test first (docs/redesign-plan.txt "PR 5, as built"). Not deployed.
+  - Money: Book.oldCardDebtIn (read-only), dayOfWeek exported. Server:
+    trends-future.ts, trends-habits.ts; tests trends-future, trends-habits
+    (by hand), trends-random (the random lives check them against the books),
+    worked example bank 21. Demo life trends-future.
+  - Screens: Future and Habits, charts on @visx 4.0.0 (pinned), motion in the
+    stylesheet. Browser tests (Chromium): trends-future-habits,
+    rolling-amounts, finishing-pass; B265 in motion.test.ts (both engines).
+  - Finishing pass: amounts that roll now (Buckets' total, savings, mom
+    reserve, held for others; activity-now; trends-spent-so-far,
+    period-total; every Future and Habits amount); padded cards' padding back
+    (lost in PR 1: his "text cut off under the graph"); the sweep's fixes
+    (Settings' order, the count hero, the bar row, a big range at the
+    largest text size, bar labels on one line).
+  - B265: the sheet's pull, the same late write as B264, fixed the same way.
+    B274 (found in the WebKit pictures): the rolling digits left a gap after
+    a "1" in WebKit since PR 2; each digit is centred in its cell now.
+  - Break-it, only what this PR added or changed: "[a59]" server 32, money 2,
+    words 8, screens 10; "[finishing]" 10; "[b265]" 3; "[b264]" 2 (one
+    re-pointed: it put Motion back); 6 older breaks on changed lines pointed
+    at the code again. All caught, each judged with --only by its own test
+    file (screens in Chromium; the digit break and B264/B265 in both
+    engines). Four server breaks survived at first and got tests; one made
+    no real mistake and was re-pointed.
 - Waiting on: each card's statement closing day (his, on Settings, from a
   statement, before the old card's November reminders); Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);

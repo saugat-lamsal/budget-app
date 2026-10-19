@@ -300,6 +300,21 @@ const SHOTS = [
     await page.getByTestId('log').scrollIntoViewIfNeeded();
     return 'no-sheet';
   }],
+  // Trends (section 40): Past, Now, Future and Habits, a habit's sheet, and the largest text size.
+  ['trends-past', 'trends-future', '/trends', 'full'],
+  ['trends-now', 'trends-future', '/trends', async (page) => (await page.getByTestId('trends-segment-now').click(), 'full')],
+  ['trends-future', 'trends-future', '/trends', async (page) => (await page.getByTestId('trends-segment-future').click(), 'full')],
+  ['trends-future-not-enough', 'trends', '/trends', async (page) => (await page.getByTestId('trends-segment-future').click(), 'full')],
+  ['trends-habits', 'trends-future', '/trends', async (page) => (await page.getByTestId('trends-segment-habits').click(), 'full')],
+  ['trends-habit-sheet', 'trends-future', '/trends', async (page) => {
+    await page.getByTestId('trends-segment-habits').click();
+    await page.getByTestId('repeat-0').click();
+  }],
+  ['trends-future-largest-text', 'trends-future', '/trends', async (page) => {
+    await page.getByTestId('trends-segment-future').click();
+    await page.addStyleTag({ content: 'html { font-size: 36px !important; }' });
+    return 'full';
+  }],
   ['settings', 'settings-busy', '/settings'],
   ['settings-whole', 'settings-busy', '/settings', 'full'],
   ['settings-normal-whole', 'normal', '/settings', 'full'],
@@ -494,14 +509,17 @@ try {
       else if (step === 'loading-setup') await page.getByTestId('setup-loading').waitFor();
       else if (step === 'error') await page.locator('[data-testid$="-error"]').waitFor();
       else await page.locator('main[aria-busy="false"]').waitFor();
+      // A step can also say 'full': no sheet, and the whole page in the picture.
+      let full = step === 'full';
       if (typeof step === 'function') {
         const result = await step(page);
-        if (result !== 'no-sheet') await page.locator('dialog[open]').waitFor();
+        if (result === 'full') full = true;
+        else if (result !== 'no-sheet') await page.locator('dialog[open]').waitFor();
         await page.waitForTimeout(400);
       }
-      if (step === 'full') await page.addStyleTag({ content: '.tabbar { position: static !important; } .screen { padding-bottom: var(--space-5) !important; }' });
+      if (full) await page.addStyleTag({ content: '.tabbar { position: static !important; } .screen { padding-bottom: var(--space-5) !important; }' });
       if (step === 'bottom') await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-      await page.screenshot({ path: `${out}/${name}-${scheme}.png`, fullPage: step === 'full', animations: 'disabled' });
+      await page.screenshot({ path: `${out}/${name}-${scheme}.png`, fullPage: full, animations: 'disabled' });
       await page.close();
     }
     await context.close();

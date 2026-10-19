@@ -143,3 +143,31 @@ Habits: the payday effect (first 3 days after payday against the rest),
 spending by day of the week, repeat charges spotted, a streak of periods with
 Wants under. Charts with @visx packages (pinned), animated with Motion; tap a
 bar or point to see the items behind it.
+
+
+PR 5, as built (Oct 19):
+- Rulebook draft 30, 40.10 to 40.17 and 42a, QUESTIONS.md A59, with his OK on
+  the text; the readings picked while building: B266 to B273.
+- The money package gained one read-only piece, Book.oldCardDebtIn (what the
+  old card owed when each pay period began and ended), and exports dayOfWeek.
+- packages/server/src/trends-future.ts (40.11 to 40.13) and trends-habits.ts
+  (40.14 to 40.17), called by trendsView; the view's new parts are future and
+  habits. Demo life trends-future (three more paychecks, a promo end date, a
+  streaming charge every 2 weeks). Worked example bank 21.
+- The screen: Future and Habits in Trends.tsx, words in trends-text.ts. Charts
+  on @visx 4.0.0 (shape, scale, curve, group; pinned): plain SVG, nothing
+  written into a style element, so the content policy is unchanged. The
+  motion is the stylesheet's, not Motion's (B264 and B265 were Motion's late
+  writes): a line draws in, an area under it in its tone wipes in from the
+  left, a line's end pings once, the landing bar drains to where it lands,
+  bars grow in turn, the streak's pips come in; 600 ms or less, expo-out,
+  nothing repeats, all off with reduced motion. Switching parts comes in with
+  the screen's own rise. A new shared block, the "Estimate" status label.
+- The finishing pass: the main amounts that did not roll now do (Buckets'
+  total, savings, mom reserve and held for others; a bucket's list; Trends'
+  main number and the pay period picked; every Future and Habits amount).
+  Padded cards had lost their padding in PR 1 (his "text cut off under the
+  graph"). The sweep (every demo screen at the default and largest text size)
+  fixed Settings' title above its day, the count hero's type, the bar row
+  stopping at the card's padding, a big range past its card at the largest
+  text size, and bar labels wrapping. B265: the sheet's pull, as B264.

@@ -898,3 +898,64 @@ describe('worked example 20, the Trends tab (section 40)', () => {
     expect(view('2026-07-31').now.usual).toEqual({ state: 'known', periods: 4, byToday: c.get('four by today'), whole: c.get('four whole') });
   });
 });
+
+describe('worked example 21, Trends: Future and Habits (40.10 to 40.17)', () => {
+  it('example 21, 40.11 40.13 40.14 40.15 40.17 where Needs and Wants land, the old card\'s plan, the payday effect and the busiest weekday, as worked by hand', () => {
+    const c = checksOf(21);
+    const b = openTestBook({
+      pots: { savings: 100_000, needs: 50_000, wants: 30_000, momReserve: 50_000, heldForOthers: 0 },
+      oldCardDebt: 300_000,
+      settings: { oldCardPromoEndDate: '2026-11-20' },
+      rules: [
+        { id: 'grocery', for: 'purchase', contains: 'GROCERY', bucket: 'needs' },
+        { id: 'cafe', for: 'purchase', contains: 'CAFE', bucket: 'wants' },
+      ],
+    });
+    b.receive(purchase('g1', '2026-10-02', 3_250, 'GROCERY'));
+    b.receive(purchase('c1', '2026-10-03', 1_000, 'CAFE'));
+    b.receive(purchase('u1', '2026-10-04', 500, 'SHOP'));
+    b.receive(transfer('t1', '2026-10-05', 20_000, 'checking', 'old-card'));
+    b.moveMoney({ from: 'wants', to: 'needs', amount: 500 }, '2026-10-05');
+    const cafe = (id: string, date: string, amount: Cents): HistoryLine => ({ id, account: 'everyday-card', date, amount, description: 'BLUE CAFE' });
+    const lines: HistoryLine[] = [
+      cafe('j17a', '2026-07-17', 1_000),
+      cafe('j17b', '2026-07-30', 5_000),
+      cafe('j31a', '2026-07-31', 2_000),
+      cafe('j31b', '2026-08-11', 500),
+      cafe('a14a', '2026-08-14', 3_000),
+      cafe('a14c', '2026-08-25', 1_500),
+      cafe('a14b', '2026-08-26', 9_000),
+      cafe('a28', '2026-08-28', 4_001),
+      { id: 'a28old', account: 'checking', date: '2026-08-29', amount: 30_000, description: 'ONLINE payment to CRD 4444' },
+      cafe('s11', '2026-09-11', 10_000),
+    ];
+    const bankRules = checkBankRules([{ id: 'old', account: 'checking', contains: 'payment to CRD 4444', means: 'transfer', other: 'old-card' }]);
+    const v = trendsView({ today: '2026-10-06', book: b, bank: null, madeUpData: false, before: { setupDay: '2026-10-01', lastPaycheckDate: '2026-09-25', historyFrom: '2026-07-17', lines, bankRules } });
+    if (v.state !== 'tracking') throw new Error('not tracking');
+    const { needs, wants, waitingInReview } = v.future.landing;
+    expect(needs).toMatchObject({ state: 'estimate', holds: c.get('needs holds'), pace: c.get('needs pace'), lands: c.get('needs lands'), daysSoFar: 6, daysLeft: 2 });
+    expect(wants).toMatchObject({ state: 'estimate', holds: c.get('wants holds'), pace: c.get('wants pace'), lands: c.get('wants lands') });
+    expect(waitingInReview).toBe(c.get('waiting'));
+    expect(v.future.oldCard.plan).toEqual({
+      state: 'plan',
+      promoEndDate: '2026-11-20',
+      perPayday: c.get('share'),
+      paydaysLeft: 3,
+      paidOffBy: '2026-11-06',
+      points: [
+        { date: '2026-10-06', owed: c.get('owed now') },
+        { date: '2026-10-09', owed: c.get('after first') },
+        { date: '2026-10-23', owed: c.get('after second') },
+        { date: '2026-11-06', owed: c.get('after third') },
+      ],
+    });
+    const effect = v.habits.paydayEffect;
+    expect(effect.state === 'known' && [effect.periods, effect.first.perDay, effect.rest.perDay]).toEqual([5, c.get('first per day'), c.get('rest per day')]);
+    const day = (n: number) => v.habits.weekdays.days.find((d) => d.weekday === n);
+    expect(day(5)).toMatchObject({ total: c.get('friday total'), average: c.get('average friday'), days: 13 });
+    expect(day(3)).toMatchObject({ average: c.get('average wednesday'), days: 12 });
+    expect(day(4)?.average).toBe(c.get('average thursday'));
+    expect(v.habits.weekdays.most).toBe(5);
+    expect(v.habits.streak).toEqual({ ended: 0, current: 0, best: 0, lastOver: false });
+  });
+});

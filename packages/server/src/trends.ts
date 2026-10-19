@@ -17,6 +17,8 @@ import {
   type TextRule,
 } from '@budget-app/money';
 import { readBankItem, type BankRule } from './bank/reading.js';
+import { futureOf } from './trends-future.js';
+import { habitsOf } from './trends-habits.js';
 import { bankCheckOf } from './views/buckets.js';
 import type { WhyLine } from './views/home.js';
 import type { DayPoint, EvenPace, PlaceGroup, SavingsPoint, TrendsItem, TrendsNow, TrendsPart, TrendsPeriod, TrendsView, Usual, WantsPace } from './views/trends.js';
@@ -250,6 +252,8 @@ export function trendsView(input: TrendsInput): TrendsView {
   // ----- 40.4: the last 90 days, and the current one -----
   const from = addDays(today, -(TRENDS_DAYS - 1));
   const shown = periods.filter((p) => p.current || daysBetween(from, p.lastDay) >= 0);
+  // 40.6, 40.16: the place of an item.
+  const nameOf = (item: TrendsItem): string | null => (item.beforeSetup ? nameBefore(item, placeKinds) : book.placeName(item.id));
 
   return {
     state: 'tracking',
@@ -262,6 +266,8 @@ export function trendsView(input: TrendsInput): TrendsView {
     savings: savingsOf(book, today),
     places: placesOf(book, periods, placeKinds, from, today),
     now: nowOf(book, periods, today, next),
+    future: futureOf({ book, today, next, periods, bookStarts: books.map((b) => b.startDate), setupDay }),
+    habits: habitsOf({ book, today, from, periods, shown, nameOf }),
   };
 }
 

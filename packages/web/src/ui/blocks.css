@@ -117,6 +117,25 @@
   overflow: hidden;
 }
 
+/* A card with its own text and charts (Trends, the bank, the login). The
+   rows in it line up with that text instead of adding their own inset. */
+.card--padded {
+  padding: var(--space-4);
+}
+
+.card--padded .row {
+  padding-inline: 0;
+}
+
+.card--padded .row + .row::before {
+  left: calc(32px + var(--space-3));
+}
+
+.card--padded .row--plain + .row::before,
+.card--padded .row--plain::before {
+  left: 0;
+}
+
 /* ----- Hero: the one main number ----- */
 
 .hero {
@@ -757,13 +776,16 @@ a.bucket:active {
 
 /* ----- Hero when the main number is a count ----- */
 
+/* A count as the main number: the same type and fade as an amount (blocks.css .money--hero). */
 .hero__count {
   display: block;
   font-size: var(--text-hero);
   font-weight: var(--weight-bold);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.045em;
   line-height: 1.1;
+  -webkit-mask-image: var(--fade);
+  mask-image: var(--fade);
 }
 
 /* ----- Target bar: a range to be in, with a tick at the low end ----- */
@@ -1388,8 +1410,12 @@ a.tile:active {
   transition: transform 300ms var(--ease) var(--delay, 0ms);
 }
 
+/* Centred in its cell, as a tabular figure is: WebKit draws the generated
+   digits without tabular widths, so a narrow "1" sat at the left of a wide
+   cell with a gap after it (found on the iPhone's engine, PR 5). */
 .roll__col > span {
   height: 1.2em;
+  text-align: center;
 }
 
 .roll__col > span::before,
@@ -1684,7 +1710,9 @@ a.tile:active {
 /* ----- Segmented control (Trends: Past and Now) ----- */
 
 .segmented {
-  display: flex;
+  /* Side by side; at a large text size the options go two to a row instead of being cut. */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(4.5em, 1fr));
   gap: var(--space-1);
   padding: var(--space-1);
   border-radius: var(--radius-sm);
@@ -1736,17 +1764,19 @@ a.tile:active {
 .chart--mom { --tone: var(--chart-mom); }
 .chart--pace { --tone: var(--chart-pace); }
 
+/* The bars run to the card's own edge, so a row that scrolls goes under it. */
 .pbars {
   display: flex;
   align-items: stretch;
   gap: var(--space-1);
-  padding: var(--space-3) 2px var(--space-1);
+  margin-inline: calc(-1 * var(--space-4));
+  padding: var(--space-3) var(--space-4) var(--space-1);
   overflow-x: auto;
   scrollbar-width: none;
 }
 
 .pbar {
-  flex: 1 0 var(--tap);
+  flex: 1 0 auto;
   min-width: var(--tap);
   display: flex;
   flex-direction: column;
@@ -1799,12 +1829,13 @@ a.tile:active {
 }
 
 .pbar.is-selected .pbar__stack {
-  box-shadow: 0 0 0 2px var(--text);
+  box-shadow: 0 0 0 2px var(--text), 0 0 18px -4px var(--accent);
 }
 
 .pbar__label {
   font-family: var(--font-mono);
   font-size: var(--text-label);
+  white-space: nowrap;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -1863,6 +1894,260 @@ a.tile:active {
 @keyframes line-fade {
   from {
     opacity: 0;
+  }
+}
+
+/* The soft gradient under a line or across a range, in its tone. */
+.chart-stop {
+  stop-color: var(--tone);
+}
+
+.chart-stop--top {
+  stop-opacity: 0.32;
+}
+
+.chart-stop--bottom {
+  stop-opacity: 0;
+}
+
+.linechart__area,
+.linechart__band {
+  stroke: none;
+}
+
+/* A range's two edges: thin and quiet. */
+.linechart__edge {
+  fill: none;
+  stroke: var(--tone);
+  stroke-width: 1;
+  stroke-opacity: 0.6;
+  stroke-dasharray: 2 4;
+}
+
+/* Today, between what the books hold and the estimate. */
+.linechart__today {
+  stroke: var(--separator);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+/* The area and the range wipe in from the left, once. */
+.chart-reveal {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: chart-reveal 600ms var(--ease) both;
+}
+
+@keyframes chart-reveal {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* The end of a line: one soft ping after it is drawn, then nothing. */
+.chart-halo {
+  fill: var(--tone);
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: chart-ping 600ms var(--ease) 300ms both;
+}
+
+@keyframes chart-ping {
+  from {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(3.2);
+  }
+}
+
+/* Bars across (Habits): a title and an amount over a bar as long as the amount. */
+.cbars {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.cbar {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-2) 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cbar:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.cbar__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+}
+
+.cbar__title {
+  font-size: var(--text-sub);
+  color: var(--text-2);
+}
+
+.cbar__amount {
+  font-weight: var(--weight-bold);
+}
+
+.cbar__track {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.cbar__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--tone);
+  transform-origin: left;
+  animation: place-grow 600ms var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+/* A card's first line on Trends: what it shows, and "Estimate" when it is one. */
+.trend-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  color: var(--text-2);
+  font-size: var(--text-sub);
+}
+
+/* A range or an amount, big, under the card's first line. */
+.trend-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  margin: var(--space-2) 0 0;
+  /* As big as the text size asks, but an amount always fits across the card. */
+  font-size: min(var(--text-tall), calc((100vw - 2 * var(--gutter) - 2 * var(--space-4)) / 7));
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.02em;
+}
+
+.trend-range__to {
+  color: var(--text-2);
+  font-size: var(--text-sub);
+  font-weight: var(--weight-regular);
+  letter-spacing: 0;
+}
+
+/* 40.11: what a bucket holds now, and how much of it is left by payday. */
+.landing {
+  display: grid;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+
+.landing__bar {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: repeating-linear-gradient(-45deg, var(--track), var(--track) 4px, transparent 4px, transparent 8px);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  overflow: hidden;
+}
+
+.landing__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  animation: landing-drain 600ms var(--ease) 120ms both;
+}
+
+/* It starts full, at what the bucket holds now, and drains to where it lands. */
+@keyframes landing-drain {
+  from {
+    width: 100%;
+  }
+}
+
+.landing__ends {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  color: var(--text-2);
+  font-size: var(--text-caption);
+}
+
+.landing__ends .money {
+  color: var(--text);
+}
+
+.cbar__per {
+  color: var(--text-2);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-regular);
+}
+
+/* 40.17: the run now, and a pip for each pay period of the best run. */
+.streak {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.streak__count {
+  font-size: var(--text-hero);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  animation: rise 600ms var(--ease) both;
+}
+
+.streak__pips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.streak__pip {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--text-2);
+  animation: pip-in 300ms var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 50ms + 150ms);
+}
+
+.streak__pip.is-on {
+  background: var(--chart-savings);
+  box-shadow: 0 0 10px -2px var(--chart-savings);
+}
+
+@keyframes pip-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
   }
 }
 

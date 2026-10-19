@@ -115,6 +115,155 @@ export interface TrendsNow {
   readonly wants: WantsPace;
 }
 
+// ----- Future (40.11 to 40.13): every amount here is an estimate (40.10) -----
+
+// 40.11: where a bucket lands by payday at this pay period's pace.
+export type Landing =
+  | {
+      readonly state: 'estimate';
+      // What it holds now.
+      readonly holds: Cents;
+      // Spent from it so far this pay period, old card payments left out.
+      readonly spentSoFar: Cents;
+      // Payday is day 1, today counted (from setup day in the books' first pay period).
+      readonly daysSoFar: number;
+      // After today, up to the day before the next payday.
+      readonly daysLeft: number;
+      // What it would spend in the days left at this pace, rounded up to the cent.
+      readonly pace: Cents;
+      readonly lands: Cents;
+    }
+  | { readonly state: 'too-early'; readonly holds: Cents; readonly daysSoFar: number }
+  | { readonly state: 'payday-passed'; readonly holds: Cents };
+
+export interface LandingByPayday {
+  readonly nextPayday: IsoDate;
+  readonly needs: Landing;
+  readonly wants: Landing;
+  // Spending waiting in review: in neither until it is sorted.
+  readonly waitingInReview: Cents;
+}
+
+// 40.12: after each payday, the low and the high end.
+export interface SavingsRangePoint {
+  readonly date: IsoDate;
+  readonly low: Cents;
+  readonly high: Cents;
+}
+
+export type SavingsYearOut =
+  | {
+      readonly state: 'estimate';
+      readonly now: Cents;
+      // A year from today.
+      readonly to: IsoDate;
+      // The paydays after today up to then.
+      readonly paydays: number;
+      // How many pay periods the least and the most come from (3 to 5).
+      readonly periods: number;
+      readonly least: Cents;
+      readonly most: Cents;
+      readonly low: Cents;
+      readonly high: Cents;
+      readonly points: readonly SavingsRangePoint[];
+    }
+  | { readonly state: 'not-enough'; readonly now: Cents; readonly periods: number };
+
+// 40.13: what the old card owed, as the books hold it.
+export interface DebtPoint {
+  readonly date: IsoDate;
+  readonly at: 'start' | 'end' | 'now';
+  readonly owed: Cents;
+}
+
+export type OldCardPlan =
+  | {
+      readonly state: 'plan';
+      readonly promoEndDate: IsoDate;
+      // 9.5.
+      readonly perPayday: Cents;
+      readonly paydaysLeft: number;
+      // The payday it reaches $0.00.
+      readonly paidOffBy: IsoDate;
+      // Today, then each payday until it reaches $0.00: what it owes once that payday's share is paid.
+      readonly points: readonly { readonly date: IsoDate; readonly owed: Cents }[];
+    }
+  | { readonly state: 'due-now'; readonly promoEndDate: IsoDate; readonly owed: Cents }
+  | { readonly state: 'no-promo-end-date' }
+  | { readonly state: 'paid-off' };
+
+export interface TrendsFuture {
+  readonly landing: LandingByPayday;
+  readonly savings: SavingsYearOut;
+  readonly oldCard: { readonly owed: readonly DebtPoint[]; readonly plan: OldCardPlan };
+}
+
+// ----- Habits (40.14 to 40.17): old card payments left out (40.10) -----
+
+export interface SpendDays {
+  // How many days, the total spent on them, and per day, rounded down to the cent.
+  readonly days: number;
+  readonly total: Cents;
+  readonly perDay: Cents;
+  // Newest first.
+  readonly items: readonly TrendsItem[];
+}
+
+// 40.14: payday and the 2 days after, against the rest.
+export type PaydayEffect =
+  | { readonly state: 'known'; readonly periods: number; readonly first: SpendDays; readonly rest: SpendDays }
+  | { readonly state: 'not-enough'; readonly fullPeriods: number };
+
+// 40.15: one day of the week. weekday: 0 Sunday to 6 Saturday.
+export interface WeekdaySpend {
+  readonly weekday: number;
+  // How many of it the 90 days hold.
+  readonly days: number;
+  readonly total: Cents;
+  // An average one, rounded down to the cent.
+  readonly average: Cents;
+  readonly items: readonly TrendsItem[];
+}
+
+export interface Weekdays {
+  readonly from: IsoDate;
+  readonly to: IsoDate;
+  readonly total: Cents;
+  // Monday to Sunday.
+  readonly days: readonly WeekdaySpend[];
+  // The weekday with the most on average; null when none spent more than $0.00.
+  readonly most: number | null;
+}
+
+// 40.16: a charge that comes again and again.
+export interface RepeatCharge {
+  readonly name: string;
+  readonly every: 'week' | 'two-weeks' | 'month';
+  readonly newestDate: IsoDate;
+  readonly newestAmount: Cents;
+  // Estimates: the newest day plus the gap before it, and the newest amount times 52, 26 or 12.
+  readonly next: IsoDate;
+  readonly perYear: Cents;
+  // Its charges, newest first.
+  readonly items: readonly TrendsItem[];
+}
+
+// 40.17: pay periods the books ended with Wants at $0.00 or more.
+export interface WantsStreak {
+  readonly ended: number;
+  readonly current: number;
+  readonly best: number;
+  // The newest that ended went below zero.
+  readonly lastOver: boolean;
+}
+
+export interface TrendsHabits {
+  readonly paydayEffect: PaydayEffect;
+  readonly weekdays: Weekdays;
+  readonly repeats: readonly RepeatCharge[];
+  readonly streak: WantsStreak;
+}
+
 export type TrendsView =
   | { readonly state: 'not-set-up'; readonly madeUpData: boolean }
   | {
@@ -133,4 +282,7 @@ export type TrendsView =
       // 40.6: the last 90 days.
       readonly places: { readonly from: IsoDate; readonly to: IsoDate; readonly total: Cents; readonly groups: readonly PlaceGroup[] };
       readonly now: TrendsNow;
+      // 40.10 to 40.17.
+      readonly future: TrendsFuture;
+      readonly habits: TrendsHabits;
     };

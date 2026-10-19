@@ -1,5 +1,5 @@
 import type { BucketLevel, Cents } from '@budget-app/money';
-import { animate, motion, useScroll, useTransform } from 'motion/react';
+import { motion, useScroll, useTransform } from 'motion/react';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { barFill } from './bar-fill.js';
 import { Icon, type IconName } from './Icon.js';
@@ -210,7 +210,7 @@ export function LinkButton({ children, href, variant = 'primary', wide = false, 
 
 // ----- Status label: a word and an icon, so color is never the only signal -----
 
-export type Status = 'low' | 'empty' | 'overdue' | 'pending' | 'under-target' | 'in-target' | 'over-target' | 'changes' | 'changed';
+export type Status = 'low' | 'empty' | 'overdue' | 'pending' | 'under-target' | 'in-target' | 'over-target' | 'changes' | 'changed' | 'estimate';
 
 const STATUS: Readonly<Record<Status, { readonly word: string; readonly icon: IconName; readonly tone: Tone }>> = {
   low: { word: 'Low', icon: 'low', tone: 'warning' },
@@ -223,6 +223,8 @@ const STATUS: Readonly<Record<Status, { readonly word: string; readonly icon: Ic
   changes: { word: 'Changes', icon: 'swap', tone: 'info' },
   // A32 (13.7): the item is not what the screen showed before it read its numbers again.
   changed: { word: 'Changed', icon: 'alert', tone: 'warning' },
+  // 40.10: anything about the future is an estimate, never a promise.
+  estimate: { word: 'Estimate', icon: 'clock', tone: 'info' },
 };
 
 export function StatusLabel({ status, testId }: { readonly status: Status; readonly testId?: string | undefined }) {
@@ -391,6 +393,19 @@ export function BottomSheet({ open, title, onClose, children, testId }: { readon
   const id = useId();
   const reduced = useReducedMotion();
   const drag = useRef<{ readonly pointer: number; readonly from: number; readonly at: number; dy: number; moving: boolean } | null>(null);
+  // The way back or the way out being drawn now, if any.
+  const drawn = useRef<Animation | null>(null);
+  // B265, as B264's swipe card: the sheet's own place is set first, and the
+  // way there is only drawn over it by the browser's own animation, which
+  // never writes the sheet's style. Before, Motion wrote the last frame after
+  // telling it had ended: a short pull stayed off its place until then, and a
+  // late write could land on a sheet already closed.
+  const draw = (dialog: HTMLDialogElement, from: string, to: string): Animation => {
+    drawn.current?.cancel();
+    const a = dialog.animate([{ transform: from }, { transform: to }], { duration: QUICK_S * 1000, easing: `cubic-bezier(${EASE.join(', ')})` });
+    drawn.current = a;
+    return a;
+  };
   const finishDrag = (event: ReactPointerEvent<HTMLElement>): void => {
     const d = drag.current;
     const dialog = ref.current;
@@ -401,7 +416,9 @@ export function BottomSheet({ open, title, onClose, children, testId }: { readon
     const closes = event.type !== 'pointercancel' && (d.dy > DRAG_CLOSE_PX || (d.dy > DRAG_FLICK_PX && speed > DRAG_FLICK_SPEED));
     const from = `translateY(${d.dy}px)`;
     const back = (): void => {
-      void animate(dialog, { transform: [dialog.style.transform || from, 'translateY(0px)'] }, { duration: reduced ? 0 : QUICK_S, ease: EASE }).finished.then(() => (dialog.style.transform = ''));
+      const at = dialog.style.transform || from;
+      dialog.style.transform = '';
+      if (!reduced) draw(dialog, at, 'translateY(0px)');
     };
     if (closes) {
       const finish = (): void => {
@@ -411,9 +428,10 @@ export function BottomSheet({ open, title, onClose, children, testId }: { readon
           if (dialog.open) back();
         }, 120);
       };
-      if (reduced) finish();
-      else void animate(dialog, { transform: [from, 'translateY(100%)'] }, { duration: QUICK_S, ease: EASE }).finished.then(finish);
       dialog.style.transform = 'translateY(100%)';
+      // A new pull that takes the sheet on its way out keeps it.
+      if (reduced) finish();
+      else void draw(dialog, from, 'translateY(100%)').finished.then(finish, () => undefined);
     } else back();
   };
   // Opens and closes in the same step that redraws the screen (not a moment
@@ -471,6 +489,9 @@ export function BottomSheet({ open, title, onClose, children, testId }: { readon
             if (!d.moving) {
               if (dy < 4) return;
               d.moving = true;
+              // A way back still being drawn gives way to the finger (B265).
+              drawn.current?.cancel();
+              drawn.current = null;
               try {
                 event.currentTarget.setPointerCapture(event.pointerId);
               } catch {

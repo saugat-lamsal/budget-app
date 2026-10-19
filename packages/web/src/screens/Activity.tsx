@@ -135,7 +135,7 @@ function ActivityReady({ view, reload, onChanged }: { readonly view: Tracking; r
       {moved !== null && said === null && <SaidNotice said={moved} sending={false} onRetry={() => undefined} onDismiss={() => setMoved(null)} sticky />}
 
       <Hero label={name} testId="activity-hero" sub={`This pay period, since ${shortDate(activity.period.startDate)}`}>
-        <Money cents={activity.closing} hero testId="activity-now" />
+        <Money cents={activity.closing} hero roll testId="activity-now" />
       </Hero>
 
       <Card title="This pay period" testId="activity-figures">

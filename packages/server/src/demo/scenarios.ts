@@ -1,7 +1,9 @@
 import {
   DEFAULT_SETTINGS,
   addCents,
+  addDays,
   changeSettings,
+  daysBetween,
   openBook,
   subtractCents,
   type BankBalances,
@@ -159,6 +161,11 @@ interface Story {
   readonly pendingIn?: readonly PendingMoneyIn[];
   // 11.4 (A57): earlier deposits seen going from pending to posted.
   readonly postingExamples?: readonly PostingExample[];
+  // 40.10 to 40.17 (A59): three more paychecks, each pay period with its
+  // groceries, a meal, coffee, gas and a payment to the old card, a streaming
+  // charge every 2 weeks, and a made-up promo end date; today is a few days
+  // into the newest pay period.
+  readonly trendsFuture?: boolean;
 }
 
 // When the bank was last read and matched, in the "bank-not-read" life:
@@ -338,6 +345,40 @@ function story(s: Story): HomeInput {
   if (s.secondPaycheck === true) {
     feed({ kind: 'deposit', id: 'demo-pay-2', account: 'checking', date: '2026-10-16', amount: x(420_000), description: `${EMPLOYER} DIR DEP` });
   }
+  if (s.trendsFuture === true) {
+    const today = s.today ?? DEMO_TODAY;
+    // A made-up promo end date: the payoff countdown and its plan are on (9.5, 40.13).
+    book.changeSettings({ oldCardPromoEndDate: '2027-06-30' }, '2026-10-16');
+    // The streaming charge the history has every 2 weeks, still going (40.16).
+    for (const date of ['2026-09-27', '2026-10-11']) {
+      buy(date, 1_599, 'RIVER STREAMING');
+      cardExtra += 1_599;
+    }
+    ['2026-10-16', '2026-10-30', '2026-11-13', '2026-11-27'].forEach((payday, k) => {
+      if (k > 0) {
+        // The payday questions answered, then the next paycheck (3.4).
+        for (const item of book.reviewItems()) if (item.type === 'leftover') book.answerLeftover(item.id, 'roll-over', payday);
+        feed({ kind: 'deposit', id: `future-pay-${k}`, account: 'checking', date: payday, amount: x(420_000), description: `${EMPLOYER} DIR DEP` });
+      }
+      const on = (days: number): IsoDate | null => (daysBetween(addDays(payday, days), today) >= 0 ? addDays(payday, days) : null);
+      const card = (days: number, amount: Cents, description: string): void => {
+        const date = on(days);
+        if (date === null) return;
+        buy(date, amount, description);
+        cardExtra += amount;
+      };
+      const groceries = on(1);
+      if (groceries !== null) {
+        buy(groceries, 7_812 + k * 310, 'GROCERY OUTLET #12', 'checking');
+        feed({ kind: 'transfer', id: `future-old-card-${k}`, from: 'checking', to: 'old-card', date: groceries, amount: x(15_167), description: 'PAYMENT TO OLD CARD' });
+      }
+      card(2, 4_650 + k * 275, 'HARBOR RESTAURANT');
+      card(3, 575, 'BLUE DOOR COFFEE');
+      card(4, 4_120, 'CORNER GAS STATION');
+      card(9, 1_599, 'RIVER STREAMING');
+      card(10, 625, 'BLUE DOOR COFFEE');
+    });
+  }
 
   let statements = s.statements ?? [EVERYDAY_STATEMENT, OLD_CARD_STATEMENT];
   let everydayCardOwes = x(61_248 + 575 + 4_120 + 3_890 + 1_599 + 2_317 + 1_150 + 625 + cardExtra) + (s.eatingOut === undefined ? 0 : x(s.eatingOut));
@@ -495,6 +536,12 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   { name: 'settings-busy', title: 'Settings: changes along the way, a new split waiting for the next paycheck, a promo end date', input: () => story({ settingsBusy: true, chargedTwice: true }) },
   { name: 'settings-first-sync', title: 'Settings: no paycheck rule or mom rule yet, the paycheck and mom waiting in review', input: () => story({ firstSync: true }) },
   { name: 'trends', title: 'Trends: three months of made-up history before setup day, and two paychecks since (section 40)', input: () => story({ today: '2026-10-16', secondPaycheck: true, allDone: true, statements: [] }), trends: madeUpTrendsHistory },
+  {
+    name: 'trends-future',
+    title: 'Trends, Future and Habits: the same history and three more paychecks, a few days into the newest pay period, with a made-up promo end date (40.10 to 40.17)',
+    input: () => story({ today: '2026-12-02', secondPaycheck: true, allDone: true, statements: [], trendsFuture: true }),
+    trends: madeUpTrendsHistory,
+  },
   { name: 'not-set-up', title: 'Before setup day', input: notSetUp },
   { name: 'slow', title: 'Slow to load (3 seconds)', input: () => story({}), delayMs: 3_000 },
   { name: 'error', title: 'Cannot load', input: null },
