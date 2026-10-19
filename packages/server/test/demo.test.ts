@@ -422,6 +422,8 @@ describe('the demo is made-up data only', () => {
       'setup-view.ts',
       'sync/plan.ts',
       // Section 40: the Trends tab worked out from a book and a history handed to it; no database.
+      'trends-future.ts',
+      'trends-habits.ts',
       'trends.ts',
       'views/activity.ts',
       'views/alerts.ts',

@@ -96,6 +96,28 @@ describe.runIf(chromiumOnly.length > 0)('the finishing pass: main amounts roll, 
     await page.context().close();
   });
 
+  it('PR 5 40.11 to 40.15 the Future and Habits amounts roll to the server\'s amounts', async () => {
+    const view = serverTrends('trends-future');
+    const { landing, savings, oldCard } = view.future;
+    const effect = view.habits.paydayEffect;
+    if (landing.wants.state !== 'estimate' || savings.state !== 'estimate' || oldCard.plan.state !== 'plan' || effect.state !== 'known') throw new Error('the made-up life has them all');
+    const page = await openScenario(await browser().newContext(phone(MOVING)), base(), 'trends-future', '/trends');
+    await page.getByTestId('trends-segment-future').click();
+    await atRest(page);
+    await rollsTo(page, 'landing-wants-lands', landing.wants.lands);
+    await rollsTo(page, 'savings-low', savings.low);
+    await rollsTo(page, 'savings-high', savings.high);
+    await rollsTo(page, 'savings-year-now', savings.now);
+    await rollsTo(page, 'old-card-owes', oldCard.owed[oldCard.owed.length - 1]?.owed ?? 0);
+    await rollsTo(page, 'old-card-share', oldCard.plan.perPayday);
+    await page.getByTestId('trends-segment-habits').click();
+    await atRest(page);
+    await rollsTo(page, 'payday-first', effect.first.perDay);
+    await rollsTo(page, 'payday-rest', effect.rest.perDay);
+    for (const d of view.habits.weekdays.days) await rollsTo(page, `weekday-average-${d.weekday}`, d.average);
+    await page.context().close();
+  });
+
   it('PR 5 with reduced motion the amounts are there at once, the same text, not moving', async () => {
     const page = await openScenario(await browser().newContext(phone()), base(), 'buckets-busy', '/buckets');
     const total = page.getByTestId('buckets-total');

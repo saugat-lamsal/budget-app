@@ -1,24 +1,57 @@
-import type { PlaceGroup, TrendsItem, TrendsPart, TrendsPeriod, TrendsView } from '@budget-app/server/views';
-import { useState } from 'react';
+import type { Cents } from '@budget-app/money';
+import type { Landing, PlaceGroup, TrendsItem, TrendsPart, TrendsPeriod, TrendsView } from '@budget-app/server/views';
+import { useState, type CSSProperties } from 'react';
 import type { Load, Reload } from '../app/api.js';
-import { BottomSheet, Button, Card, Hero, ListRow, MadeUpPill, Money, Segmented, Skeleton, StateMessage } from '../ui/blocks.js';
-import { ChartLegend, LineChart, StackedBars } from '../ui/charts.js';
-import { monthDay, shortDate } from '../ui/dates.js';
+import { BottomSheet, Button, Card, Hero, ListRow, MadeUpPill, Money, Segmented, Skeleton, StateMessage, StatusLabel } from '../ui/blocks.js';
+import { ChartLegend, CompareBars, DateChart, LineChart, StackedBars } from '../ui/charts.js';
+import { dayWithYear, monthDay, shortDate } from '../ui/dates.js';
 import { moneyWords } from '../ui/money-format.js';
 import { CheckBanner } from './check-banner.js';
-import { barWords, dayOfText, paceWords, partName, periodNote, periodRange, periodShort, placeGroupName, sinceText, usualLines } from './trends-text.js';
+import {
+  barWords,
+  dayOfText,
+  landingWords,
+  mostWords,
+  oldCardWords,
+  paceWords,
+  partName,
+  paydayEffectWords,
+  periodNote,
+  periodRange,
+  periodShort,
+  placeGroupName,
+  repeatWords,
+  savingsWords,
+  sinceText,
+  streakWords,
+  usualLines,
+  waitingWords,
+  weekdayName,
+} from './trends-text.js';
 
-// The Trends tab (rulebook section 40, QUESTIONS.md A58): Past, what was
+// The Trends tab (rulebook section 40, QUESTIONS.md A58, A59): Past, what was
 // spent each pay period, savings over time and where it went; Now, this pay
-// period against your usual and Wants against an even pace. Every number is
-// the server's, worked out from the books and the bank history kept from
-// before setup day. It only reads and never sends anything. The one main
-// number is what was spent so far this pay period.
+// period against your usual and Wants against an even pace; Future, where
+// the buckets land by payday, savings a year out and the old card's plan,
+// each an estimate and marked so; Habits, the payday effect, the days of the
+// week, repeat charges and the Wants streak. Every number is the server's,
+// worked out from the books and the bank history kept from before setup day.
+// It only reads and never sends anything. The one main number is what was
+// spent so far this pay period.
 
 const PARTS: readonly TrendsPart[] = ['needs', 'wants', 'old-card', 'unsorted'];
-type Segment = 'past' | 'now';
+type Segment = 'past' | 'now' | 'future' | 'habits';
 type Tracking = Extract<TrendsView, { state: 'tracking' }>;
-type Sheet = { readonly kind: 'period'; readonly index: number } | { readonly kind: 'place'; readonly index: number } | null;
+// What a tap on a habit opens: the items behind it, adding up to its total.
+interface ItemsList {
+  readonly title: string;
+  readonly totalLabel: string;
+  // What the server added up; none for a repeat charge (its charges are listed, each with its amount).
+  readonly total?: Cents;
+  readonly note?: string;
+  readonly items: readonly TrendsItem[];
+}
+type Sheet = { readonly kind: 'period'; readonly index: number } | { readonly kind: 'place'; readonly index: number } | { readonly kind: 'items'; readonly list: ItemsList } | null;
 
 export function TrendsScreen({ load, onRetry }: { readonly load: Load<TrendsView>; readonly onRetry: Reload }) {
   return (
@@ -70,6 +103,7 @@ function TrendsReady({ view }: { readonly view: Tracking }) {
   const here = view.periods[view.periods.length - 1] as TrendsPeriod;
   const sheetPeriod = sheet?.kind === 'period' ? view.periods[sheet.index] : undefined;
   const sheetPlace = sheet?.kind === 'place' ? view.places.groups[sheet.index] : undefined;
+  const sheetList = sheet?.kind === 'items' ? sheet.list : undefined;
   return (
     <>
       <div className="eyebrow">
@@ -89,14 +123,18 @@ function TrendsReady({ view }: { readonly view: Tracking }) {
         options={[
           { value: 'past', label: 'Past' },
           { value: 'now', label: 'Now' },
+          { value: 'future', label: 'Future' },
+          { value: 'habits', label: 'Habits' },
         ]}
         value={segment}
         onChange={setSegment}
         testId="trends-segment"
       />
 
-      {segment === 'past' ? (
+      {/* Each part is keyed, so switching to it comes in with the screen's own rise. */}
+      {segment === 'past' && (
         <Past
+          key="past"
           view={view}
           picked={picked}
           onPick={(index) => {
@@ -105,15 +143,19 @@ function TrendsReady({ view }: { readonly view: Tracking }) {
           }}
           onPlace={(index) => setSheet({ kind: 'place', index })}
         />
-      ) : (
-        <Now view={view} />
       )}
+      {segment === 'now' && <Now key="now" view={view} />}
+      {segment === 'future' && <Future key="future" view={view} />}
+      {segment === 'habits' && <Habits key="habits" view={view} onList={(list) => setSheet({ kind: 'items', list })} />}
 
       <BottomSheet open={sheetPeriod !== undefined} title={sheetPeriod === undefined ? 'Pay period' : periodRange(sheetPeriod)} onClose={() => setSheet(null)} testId="period-sheet">
         {sheetPeriod !== undefined && <PeriodDetail period={sheetPeriod} />}
       </BottomSheet>
       <BottomSheet open={sheetPlace !== undefined} title={sheetPlace === undefined ? 'Place' : placeGroupName(sheetPlace)} onClose={() => setSheet(null)} testId="place-sheet">
         {sheetPlace !== undefined && <PlaceDetail group={sheetPlace} />}
+      </BottomSheet>
+      <BottomSheet open={sheetList !== undefined} title={sheetList?.title ?? 'Items'} onClose={() => setSheet(null)} testId="habit-sheet">
+        {sheetList !== undefined && <ListDetail list={sheetList} />}
       </BottomSheet>
     </>
   );
@@ -219,7 +261,7 @@ function Savings({ view }: { readonly view: Tracking }) {
         length={view.savings.length}
         label={`Savings from ${moneyWords(first.savings)} on ${monthDay(first.date)} to ${moneyWords(now.savings)} now; the mom reserve from ${moneyWords(first.momReserve)} to ${moneyWords(now.momReserve)}.`}
         lines={[
-          { key: 'savings', tone: 'savings', values: view.savings.map((p) => p.savings) },
+          { key: 'savings', tone: 'savings', values: view.savings.map((p) => p.savings), area: true },
           { key: 'mom', tone: 'mom', values: view.savings.map((p) => p.momReserve), dashed: true },
         ]}
       />
@@ -251,7 +293,7 @@ function Now({ view }: { readonly view: Tracking }) {
           label={`Wants left each day of this pay period, ending at ${moneyWords(w.left)} today${w.pace.state === 'pace' ? `, against an even pace that leaves ${moneyWords(w.pace.today)} today` : ''}.`}
           lines={[
             ...(w.pace.state === 'pace' ? [{ key: 'pace', tone: 'pace' as const, values: w.pace.points.map((p) => p.left), dashed: true }] : []),
-            { key: 'wants', tone: 'wants', values: w.line.map((p) => p.left) },
+            { key: 'wants', tone: 'wants', values: w.line.map((p) => p.left), area: true },
           ]}
         />
         <ChartLegend
@@ -286,7 +328,246 @@ function Now({ view }: { readonly view: Tracking }) {
   );
 }
 
-// ----- What is behind a bar, or a place -----
+// ----- Future (40.11 to 40.13): every amount here is an estimate -----
+
+function Future({ view }: { readonly view: Tracking }) {
+  const { landing, savings, oldCard } = view.future;
+  const waiting = waitingWords(landing.waitingInReview);
+  const [rangeTitle, rangeNote] = savingsWords(savings);
+  const owedNow = oldCard.owed[oldCard.owed.length - 1];
+  const plan = oldCard.plan;
+  return (
+    <>
+      <Card title="By payday" padded testId="future-landing">
+        <div className="trend-head">
+          <span>Where each lands by {monthDay(landing.nextPayday)}</span>
+          <StatusLabel status="estimate" />
+        </div>
+        <LandingRow name="Needs" landing={landing.needs} testId="landing-needs" />
+        <LandingRow name="Wants" landing={landing.wants} testId="landing-wants" />
+        {waiting !== null && (
+          <p className="trend-note" data-testid="landing-waiting">
+            {waiting}
+          </p>
+        )}
+        <p className="trend-note">At this pay period’s pace, old card payments left out. Never a promise.</p>
+      </Card>
+
+      <Card title="Savings a year out" padded testId="future-savings">
+        <div className="trend-head">
+          <span data-testid="savings-range-words">{rangeTitle}</span>
+          {savings.state === 'estimate' && <StatusLabel status="estimate" />}
+        </div>
+        {savings.state === 'estimate' && (
+          <>
+            <p className="trend-range">
+              <Money cents={savings.low} roll testId="savings-low" />
+              <span className="trend-range__to">to</span>
+              <Money cents={savings.high} roll testId="savings-high" />
+            </p>
+            <DateChart
+              testId="savings-range-chart"
+              today={view.today}
+              label={`Savings so far, then an estimate a year out: ${moneyWords(savings.low)} to ${moneyWords(savings.high)} by ${dayWithYear(savings.to)}.`}
+              series={[{ key: 'savings', tone: 'savings', area: true, points: view.savings.map((p) => ({ date: p.date, value: p.savings })) }]}
+              band={{ tone: 'savings', points: [{ date: view.today, low: savings.now, high: savings.now }, ...savings.points] }}
+            />
+            <ChartLegend
+              items={[
+                { tone: 'savings', label: 'Savings so far' },
+                { tone: 'savings', label: 'Estimate, low to high', dashed: true },
+              ]}
+            />
+          </>
+        )}
+        <div className="list">
+          <ListRow title="Savings now" trailing={<Money cents={savings.now} roll testId="savings-year-now" />} />
+        </div>
+        <p className="trend-note" data-testid="savings-range-note">
+          {rangeNote}
+        </p>
+      </Card>
+
+      <Card title="The old card" padded testId="future-old-card">
+        <div className="trend-head">
+          <span>Owes now</span>
+          {plan.state === 'plan' && <StatusLabel status="estimate" />}
+        </div>
+        {owedNow !== undefined && (
+          <p className="trend-range">
+            <Money cents={owedNow.owed} roll testId="old-card-owes" />
+          </p>
+        )}
+        {(oldCard.owed.length > 1 || plan.state === 'plan') && (
+          <>
+            <DateChart
+              testId="old-card-chart"
+              today={view.today}
+              label={`What the old card owed since setup day${plan.state === 'plan' ? `, then the plan down to $0.00 by ${dayWithYear(plan.paidOffBy)}` : ''}.`}
+              series={[
+                { key: 'owed', tone: 'needs', points: oldCard.owed.map((p) => ({ date: p.date, value: p.owed })) },
+                ...(plan.state === 'plan' ? [{ key: 'plan', tone: 'savings' as const, dashed: true, area: true, points: plan.points.map((p) => ({ date: p.date, value: p.owed })) }] : []),
+              ]}
+            />
+            <ChartLegend items={[{ tone: 'needs', label: 'Owed so far' }, ...(plan.state === 'plan' ? [{ tone: 'savings' as const, label: 'The plan', dashed: true }] : [])]} />
+          </>
+        )}
+        {plan.state === 'plan' && (
+          <div className="list">
+            <ListRow title="Each payday" trailing={<Money cents={plan.perPayday} roll testId="old-card-share" />} />
+            <ListRow title="Paydays left" trailing={<span data-testid="old-card-paydays">{plan.paydaysLeft}</span>} />
+          </div>
+        )}
+        <p className="trend-note" data-testid="old-card-words">
+          {oldCardWords(plan)}
+        </p>
+      </Card>
+    </>
+  );
+}
+
+// 40.11: in words, and a bar from what it holds now to where it lands.
+function LandingRow({ name, landing, testId }: { readonly name: string; readonly landing: Landing; readonly testId: string }) {
+  const words = landingWords(name, landing);
+  return (
+    <div className="landing" data-testid={testId} data-state={landing.state}>
+      <ListRow icon={words.icon} tone={words.tone} title={<span data-testid={`${testId}-words`}>{words.title}</span>} detail={words.detail} />
+      {landing.state === 'estimate' && landing.holds > 0 && (
+        <>
+          <span className="landing__bar" aria-hidden="true">
+            <span className="landing__fill" style={{ width: `${Math.max(0, Math.min(100, (landing.lands / landing.holds) * 100)).toFixed(2)}%` }} />
+          </span>
+          <span className="landing__ends">
+            <span>
+              Now <Money cents={landing.holds} testId={`${testId}-holds`} />
+            </span>
+            <span>
+              By payday <Money cents={landing.lands} roll testId={`${testId}-lands`} />
+            </span>
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ----- Habits (40.14 to 40.17) -----
+
+function Habits({ view, onList }: { readonly view: Tracking; readonly onList: (list: ItemsList) => void }) {
+  const { paydayEffect, weekdays, repeats, streak } = view.habits;
+  const effect = paydayEffectWords(paydayEffect);
+  return (
+    <>
+      <Card title="The payday effect" padded testId="habit-payday">
+        {paydayEffect.state === 'known' ? (
+          <>
+            <CompareBars
+              testId="payday-effect"
+              onPick={(key) => {
+                const side = key === 'first' ? paydayEffect.first : paydayEffect.rest;
+                onList({ title: key === 'first' ? 'Payday and the 2 days after' : 'The rest of the pay period', totalLabel: `In all, over ${side.days} days`, total: side.total, items: side.items });
+              }}
+              bars={[
+                { key: 'first', tone: 'needs', title: 'Payday and the 2 days after', cents: paydayEffect.first.perDay, amount: <PerDay cents={paydayEffect.first.perDay} testId="payday-first" /> },
+                { key: 'rest', tone: 'wants', title: 'The rest of the pay period', cents: paydayEffect.rest.perDay, amount: <PerDay cents={paydayEffect.rest.perDay} testId="payday-rest" /> },
+              ]}
+            />
+            <p className="trend-note" data-testid="payday-effect-words">
+              {effect[2]}
+            </p>
+          </>
+        ) : (
+          <p className="trend-note" data-testid="payday-effect-words">
+            {effect.join('. ')}
+          </p>
+        )}
+      </Card>
+
+      <Card title="Day of the week · last 90 days" padded testId="habit-weekdays">
+        <p className="trend-note" data-testid="weekday-most">
+          {mostWords(weekdays)}
+        </p>
+        <CompareBars
+          testId="weekday"
+          onPick={(key) => {
+            const d = weekdays.days.find((x) => String(x.weekday) === key);
+            if (d !== undefined) onList({ title: `${weekdayName(d.weekday)}s`, totalLabel: `In all, over ${d.days} ${weekdayName(d.weekday)}s`, total: d.total, items: d.items });
+          }}
+          bars={weekdays.days.map((d) => ({
+            key: String(d.weekday),
+            tone: d.weekday === weekdays.most ? 'savings' : 'needs',
+            title: d.weekday === weekdays.most ? `${weekdayName(d.weekday)} · the most` : weekdayName(d.weekday),
+            cents: d.average,
+            amount: <Money cents={d.average} roll testId={`weekday-average-${d.weekday}`} />,
+          }))}
+        />
+        <p className="trend-note">An average one: what was spent on that weekday, divided by how many of it the 90 days hold.</p>
+      </Card>
+
+      <Card title="Repeat charges" padded testId="habit-repeats">
+        {repeats.length === 0 ? (
+          <p className="trend-note" data-testid="repeats-empty">
+            No repeat charges spotted. One shows after 3 charges from the same place, a steady week, 2 weeks or month apart.
+          </p>
+        ) : (
+          <div className="list">
+            {repeats.map((r, i) => {
+              const words = repeatWords(r);
+              return (
+                <ListRow
+                  key={r.name}
+                  icon="clock"
+                  title={r.name}
+                  detail={
+                    <>
+                      <span className="row__line">
+                        {words.often} · {words.next}
+                      </span>
+                      <span className="row__line" data-testid={`repeat-year-${i}`}>
+                        {words.year}
+                      </span>
+                    </>
+                  }
+                  trailing={<Money cents={r.newestAmount} testId={`repeat-amount-${i}`} />}
+                  onClick={() => onList({ title: r.name, totalLabel: `${r.items.length} charges`, note: `${words.often}. The newest on ${monthDay(r.newestDate)}.`, items: r.items })}
+                  testId={`repeat-${i}`}
+                />
+              );
+            })}
+          </div>
+        )}
+        <p className="trend-note">Only pointed out: nothing is changed or cancelled.</p>
+      </Card>
+
+      <Card title="The Wants streak" padded testId="habit-streak">
+        {streak.ended > 0 && (
+          <div className="streak" aria-hidden="true">
+            <span className="streak__count">{streak.current}</span>
+            <span className="streak__pips">
+              {Array.from({ length: Math.min(Math.max(streak.best, streak.current), 12) }, (_, k) => (
+                <span key={k} className={`streak__pip${k < streak.current ? ' is-on' : ''}`} style={{ '--i': k } as CSSProperties} />
+              ))}
+            </span>
+          </div>
+        )}
+        <p className="trend-note" data-testid="streak-words">
+          {streakWords(streak)}
+        </p>
+      </Card>
+    </>
+  );
+}
+
+function PerDay({ cents, testId }: { readonly cents: Cents; readonly testId: string }) {
+  return (
+    <>
+      <Money cents={cents} roll testId={testId} />
+      <span className="cbar__per"> a day</span>
+    </>
+  );
+}
+
+// ----- What is behind a bar, a place, or a habit -----
 
 function Items({ items, testId }: { readonly items: readonly TrendsItem[]; readonly testId: string }) {
   if (items.length === 0) return <p className="sheet__note">Nothing spent.</p>;
@@ -317,6 +598,18 @@ function PeriodDetail({ period }: { readonly period: TrendsPeriod }) {
         <ListRow title="In all" trailing={<Money cents={period.total} testId="sheet-total" />} />
       </div>
       <Items items={period.items} testId="sheet-item" />
+    </>
+  );
+}
+
+function ListDetail({ list }: { readonly list: ItemsList }) {
+  return (
+    <>
+      {list.note !== undefined && <p className="sheet__note">{list.note}</p>}
+      <div className="list">
+        <ListRow title={list.totalLabel} trailing={list.total === undefined ? undefined : <Money cents={list.total} testId="habit-sheet-total" />} />
+      </div>
+      <Items items={list.items} testId="habit-item" />
     </>
   );
 }

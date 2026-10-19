@@ -210,7 +210,7 @@ export function LinkButton({ children, href, variant = 'primary', wide = false, 
 
 // ----- Status label: a word and an icon, so color is never the only signal -----
 
-export type Status = 'low' | 'empty' | 'overdue' | 'pending' | 'under-target' | 'in-target' | 'over-target' | 'changes' | 'changed';
+export type Status = 'low' | 'empty' | 'overdue' | 'pending' | 'under-target' | 'in-target' | 'over-target' | 'changes' | 'changed' | 'estimate';
 
 const STATUS: Readonly<Record<Status, { readonly word: string; readonly icon: IconName; readonly tone: Tone }>> = {
   low: { word: 'Low', icon: 'low', tone: 'warning' },
@@ -223,6 +223,8 @@ const STATUS: Readonly<Record<Status, { readonly word: string; readonly icon: Ic
   changes: { word: 'Changes', icon: 'swap', tone: 'info' },
   // A32 (13.7): the item is not what the screen showed before it read its numbers again.
   changed: { word: 'Changed', icon: 'alert', tone: 'warning' },
+  // 40.10: anything about the future is an estimate, never a promise.
+  estimate: { word: 'Estimate', icon: 'clock', tone: 'info' },
 };
 
 export function StatusLabel({ status, testId }: { readonly status: Status; readonly testId?: string | undefined }) {
