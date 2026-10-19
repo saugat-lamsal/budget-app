@@ -3182,3 +3182,61 @@ B254. A57 as built (0.8). The service worker answers page navigations to the
       as before. Not seen on his iPhone yet: a home-screen app opened while
       the server is down (the next Fly restart, or a stopped machine, would
       show it).
+
+
+## Part B, added with the Trends tab (A58, Oct 18). Tell me if any is wrong.
+
+B255. A58 as built (40.3). The pay periods before setup day are the pay
+      schedule's, going back from the last paycheck you gave on setup day, as
+      40.3 says: not found from paycheck deposits in the history. A paycheck
+      that came a few days off its day does not move them. With every 14 days,
+      14 days at a time; twice a month, the 15th and the last day before it
+      (a weekend day moved to the Friday before), found the way the next
+      payday is (11.2).
+B256. A58 as built (40.3). Where the app keeps no bank history from before
+      setup day (the demo), the books' first pay period began on setup day,
+      not a payday, so it counts as cut off: never one of your usual (40.7).
+B257. A58 as built (40.2). Spending waiting in review shows as unsorted in
+      the current pay period whatever day it is dated, and moves to the pay
+      period the books count it in once sorted. A pay period that has ended has
+      no unsorted part from the books.
+B258. A58 as built (40.2, 40.6). A pay period's bar has what the books
+      counted in it, the same as the bucket lists. "This is my paycheck"
+      starts the new pay period on the deposit's day (B53), so a pay period
+      can hold spending dated a day or two after its last day. "Where it
+      went" goes by the day each item is dated, so it does not depend on that.
+B259. A58 as built (40.1, 40.2). Before setup day, what the books would do
+      with no answer: a purchase on the old card or its fees and interest are
+      its debt (5.4, 5.5), not spending; money back on a card that no sorting
+      rule sorts would wait as money in, so it is not spending; a payment to a
+      person whose rule says "not mine" or "for mom" is not spending; money
+      leaving savings, everyday card fees and interest, a payment to a person
+      with no rule, and a payment to the old card from savings would wait in
+      review, so they are unsorted (and counted in your usual, 40.7: only the
+      old card part of needs, from checking, is left out).
+B260. A58 as built (40.1). A charge pending on setup day counts in the pay
+      period of its day, at the amount setup day counted; when it posted at
+      another amount, the difference is in the books (A10), in the pay
+      period the books counted it in. The history's first day is 90 days
+      before the day the bank was connected, or the oldest item kept if older.
+B261. A58 as built (40.6). The place of an item in the books is found among
+      the books' own items (as the rule offers are, 13.8); the place of one
+      from before setup day among the history's items of that kind on that
+      account. One name written in other capitals is one place, shown as its
+      newest item writes it. The old card payments are ranked with the places
+      for the five biggest. "Everything else" is the places past the five and
+      the items with no name (a card fee, a payment to the old card from
+      savings, a description with no word left). Tapping a place lists its
+      items, newest first.
+B262. A58 as built (40.8). In the books' first pay period, Wants did not
+      exist before setup day, so its line and its even pace start on setup day
+      (day 1) and run to the day before the next payday.
+B263. A58 as built (the screen). Trends' one main number is what was spent so
+      far this pay period, without old card payments (40.7). Past shows the
+      bars (tap one for its items), savings and the mom reserve as two lines,
+      and the places; Now shows Wants against an even pace and your usual. With
+      more pay periods than fit across the phone at 44 points each, the bars
+      scroll sideways and open at the newest. The bars and lines are drawn by
+      the app itself (no chart library): the redesign plan names @visx for
+      PR 5's charts. Bars from before setup day are drawn lighter and say so
+      in words.

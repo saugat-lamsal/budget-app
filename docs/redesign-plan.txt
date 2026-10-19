@@ -105,6 +105,23 @@ PR 3
   without asking him first (docs/later.txt item 13).
 
 
+PR 4, as built (Oct 18):
+- Rulebook draft 29, section 40 (40.1 to 40.9) and 41a, QUESTIONS.md A58,
+  with his OK on the text; the readings picked while building: B255 to B263.
+- The money package gained three read-only pieces: Book.spentIn (what each item
+  spent in a pay period, from the ledger's spending lines, so it adds up to
+  periodSummary to the cent), Book.placeName (13.8's name, or none), and
+  paydaysBefore (the pay schedule going back). Nothing that changes a book.
+- packages/server/src/trends.ts works Trends out from a book and the history
+  handed to it (trends-db.ts reads the history and setup day from the
+  database; the demo hands it a made-up one, demo life "trends").
+  GET /api/trends needs a login and only reads.
+- The screen: screens/Trends.tsx (words in trends-text.ts), charts drawn by
+  the app (ui/charts.tsx: stacked bars, lines, a legend) and a Segmented
+  block; the "totals do not match" banner is shared with Buckets
+  (screens/check-banner.tsx). No chart library: @visx waits for PR 5.
+
+
 PR 4 AND PR 5: THE TRENDS TAB (fifth tab, between Review and Settings)
 Before building: a new rulebook section drafted and QUESTIONS.md asked; wait
 for his OK on the text.
