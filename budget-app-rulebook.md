@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 29)
+# Budget App Rulebook (draft 30)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -969,6 +969,85 @@ it is worked out on the server, and nothing on it is sent anywhere.
       the next payday passes with no paycheck, the even pace stays at $0.00.
 40.9  When the totals do not match the bank (12.3), Trends shows the same
       banner as Home and Buckets; its numbers still come from the books.
+40.10 Future and Habits. Trends has four parts: Past and Now (40.4 to
+      40.8), Future (40.11 to 40.13) and Habits (40.14 to 40.17).
+      Anything about the future is worked out from what the books
+      hold, is marked "Estimate", and is never a promise. Habits read
+      the last 90 days (40.6), the books and the history from before
+      setup day both, and leave out old card payments, which are
+      planned (9.5), unless a rule says otherwise.
+40.11 Future: where Needs and Wants land by payday. For each, what it
+      holds now less what it would spend at this pay period's pace:
+      what was spent from it so far this pay period (40.2, old card
+      payments left out), divided by the days so far (payday is day 1,
+      today counted; in the books' first pay period, from setup day),
+      times the days left after today up to the day before the next
+      payday (11.2), rounded up to the cent, so the estimate leans
+      low. "Estimate: Wants lands at about $84.20 by payday."
+      Spending waiting in review is in neither until it is sorted, and
+      is said beside them: "Not counting $35.00 waiting in review."
+      Before day 3: "Too early in the pay period to tell." Once the
+      next payday has passed with no paycheck, no estimate.
+40.12 Future: savings a year out. A range, "Estimate: $X to $Y": what
+      the savings bucket holds now, plus, for each payday in the next
+      365 days (the pay schedule, section 2), what it gained in a pay
+      period: the least of them for the low end and the most for the
+      high end, from the last 5 pay periods the books ended that began
+      on or after setup day. What it gained is what it held at the end
+      of that pay period less what it held at the end of the one
+      before, or when tracking started (40.5): moves out of savings
+      count, so a gain can be negative. With fewer than 3 such pay
+      periods: "Not enough pay periods yet to estimate." The mom
+      reserve is not part of it.
+40.13 Future: the old card. What it owes (12.4) when tracking started,
+      at the end of each pay period since, and now, as the books hold
+      it. With the payoff countdown on (9.5), its plan: at each payday
+      left before the promo end date, what it would owe once that
+      payday's share is paid, down to $0.00 at the last one.
+      "Estimate, if each payday's share is paid: paid off by Mar 31,
+      2027, at $412.50 a payday." With no promo end date, only what it
+      owed, and "The plan starts once the promo end date is entered."
+      With nothing owed: "The old card is paid off."
+40.14 Habits: the payday effect. Over the full pay periods in the last
+      90 days (40.3), what was spent per day on payday and the 2 days
+      after (days 1 to 3), against per day on the rest of the pay
+      period: each the total spent on those days, by the day each item
+      is dated, divided by how many such days there were, rounded down
+      to the cent. "Payday and the 2 days after: $48.20 a day. The
+      rest of the pay period: $31.75 a day." With fewer than 3 full pay
+      periods: "Not enough pay periods yet." Tapping either lists its
+      items.
+40.15 Habits: day of the week. For each day of the week, what was spent
+      on it in the last 90 days, by the day each item is dated: the
+      total, and an average one (the total divided by how many of that
+      weekday the 90 days hold, rounded down to the cent). The weekday
+      with the most on average is named in words: "Most on Saturdays:
+      $52.10 on an average Saturday." The seven totals add up to the
+      90 days' spending without old card payments, to the cent.
+      Tapping a day lists its items.
+40.16 Habits: repeat charges. Charges from one place (40.6) that come
+      again and again, found in everything Trends reads (the history
+      from before setup day and the books, not only 90 days): at least
+      3 charges (spending, 40.2; not money back), every gap from one
+      to the next within the same one of 6 to 8 days (every week), 13
+      to 15 days (every 2 weeks) or 27 to 33 days (every month), and
+      each amount within 10% of the newest one's. Listed while it is
+      still going: today is no later than the newest charge plus the
+      longest gap of its kind (8, 15 or 33 days). Each shows how
+      often, the newest amount and day, the next one ("Estimate:
+      around Nov 3", the newest day plus the gap before it) and a year
+      of it ("Estimate: about $155.88 a year", the newest amount times
+      52, 26 or 12). The biggest year first. Tapping one lists its
+      charges. It only points them out: nothing is changed or
+      cancelled.
+40.17 Habits: the Wants streak. Of the pay periods the books have
+      ended (Wants did not exist before setup day), how many in a row,
+      newest back, ended with Wants at $0.00 or more (not overspent,
+      3.5), and the longest such run. "Wants not overspent: 3 pay
+      periods in a row. Best: 4." When the newest ended below zero:
+      "Wants went over last pay period. A new run starts with this
+      one." With none ended: "No pay period has ended in the books
+      yet." The current pay period counts once it ends.
 
 
 ## 41. Answers on Trends (Oct 18, 2026)
@@ -980,3 +1059,15 @@ a.  The Trends tab, Past and Now, as section 40: it only reads the books
     left out of "against your usual"; the usual is the middle one of the
     last 5 full pay periods; the Wants line is by the day each thing
     happened (QUESTIONS.md A58).
+
+
+## 42. Answers on Trends: Future and Habits (Oct 19, 2026)
+
+a.  Future and Habits on the Trends tab, as 40.10 to 40.17: Needs and Wants
+    land by payday at this pay period's own pace, from day 3; savings a
+    year out is a range from the least and most a recent pay period added;
+    the old card's plan is 9.5's, drawn to $0.00; habits leave out old
+    card payments; repeat charges need 3 charges, a steady gap and amounts
+    within 10%, and only the ones still going are listed; the Wants streak
+    counts pay periods that ended with Wants not overspent; the fixed
+    numbers are not settings (QUESTIONS.md A59).

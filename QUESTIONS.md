@@ -1131,6 +1131,9 @@ A59. ADDED Oct 18 (the redesign's PR 5, docs/redesign-plan.txt): the Trends
      7. The fixed numbers (day 3, 365 days, 5 and 3 pay periods, the 3
         days after payday, 3 charges, the gaps, 10%) are not settings, like
         A58's. Recommended as written; each could be a setting instead.
+     ANSWERED Oct 19 ("I've read A59. OK to 40.10 to 40.17 as written, with
+     all the recommended choices."): rulebook draft 30, 40.10 to 40.17 and
+     42a.
 
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
