@@ -35,6 +35,8 @@ import type { AlertTimer } from '../src/serve/alert-timer.js';
 import { serveBooks } from '../src/serve/serving.js';
 import { FakePhone } from './fake-phone.js';
 import type { Life } from './keeper-harness.js';
+import { openTestBook, purchase, transfer } from '../../money/test/helpers.js';
+import { trendsView, type HistoryLine } from '../src/trends.js';
 
 const text = readFileSync(new URL('../worked-examples.txt', import.meta.url), 'utf8');
 
@@ -847,5 +849,52 @@ describe('worked examples: when pending money in usually posts (Phase 7)', () =>
     expect(usuallyPostsWithin(examples([1, 2, 7 * HOUR + 60_000]))).toEqual({ within: hours.get('seven and a minute'), unit: 'hours' });
     expect(usuallyPostsWithin(examples([1, 2, 47 * HOUR + 60_000]))).toEqual({ within: hours.get('forty-seven and a minute in days'), unit: 'days' });
     expect(usuallyPostsWithin(examples([5 * HOUR, 9 * HOUR]))).toBeNull();
+  });
+});
+
+describe('worked example 20, the Trends tab (section 40)', () => {
+  it('example 20, 40.2 40.7 40.8 a pay period\'s bar, Wants against an even pace, and your usual, as worked by hand', () => {
+    const c = checksOf(20);
+    const b = openTestBook({
+      pots: { savings: 100_000, needs: 50_000, wants: 30_000, momReserve: 50_000, heldForOthers: 0 },
+      rules: [
+        { id: 'grocery', for: 'purchase', contains: 'GROCERY', bucket: 'needs' },
+        { id: 'cafe', for: 'purchase', contains: 'CAFE', bucket: 'wants' },
+      ],
+    });
+    b.receive(purchase('g1', '2026-10-02', 3_250, 'GROCERY'));
+    b.receive(purchase('c1', '2026-10-03', 1_000, 'CAFE'));
+    b.receive(purchase('u1', '2026-10-04', 500, 'SHOP'));
+    b.receive(transfer('t1', '2026-10-05', 20_000, 'checking', 'old-card'));
+    b.moveMoney({ from: 'wants', to: 'needs', amount: 500 }, '2026-10-05');
+    const cafe = (id: string, date: string, amount: Cents): HistoryLine => ({ id, account: 'everyday-card', date, amount, description: 'BLUE CAFE' });
+    const lines: HistoryLine[] = [
+      cafe('j17a', '2026-07-17', 1_000),
+      cafe('j17b', '2026-07-30', 5_000),
+      cafe('j31a', '2026-07-31', 2_000),
+      cafe('j31b', '2026-08-11', 500),
+      cafe('a14a', '2026-08-14', 3_000),
+      cafe('a14c', '2026-08-25', 1_500),
+      cafe('a14b', '2026-08-26', 9_000),
+      cafe('a28', '2026-08-28', 4_001),
+      { id: 'a28old', account: 'checking', date: '2026-08-29', amount: 30_000, description: 'ONLINE payment to CRD 4444' },
+      cafe('s11', '2026-09-11', 10_000),
+    ];
+    const bankRules = checkBankRules([{ id: 'old', account: 'checking', contains: 'payment to CRD 4444', means: 'transfer', other: 'old-card' }]);
+    const view = (historyFrom: string) => {
+      const v = trendsView({ today: '2026-10-06', book: b, bank: null, madeUpData: false, before: { setupDay: '2026-10-01', lastPaycheckDate: '2026-09-25', historyFrom, lines: lines.filter((l) => l.date >= historyFrom), bankRules } });
+      if (v.state !== 'tracking') throw new Error('not tracking');
+      return v;
+    };
+    const five = view('2026-07-17');
+    const here = five.periods.at(-1);
+    expect(here?.spent).toEqual({ needs: c.get('needs'), wants: c.get('wants'), 'old-card': c.get('old card'), unsorted: c.get('unsorted') });
+    expect(here?.total).toBe(c.get('bar'));
+    expect(five.now.spentSoFar).toBe(c.get('so far'));
+    const w = five.now.wants;
+    expect(w.left).toBe(c.get('wants now'));
+    expect(w.pace.state === 'pace' && [w.pace.today, w.pace.difference]).toEqual([c.get('even pace today'), c.get('more left')]);
+    expect(five.now.usual).toEqual({ state: 'known', periods: 5, byToday: c.get('usual by today'), whole: c.get('usual whole') });
+    expect(view('2026-07-31').now.usual).toEqual({ state: 'known', periods: 4, byToday: c.get('four by today'), whole: c.get('four whole') });
   });
 });

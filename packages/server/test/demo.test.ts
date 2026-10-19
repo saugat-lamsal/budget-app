@@ -404,6 +404,8 @@ describe('the demo is made-up data only', () => {
       'demo/main.ts',
       'demo/scenarios.ts',
       'demo/setup-lives.ts',
+      // Section 40: a made-up bank history from before setup day, for the Trends tab.
+      'demo/trends-history.ts',
       'errors.ts',
       // What the history checks after each event: the money math only.
       'history/history.ts',
@@ -419,6 +421,8 @@ describe('the demo is made-up data only', () => {
       'setup-history.ts',
       'setup-view.ts',
       'sync/plan.ts',
+      // Section 40: the Trends tab worked out from a book and a history handed to it; no database.
+      'trends.ts',
       'views/activity.ts',
       'views/alerts.ts',
       'views/bank-rules.ts',
@@ -439,6 +443,8 @@ describe('the demo is made-up data only', () => {
       'views/setup.ts',
       // 0.7 (A57): the status page's types (the web server names them); the demo has no status page.
       'views/status.ts',
+      // Section 40: the Trends tab's types, and its parts' names.
+      'views/trends.ts',
     ]);
     for (const file of files) expect(file, file).not.toMatch(/^(db|crypto|serve)\/|^(connect|status|log)\.ts$|^plaid\/(client|sandbox-lock)\.ts$|^sync\/sync\.ts$|^history\/(history-db|keeper)\.ts$/);
     // node:crypto only names a preview of a settings change (choices.ts, previewKey).

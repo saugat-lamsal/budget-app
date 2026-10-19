@@ -681,3 +681,42 @@ With only two earlier ones, Home says "Pending since 6:12 AM." and nothing
 about when it should post.
 
 Hours: three 9 | four 9 | ten 8 | seven and a minute 8 | forty-seven and a minute in days 2
+
+
+EXAMPLE 20. The Trends tab: a pay period's bar, Wants against an even pace,
+and your usual (section 40; QUESTIONS.md A58)
+
+Made-up numbers. Setup day Oct 1, 2026; the last paycheck Sep 25, paid every
+14 days, so the next payday is Oct 9. Wants starts with 300.00.
+
+What the books count (40.2):
+  Oct 2  GROCERY 32.50, sorted to needs                       needs    32.50
+  Oct 3  CAFE 10.00, sorted to wants                          wants    10.00
+  Oct 4  SHOP 5.00, still waiting in review                   unsorted  5.00
+  Oct 5  200.00 to the old card from checking (5.2)           old card 200.00
+  Oct 5  5.00 moved from wants to needs by hand: not spending
+The pay period's bar on Oct 6: 32.50 + 10.00 + 200.00 + 5.00 = 247.50.
+"Spent this pay period" leaves the old card out (40.7): 247.50 - 200.00 = 47.50.
+
+Wants against an even pace (40.8). The pay period runs from Oct 1 (day 1) to
+Oct 8, the day before the next payday: D = 8 days. Oct 6 is day 6. An even
+pace leaves 300.00 x (8 - 6) / 8 = 75.00 at the end of today. Wants holds
+300.00 - 10.00 - 5.00 = 285.00 (the shop waiting in review is not in it).
+So: 285.00 - 75.00 = 210.00 more left than an even pace.
+
+Your usual (40.7). Before setup day, from the bank's history read by today's
+rules, five full pay periods (Jul 17, Jul 31, Aug 14, Aug 28, Sep 11), each
+14 days. Oct 6 is day 12 of the pay period that began Sep 25 (payday is day
+1). Spent by day 12 in each, and in all:
+  Jul 17   10.00 by day 12; 50.00 more on day 14                10.00    60.00
+  Jul 31   20.00 on day 1, 5.00 on day 12                       25.00    25.00
+  Aug 14   30.00 on day 1, 15.00 on day 12; 90.00 on day 13     45.00   135.00
+  Aug 28   40.01 (and 300.00 to the old card: left out)         40.01    40.01
+  Sep 11   100.00                                              100.00   100.00
+By day 12, in order: 10.00, 25.00, 40.01, 45.00, 100.00. The middle one: 40.01.
+In all, in order: 25.00, 40.01, 60.00, 100.00, 135.00. The middle one: 60.00.
+With only the last four (history from Jul 31), the middle two are averaged
+and rounded down to the cent: (40.01 + 45.00) / 2 = 42.505, so 42.50; and
+(40.01 + 100.00) / 2 = 70.005, so 70.00.
+
+Check: needs 32.50 | wants 10.00 | old card 200.00 | unsorted 5.00 | bar 247.50 | so far 47.50 | even pace today 75.00 | wants now 285.00 | more left 210.00 | usual by today 40.01 | usual whole 60.00 | four by today 42.50 | four whole 70.00
