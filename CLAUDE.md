@@ -2083,6 +2083,15 @@ long). It replaces running everything before every commit:
     way out and back are the browser's own animations drawn over it; test
     first, breaks "[b264]" 2 of 2. The sheet (BottomSheet) still uses
     Motion the same way; nothing has failed there.
+- PR #48 merged and deployed Oct 18, 2026 (11:46 PM), at his word ("build PR 4,
+  check the PR with gh so auto-fix can watch it, then deploy without
+  stopping"): CI green on all four jobs after B264; the deploy check on main
+  (112 events, every one replays, "The backup works."), then that exact image
+  (deploy-check-20261019t034511z). /health and /health/backups ok, /api/trends
+  and /api/home 401 without a login, http sent to https, the webhook address
+  refuses GET and an unsigned call; the restore check on the machine: 112
+  events, "The backup works." The way back is the image
+  deploy-check-20261018t134131z (PR #47).
 - Waiting on: each card's statement closing day (his, on Settings, from a
   statement, before the old card's November reminders); Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);
