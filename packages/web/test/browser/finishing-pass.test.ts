@@ -58,4 +58,44 @@ describe.runIf(chromiumOnly.length > 0)('the finishing pass, in chromium', () =>
     }
   });
 
+  it('PR 5 Settings has the day first and its title under it, as every other screen', async () => {
+    const page = await openScenario(await browser().newContext(phone()), base(), 'settings-busy', '/settings');
+    await page.locator('main[aria-busy="false"] .eyebrow').waitFor();
+    const order = await page.locator('main').evaluate((m) => [...m.children].map((c) => c.className).filter((c) => c === 'eyebrow' || c === 'screen-title'));
+    expect(order).toEqual(['eyebrow', 'screen-title']);
+    await page.context().close();
+  });
+
+  it('PR 5 a count as the main number has the same type and fade as an amount', async () => {
+    const page = await openScenario(await browser().newContext(phone()), base(), 'review-busy', '/review');
+    const count = page.locator('.hero__count').first();
+    await count.waitFor();
+    const look = await count.evaluate((e) => ({ em: Number.parseFloat(getComputedStyle(e).letterSpacing) / Number.parseFloat(getComputedStyle(e).fontSize), mask: getComputedStyle(e).maskImage || getComputedStyle(e).webkitMaskImage }));
+    await page.goto(`${base()}/home`);
+    const amount = page.locator('.money--hero').first();
+    await amount.waitFor();
+    const hero = await amount.evaluate((e) => ({ em: Number.parseFloat(getComputedStyle(e).letterSpacing) / Number.parseFloat(getComputedStyle(e).fontSize), mask: getComputedStyle(e).maskImage || getComputedStyle(e).webkitMaskImage }));
+    expect(look.mask).not.toBe('none');
+    expect(look.mask).toBe(hero.mask);
+    expect(look.em).toBeCloseTo(hero.em, 3);
+    await page.context().close();
+  });
+
+  it('PR 5 Trends: the bars run to the card\'s edge, and a big range fits across its card at the largest text size', async () => {
+    const page = await openScenario(await browser().newContext(phone({ bypassCSP: true })), base(), 'trends-future', '/trends');
+    const edges = await page.getByTestId('period-bar').evaluate((row) => {
+      const card = row.closest('.card')!.getBoundingClientRect();
+      const r = row.getBoundingClientRect();
+      return [Math.round(r.left - card.left), Math.round(card.right - r.right)];
+    });
+    expect(edges).toEqual([0, 0]);
+    await page.getByTestId('trends-segment-future').click();
+    await addStyle(page, 'html { font-size: 36px !important; }');
+    const over = await page.locator('.trend-range .money').evaluateAll((els) =>
+      els.filter((e) => e.getBoundingClientRect().right > e.closest('.card')!.getBoundingClientRect().right - 16).map((e) => e.textContent),
+    );
+    expect(over).toEqual([]);
+    await page.context().close();
+  });
+
 });

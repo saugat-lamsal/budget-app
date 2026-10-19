@@ -776,13 +776,16 @@ a.bucket:active {
 
 /* ----- Hero when the main number is a count ----- */
 
+/* A count as the main number: the same type and fade as an amount (blocks.css .money--hero). */
 .hero__count {
   display: block;
   font-size: var(--text-hero);
   font-weight: var(--weight-bold);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.045em;
   line-height: 1.1;
+  -webkit-mask-image: var(--fade);
+  mask-image: var(--fade);
 }
 
 /* ----- Target bar: a range to be in, with a tick at the low end ----- */
@@ -1757,11 +1760,13 @@ a.tile:active {
 .chart--mom { --tone: var(--chart-mom); }
 .chart--pace { --tone: var(--chart-pace); }
 
+/* The bars run to the card's own edge, so a row that scrolls goes under it. */
 .pbars {
   display: flex;
   align-items: stretch;
   gap: var(--space-1);
-  padding: var(--space-3) 2px var(--space-1);
+  margin-inline: calc(-1 * var(--space-4));
+  padding: var(--space-3) var(--space-4) var(--space-1);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -2035,7 +2040,8 @@ a.tile:active {
   align-items: baseline;
   gap: var(--space-1) var(--space-2);
   margin: var(--space-2) 0 0;
-  font-size: var(--text-tall);
+  /* As big as the text size asks, but an amount always fits across the card. */
+  font-size: min(var(--text-tall), calc((100vw - 2 * var(--gutter) - 2 * var(--space-4)) / 7));
   font-weight: var(--weight-bold);
   letter-spacing: -0.02em;
 }
