@@ -38,6 +38,9 @@ import { ALERTS_SHOWN, type AlertsView } from '../views/alerts.js';
 import { activityView, type ActivityView } from '../views/activity.js';
 import type { BankRuleRequest, BankRuleResponse } from '../views/bank-rules.js';
 import { bucketsView, type BucketsView } from '../views/buckets.js';
+import { trendsView } from '../trends.js';
+import { beforeSetupOf } from '../trends-db.js';
+import type { TrendsView } from '../views/trends.js';
 import type { ChoiceRequest, ChoiceResponse, MoveRequest, MoveResponse, RuleRequest, RuleResponse, SettingsRequest, SettingsResponse, SetupRequest, SetupResponse } from '../views/choice.js';
 import { homeView, type BankDetail, type CardRemindersOff, type CheckedAt, type HomeView, type PendingMoneyIn, type WhyLine } from '../views/home.js';
 import { paydayView, type PaydayView } from '../views/payday.js';
@@ -403,6 +406,12 @@ export class Keeper {
 
   buckets(): BucketsView {
     return bucketsView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false, catchingUp: this.#catchingUp(), why: this.#whyNow() });
+  }
+
+  // Section 40: the Trends tab, from the books and the bank history kept from
+  // before setup day. It only reads: nothing is saved.
+  trends(): TrendsView {
+    return trendsView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false, catchingUp: this.#catchingUp(), why: this.#whyNow(), before: beforeSetupOf(this.#db) });
   }
 
   review(): ReviewView {
@@ -864,6 +873,7 @@ export class Keeper {
       },
       home: () => this.home(),
       buckets: () => this.buckets(),
+      trends: () => this.trends(),
       review: () => this.review(),
       activity: (_request, pot) => this.activity(pot),
       payday: () => this.payday(),

@@ -6,6 +6,7 @@ import { ChoiceDesk } from '../choices.js';
 import { createAppServer, send } from '../http/server.js';
 import { activityView } from '../views/activity.js';
 import { bucketsView } from '../views/buckets.js';
+import { trendsView } from '../trends.js';
 import { homeView, type HomeInput } from '../views/home.js';
 import { paydayView } from '../views/payday.js';
 import { reviewView } from '../views/review.js';
@@ -56,6 +57,11 @@ export function createDemoServer(options: { readonly webRoot: string; readonly o
     buckets: async (request) => {
       const { input } = await wait(scenarioOf(request));
       return bucketsView({ today: input.today, book: input.book, bank: input.bank, madeUpData: input.madeUpData, catchingUp: input.catchingUp ?? false, why: input.bankDetail?.why ?? null });
+    },
+    trends: async (request) => {
+      const scenario = scenarioOf(request);
+      const { input } = await wait(scenario);
+      return trendsView({ today: input.today, book: input.book, bank: input.bank, madeUpData: input.madeUpData, catchingUp: input.catchingUp ?? false, why: input.bankDetail?.why ?? null, before: scenario.trends?.() ?? null });
     },
     review: async (request) => {
       const { input } = await wait(scenarioOf(request));

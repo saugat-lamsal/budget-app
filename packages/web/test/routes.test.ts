@@ -7,7 +7,7 @@ import { LOGIN_PATH, TABS, pathOf, routeOf, tabOf } from '../src/app/routes.js';
 
 describe('tabs in the address', () => {
   it('each tab has its own address', () => {
-    expect(TABS.map(pathOf)).toEqual(['/home', '/buckets', '/review', '/settings']);
+    expect(TABS.map(pathOf)).toEqual(['/home', '/buckets', '/review', '/trends', '/settings']);
   });
 
   it('an address leads back to its tab', () => {

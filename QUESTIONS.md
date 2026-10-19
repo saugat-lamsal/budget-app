@@ -976,6 +976,45 @@ A57. ADDED Oct 16 (his ask, "Layer 1": the app explains itself, with no AI
      ANSWERED Oct 16 (his OK to the text as written, "OK, build it"):
      rulebook draft 28, 0.7, 0.8, 11.4, 12.6 and section 39.
 
+A58. ADDED Oct 18 (the redesign's PR 4, docs/redesign-plan.txt): the Trends
+     tab, Past and Now. Drafted as rulebook section 40 (40.1 to 40.9); the
+     text is the question. Nothing about money changes: Trends only reads
+     the books and the bank history the app already keeps, nothing is sent
+     anywhere, and the history still replays exactly (0.6). The choices in
+     it, each with the recommendation as written:
+     1. The 90 days before setup day (40.1, 40.3). Recommended: shown,
+        read by today's bank rules and sorting rules, marked "Before setup
+        day", never put in the books. Without it Trends has almost nothing
+        for weeks (the books began Oct 12), and no usual until about the
+        end of November.
+     2. What "where it went" groups by (40.6). Recommended: the place's
+        name, found the same way as the rule offers (13.8), five biggest
+        then "Everything else". Other choices: Plaid's own category labels
+        ("Food and drink"; broad, but Plaid's guesses, which he cannot
+        correct), or only needs and wants.
+     3. Old card payments (40.2, 40.7). Recommended: their own part of
+        needs on the bars, and left out of "against your usual", so a
+        planned payoff does not look like spending more. Other choice:
+        counted like any other needs spending.
+     4. Your usual (40.7). Recommended: the middle one of the last 5 full
+        pay periods, by the same day of the pay period, so one odd pay
+        period does not move it. Other choice: the average.
+     5. The Wants line (40.8). Recommended: by the day each thing happened,
+        so a tip that posts later lands on the day of the meal. Other
+        choice: what Wants held each evening as the books stood then, which
+        never changes after the day but jumps when late items post.
+     6. The fixed numbers (90 days, five places, 5 and 3 pay periods) are
+        not settings, like 4.5's five and A57's numbers. Recommended as
+        written; each could be a setting instead.
+     Worked into the draft from a second look (Oct 18), still waiting on
+     his OK: the even pace rounded down to the cent, with payday as day 1
+     (40.8); today said in words with the amount ("$42.10 less left than
+     an even pace") instead of "Ahead of pace", which reads either way; the
+     Wants line is not safe to spend (40.8); savings and the mom reserve
+     as two amounts, never added (40.5); one place across accounts (40.6).
+     ANSWERED Oct 18 ("I've read section 40 and A58. OK to the text as
+     written."): rulebook draft 29, section 40 and 41a.
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 WAITING FOR YOU TO CHECK (Oct 10, 2026, the end of Phase 4). Each was
@@ -3143,3 +3182,71 @@ B254. A57 as built (0.8). The service worker answers page navigations to the
       as before. Not seen on his iPhone yet: a home-screen app opened while
       the server is down (the next Fly restart, or a stopped machine, would
       show it).
+
+
+## Part B, added with the Trends tab (A58, Oct 18). Tell me if any is wrong.
+
+B255. A58 as built (40.3). The pay periods before setup day are the pay
+      schedule's, going back from the last paycheck you gave on setup day, as
+      40.3 says: not found from paycheck deposits in the history. A paycheck
+      that came a few days off its day does not move them. With every 14 days,
+      14 days at a time; twice a month, the 15th and the last day before it
+      (a weekend day moved to the Friday before), found the way the next
+      payday is (11.2).
+B256. A58 as built (40.3). Where the app keeps no bank history from before
+      setup day (the demo), the books' first pay period began on setup day,
+      not a payday, so it counts as cut off: never one of your usual (40.7).
+B257. A58 as built (40.2). Spending waiting in review shows as unsorted in
+      the current pay period whatever day it is dated, and moves to the pay
+      period the books count it in once sorted. A pay period that has ended has
+      no unsorted part from the books.
+B258. A58 as built (40.2, 40.6). A pay period's bar has what the books
+      counted in it, the same as the bucket lists. "This is my paycheck"
+      starts the new pay period on the deposit's day (B53), so a pay period
+      can hold spending dated a day or two after its last day. "Where it
+      went" goes by the day each item is dated, so it does not depend on that.
+B259. A58 as built (40.1, 40.2). Before setup day, what the books would do
+      with no answer: a purchase on the old card or its fees and interest are
+      its debt (5.4, 5.5), not spending; money back on a card that no sorting
+      rule sorts would wait as money in, so it is not spending; a payment to a
+      person whose rule says "not mine" or "for mom" is not spending; money
+      leaving savings, everyday card fees and interest, a payment to a person
+      with no rule, and a payment to the old card from savings would wait in
+      review, so they are unsorted (and counted in your usual, 40.7: only the
+      old card part of needs, from checking, is left out).
+B260. A58 as built (40.1). A charge pending on setup day counts in the pay
+      period of its day, at the amount setup day counted; when it posted at
+      another amount, the difference is in the books (A10), in the pay
+      period the books counted it in. The history's first day is 90 days
+      before the day the bank was connected, or the oldest item kept if older.
+B261. A58 as built (40.6). The place of an item in the books is found among
+      the books' own items (as the rule offers are, 13.8); the place of one
+      from before setup day among the history's items of that kind on that
+      account. One name written in other capitals is one place, shown as its
+      newest item writes it. The old card payments are ranked with the places
+      for the five biggest. "Everything else" is the places past the five and
+      the items with no name (a card fee, a payment to the old card from
+      savings, a description with no word left). Tapping a place lists its
+      items, newest first.
+B262. A58 as built (40.8). In the books' first pay period, Wants did not
+      exist before setup day, so its line and its even pace start on setup day
+      (day 1) and run to the day before the next payday.
+B263. A58 as built (the screen). Trends' one main number is what was spent so
+      far this pay period, without old card payments (40.7). Past shows the
+      bars (tap one for its items), savings and the mom reserve as two lines,
+      and the places; Now shows Wants against an even pace and your usual. With
+      more pay periods than fit across the phone at 44 points each, the bars
+      scroll sideways and open at the newest. The bars and lines are drawn by
+      the app itself (no chart library): the redesign plan names @visx for
+      PR 5's charts. Bars from before setup day are drawn lighter and say so
+      in words.
+B264. Found on Linux CI with PR #48, fixed with a test first (the redesign's
+      PR 3 swipe). A refused swipe could leave the card off its place by its
+      own style (translateX(0px)) after it came back: Motion wrote the last
+      frame of an animation after telling it had ended, over the card already
+      put back. It looked at rest, but the app (and PR 3's test) never saw it
+      at rest; on a busy machine only. The card's own place is now set first
+      and the way out and the way back are only drawn over it, by the
+      browser's own animations, so nothing that ends later can move it; a way
+      back still being drawn gives way to the finger. Test: swipe.test.ts
+      "B264". Breaks "[b264]", both caught.

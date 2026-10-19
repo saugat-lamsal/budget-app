@@ -50,6 +50,14 @@ function savedSetup(input: SetupInput): SetupInput {
   return Object.keys(missing).length === 0 ? input : { ...input, settings: { ...input.settings, ...missing } };
 }
 
+// Setup day's input as it was saved (read the way readHistory reads it), or
+// null before setup day. For the Trends tab (40.3): the last paycheck he gave
+// and the charges counted as pending that day.
+export function readSetupInput(db: Db): SetupInput | null {
+  const row = statement(db, "SELECT payload FROM book_events WHERE kind = 'setup' ORDER BY seq LIMIT 1").get() as { payload: string } | undefined;
+  return row === undefined ? null : savedSetup(JSON.parse(row.payload) as SetupInput);
+}
+
 export function readHistory(db: Db): StoredEvent[] {
   const rows = db.prepare('SELECT seq, sync, kind, date, payload, totals FROM book_events ORDER BY seq').all() as Row[];
   return rows.map((row) => {

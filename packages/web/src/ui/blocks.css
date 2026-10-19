@@ -1680,3 +1680,259 @@ a.tile:active {
     transform: translateY(-8px);
   }
 }
+
+/* ----- Segmented control (Trends: Past and Now) ----- */
+
+.segmented {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.segmented__option {
+  position: relative;
+  flex: 1;
+  min-height: var(--tap);
+  border: 0;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.segmented__option[aria-pressed='true'] {
+  color: var(--text);
+}
+
+.segmented__option:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
+}
+
+.segmented__light {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--surface-2);
+  box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.1);
+}
+
+.segmented__label {
+  position: relative;
+}
+
+/* ----- Charts (the Trends tab only) ----- */
+
+.chart--needs { --tone: var(--chart-needs); }
+.chart--wants { --tone: var(--chart-wants); }
+.chart--old-card { --tone: var(--chart-old-card); }
+.chart--unsorted { --tone: var(--chart-unsorted); }
+.chart--savings { --tone: var(--chart-savings); }
+.chart--mom { --tone: var(--chart-mom); }
+.chart--pace { --tone: var(--chart-pace); }
+
+.pbars {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-1);
+  padding: var(--space-3) 2px var(--space-1);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.pbar {
+  flex: 1 0 var(--tap);
+  min-width: var(--tap);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+  padding: 0 2px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  cursor: pointer;
+}
+
+.pbar:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
+}
+
+.pbar__plot {
+  position: relative;
+  height: 9rem;
+  display: flex;
+  align-items: flex-end;
+}
+
+.pbar__stack {
+  width: 100%;
+  min-height: 2px;
+  display: flex;
+  flex-direction: column-reverse;
+  border-radius: 6px 6px 2px 2px;
+  overflow: hidden;
+  background: var(--track);
+  transform-origin: bottom;
+  animation: bar-grow 600ms var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+.pbar__part {
+  display: block;
+  flex-basis: 0;
+  min-height: 1px;
+  background: var(--tone);
+}
+
+/* 40.1: read from the bank history, not the books (the words say so too). */
+.pbar--lighter .pbar__part {
+  opacity: 0.55;
+}
+
+.pbar.is-selected .pbar__stack {
+  box-shadow: 0 0 0 2px var(--text);
+}
+
+.pbar__label {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.pbar.is-selected .pbar__label {
+  color: var(--text);
+  font-weight: var(--weight-bold);
+}
+
+@keyframes bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+.linechart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: var(--space-3) 0 0;
+  overflow: visible;
+}
+
+.linechart__zero {
+  stroke: var(--separator);
+  stroke-width: 1;
+}
+
+.linechart__line {
+  fill: none;
+  stroke: var(--tone);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: line-draw 600ms var(--ease) both;
+}
+
+.linechart__line--dashed {
+  stroke-dasharray: 4 6;
+  animation: line-fade 600ms var(--ease) both;
+}
+
+.linechart__dot {
+  fill: var(--tone);
+  animation: line-fade 600ms var(--ease) both;
+}
+
+@keyframes line-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes line-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-2);
+  font-size: var(--text-caption);
+}
+
+.legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.legend__swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 3px;
+  background: var(--tone);
+}
+
+.legend__swatch--dashed {
+  height: 0;
+  border-top: 2px dashed var(--tone);
+  background: none;
+}
+
+/* The parts of one pay period, or one place, with their amounts. */
+.trend-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.trend-total__amount {
+  font-size: var(--text-tall);
+  font-weight: var(--weight-bold);
+}
+
+.trend-note {
+  margin: var(--space-2) 0 0;
+  color: var(--text-2);
+  font-size: var(--text-caption);
+}
+
+.place-bar {
+  height: 4px;
+  margin-top: var(--space-1);
+  border-radius: 2px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.place-bar__fill {
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+  animation: place-grow 600ms var(--ease) both;
+}
+
+@keyframes place-grow {
+  from {
+    transform: scaleX(0);
+  }
+}

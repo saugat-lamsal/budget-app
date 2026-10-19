@@ -28,10 +28,7 @@ export type BucketsView =
       // 12.2: everything in the buckets, which the bank side must equal.
       readonly total: Cents;
       // 0.5: Buckets says so too when the totals do not match the bank.
-      readonly check:
-        | { readonly state: 'matches' }
-        | { readonly state: 'does-not-match'; readonly difference: Cents; readonly catchingUp: boolean; readonly why: readonly WhyLine[] | null }
-        | { readonly state: 'bank-not-read' };
+      readonly check: BankCheck;
       readonly needs: BucketBar;
       readonly wants: BucketBar;
       readonly savings: Cents;
@@ -46,6 +43,18 @@ export type BucketsView =
       // counts, and each one; one to the old card is listed but not counted (12.4).
       readonly onItsWay: { readonly counted: Cents; readonly items: readonly OnItsWay[] };
     };
+
+// 0.5, 12.3: whether the totals match the bank, for Buckets and Trends (40.9).
+export type BankCheck =
+  | { readonly state: 'matches' }
+  | { readonly state: 'does-not-match'; readonly difference: Cents; readonly catchingUp: boolean; readonly why: readonly WhyLine[] | null }
+  | { readonly state: 'bank-not-read' };
+
+export function bankCheckOf(book: Book, bank: BankBalances | null, catchingUp: boolean, why: readonly WhyLine[] | null): BankCheck {
+  if (bank === null) return { state: 'bank-not-read' };
+  const self = book.selfCheck(bank);
+  return self.ok ? { state: 'matches' } : { state: 'does-not-match', difference: self.difference, catchingUp, why };
+}
 
 export interface OnItsWay extends InTransitItem {
   // Counted in the self-check: false only for money on its way to the old card.
@@ -72,12 +81,7 @@ export function bucketsView(input: BucketsInput): BucketsView {
   const started = book.startedPeriodWith();
   const bar = (left: Cents, startedWith: Cents): BucketBar => ({ left, startedWith, level: bucketLevel(left, startedWith, settings.lowBucketAlertPercent) });
 
-  let check: Extract<BucketsView, { state: 'tracking' }>['check'];
-  if (bank === null) check = { state: 'bank-not-read' };
-  else {
-    const self = book.selfCheck(bank);
-    check = self.ok ? { state: 'matches' } : { state: 'does-not-match', difference: self.difference, catchingUp: input.catchingUp ?? false, why: input.why ?? null };
-  }
+  const check = bankCheckOf(book, bank, input.catchingUp ?? false, input.why ?? null);
 
   const month = book.momSentInMonth(monthOf(today));
   const position = month.sent < month.target.low ? 'under' : month.sent > month.target.high ? 'over' : 'within';

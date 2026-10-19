@@ -47,3 +47,8 @@ export function monthName(month: string): string {
 export function dayWithYear(date: IsoDate): string {
   return utc(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 }
+
+// "Sep 25": a day in a span of days, such as a pay period on the Trends tab.
+export function monthDay(date: IsoDate): string {
+  return utc(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}

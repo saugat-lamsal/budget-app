@@ -10,6 +10,7 @@ import { parseRequest } from '../choices.js';
 import { POT_SLUGS, potOfSlug, type ActivityView } from '../views/activity.js';
 import type { AlertsView } from '../views/alerts.js';
 import type { StatusView } from '../views/status.js';
+import type { TrendsView } from '../views/trends.js';
 import type { BucketsView } from '../views/buckets.js';
 import type { BankRuleRequest, BankRuleResponse } from '../views/bank-rules.js';
 import type { ChoiceRequest, ChoiceResponse, MoveRequest, MoveResponse, RuleRequest, RuleResponse, SettingsRequest, SettingsResponse, SetupRequest, SetupResponse } from '../views/choice.js';
@@ -30,7 +31,7 @@ import type { SetupView } from '../views/setup.js';
 // The screens' own addresses, one per tab, so a refresh or a notification
 // link opens the right one. Must match packages/web/src/app/routes.ts (a
 // test checks).
-export const APP_PATHS: readonly string[] = ['/', '/home', '/buckets', '/review', '/settings'];
+export const APP_PATHS: readonly string[] = ['/', '/home', '/buckets', '/review', '/trends', '/settings'];
 
 // The screens that are not tabs: the activity of each bucket, Payday, and the
 // alerts sent (Phase 5). They get the app too. Must match
@@ -103,7 +104,7 @@ export const ROUTES: readonly Route[] = [
   { method: 'GET', path: BACKUP_BEAT_PATH, login: false },
   // Section 2 (A47): Plaid's webhooks. Plaid has no login: each call is checked by Plaid's own signature instead.
   { method: 'POST', path: WEBHOOK_PATH, login: false },
-  ...['home', 'buckets', 'review', 'settings', 'setup', 'payday', 'alerts', 'status', ...Object.keys(POT_SLUGS).map((slug) => `activity/${slug}`)].map((name): Route => ({ method: 'GET', path: `/api/${name}`, login: true })),
+  ...['home', 'buckets', 'review', 'trends', 'settings', 'setup', 'payday', 'alerts', 'status', ...Object.keys(POT_SLUGS).map((slug) => `activity/${slug}`)].map((name): Route => ({ method: 'GET', path: `/api/${name}`, login: true })),
   { method: 'POST', path: '/api/choice', login: true },
   { method: 'POST', path: '/api/seen', login: true },
   { method: 'POST', path: SYNC_EVERY_PATH, login: true },
@@ -141,6 +142,8 @@ export interface AppServerOptions {
   readonly seen?: SeenHandler;
   // The Buckets and Review screens' numbers for this request.
   readonly buckets?: (request: IncomingMessage) => BucketsView | Promise<BucketsView>;
+  // Section 40: the Trends tab's numbers. It only reads.
+  readonly trends?: (request: IncomingMessage) => TrendsView | Promise<TrendsView>;
   readonly review?: (request: IncomingMessage) => ReviewView | Promise<ReviewView>;
   // His choice for an item waiting in review. The money math decides; a
   // refusal comes back as an answer, with why. Without it, nothing can be sent.
@@ -580,6 +583,7 @@ export function createAppServer(options: AppServerOptions): Server {
     }
     for (const [name, make] of [
       ['buckets', options.buckets],
+      ['trends', options.trends],
       ['review', options.review],
       ['settings', options.settings],
       ['setup', options.setupView],
@@ -587,7 +591,7 @@ export function createAppServer(options: AppServerOptions): Server {
       ['status', options.status],
     ] as const) {
       if (path !== `/api/${name}` || make === undefined) continue;
-      let view: BucketsView | ReviewView | SettingsView | SetupView | AlertsView | StatusView;
+      let view: BucketsView | TrendsView | ReviewView | SettingsView | SetupView | AlertsView | StatusView;
       try {
         view = await make(request);
       } catch (error) {

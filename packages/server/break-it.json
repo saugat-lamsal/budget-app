@@ -618,8 +618,8 @@
   {
     "section": "review",
     "file": "packages/server/src/views/buckets.ts",
-    "find": "difference: self.difference, catchingUp: input.catchingUp ?? false, why: input.why ?? null }",
-    "replace": "difference: -self.difference, catchingUp: input.catchingUp ?? false, why: input.why ?? null }",
+    "find": "difference: self.difference, catchingUp, why }",
+    "replace": "difference: -self.difference, catchingUp, why }",
     "why": "[review] 12.3 the difference is the wrong way round"
   },
   {
@@ -4293,8 +4293,8 @@
   {
     "section": "history",
     "file": "packages/server/src/views/buckets.ts",
-    "find": "catchingUp: input.catchingUp ?? false, why: input.why ?? null };",
-    "replace": "catchingUp: false, why: input.why ?? null };",
+    "find": "const check = bankCheckOf(book, bank, input.catchingUp ?? false, input.why ?? null);",
+    "replace": "const check = bankCheckOf(book, bank, false, input.why ?? null);",
     "why": "[a47] 10.4 Buckets never says the bank is still catching up"
   },
   {
@@ -5294,8 +5294,8 @@
   {
     "section": "history",
     "file": "packages/server/src/views/buckets.ts",
-    "find": "why: input.why ?? null };",
-    "replace": "why: null };",
+    "find": "const check = bankCheckOf(book, bank, input.catchingUp ?? false, input.why ?? null);",
+    "replace": "const check = bankCheckOf(book, bank, input.catchingUp ?? false, null);",
     "why": "[layer1] 12.6 the Buckets view drops why"
   },
   {
@@ -5563,5 +5563,285 @@
     "find": "'/bank', '/status', ...Object.keys(POT_SLUGS)",
     "replace": "'/bank', ...Object.keys(POT_SLUGS)",
     "why": "[layer1] 0.7 /status not a screen of the app"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "if (line.account === 'old-card') return null;\n      // 4.9",
+    "replace": "// 4.9",
+    "why": "[trends] 40.2 a purchase on the old card counted as spending"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "if (line.account === 'savings') return spent('unsorted', null);",
+    "replace": "if (line.account === 'savings') return spent('needs', null);",
+    "why": "[trends] 40.2 money leaving savings sorted without review"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "return rule === undefined ? null : spent(rule.bucket, 'purchase');",
+    "replace": "return spent(rule?.bucket ?? 'unsorted', 'purchase');",
+    "why": "[trends] 40.2 money back no rule sorts counted as spending"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "return line.account === 'old-card' ? null : spent('unsorted', null);",
+    "replace": "return null;",
+    "why": "[trends] 40.2 everyday card interest left out"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "if (matchesTextRule(rules.momRule, line.description)) return null;",
+    "replace": "",
+    "why": "[trends] 40.2 a payment to mom counted as spending"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "return spent(line.account === 'checking' ? 'old-card' : 'unsorted', null);",
+    "replace": "return spent('old-card', null);",
+    "why": "[trends] 40.2 to the old card from savings counted without review"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "if (reading.to !== 'old-card') return null;",
+    "replace": "",
+    "why": "[trends] 40.2 a transfer between his accounts counted as spending"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "part: s.pot === 'needs' && s.kind === 'debt-payoff' ? 'old-card' : s.pot,",
+    "replace": "part: s.pot,",
+    "why": "[trends] 40.2 the old card payment not its own part"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "if (item.type !== 'spending') continue;",
+    "replace": "if (item.type === 'leftover') continue;",
+    "why": "[trends] 40.2 money in waiting counted as spending"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "cutOff: n === 0 && before === null",
+    "replace": "cutOff: false",
+    "why": "[trends] 40.3 the first pay period from setup day called full"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "if (daysBetween(start, before.historyFrom) >= 0 || guard > 10_000) break;",
+    "replace": "if (daysBetween(start, before.historyFrom) > 0 || guard > 10_000) break;",
+    "why": "[trends] 40.3 one pay period too many back"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "cutOff: daysBetween(before.historyFrom, start) < 0,",
+    "replace": "cutOff: daysBetween(before.historyFrom, start) <= 0,",
+    "why": "[trends] 40.3 a pay period that began on the history's first day called cut off"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "lastDay: addDays(end, -1), current: false,",
+    "replace": "lastDay: end, current: false,",
+    "why": "[trends] 40.3 pay periods overlapping by a day"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": ".find((p) => daysBetween(p.startDate, line.date) >= 0);",
+    "replace": ".find((p) => daysBetween(p.startDate, line.date) > 0);",
+    "why": "[trends] 40.3 an item on a payday in the pay period before"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "const from = addDays(today, -(TRENDS_DAYS - 1));",
+    "replace": "const from = addDays(today, -TRENDS_DAYS);",
+    "why": "[trends] 40.4 40.6 the last 91 days"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "points.push({ date: first.startDate, at: 'start', savings: first.opening.savings,",
+    "replace": "points.push({ date: first.startDate, at: 'start', savings: first.closing.savings,",
+    "why": "[trends] 40.5 savings at the start read at the end"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "points.push({ date: addDays(s.endDate, -1), at: 'end',",
+    "replace": "points.push({ date: s.endDate, at: 'end',",
+    "why": "[trends] 40.5 a pay period's end dated the next payday"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "if (oldCard.length > 0) groups.push({ kind: 'old-card'",
+    "replace": "if (oldCard.length > 1) groups.push({ kind: 'old-card'",
+    "why": "[trends] 40.6 one old card payment dropped"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "const key = name.toLowerCase();",
+    "replace": "const key = name;",
+    "why": "[trends] 40.6 one place split by how it is written"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "const top = groups.slice(0, TOP_PLACES);",
+    "replace": "const top = groups.slice(0, TOP_PLACES + 1);",
+    "why": "[trends] 40.6 six places named"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "groups.sort((a, b) => b.amount - a.amount ||",
+    "replace": "groups.sort((a, b) => a.amount - b.amount ||",
+    "why": "[trends] 40.6 the smallest places named"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "full.length < USUAL_AT_LEAST",
+    "replace": "full.length <= USUAL_AT_LEAST",
+    "why": "[trends] 40.7 three full pay periods not enough"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "const full = periods.filter((p) => p.full).slice(-USUAL_PERIODS);",
+    "replace": "const full = periods.filter((p) => p.full).slice(-USUAL_PERIODS - 1);",
+    "why": "[trends] 40.7 six pay periods for the usual"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "planned(i) && dayIn(p.startDate, i.date) <= day",
+    "replace": "planned(i) && dayIn(p.startDate, i.date) < day",
+    "why": "[trends] 40.7 the usual stops a day short"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "const planned = (i: TrendsItem): boolean => i.part !== 'old-card';",
+    "replace": "const planned = (i: TrendsItem): boolean => i.part !== undefined;",
+    "why": "[trends] 40.7 old card payments counted against the usual"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "return Number(both < 0n && both % 2n !== 0n ? halved - 1n : halved);",
+    "replace": "return Number(halved);",
+    "why": "[trends] 40.7 a middle below zero rounded up"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "if (sorted.length % 2 === 1) return sorted[half] as Cents;",
+    "replace": "if (sorted.length % 2 === 1) return sorted[half - 1] as Cents;",
+    "why": "[trends] 40.7 the middle one off by one"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "const left = (BigInt(startedWith) * BigInt(days - day)) / BigInt(days);",
+    "replace": "const left = (BigInt(startedWith) * BigInt(days - day + 1)) / BigInt(days);",
+    "why": "[trends] 40.8 the even pace a day behind"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "  return Number(left);\n}",
+    "replace": "  return Math.round((startedWith * (days - day)) / days);\n}",
+    "why": "[trends] 40.8 the even pace rounded to the nearest cent"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "if (startedWith <= 0) pace =",
+    "replace": "if (startedWith < 0) pace =",
+    "why": "[trends] 40.8 a pace from zero"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "rows.filter((r) => dayIn(startDate, r.date) > k)",
+    "replace": "rows.filter((r) => dayIn(startDate, r.date) >= k)",
+    "why": "[trends] 40.8 the line a day early"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "  return Math.max(1, daysBetween(start, date) + 1);",
+    "replace": "  return Math.max(1, daysBetween(start, date));",
+    "why": "[trends] 40.7 40.8 days counted from payday as day 0"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "difference: subtractCents(left, todayPace)",
+    "replace": "difference: subtractCents(todayPace, left)",
+    "why": "[trends] 40.8 more and less left swapped"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "for (let k = 1; k <= Math.max(day, days); k += 1) points.push",
+    "replace": "for (let k = 1; k <= days; k += 1) points.push",
+    "why": "[trends] 40.8 the even pace stops at payday"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends.ts",
+    "find": "check: bankCheckOf(book, input.bank,",
+    "replace": "check: bankCheckOf(book, null,",
+    "why": "[trends] 40.9 the check not made"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends-db.ts",
+    "find": "if (item.status !== 'history' || item.removed || item.pending) continue;",
+    "replace": "if (item.removed || item.pending) continue;",
+    "why": "[trends] 40.1 items in the books counted again before setup day"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends-db.ts",
+    "find": "for (const charge of setup.pendingCharges) lines.push(",
+    "replace": "for (const charge of setup.pendingCharges.slice(1)) lines.push(",
+    "why": "[trends] 40.1 a charge pending on setup day left out"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/trends-db.ts",
+    "find": "addDays(connection.connectedOn.slice(0, 10), -HISTORY_DAYS)",
+    "replace": "addDays(connection.connectedOn.slice(0, 10), -HISTORY_DAYS + 1)",
+    "why": "[trends] 40.1 the history a day short"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/http/server.ts",
+    "find": "      ['trends', options.trends],\n",
+    "replace": "",
+    "why": "[trends] 40.1 /api/trends not answered"
+  },
+  {
+    "section": "trends",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "      trends: () => this.trends(),\n",
+    "replace": "",
+    "why": "[trends] 40.1 the real server has no Trends"
   }
 ]

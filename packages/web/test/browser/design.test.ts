@@ -103,7 +103,7 @@ describe.each(ENGINES)('design rules in %s', (engineName, engine) => {
       }
       // The tabs sit above the home bar.
       const tabs = await page.locator('.tab').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().bottom));
-      expect(tabs).toHaveLength(4);
+      expect(tabs).toHaveLength(5);
       for (const bottom of tabs) expect(bottom, state).toBeLessThanOrEqual(IPHONE.height - IPHONE_INSETS.bottom + 0.5);
       // What scrolls up goes under a dark strip, not into the clock
       // and battery, and the tab bar is dark glass (nearly opaque):

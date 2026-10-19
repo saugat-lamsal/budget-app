@@ -162,7 +162,8 @@ long). It replaces running everything before every commit:
 
 ## Status
 
-- Rulebook: draft 28 (section 39, Oct 16: 0.7 the status page, 0.8 the
+- Rulebook: draft 29 (sections 40 and 41, Oct 18: the Trends tab,
+  A58); draft 28 (section 39, Oct 16: 0.7 the status page, 0.8 the
   page when the app cannot be reached, 11.4 pending since and usually
   posts within, 12.6 why it does not match, A57; draft 27, section 38,
   Oct 16: 11.4, money still pending in shown on Home, A56; draft 26, section 37, Oct 16: 13.8, a rule offered
@@ -2061,6 +2062,27 @@ long). It replaces running everything before every commit:
   /api 401, http sent to https, the webhook address refuses GET and an
   unsigned call; the restore check on the machine: 66 events, "The backup
   works." The way back is the image deploy-check-20261016t070457z (PR #41).
+- The redesign's PR 4, the Trends tab, Past and Now (Oct 18, 2026, branch
+  redesign-pr4-trends-past-now): rulebook section 40 with his OK, built test
+  first (docs/redesign-plan.txt "PR 4, as built"; QUESTIONS.md A58, B255 to
+  B263). Trends only reads: GET /api/trends, behind the login.
+  - Tests: money 40-trends; server trends (by hand), trends-random (the
+    simulator's books every few evenings; TRENDS_LIVES, TRENDS_FIRST_SEED),
+    trends-keeper (the real server: the history kept before setup day,
+    nothing saved, the history still replays), worked example bank 20; web
+    trends-text; browser trends (Chromium). Tests updated for the fifth tab:
+    routes, routes-screens, design (five tabs over the home bar).
+  - Break-it "[trends]": 59 of 59 caught (money 8, server 40, words 4,
+    screens 7, each judged with --only by its own test files; the screens'
+    in Chromium). Three survived at first and got tests or a real mistake.
+    12 older breaks on moved lines pointed at the code again, all caught.
+  - Found on its CI (Linux, Chromium, 3 runs of 3): PR 3's "a swipe that is
+    refused brings the card back" timed out. Probe runs on throwaway branches
+    caught the card at translateX(0px): Motion wrote its last frame after
+    telling it had ended. B264: the swipe card's place is set first and the
+    way out and back are the browser's own animations drawn over it; test
+    first, breaks "[b264]" 2 of 2. The sheet (BottomSheet) still uses
+    Motion the same way; nothing has failed there.
 - Waiting on: each card's statement closing day (his, on Settings, from a
   statement, before the old card's November reminders); Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);

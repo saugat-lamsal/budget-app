@@ -95,6 +95,46 @@ export function* paydaysAfter(lastPaycheckDate: IsoDate, schedule: number | PayS
   }
 }
 
+function monthBefore(month: string): string {
+  const [year = 0, m = 0] = month.split('-').map(Number);
+  return m === 1 ? `${year - 1}-12` : `${year}-${String(m - 1).padStart(2, '0')}`;
+}
+
+// The twice-a-month paydays going back, newest first, from the month after
+// `date` (so none on or before `date` is missed).
+function* twiceAMonthBackFrom(date: IsoDate): Generator<IsoDate> {
+  let month = nextMonth(monthOf(date));
+  for (;;) {
+    yield onAWeekday(lastDayOfMonth(month));
+    yield onAWeekday(`${month}-15`);
+    month = monthBefore(month);
+  }
+}
+
+// Rule 40.3 (QUESTIONS.md A58): the paydays before the last paycheck, newest
+// first, without end, for the pay periods before setup day. Every so many
+// days: the last paycheck less that many days at a time. Twice a month: the
+// scheduled paydays before the one the last paycheck belongs to, found as
+// paydaysAfter finds it (the nearest; halfway counts as the earlier).
+export function* paydaysBefore(lastPaycheckDate: IsoDate, schedule: number | PayScheduleSettings): Generator<IsoDate> {
+  assertIsoDate(lastPaycheckDate, 'last paycheck date');
+  const { paySchedule, payScheduleDays } = typeof schedule === 'number' ? { paySchedule: 'every-n-days', payScheduleDays: schedule } : schedule;
+  if (paySchedule === 'every-n-days') {
+    for (let payday = addDays(lastPaycheckDate, -payScheduleDays); ; payday = addDays(payday, -payScheduleDays)) yield payday;
+  }
+  const scheduled = twiceAMonthBackFrom(lastPaycheckDate);
+  let after = scheduled.next().value as IsoDate;
+  let before = scheduled.next().value as IsoDate;
+  while (daysBetween(before, lastPaycheckDate) < 0) [after, before] = [before, scheduled.next().value as IsoDate];
+  // before is the last scheduled payday on or before the paycheck, after the first after it.
+  const nearest = daysBetween(before, lastPaycheckDate) <= daysBetween(lastPaycheckDate, after) ? before : after;
+  let payday = nearest === before ? (scheduled.next().value as IsoDate) : before;
+  for (;;) {
+    yield payday;
+    payday = scheduled.next().value as IsoDate;
+  }
+}
+
 // 11.2: the next payday from the pay schedule, counted from the last
 // paycheck, and the days to it from today. Once it has passed with no
 // paycheck the days go negative instead of jumping ahead (B35).

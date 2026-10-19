@@ -19,6 +19,8 @@ import type { PostingExample } from '../bank/posting-times.js';
 import { whyItDoesNotMatch, type BankAtRead, type PendingItemNow } from '../bank/why.js';
 import type { CardRemindersOff, HomeInput, PendingMoneyIn, WhyLine } from '../views/home.js';
 import type { MadeUpBank } from './made-up-bank.js';
+import type { BeforeSetup } from '../trends.js';
+import { madeUpTrendsHistory } from './trends-history.js';
 import { SETUP_OWES_MORE, SETUP_PENDING, SETUP_PENDING_PAYMENT, SETUP_SUGGEST } from './setup-lives.js';
 
 // Made-up lives for the demo (npm run demo) and the browser tests. Every
@@ -430,6 +432,8 @@ export interface DemoScenario {
   // A life not set up yet whose bank can be read: its made-up bank history,
   // for the Setup day screens (section 14).
   readonly setup?: () => MadeUpBank;
+  // Section 40: a made-up bank history from before setup day, for the Trends tab.
+  readonly trends?: () => BeforeSetup;
 }
 
 export const DEMO_SCENARIOS: readonly DemoScenario[] = [
@@ -490,6 +494,7 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   { name: 'review-marked-savings', title: 'Review: a bill from savings marked by mistake as a payment to the old card', input: () => story({ markedFromSavings: true }) },
   { name: 'settings-busy', title: 'Settings: changes along the way, a new split waiting for the next paycheck, a promo end date', input: () => story({ settingsBusy: true, chargedTwice: true }) },
   { name: 'settings-first-sync', title: 'Settings: no paycheck rule or mom rule yet, the paycheck and mom waiting in review', input: () => story({ firstSync: true }) },
+  { name: 'trends', title: 'Trends: three months of made-up history before setup day, and two paychecks since (section 40)', input: () => story({ today: '2026-10-16', secondPaycheck: true, allDone: true, statements: [] }), trends: madeUpTrendsHistory },
   { name: 'not-set-up', title: 'Before setup day', input: notSetUp },
   { name: 'slow', title: 'Slow to load (3 seconds)', input: () => story({}), delayMs: 3_000 },
   { name: 'error', title: 'Cannot load', input: null },

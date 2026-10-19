@@ -217,6 +217,20 @@ interface Place {
   readonly descriptions: readonly string[];
 }
 
+// 40.2: what one item spent out of needs or wants in a pay period (Book.spentIn).
+export interface SpentItem {
+  readonly id: string;
+  readonly pot: SplitBucket;
+  // Spent: positive. The day of the purchase (4.1).
+  readonly amount: Cents;
+  readonly date: IsoDate;
+  // As the bank describes it now (posted, once it posts).
+  readonly description: string;
+  readonly account: AccountId | null;
+  // Null for an item the book no longer has.
+  readonly kind: SpendingKind | null;
+}
+
 export interface PurchaseView {
   readonly id: string;
   // The day of the purchase, even after it posts (4.1).
@@ -1043,6 +1057,35 @@ export class Book {
     });
   }
 
+  // 40.2 (QUESTIONS.md A58): what each item spent out of needs and out of
+  // wants in a pay period (the current one unless one is named), read from
+  // the ledger's spending lines only and added up per item and bucket, as a
+  // positive amount spent (a refund larger than what is left makes it
+  // negative). So, bucket by bucket, they add up to minus the pay period's
+  // spending in periodSummary, to the cent. An item whose lines add up to
+  // zero is left out.
+  spentIn(period?: number): SpentItem[] {
+    const number = this.#payPeriod(period);
+    const lines = this.#ledger[number];
+    if (lines === undefined) throw new MoneyError('broken-book', `pay period ${number} has no ledger`);
+    const spending = lines.filter((line) => line.kind === 'spending');
+    const items: SpentItem[] = [];
+    for (const pot of ['needs', 'wants'] as const) {
+      for (const item of foldLines(spending, pot)) {
+        if (item.net === 0) continue;
+        const entry = this.#entries.get(item.entry) ?? this.#entries.get(item.entry.split(':')[0] ?? item.entry);
+        const amount = subtractCents(0, item.net);
+        if (entry === undefined || entry.kind !== 'spend') {
+          items.push(Object.freeze({ id: item.entry, pot, amount, date: this.#periods[number]?.startDate ?? this.#period.startDate, description: '', account: null, kind: null }));
+          continue;
+        }
+        const account: AccountId = entry.txn.kind === 'transfer' || entry.txn.kind === 'transfer-sent' ? entry.txn.from : entry.txn.account;
+        items.push(Object.freeze({ id: item.entry, pot, amount, date: entry.txn.date, description: (entry.postedTxn ?? entry.txn).description, account, kind: entry.spendingKind }));
+      }
+    }
+    return items;
+  }
+
   // What the Payday screen shows (B104 to B106): the last paycheck and what
   // it did (3.2, 3.3), what became of each bucket's leftover (3.4, 3.5), and
   // the pay period that just ended, added up.
@@ -1309,6 +1352,22 @@ export class Book {
       if (before >= 0 && before <= COMMON_WORD_DAYS) near.push(p.first);
     }
     return placeName(place.first, commonPlaceWords(near));
+  }
+
+  // 40.6 (QUESTIONS.md A58): the place's name for an item, as 13.8 finds it,
+  // or null when it has none (a card fee, a transfer, or no word left). One
+  // he marked a transfer (5.6) is the purchase or payment it was. Asked for by
+  // the Trends tab only: it reads the whole book.
+  placeName(id: string): string | null {
+    const entry = this.#entries.get(this.#aliases.get(id) ?? id);
+    if (entry === undefined) throw new MoneyError('unknown-item', 'no item ' + id);
+    const original = entry.kind === 'spend' || entry.kind === 'leg' ? entry.original : undefined;
+    if (original !== undefined) {
+      const kind = original.kind === 'payment-to-person' ? 'person' : original.kind === 'purchase' ? 'purchase' : null;
+      return kind === null ? null : this.#placeNameOf({ for: kind, account: original.account, date: original.date, first: original.description, descriptions: [original.description] });
+    }
+    const place = this.#placeOf(entry);
+    return place === null ? null : this.#placeNameOf(place);
   }
 
   // 13.6, 13.8: what "always do this" starts from for an item, waiting or

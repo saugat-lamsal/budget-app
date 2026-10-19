@@ -24,7 +24,7 @@ export {
   type TextRule,
 } from './settings.js';
 export { ACCOUNTS, type AccountId } from './accounts.js';
-export { nextPayday, paydaysAfter, splitPaycheck, type PaycheckSplit, type PayScheduleSettings, type SplitSettings } from './payday.js';
+export { nextPayday, paydaysAfter, paydaysBefore, splitPaycheck, type PaycheckSplit, type PayScheduleSettings, type SplitSettings } from './payday.js';
 export type {
   BankTransaction,
   CardCharge,
@@ -41,7 +41,7 @@ export type {
   TransferSent,
 } from './transactions.js';
 export { BUCKETS, SPENDING_BUCKETS, type Bucket, type SplitBucket } from './buckets.js';
-export { RULE_CHOICES, checkRules, type DepositRuleChoice, type MoneyInChoice, type PersonPaymentChoice, type SortingRule } from './rules.js';
+export { RULE_CHOICES, checkRules, findRule, type DepositRuleChoice, type MoneyInChoice, type PersonPaymentChoice, type SortingRule } from './rules.js';
 export { ACTIVITY_KINDS, type ActivityKind, type ActivityRow, type ActivityWhat, type BucketActivity, type PeriodSummary } from './activity.js';
 export type { LeftoverReport, PaycheckReport, PaydayReport } from './payday-report.js';
 export type { ResortDetail, SortedNow } from './resort.js';
@@ -62,6 +62,7 @@ export {
   type Period,
   type Pots,
   type PurchaseView,
+  type SpentItem,
   type Received,
   type ReceiveOutcome,
   type RecheckedItem,

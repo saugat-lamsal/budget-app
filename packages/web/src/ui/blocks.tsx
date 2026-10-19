@@ -917,17 +917,14 @@ export function SwipeSort({
     const el = card.current;
     if (el === null) return;
     flown.current = false;
-    const rest = (): void => {
-      el.style.transform = '';
-      show(0);
-    };
-    if (reduced) {
-      rest();
-      return;
-    }
     const from = el.style.transform || 'translateX(0px)';
-    // A cancelled animation still ends at rest.
-    void animate(el, { transform: [from, 'translateX(0px)'] }, { duration: QUICK_S, ease: EASE }).finished.then(rest, rest);
+    // At rest at once: the card's own place is set back now, and the way back
+    // is only drawn over it. Nothing that ends later can leave it off its place
+    // (B264: on a busy machine Motion's last write of the way back landed after
+    // its end was told, and the card stayed at translateX(0px)).
+    el.style.transform = '';
+    show(0);
+    if (!reduced && from !== 'translateX(0px)') el.animate([{ transform: from }, { transform: 'translateX(0px)' }], { duration: QUICK_S * 1000, easing: `cubic-bezier(${EASE.join(', ')})` });
   };
   // An answer that went through takes the card off the screen with its item.
   // One that did not (it was refused, or nothing happened) brings it back.
@@ -967,9 +964,12 @@ export function SwipeSort({
         later?.();
       }
     };
+    // The card's own place is set first, and the way out only drawn over it
+    // (B264: Motion wrote its last frame after its end was told, over the
+    // card already brought back). A way out cut short still ends.
     el.style.transform = `translateX(${to}px)`;
     if (reduced) done();
-    else void animate(el, { transform: [`translateX(${d.dx}px)`, `translateX(${to}px)`] }, { duration: QUICK_S, ease: EASE }).finished.then(done);
+    else void el.animate([{ transform: `translateX(${d.dx}px)` }, { transform: `translateX(${to}px)` }], { duration: QUICK_S * 1000, easing: `cubic-bezier(${EASE.join(', ')})` }).finished.then(done, done);
   };
 
   return (
@@ -995,6 +995,8 @@ export function SwipeSort({
             // Mostly sideways, and far enough to be a drag, not a tap or a scroll.
             if (Math.abs(raw) < 6 || Math.abs(raw) < Math.abs(event.clientY - d.y)) return;
             d.moving = true;
+            // A way back still being drawn gives way to the finger.
+            for (const a of event.currentTarget.getAnimations()) a.cancel();
             try {
               event.currentTarget.setPointerCapture(event.pointerId);
             } catch {
@@ -1031,4 +1033,23 @@ export function StateMessage({ icon, tone = 'info', title, detail, children, tes
 
 export function Skeleton({ width, height }: { readonly width: string; readonly height: string }) {
   return <div className="skeleton" style={{ width, height }} />;
+}
+
+// ----- Segmented control -----
+
+// A few views of one screen, one shown at a time (Trends: Past and Now). Each
+// is a button that says whether it is the one shown; the light behind the
+// one shown slides to it (none with reduced motion).
+export function Segmented<T extends string>({ label, options, value, onChange, testId }: { readonly label: string; readonly options: readonly { readonly value: T; readonly label: string }[]; readonly value: T; readonly onChange: (value: T) => void; readonly testId?: string | undefined }) {
+  const id = useId();
+  return (
+    <div className="segmented" role="group" aria-label={label} data-testid={testId}>
+      {options.map((option) => (
+        <button key={option.value} type="button" className="segmented__option" aria-pressed={option.value === value} onClick={() => onChange(option.value)} data-testid={`${testId ?? 'segment'}-${option.value}`}>
+          {option.value === value && <motion.span layoutId={`segmented-${id}`} className="segmented__light" aria-hidden="true" transition={{ duration: QUICK_S, ease: EASE }} />}
+          <span className="segmented__label">{option.label}</span>
+        </button>
+      ))}
+    </div>
+  );
 }

@@ -33,7 +33,7 @@ describe('B97 each bucket has its own address', () => {
 
 describe('the tabs are as they were', () => {
   it('each tab is still a route, with its own address', () => {
-    expect(TABS.map(pathOf)).toEqual(['/home', '/buckets', '/review', '/settings']);
+    expect(TABS.map(pathOf)).toEqual(['/home', '/buckets', '/review', '/trends', '/settings']);
     for (const tab of TABS) expect(routeOf(pathOf(tab))).toEqual({ screen: 'tab', tab });
     expect(tabOf('/buckets/needs')).toBeNull();
     expect(tabOf('/payday')).toBeNull();

@@ -2,6 +2,7 @@
 // phone's side: the numbers are worked out here, from the money math.
 export * from './home.js';
 export * from './buckets.js';
+export * from './trends.js';
 export * from './review.js';
 export * from './activity.js';
 export * from './payday.js';
