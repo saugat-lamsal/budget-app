@@ -1,7 +1,7 @@
 import { addCents, subtractCents, type Book } from '@budget-app/money';
 import { describe, expect, it } from 'vitest';
 import { paycheck, purchase, refund, transfer } from '../../money/test/helpers.js';
-import { before, book, view } from './trends-setup.js';
+import { before, book, line, view } from './trends-setup.js';
 
 // Trends, Future (rulebook 40.10 to 40.13, QUESTIONS.md A59, his OK Oct 19,
 // 2026), worked out on the server from the books. Every number is worked out
@@ -96,6 +96,14 @@ describe('40.11 where Needs and Wants land by payday', () => {
     expect(v.future.landing.needs).toMatchObject({ daysSoFar: 5, spentSoFar: 3_250 });
   });
 
+  it('40.11 spending from before setup day in the same pay period is not in the pace: the bucket did not exist then', () => {
+    const b = spending();
+    // A grocery on Sep 28, before setup day (Oct 1), in the pay period that began Sep 25.
+    const v = view(b, '2026-10-05', { before: before([line('h1', 'checking', '2026-09-28', 4_000, 'PURCHASE GREEN GROCERY')]) });
+    expect(v.periods.at(-1)?.items.some((i) => i.id === 'h1')).toBe(true);
+    expect(v.future.landing.needs).toMatchObject({ spentSoFar: 3_250, daysSoFar: 5 });
+  });
+
   it('40.11 very large amounts stay exact', () => {
     const b = book({ pots: { savings: 0, needs: 9_000_000_000_000, wants: 0, momReserve: 0, heldForOthers: 0 } });
     b.receive(purchase('g1', '2026-10-02', 3_000_000_000_001, 'MADE UP GROCERY'));
@@ -144,6 +152,26 @@ describe('40.12 savings a year out', () => {
     // With history from before setup day, the books' first pay period began on
     // Sep 25, before setup day: not one of them.
     expect(s).toMatchObject({ state: 'estimate', periods: 3, least: 225_000, most: 325_000, low: 1_200_000 + 26 * 225_000, high: 1_200_000 + 26 * 325_000 });
+  });
+
+  it('40.12 a payday today, with no paycheck yet, is not one of the paydays ahead', () => {
+    // Dec 4 is a payday by the schedule; the paycheck has not come.
+    const s = view(paid(), '2026-12-04').future.savings;
+    if (s.state !== 'estimate') throw new Error('estimate');
+    // Dec 18, 2026 to Dec 3, 2027, every 14 days: 26.
+    expect(s.points[0]?.date).toBe('2026-12-18');
+    expect(s.paydays).toBe(26);
+  });
+
+  it('40.12 what the first pay period gained counts from when tracking started', () => {
+    const b = book({ pots: { savings: 100_000, needs: 50_000, wants: 30_000, momReserve: 300_000, heldForOthers: 0 } });
+    // Money moved into savings by hand before the first paycheck: the first pay period gained 100.00.
+    b.moveMoney({ from: 'needs', to: 'savings', amount: 10_000 }, '2026-10-03');
+    b.receive(paycheck('p1', '2026-10-09', 400_000));
+    b.receive(paycheck('p2', '2026-10-23', 300_000));
+    b.receive(paycheck('p3', '2026-11-06', 500_000));
+    // Ended: Oct 1 (100.00), Oct 9 (2,750.00), Oct 23 (2,250.00). The least is 100.00.
+    expect(view(b, '2026-11-07').future.savings).toMatchObject({ state: 'estimate', periods: 3, least: 10_000, most: 275_000 });
   });
 
   it('40.12 only the last 5', () => {

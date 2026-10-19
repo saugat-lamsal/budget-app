@@ -3995,5 +3995,19 @@
     "find": "let payday = nearest === before ? (scheduled.next().value as IsoDate) : before;",
     "replace": "let payday = before;",
     "why": "[trends] 40.3 a late paycheck's own payday given again"
+  },
+  {
+    "section": "40",
+    "file": "packages/money/src/book.ts",
+    "find": "return Object.freeze({ opening: record.openingDebt, closing: next === undefined ? this.#totals.oldCardDebt : next.openingDebt });",
+    "replace": "return Object.freeze({ opening: record.openingDebt, closing: next === undefined ? record.openingDebt : next.openingDebt });",
+    "why": "[a59] 40.13 the current pay period closes with what it opened with"
+  },
+  {
+    "section": "40",
+    "file": "packages/money/src/book.ts",
+    "find": "opening: this.#potTotals(), openingDebt: this.#totals.oldCardDebt, split: this.#periodSplit, leftoverSetting: { needs, wants }",
+    "replace": "opening: this.#potTotals(), openingDebt: this.#opening.oldCardDebt, split: this.#periodSplit, leftoverSetting: { needs, wants }",
+    "why": "[a59] 40.13 each pay period opens with what was owed on setup day"
   }
 ]

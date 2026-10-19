@@ -3370,3 +3370,58 @@ B264. Found on Linux CI with PR #48, fixed with a test first (the redesign's
       browser's own animations, so nothing that ends later can move it; a way
       back still being drawn gives way to the finger. Test: swipe.test.ts
       "B264". Breaks "[b264]", both caught.
+B265. Found looking at B264 (the redesign's PR 5, his ask). The bottom
+      sheet's pull to close had the same late write: its way back and its way
+      out were Motion animations that wrote the sheet's own style when they
+      ended. A short pull left the sheet off its place by its own style until
+      the way back ended, and a late write could land on a sheet already
+      closed. Its own place is now set first and the way there only drawn
+      over it by the browser's own animation; a new pull takes the sheet from
+      a way back still being drawn. Test first, Chromium and WebKit:
+      motion.test.ts "B265" (two failed before). Breaks "[b265]".
+
+## Part B, added with Trends Future and Habits (A59, Oct 19). Tell me if any is wrong.
+
+B266. A59 as built (40.11). "Before day 3" counts the days so far the way
+      the pace does: from payday, or from setup day in the books' first pay
+      period, so the first two days after setup day have no estimate either.
+      On the next payday itself, with no paycheck yet, there are no days left,
+      so each lands at what it holds; from the day after, no estimate.
+B267. A59 as built (40.12). The books' first pay period counts only when it
+      began on setup day (with no bank history kept, as in the demo); his
+      began on his last paycheck before setup day, so it does not. The
+      paydays a year out are those after today up to the same date next year.
+      The chart's range starts at what savings holds now and has one point a
+      payday.
+B268. A59 as built (40.13). The plan ends at the payday it reaches $0.00
+      (each share is rounded up, so it can get there before the last payday),
+      and "paid off by" is that payday. Nothing owed is "paid off" with or
+      without a promo end date.
+B269. A59 as built (40.14). The full pay periods are those 40.4 shows for
+      the last 90 days, so the oldest can begin a little before the 90 days.
+      An item counts in the pay period whose days hold its date. A per-day
+      amount below zero (more money back than spent) is rounded down, away
+      from zero.
+B270. A59 as built (40.15). The days run Monday to Sunday; a tie for the most
+      goes to the first from Monday; with nothing above $0.00, none is named.
+B271. A59 as built (40.16). What one item charged is all of it added up (a
+      split, or a refund counted in a later pay period); its day is the day it
+      happened. All the charges from one place are taken together, so a place
+      with a one-off purchase among its monthly ones, or two subscriptions at
+      one place, is not spotted. The list is ordered by a year of it, then by
+      name.
+B272. A59 as built (40.17). The books' first pay period counts (Wants existed
+      from setup day; how it ended is all the streak asks).
+B273. A59 as built (the screens). Future and Habits are two more parts of
+      the segmented control; at a large text size the four go two to a row.
+      The days of the week are rows with a bar each, not columns: seven
+      44-point columns do not fit across the phone. The most says "the most"
+      on its row. A repeat charge's sheet lists its charges without a total
+      (the server gives none, and the screens add nothing up).
+B274. Found in the WebKit pictures (PR 5's finishing pass), fixed with a test
+      first. The rolling digits draw each digit from generated text, and
+      WebKit (the iPhone's engine) draws that without tabular widths: a narrow
+      "1" sat at the left of a wider cell, with a gap after it ("$1 58.23").
+      Every rolling amount with a 1 in it, since PR 2. Each digit is now
+      centred in its cell, as a tabular figure is. Test: rolling-amounts.test.ts
+      (a drawn "1" sits in the middle of its cell; failed in WebKit before).

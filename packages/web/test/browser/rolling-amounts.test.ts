@@ -57,6 +57,57 @@ export async function rollsTo(page: Page, testId: string, cents: Cents): Promise
   expect(moved, `${testId} at rest on its digits`).toBe(digits);
 }
 
+// How far the ink of the drawn "1" is from each side of its cell, in CSS
+// pixels, read from a picture of the amount by the page itself.
+async function marginsOfOne(page: Page, testId: string): Promise<{ readonly left: number; readonly right: number }> {
+  const roll = page.getByTestId(testId).locator('.roll');
+  const box = (await roll.boundingBox())!;
+  const text = await page.getByTestId(testId).locator('.money__text').innerText();
+  const index = [...text.replace(/[^0-9]/g, '')].indexOf('1');
+  const cell = (await roll.locator('.roll__digit').nth(index).boundingBox())!;
+  const shot = await roll.screenshot({ animations: 'disabled' });
+  return page.evaluate(
+    async ([data, cellLeft, cellWidth, boxWidth]) => {
+      const img = new Image();
+      img.src = `data:image/png;base64,${data}`;
+      await img.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      const { data: px } = ctx.getImageData(0, 0, img.width, img.height);
+      const ratio = img.width / boxWidth;
+      const x0 = Math.round(cellLeft * ratio);
+      const x1 = Math.round((cellLeft + cellWidth) * ratio);
+      const inked = (x: number): boolean => {
+        for (let y = 0; y < img.height; y += 1) if ((px[(y * img.width + x) * 4] ?? 0) > 120) return true;
+        return false;
+      };
+      let first = -1;
+      let last = -1;
+      for (let x = x0; x < x1; x += 1) if (inked(x)) (first = first === -1 ? x : first), (last = x);
+      return { left: (first - x0) / ratio, right: (x1 - 1 - last) / ratio };
+    },
+    [shot.toString('base64'), cell.x - box.x, cell.width, box.width] as const,
+  );
+}
+
+describe.each(ENGINES)('the finishing pass: rolling digits, in %s', (_name, engine) => {
+  const { browser, base } = useEngine(engine);
+
+  it('PR 5 a drawn "1" sits in the middle of its cell, as a tabular figure does: no gap after it (found in WebKit)', async () => {
+    const page = await openScenario(await browser().newContext(phone(MOVING)), base(), 'trends-future', '/trends');
+    await page.getByTestId('trends-segment-future').click();
+    await page.getByTestId('old-card-share').waitFor();
+    await atRest(page);
+    expect(await page.getByTestId('old-card-share').locator('.money__text').innerText()).toContain('1');
+    const { left, right } = await marginsOfOne(page, 'old-card-share');
+    expect(Math.abs(left - right)).toBeLessThanOrEqual(1.5);
+    await page.context().close();
+  });
+});
+
 describe.runIf(chromiumOnly.length > 0)('the finishing pass: main amounts roll, in chromium', () => {
   const { browser, base } = useEngine(chromium);
 

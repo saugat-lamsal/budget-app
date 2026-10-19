@@ -1410,8 +1410,12 @@ a.tile:active {
   transition: transform 300ms var(--ease) var(--delay, 0ms);
 }
 
+/* Centred in its cell, as a tabular figure is: WebKit draws the generated
+   digits without tabular widths, so a narrow "1" sat at the left of a wide
+   cell with a gap after it (found on the iPhone's engine, PR 5). */
 .roll__col > span {
   height: 1.2em;
+  text-align: center;
 }
 
 .roll__col > span::before,

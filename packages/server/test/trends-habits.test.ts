@@ -49,6 +49,13 @@ describe('40.14 the payday effect', () => {
     expect(addCents(0, ...h.rest.items.map((i) => i.amount))).toBe(h.rest.total);
   });
 
+  it('40.14 more money back than spent: a negative per day, rounded down (away from zero)', () => {
+    // Money back on the card, sorted to wants by its rule (40.2): -10.00 over the 15 days 1 to 3 is -0.666..., down to -0.67.
+    const lines = [line('back', 'everyday-card', '2026-09-11', -1_000, 'BLUE CAFE')];
+    const h = view(spending(), '2026-10-06', { before: before(lines) }).habits.paydayEffect;
+    expect(h).toMatchObject({ state: 'known', first: { days: 15, total: -1_000, perDay: -67 } });
+  });
+
   it('40.14 day 3 and day 4 are the boundary', () => {
     const lines = [line('d3', 'checking', '2026-08-30', 1, 'PURCHASE GREEN GROCERY'), line('d4', 'checking', '2026-08-31', 2, 'PURCHASE GREEN GROCERY')];
     const h = view(spending(), '2026-10-06', { before: before(lines) }).habits.paydayEffect;
@@ -72,6 +79,8 @@ describe('40.14 the payday effect', () => {
     // History from Sep 1: Aug 28 to Sep 10 is cut off; only Sep 11 to 24 is full.
     expect(view(spending(), '2026-10-06', { before: before(HISTORY, { historyFrom: '2026-09-01' }) }).habits.paydayEffect).toEqual({ state: 'not-enough', fullPeriods: 1 });
     expect(view(spending(), '2026-10-06').habits.paydayEffect).toEqual({ state: 'not-enough', fullPeriods: 0 });
+    // History from Aug 20: Aug 14 to 27 is cut off; Aug 28 to Sep 10 and Sep 11 to 24 are full. Two are not enough.
+    expect(view(spending(), '2026-10-06', { before: before(HISTORY, { historyFrom: '2026-08-20' }) }).habits.paydayEffect).toEqual({ state: 'not-enough', fullPeriods: 2 });
   });
 });
 
