@@ -779,8 +779,8 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Buckets.tsx",
-    "find": "<Money cents={view.total} hero testId=\"buckets-total\" />",
-    "replace": "<Money cents={view.savings} hero testId=\"buckets-total\" />",
+    "find": "<Money cents={view.total} hero roll testId=\"buckets-total\" />",
+    "replace": "<Money cents={view.savings} hero roll testId=\"buckets-total\" />",
     "why": "[review] 12.2 the main number is only savings"
   },
   {
@@ -961,8 +961,8 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Buckets.tsx",
-    "find": "trailing={<Money cents={momReserve.amount} testId=\"mom-reserve\" />}",
-    "replace": "trailing={<Money cents={momReserve.sent} testId=\"mom-reserve\" />}",
+    "find": "trailing={<Money cents={momReserve.amount} roll testId=\"mom-reserve\" />}",
+    "replace": "trailing={<Money cents={momReserve.sent} roll testId=\"mom-reserve\" />}",
     "why": "[review] [pre-merge] 8.1 the mom reserve row shows what was sent"
   },
   {
@@ -975,8 +975,8 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Activity.tsx",
-    "find": "<Money cents={activity.closing} hero testId=\"activity-now\" />",
-    "replace": "<Money cents={activity.opening} hero testId=\"activity-now\" />",
+    "find": "<Money cents={activity.closing} hero roll testId=\"activity-now\" />",
+    "replace": "<Money cents={activity.opening} hero roll testId=\"activity-now\" />",
     "why": "[activity] B97 the main number is what the bucket held at the start"
   },
   {
@@ -3054,8 +3054,8 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Trends.tsx",
-    "find": "<Money cents={view.now.spentSoFar} hero testId=\"trends-spent-so-far\" />",
-    "replace": "<Money cents={here.total} hero testId=\"trends-spent-so-far\" />",
+    "find": "<Money cents={view.now.spentSoFar} hero roll testId=\"trends-spent-so-far\" />",
+    "replace": "<Money cents={here.total} hero roll testId=\"trends-spent-so-far\" />",
     "why": "[trends] 40.7 the hero counts the old card"
   },
   {
@@ -3068,8 +3068,8 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Trends.tsx",
-    "find": "{ key: 'savings', tone: 'savings', values: view.savings.map((p) => p.savings) },",
-    "replace": "{ key: 'savings', tone: 'savings', values: view.savings.map((p) => p.momReserve) },",
+    "find": "{ key: 'savings', tone: 'savings', values: view.savings.map((p) => p.savings), area: true },",
+    "replace": "{ key: 'savings', tone: 'savings', values: view.savings.map((p) => p.momReserve), area: true },",
     "why": "[trends] 40.5 the savings line draws the mom reserve"
   },
   {
@@ -3111,7 +3111,28 @@
     "section": "home",
     "file": "packages/web/src/ui/blocks.tsx",
     "find": "else void el.animate([{ transform: `translateX(${d.dx}px)` }, { transform: `translateX(${to}px)` }], { duration: QUICK_S * 1000, easing: `cubic-bezier(${EASE.join(', ')})` }).finished.then(done, done);",
-    "replace": "else void animate(el, { transform: [`translateX(${d.dx}px)`, `translateX(${to}px)`] }, { duration: QUICK_S, ease: EASE }).finished.then(done);",
-    "why": "[b264] the way out drawn by Motion, whose last write can land after the card came back"
+    "replace": "else void el.animate([{ transform: `translateX(${d.dx}px)` }, { transform: `translateX(${to}px)` }], { duration: QUICK_S * 1000, easing: `cubic-bezier(${EASE.join(', ')})` }).finished.then(() => { done(); window.setTimeout(() => (el.style.transform = `translateX(${to}px)`), 11); }, done);",
+    "why": "[b264] the way out's last write lands 11 ms after the card came back (what Motion did)"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "      const at = dialog.style.transform || from;\n      dialog.style.transform = '';\n      if (!reduced) draw(dialog, at, 'translateY(0px)');",
+    "replace": "      const at = dialog.style.transform || from;\n      if (!reduced) void draw(dialog, at, 'translateY(0px)').finished.then(() => (dialog.style.transform = ''), () => undefined);\n      else dialog.style.transform = '';",
+    "why": "[b265] a short pull is not at rest until its way back ends"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "      else void draw(dialog, from, 'translateY(100%)').finished.then(finish, () => undefined);",
+    "replace": "      else void draw(dialog, from, 'translateY(100%)').finished.then(() => { finish(); window.setTimeout(() => (dialog.style.transform = 'translateY(100%)'), 11); }, () => undefined);",
+    "why": "[b265] the way out's last write lands on the sheet 11 ms after it closed"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/blocks.tsx",
+    "find": "              // A way back still being drawn gives way to the finger (B265).\n              drawn.current?.cancel();\n              drawn.current = null;\n",
+    "replace": "",
+    "why": "[b265] a new pull does not take the sheet from a way back still being drawn"
   }
 ]

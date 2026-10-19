@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { demoScenario } from '../../../server/src/demo/scenarios.js';
 import { ringFraction } from '../../src/ui/motion.js';
 import { atRest } from './design-helpers.js';
-import { ENGINES, openScenario, phone, textAt, useEngine } from './harness.js';
+import { ENGINES, IPHONE, openScenario, phone, textAt, useEngine } from './harness.js';
 
 // Redesign PR 2, motion, used in a browser. Run with motion on (the tests'
 // default is reduced, so every other test sees the screens at rest).
@@ -271,6 +271,88 @@ describe.each(ENGINES)('Motion in %s', (_name, engine) => {
       expect(await page.evaluate(() => (window as unknown as { pulledTo: string }).pulledTo)).toBe('translateY(220px)');
       await page.waitForFunction(() => (document.querySelector('[data-testid="move-sheet"]') as HTMLElement).style.transform === '');
       expect(await isOpen(page)).toBe(true);
+      await page.context().close();
+    });
+
+    // B265 (the same as B264's swipe card): made-up pointer events on the
+    // grabber, so the same pull happens on every machine.
+    async function pullBy(page: Page, moves: readonly number[], end: 'pointerup' | 'none'): Promise<void> {
+      await page.getByTestId('move-sheet-drag').evaluate(
+        (e, [ys, last]) => {
+          const box = e.querySelector('.sheet__grabber')!.getBoundingClientRect();
+          const at = (type: string, dy: number): void => {
+            e.dispatchEvent(new PointerEvent(type, { pointerId: 9, pointerType: 'touch', isPrimary: true, bubbles: true, clientX: box.x + box.width / 2, clientY: box.y + 2 + dy }));
+          };
+          at('pointerdown', 0);
+          for (const dy of ys as number[]) at('pointermove', dy);
+          if (last === 'pointerup') at('pointerup', (ys as number[])[(ys as number[]).length - 1] ?? 0);
+        },
+        [moves, end] as const,
+      );
+    }
+
+    it('PR 2 B265 a short pull is at rest the moment it is let go: its own place is set back at once, and the way back is only drawn over it', async () => {
+      const page = await opened(MOVING);
+      const right = await page.getByTestId('move-sheet').evaluate((dialog) => {
+        const drag = dialog.querySelector('.sheet__drag')!;
+        const box = drag.querySelector('.sheet__grabber')!.getBoundingClientRect();
+        const at = (type: string, dy: number): void => {
+          drag.dispatchEvent(new PointerEvent(type, { pointerId: 9, pointerType: 'touch', isPrimary: true, bubbles: true, clientX: box.x + box.width / 2, clientY: box.y + 2 + dy }));
+        };
+        at('pointerdown', 0);
+        at('pointermove', 15);
+        at('pointermove', 30);
+        at('pointerup', 30);
+        // Read in the same step as the let-go: nothing later can be what puts it back.
+        return { transform: (dialog as HTMLElement).style.transform, drawn: dialog.getAnimations().length };
+      });
+      expect(right.transform).toBe('');
+      expect(right.drawn).toBeGreaterThan(0);
+      expect(await isOpen(page)).toBe(true);
+      await page.context().close();
+    });
+
+    it('PR 2 B265 a pull that closes the sheet leaves nothing on it: from the moment it closes no transform is written, and opened again it is on the screen', async () => {
+      const page = await opened(MOVING);
+      await pullBy(page, [80, 160], 'pointerup');
+      const after = await page.evaluate(
+        () =>
+          new Promise<string[]>((done) => {
+            const dialog = document.querySelector<HTMLDialogElement>('[data-testid="move-sheet"]')!;
+            const seen: string[] = [];
+            const look = (): void => {
+              if (dialog.open) {
+                requestAnimationFrame(look);
+                return;
+              }
+              seen.push(dialog.style.transform);
+              if (seen.length < 30) requestAnimationFrame(look);
+              else done(seen);
+            };
+            look();
+          }),
+      );
+      expect(after.filter((t) => t !== '')).toEqual([]);
+      await page.getByTestId('move-open').click();
+      expect(await isOpen(page)).toBe(true);
+      await atRest(page);
+      const box = (await page.getByTestId('move-sheet').locator('.sheet__inner').boundingBox())!;
+      expect(box.y).toBeLessThan(IPHONE.height - 100);
+      expect(await page.getByTestId('move-sheet').evaluate((e) => (e as HTMLElement).style.transform)).toBe('');
+      await page.context().close();
+    });
+
+    it('PR 2 B265 a pull while the way back is still drawn takes the sheet from there: it follows the finger, and nothing draws over it', async () => {
+      const page = await opened(MOVING);
+      await pullBy(page, [15, 30], 'pointerup');
+      await pullBy(page, [20, 50], 'none');
+      const now = await page.getByTestId('move-sheet').evaluate(
+        (dialog) =>
+          new Promise<{ transform: string; running: number }>((done) => {
+            requestAnimationFrame(() => requestAnimationFrame(() => done({ transform: (dialog as HTMLElement).style.transform, running: dialog.getAnimations().filter((a) => a.playState === 'running').length })));
+          }),
+      );
+      expect(now).toEqual({ transform: 'translateY(50px)', running: 0 });
       await page.context().close();
     });
 
