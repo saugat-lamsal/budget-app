@@ -1484,7 +1484,7 @@ long). It replaces running everything before every commit:
     in ewr, one 1 GB volume at /data (BUDGET_DB=/data/budget.sqlite), always
     on (auto_stop off), force_https, /health checked, SIGTERM with 60 s. About
     $3.84 a month (Fly's prices, Oct 2026); R2 and UptimeRobot free.
-  - Dockerfile: node:22.23.2-bookworm-slim pinned by digest, Litestream 0.5.17
+  - Dockerfile: node:22.23.4-bookworm-slim pinned by digest, Litestream 0.5.17
     by SHA-256 (the same pin as scripts/litestream.mjs; a test checks). Runs
     /app/serve/start.mjs. .dockerignore keeps .env, data and node_modules out.
   - The hosted server (APP_ORIGIN set; serve/options.ts): only its one https
