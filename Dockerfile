@@ -6,7 +6,7 @@
 # the image: they come from Fly secrets when it runs.
 
 # Node 22, pinned to the exact image (Debian bookworm, slim).
-FROM node:22.23.2-bookworm-slim@sha256:48e4b67d85f87bd551df43704e24d252f56cc5f8e9718841aace50f19948f0f9 AS build
+FROM node:22.23.4-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d AS build
 WORKDIR /app
 # The browser tests' browsers are not needed to build.
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
@@ -23,7 +23,7 @@ RUN node scripts/build.mjs && npm prune --omit=dev
 ADD --checksum=sha256:cfb371176d164437ae869f8351cfde49bd1804ae71c61923f75c9cba9c9c006d https://github.com/benbjohnson/litestream/releases/download/v0.5.17/litestream-0.5.17-linux-x86_64.tar.gz /tmp/litestream.tar.gz
 RUN tar -xzf /tmp/litestream.tar.gz -C /usr/local/bin litestream && litestream version
 
-FROM node:22.23.2-bookworm-slim@sha256:48e4b67d85f87bd551df43704e24d252f56cc5f8e9718841aace50f19948f0f9
+FROM node:22.23.4-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /usr/local/bin/litestream /usr/local/bin/litestream
