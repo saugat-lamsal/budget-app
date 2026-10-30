@@ -5,10 +5,11 @@ import { activityPath, pathOf } from '../app/routes.js';
 import { BucketBar, Button, Card, Hero, ListRow, MadeUpPill, Money, Skeleton, StateMessage, TargetBar } from '../ui/blocks.js';
 import { longDate, monthName } from '../ui/dates.js';
 import { Icon } from '../ui/Icon.js';
-import { onItsWayDetail, onItsWayTitle } from './buckets-text.js';
+import { cardStatementDetail, cardStatementTitle, onItsWayDetail, onItsWayTitle } from './buckets-text.js';
 import { SaidNotice, type Said } from './choose.js';
 import { MoveMoney } from './Move.js';
 import { CheckBanner } from './check-banner.js';
+import { cardsOffText } from './home-text.js';
 
 // Buckets: what is left in each bucket, the mom reserve with this month
 // against the target, money held for others, and the old card debt. The one
@@ -189,6 +190,27 @@ function BucketsReady({ view, reload, onChanged }: { readonly view: Tracking; re
               testId={`transit-${item.id}`}
             />
           ))}
+        </Card>
+      )}
+
+      {/* 9.9: each card's statement at any time, and any card whose reminders are off (9.8). */}
+      {(view.cards.statements.length > 0 || view.cards.off.length > 0) && (
+        <Card title="Card statements" testId="card-statements">
+          {view.cards.statements.map((line) => (
+            <ListRow
+              key={line.card}
+              icon={line.standing === 'overdue' ? 'alert' : line.standing === 'paid' ? 'check' : 'card'}
+              tone={line.standing === 'overdue' ? 'danger' : 'info'}
+              title={cardStatementTitle(line)}
+              detail={cardStatementDetail(line)}
+              trailing={<Money cents={line.statementBalance ?? line.minimumPayment} testId={`statement-${line.card}-amount`} />}
+              testId={`statement-${line.card}`}
+            />
+          ))}
+          {view.cards.off.map((off) => {
+            const words = cardsOffText(off);
+            return <ListRow key={off.card} icon="alert" tone="warning" title={words.title} detail={words.detail} {...(off.why === 'no-statement-date' ? { href: pathOf('settings') } : {})} testId={`statement-off-${off.card}`} />;
+          })}
         </Card>
       )}
 

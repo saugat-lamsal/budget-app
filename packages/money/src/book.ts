@@ -126,7 +126,7 @@ export type SpendingSort =
   | { readonly to: 'unsorted' }
   | { readonly to: SplitBucket }
   | { readonly split: readonly SplitPart[] }
-  // A payment to a person that was not your spending (7.2).
+  // A payment to a person, or money leaving an account, that was not your spending (7.2, 7.7).
   | { readonly to: 'not-mine' }
   // A payment to the old card from savings, taken from the savings bucket
   // once you confirm it (QUESTIONS.md A4).
@@ -2335,7 +2335,17 @@ export class Book {
     this.#review.delete(id);
   }
 
-  // Rules 4.3, 4.4, 4.7, 4.8, 7.2, 7.6.
+  // 7.6, 7.7: a payment to a person, or money leaving checking or savings read
+  // as a purchase. Not the difference on one counted on setup day (14.2), or
+  // the money back on one the bank took back (4.10): those did not leave now.
+  #canBeNotMine(entry: SpendEntry): boolean {
+    if (entry.spendingKind === 'person-payment') return true;
+    const txn = entry.txn;
+    const fromAnAccount = txn.kind === 'savings-withdrawal' || (txn.kind === 'purchase' && txn.account === 'checking');
+    return entry.spendingKind === 'purchase' && fromAnAccount && entry.countedAtSetup === 0 && entry.dropped !== true && entry.takenBack !== true;
+  }
+
+  // Rules 4.3, 4.4, 4.7, 4.8, 7.2, 7.6, 7.7.
   #sortSpending(entry: SpendEntry, choice: SortChoice): void {
     const before = { sortedTo: entry.sortedTo, splitChanged: entry.splitChanged };
     if (!('split' in choice) && !('to' in choice)) throw new MoneyError('bad-choice', `not a way to sort spending: ${JSON.stringify(choice)}`);
@@ -2366,9 +2376,9 @@ export class Book {
     } else if ('split' in choice) {
       if (!Array.isArray(choice.split)) throw new MoneyError('bad-choice', 'a split needs a list of parts');
       const parts = choice.split.map((part) => {
-        // 4.4: spending splits across needs and wants; 7.6: a payment to a person can also have a part that is not mine.
-        if (!isSpendingBucket(part.bucket) && !(person && part.bucket === 'not-mine')) {
-          throw new MoneyError('bad-choice', `${person ? 'a payment to a person splits across needs, wants and not mine' : 'spending can go to needs or wants'}, not ${String(part.bucket)}`);
+        // 4.4: spending splits across needs and wants; 7.6, 7.7: a payment to a person, or money leaving an account, can also have a part that is not mine.
+        if (!isSpendingBucket(part.bucket) && !(this.#canBeNotMine(entry) && part.bucket === 'not-mine')) {
+          throw new MoneyError('bad-choice', `${this.#canBeNotMine(entry) ? 'this splits across needs, wants and not mine' : 'spending can go to needs or wants'}, not ${String(part.bucket)}`);
         }
         assertPositiveCents(part.amount, 'each part of a split');
         return Object.freeze({ bucket: part.bucket, amount: part.amount });
@@ -2377,7 +2387,7 @@ export class Book {
       const net = netOf(entry);
       if (total !== net) throw new MoneyError('split-does-not-add-up', `the parts add up to ${total}, the purchase is ${net}`);
       entry.sortedTo = Object.freeze({ split: Object.freeze(parts) });
-    } else if (isSpendingBucket(choice.to)) {
+    } else if (isSpendingBucket(choice.to) || (choice.to === 'not-mine' && this.#canBeNotMine(entry))) {
       entry.sortedTo = Object.freeze({ to: choice.to });
     } else {
       throw new MoneyError('bad-choice', `spending can go to needs or wants, not ${String(choice.to)}`);

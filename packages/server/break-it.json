@@ -5252,8 +5252,8 @@
   {
     "section": "history",
     "file": "packages/server/src/history/keeper.ts",
-    "find": "    return bucketsView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false, catchingUp: this.#catchingUp(), why: this.#whyNow() });",
-    "replace": "    return bucketsView({ today: this.today(), book: this.book(), bank: this.#bank(), madeUpData: false, catchingUp: this.#catchingUp(), why: null });",
+    "find": "catchingUp: this.#catchingUp(), why: this.#whyNow(), statements: this.#statements()",
+    "replace": "catchingUp: this.#catchingUp(), why: null, statements: this.#statements()",
     "why": "[layer1] 12.6 Buckets is told nothing of why"
   },
   {
@@ -6067,5 +6067,47 @@
     "find": "const lastOver = ended > 0 && book.periodSummary(ended - 1).closing.wants < 0;",
     "replace": "const lastOver = false;",
     "why": "[a59] 40.17 never says Wants went over"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "x.card === 'everyday-card' ? -1 : 1));\n}\n\nexport function onItsWayOf",
+    "replace": "x.card === 'everyday-card' ? 1 : -1));\n}\n\nexport function onItsWayOf",
+    "why": "[a61] 9.9 the old card first"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "cardStanding(today, statement, book.cardPayments(statement.card))",
+    "replace": "cardStanding(today, statement, [])",
+    "why": "[a61] 9.9 the book's payments are not counted"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "off: input.cardsOff ?? [] }",
+    "replace": "off: [] }",
+    "why": "[a61] 9.9 9.8 a card whose reminders are off says nothing"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/views/buckets.ts",
+    "find": "statements: cardsOf(input.statements ?? [], book, today)",
+    "replace": "statements: cardsOf([], book, today)",
+    "why": "[a61] 9.9 no statements are shown"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "why: this.#whyNow(), statements: this.#statements(), cardsOff: this.#cardsOff() });",
+    "replace": "why: this.#whyNow(), cardsOff: this.#cardsOff() });",
+    "why": "[a61] 9.9 the real server gives Buckets no statements"
+  },
+  {
+    "section": "history",
+    "file": "packages/server/src/history/keeper.ts",
+    "find": "why: this.#whyNow(), statements: this.#statements(), cardsOff: this.#cardsOff() });",
+    "replace": "why: this.#whyNow(), statements: this.#statements() });",
+    "why": "[a61] 9.9 9.8 the real server gives Buckets no cards off"
   }
 ]

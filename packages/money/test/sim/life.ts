@@ -365,7 +365,7 @@ type PersonSorting = 'needs' | 'wants' | 'not-mine' | 'mom' | 'split';
 type Intent =
   | { readonly type: 'store'; readonly sorting: Sorting; readonly store: string }
   | { readonly type: 'person'; readonly sorting: PersonSorting }
-  | { readonly type: 'from-savings'; readonly sorting: 'needs' | 'wants' }
+  | { readonly type: 'from-savings'; readonly sorting: 'needs' | 'wants' | 'not-mine' }
   | { readonly type: 'money-in'; readonly choice: 'paycheck' | 'other-income' | 'not-mine' | 'needs' | 'wants' }
   | { readonly type: 'refund'; readonly bucket: 'needs' | 'wants' };
 
@@ -1282,7 +1282,10 @@ class Life {
     this.#stats.savingsBills++;
     const before = this.#book.pots();
     const txn = this.#bank.payFromSavings(this.#date, r.int(5_000, 60_000), r.pick(['MADE UP INSURANCE', 'MADE UP UTILITY'] as const));
-    this.#intents.set(txn.id, { type: 'from-savings', sorting: r.chance(4, 5) ? 'needs' : 'wants' });
+    // 7.7: now and then it was a friend's money sent on (from the amount, so the
+    // lives' random numbers stay as they were).
+    const bucket = r.chance(4, 5) ? 'needs' : 'wants';
+    this.#intents.set(txn.id, { type: 'from-savings', sorting: txn.amount % 5 === 0 ? 'not-mine' : bucket });
     const outcome = this.#receive(txn);
     const item = this.#book.reviewItems().find((i) => i.id === txn.id);
     if (outcome !== 'review' || item?.type !== 'spending' || item.reason !== 'from-savings') {
@@ -1976,8 +1979,8 @@ class Life {
       // it out of savings, the person then moves the money by hand (13.3).
       if (intent?.type !== 'from-savings') throw new CheckFailed('4.9 only money leaving savings waits as from savings', JSON.stringify(item));
       this.#book.sort(item.id, { to: intent.sorting }, today);
-      change = { [intent.sorting]: -item.amount };
-      if (r.chance(1, 2)) cover = intent.sorting;
+      change = intent.sorting === 'not-mine' ? { heldForOthers: -item.amount } : { [intent.sorting]: -item.amount };
+      if (r.chance(1, 2) && intent.sorting !== 'not-mine') cover = intent.sorting;
     } else if (intent?.type === 'person') {
       const sorting = intent.sorting === 'split' && item.amount < 3 ? 'wants' : intent.sorting;
       if (sorting === 'mom') {

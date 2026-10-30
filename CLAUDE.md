@@ -162,7 +162,9 @@ long). It replaces running everything before every commit:
 
 ## Status
 
-- Rulebook: draft 30 (40.10 to 40.17 and section 42, Oct 19: Trends,
+- Rulebook: draft 31 (7.7, 9.9 and section 43, Oct 30: not mine for money
+  leaving an account, A60; each card's statement at any time, A61); draft 30
+  (40.10 to 40.17 and section 42, Oct 19: Trends,
   Future and Habits, A59); draft 29 (sections 40 and 41, Oct 18: the
   Trends tab, A58); draft 28 (section 39, Oct 16: 0.7 the status page, 0.8 the
   page when the app cannot be reached, 11.4 pending since and usually
@@ -2129,8 +2131,34 @@ long). It replaces running everything before every commit:
   refuses GET and an unsigned call; the restore check on the machine: 112
   events, "The backup works." The way back is the image
   deploy-check-20261019t034511z (PR #48).
-- Waiting on: each card's statement closing day (his, on Settings, from a
-  statement, before the old card's November reminders); Pay schedule
+- Not mine and card statements (Oct 30, 2026, branch
+  not-mine-and-card-statements, his ask and his "do all that"; a read-only
+  look at his live books with his OK). Rulebook draft 31, section 43, A60,
+  A61, B275 to B277. Not deployed.
+  - 7.7 (A60): money leaving checking or savings read as a purchase or a
+    withdrawal also offers "not mine" and a split with it
+    (review-options.ts notMine, Book #canBeNotMine). Not on a card, not the
+    difference on one counted on setup day, not the money back on one the
+    bank took back. A rule cannot pick it. On those items the split's order is
+    needs, not mine, wants, so Wants still gets the rest on the screen: with
+    not mine last, a Needs and Wants split of a debit purchase sent the rest
+    to not mine (found by the pay-period browser test). The simulator now
+    marks some bills from savings not mine. Worked example money 43.
+  - B276, from his live books: the bank words a Zelle from savings differently
+    pending and posted, and his bank rule on savings names only the pending
+    words. His step: a second bank rule on savings for the posted words. What
+    was already read stays as it was; 7.7 sorts those.
+  - 9.9 (A61): cardStanding (reminders.ts), BucketsView cards, the "Card
+    statements" card on Buckets (buckets-text.ts cardStatementTitle and
+    cardStatementDetail). Worked example money 44. His closing days were
+    already set (Oct 16): reminders were on and simply not due yet.
+  - Tests: money 7-not-mine-from-accounts, 9-card-standing; server
+    views-buckets, closing-day; web buckets-text; browser review, buckets,
+    design-screens (Chromium). Pay period through the screens passed.
+  - Break-it "[a60]" 13 of 13, "[a61]" 20 of 20 (money 5, view 4, keeper 2,
+    words 5, screen 4 in Chromium), each judged with --only by its own test
+    file. 7 older breaks on moved lines pointed at the code again.
+- Waiting on: Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);
   A51 (the shape of the weekly statement check); his check of part B (the
   list at its top), and the items in docs/later.txt marked DECIDE. To see

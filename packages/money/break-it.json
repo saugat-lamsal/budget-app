@@ -513,8 +513,8 @@
   {
     "section": "5",
     "file": "packages/money/src/book.ts",
-    "find": "    this.#review.delete(id);\n  }\n\n  // Rules 4.3, 4.4, 4.7, 4.8, 7.2, 7.6.",
-    "replace": "  }\n\n  // Rules 4.3, 4.4, 4.7, 4.8, 7.2, 7.6.",
+    "find": "    this.#review.delete(id);\n  }\n\n  // 7.6, 7.7: a payment to a person, or money",
+    "replace": "  }\n\n  // 7.6, 7.7: a payment to a person, or money",
     "why": "5.4 seeing the flag does not clear it"
   },
   {
@@ -2242,8 +2242,8 @@
   {
     "section": "7",
     "file": "packages/money/src/book.ts",
-    "find": "        if (!isSpendingBucket(part.bucket) && !(person && part.bucket === 'not-mine')) {",
-    "replace": "        if (!isSpendingBucket(part.bucket) && part.bucket !== 'not-mine') {",
+    "find": "if (!isSpendingBucket(part.bucket) && !(this.#canBeNotMine(entry) && part.bucket === 'not-mine')) {",
+    "replace": "if (!isSpendingBucket(part.bucket) && part.bucket !== 'not-mine') {",
     "why": "7.6 let a purchase have a not-mine part (B20)"
   },
   {
@@ -2431,15 +2431,15 @@
   {
     "section": "7",
     "file": "packages/money/src/review-options.ts",
-    "find": "if (f.canBeForMom) picks.push(plain('mom'));",
-    "replace": "picks.push(plain('mom'));",
+    "find": "if (person && f.canBeForMom) picks.push(plain('mom'));",
+    "replace": "if (person) picks.push(plain('mom'));",
     "why": "[review] B73 a partly refunded payment can be for mom"
   },
   {
     "section": "7",
     "file": "packages/money/src/review-options.ts",
-    "find": "    picks.push(plain('not-mine'));\n    if (f.canBeForMom)",
-    "replace": "    if (f.canBeForMom)",
+    "find": "const notMine = person || (f.kind",
+    "replace": "const notMine = (f.kind",
     "why": "[review] 7.2 a payment to a person cannot be not mine"
   },
   {
@@ -2466,15 +2466,15 @@
   {
     "section": "7",
     "file": "packages/money/src/review-options.ts",
-    "find": "(person ? (['needs', 'wants', 'not-mine'] as const) : (['needs', 'wants'] as const))",
-    "replace": "(['needs', 'wants'] as const)",
+    "find": "const parts = person ? (['needs', 'wants', 'not-mine'] as const) :",
+    "replace": "const parts = person ? (['needs', 'wants'] as const) :",
     "why": "[review] 7.6 a payment to a person cannot be split with not mine"
   },
   {
     "section": "4",
     "file": "packages/money/src/review-options.ts",
-    "find": "(person ? (['needs', 'wants', 'not-mine'] as const) : (['needs', 'wants'] as const))",
-    "replace": "(['needs', 'wants', 'not-mine'] as const)",
+    "find": ": notMine ? (['needs', 'not-mine', 'wants'] as const) : (['needs', 'wants'] as const);",
+    "replace": ": (['needs', 'not-mine', 'wants'] as const);",
     "why": "[review] 4.4 a purchase can be split with not mine"
   },
   {
@@ -4009,5 +4009,131 @@
     "find": "opening: this.#potTotals(), openingDebt: this.#totals.oldCardDebt, split: this.#periodSplit, leftoverSetting: { needs, wants }",
     "replace": "opening: this.#potTotals(), openingDebt: this.#opening.oldCardDebt, split: this.#periodSplit, leftoverSetting: { needs, wants }",
     "why": "[a59] 40.13 each pay period opens with what was owed on setup day"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/review-options.ts",
+    "find": "const notMine = person || (f.kind === 'purchase' && f.leavesAnAccount && !f.countedAtSetup && !f.gone);",
+    "replace": "const notMine = person;",
+    "why": "[a60] 7.7 not mine is not offered for money leaving an account"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/review-options.ts",
+    "find": "const notMine = person || (f.kind === 'purchase' && f.leavesAnAccount && !f.countedAtSetup && !f.gone);",
+    "replace": "const notMine = person || (f.kind === 'purchase' && !f.countedAtSetup && !f.gone);",
+    "why": "[a60] 7.7 not mine offered on a card"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/review-options.ts",
+    "find": "const notMine = person || (f.kind === 'purchase' && f.leavesAnAccount && !f.countedAtSetup && !f.gone);",
+    "replace": "const notMine = person || (f.kind === 'purchase' && f.leavesAnAccount && !f.gone);",
+    "why": "[a60] 7.7 not mine offered on a difference from setup day"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/review-options.ts",
+    "find": "const notMine = person || (f.kind === 'purchase' && f.leavesAnAccount && !f.countedAtSetup && !f.gone);",
+    "replace": "const notMine = person || (f.kind === 'purchase' && f.leavesAnAccount && !f.countedAtSetup);",
+    "why": "[a60] 7.7 not mine offered on one the bank took back"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/review-options.ts",
+    "find": "notMine ? (['needs', 'not-mine', 'wants'] as const)",
+    "replace": "notMine ? (['needs', 'wants', 'not-mine'] as const)",
+    "why": "[a60] 7.7 4.4 the rest of a split purchase goes to not mine"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "const fromAnAccount = txn.kind === 'savings-withdrawal' || (txn.kind === 'purchase' && txn.account === 'checking');",
+    "replace": "const fromAnAccount = txn.kind === 'savings-withdrawal' || txn.kind === 'purchase';",
+    "why": "[a60] 7.7 the book takes not mine on a card"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "const fromAnAccount = txn.kind === 'savings-withdrawal' || (txn.kind === 'purchase' && txn.account === 'checking');",
+    "replace": "const fromAnAccount = txn.kind === 'purchase' && txn.account === 'checking';",
+    "why": "[a60] 7.7 the book refuses not mine on money leaving savings"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "const fromAnAccount = txn.kind === 'savings-withdrawal' || (txn.kind === 'purchase' && txn.account === 'checking');",
+    "replace": "const fromAnAccount = txn.kind === 'savings-withdrawal';",
+    "why": "[a60] 7.7 the book refuses not mine on money leaving checking"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "return entry.spendingKind === 'purchase' && fromAnAccount && entry.countedAtSetup === 0 && entry.dropped !== true && entry.takenBack !== true;",
+    "replace": "return entry.spendingKind === 'purchase' && fromAnAccount && entry.dropped !== true && entry.takenBack !== true;",
+    "why": "[a60] 7.7 the book takes not mine on a difference from setup day"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "return entry.spendingKind === 'purchase' && fromAnAccount && entry.countedAtSetup === 0 && entry.dropped !== true && entry.takenBack !== true;",
+    "replace": "return entry.spendingKind === 'purchase' && fromAnAccount && entry.countedAtSetup === 0 && entry.dropped !== true;",
+    "why": "[a60] 7.7 the book takes not mine on one the bank took back"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "(choice.to === 'not-mine' && this.#canBeNotMine(entry))",
+    "replace": "choice.to === 'not-mine'",
+    "why": "[a60] 7.7 the book takes not mine on anything"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "!(this.#canBeNotMine(entry) && part.bucket === 'not-mine')",
+    "replace": "!(person && part.bucket === 'not-mine')",
+    "why": "[a60] 7.7 a part cannot be not mine"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "!(this.#canBeNotMine(entry) && part.bucket === 'not-mine')",
+    "replace": "part.bucket !== 'not-mine'",
+    "why": "[a60] 7.7 7.6 no part can be not mine"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "if (paid >= toPay) standing = 'paid';",
+    "replace": "if (paid > toPay) standing = 'paid';",
+    "why": "[a61] 9.9 exactly what 9.3 asks for is not paid"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "else if (daysLeft >= 0) standing = 'to-pay';",
+    "replace": "else if (daysLeft > 0) standing = 'to-pay';",
+    "why": "[a61] 9.9 overdue on the due date itself"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "standing = paid < minimumPayment ? 'overdue' : 'minimum-paid';",
+    "replace": "standing = paid <= minimumPayment ? 'overdue' : 'minimum-paid';",
+    "why": "[a61] 9.9 9.4 exactly the minimum is overdue"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "statementBalance: card === 'everyday-card' ? statementBalance : null",
+    "replace": "statementBalance",
+    "why": "[a61] 9.9 9.2 the old card shows a statement balance"
+  },
+  {
+    "section": "9",
+    "file": "packages/money/src/reminders.ts",
+    "find": "const { paid, toPay } = paidAgainst(today, statement, payments);\n  const daysLeft = daysBetween(today, dueDate);\n  let standing",
+    "replace": "const { paid, toPay } = paidAgainst(today, statement, []);\n  const daysLeft = daysBetween(today, dueDate);\n  let standing",
+    "why": "[a61] 9.9 payments do not count"
   }
 ]
