@@ -2134,7 +2134,7 @@ long). It replaces running everything before every commit:
 - Not mine and card statements (Oct 30, 2026, branch
   not-mine-and-card-statements, his ask and his "do all that"; a read-only
   look at his live books with his OK). Rulebook draft 31, section 43, A60,
-  A61, B275 to B277. Not deployed.
+  A61, B275 to B277.
   - 7.7 (A60): money leaving checking or savings read as a purchase or a
     withdrawal also offers "not mine" and a split with it
     (review-options.ts notMine, Book #canBeNotMine). Not on a card, not the
@@ -2158,7 +2158,17 @@ long). It replaces running everything before every commit:
   - Break-it "[a60]" 13 of 13, "[a61]" 20 of 20 (money 5, view 4, keeper 2,
     words 5, screen 4 in Chromium), each judged with --only by its own test
     file. 7 older breaks on moved lines pointed at the code again.
-- Waiting on: Pay schedule
+- PR #53 merged and deployed Oct 30, 2026 (5:50 PM), at his word ("deploy when
+  green"): CI green on Linux (run 41131635252, all four jobs), the deploy
+  check on the branch's tree (205 events, every one replays, "The backup
+  works."), main's tree after the merge checked to be the same, then that
+  exact image (deploy-check-20261030t213249z). /health and /health/backups
+  ok, /api/home and /api/buckets 401 without a login, http sent to https, the
+  webhook address refuses GET and an unsigned call; the restore check on the
+  machine: 205 events, "The backup works." The way back is the image
+  deploy-check-20261023t231233z. Not yet seen on his iPhone.
+- Waiting on: the bank rule for posted Zelles on savings, and sorting the
+  Zelles and deposits waiting (his, B276); Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);
   A51 (the shape of the weekly statement check); his check of part B (the
   list at its top), and the items in docs/later.txt marked DECIDE. To see
