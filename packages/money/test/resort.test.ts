@@ -94,7 +94,7 @@ describe('B100 a purchase can be sorted again, to where the rulebook allows', ()
     const b = openBook();
     b.receive(withdrawal('w1', '2026-10-03', 6_410, 'MADE UP BILL PAY'));
     b.sort('w1', { to: 'wants' }, '2026-10-04');
-    expect(b.resortDetail('w1')).toMatchObject({ account: 'savings', now: { to: 'wants' }, options: { picks: [{ to: 'needs' }, { to: 'wants' }], always: [] } });
+    expect(b.resortDetail('w1')).toMatchObject({ account: 'savings', now: { to: 'wants' }, options: { picks: [{ to: 'needs' }, { to: 'wants' }, { to: 'not-mine' }], always: [] } });
   });
 
   it('5.2 B100 a payment to the old card from checking always comes out of needs, so it cannot be sorted again', () => {
@@ -122,8 +122,8 @@ describe('B100 a purchase can be sorted again, to where the rulebook allows', ()
       now: { to: 'old-card-payment' },
       marked: 'old-card',
       options: {
-        picks: [{ to: 'needs' }, { to: 'wants' }],
-        split: ['needs', 'wants'],
+        picks: [{ to: 'needs' }, { to: 'wants' }, { to: 'not-mine' }],
+        split: ['needs', 'not-mine', 'wants'],
         // It is already marked with the old card, so that one is not offered again.
         transfer: ['savings', 'everyday-card'],
         always: ['needs', 'wants'],

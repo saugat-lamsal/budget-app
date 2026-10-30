@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 30)
+# Budget App Rulebook (draft 31)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -197,9 +197,9 @@ number so a test can point at it. Nothing gets coded until you approve this.
 4.9  Money leaving savings that is not a transfer to one of your accounts
      (5.3, 5.6) or a payment to a person (7.4), such as a withdrawal or a
      bill paid straight from savings, always waits in review, even when a
-     rule matches it. It has the same choices as any spending (4.2 to 4.4).
-     To pay for it out of savings, sort it and then move the money by hand
-     (13.3).
+     rule matches it. It has the same choices as any spending (4.2 to 4.4),
+     and "not mine" (7.7). To pay for it out of savings, sort it and then
+     move the money by hand (13.3).
 4.10 If the bank takes back a transaction the app already counted (a charge
      shown twice, a correction), the app takes it back too: whatever it did
      to the buckets, the mom reserve, money in transit, or the old card
@@ -277,6 +277,15 @@ number so a test can point at it. Nothing gets coded until you approve this.
      (8.1 to 8.3). A rule for a person can say "for mom" too. One marked
      for mom this way can be sorted again later; one the mom rule matches
      cannot.
+7.7  Money leaving checking or savings that the app read as a purchase or a
+     withdrawal (4.1, 4.9), not as a payment to a person, can also be marked
+     "not mine", in review or when sorting it again, or split across needs,
+     wants, and not mine; the parts must add up to it. It then lowers "held
+     for others" and is not spending (7.2), such as a friend's cash you
+     deposited and sent on. If the deposit was marked "not mine" too, the two
+     cancel out and no bucket changes. A sorting rule cannot pick it (6.2 and
+     7.4 are the rules for known sources and people). A purchase on a card
+     does not get this choice.
 
 
 ## 8. Mom
@@ -331,6 +340,14 @@ number so a test can point at it. Nothing gets coded until you approve this.
      reminders are off for the old card: the bank did not send its
      statement date." The same when the bank sends a statement for a card
      that the app cannot read.
+9.9  Buckets shows each card's latest statement at any time, not only from
+     the first reminder day: the day it closed, the due date and the days
+     until it, the minimum, on the everyday card the statement balance, what
+     the app has seen paid toward it (9.3), and where it stands: paid (what
+     9.3 asks for), still to pay, overdue (9.4), or, on the everyday card,
+     past the due date with the minimum paid and the rest not. A card whose
+     reminders are off says so (9.8). This only reads: the reminders and
+     Home's line still come when 9.6 and 9.7 say.
 
 
 ## 10. Alerts
@@ -1071,3 +1088,13 @@ a.  Future and Habits on the Trends tab, as 40.10 to 40.17: Needs and Wants
     within 10%, and only the ones still going are listed; the Wants streak
     counts pay periods that ended with Wants not overspent; the fixed
     numbers are not settings (QUESTIONS.md A59).
+
+
+## 43. Answers on friends' money and card statements (Oct 30, 2026)
+
+a.  Money leaving checking or savings can be marked "not mine" even when the
+    bank's words did not show it as a payment to a person, so a friend's
+    cash sent on through Zelle does not have to go in needs or wants (7.7,
+    4.9, QUESTIONS.md A60).
+b.  Buckets shows each card's statement and due date at any time, so you can
+    see whether one is coming before the first reminder day (9.9, A61).

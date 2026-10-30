@@ -143,14 +143,18 @@ function spendingOptions(f: Extract<ReviewFacts, { type: 'spending' }>): ReviewO
   if (f.kind === 'debt-payoff') return { type: 'sort', picks: [plain('savings'), plain('needs')], split: null, transfer: [], transferOutcome: {}, always: [], unavailable: [], match: [], unmark: f.markedFromSavings };
 
   const person = f.kind === 'person-payment';
+  // 7.6, 7.7: a payment to a person, or money leaving checking or savings read
+  // as a purchase. Not the difference on one counted on setup day (14.2), or
+  // the money back on one the bank took back (4.10): those did not leave now.
+  const notMine = person || (f.kind === 'purchase' && f.leavesAnAccount && !f.countedAtSetup && !f.gone);
   const picks: ReviewPick[] = [plain('needs'), plain('wants')];
-  if (person) {
-    picks.push(plain('not-mine'));
-    if (f.canBeForMom) picks.push(plain('mom'));
-  }
+  if (notMine) picks.push(plain('not-mine'));
+  if (person && f.canBeForMom) picks.push(plain('mom'));
   // 4.4: parts of at least a cent each. 8.3, B23: the difference on a mom payment goes to one bucket.
   const canSplit = f.kind !== 'mom-difference' && f.net >= 2;
-  const split = canSplit ? (person ? (['needs', 'wants', 'not-mine'] as const) : (['needs', 'wants'] as const)) : null;
+  // The last one gets the rest on the screen: on a purchase (7.7) it stays Wants, as before Not mine was offered.
+  const parts = person ? (['needs', 'wants', 'not-mine'] as const) : notMine ? (['needs', 'not-mine', 'wants'] as const) : (['needs', 'wants'] as const);
+  const split = canSplit ? parts : null;
 
   // 5.6, B74: only a purchase or a payment to a person, that left checking or
   // savings, once it has posted and nothing of it was refunded or counted on setup day.

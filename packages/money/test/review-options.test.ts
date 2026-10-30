@@ -112,12 +112,12 @@ describe('4.5 a refund the app could not match: payback into a bucket, or not mi
 });
 
 describe('4.2 4.3 4.4 a purchase with no rule: needs or wants, or split between them', () => {
-  it('4.2 the choices are needs and wants, never savings or the mom reserve (A3)', () => {
+  it('4.2 7.7 the choices are needs and wants, and from checking not mine, never savings or the mom reserve (A3)', () => {
     const b = book();
     b.receive(purchase('p1', '2026-10-05', 1_150, 'CORNER STORE', { account: 'checking' }));
     const d = detail(b, 'p1');
     expect(d.item).toMatchObject({ type: 'spending', reason: 'no-rule' });
-    expect(toOf(d)).toEqual(['needs', 'wants']);
+    expect(toOf(d)).toEqual(['needs', 'wants', 'not-mine']);
     expect(sorting(d).picks.some((p) => p.final)).toBe(false);
     expect(codeOf(() => b.sort('p1', { to: 'savings' }, '2026-10-06'))).toBe('bad-choice');
   });
@@ -182,8 +182,8 @@ describe('4.2 4.3 4.4 a purchase with no rule: needs or wants, or split between 
     b.receive(refund('r1', '2026-10-06', 1_000, 'p1', 'checking'));
     const d = detail(b, 'p1');
     expect(d.item).toMatchObject({ type: 'spending', reason: 'split-changed', amount: 8_000 });
-    expect(toOf(d)).toEqual(['needs', 'wants']);
-    expect(sorting(d).split).toEqual(['needs', 'wants']);
+    expect(toOf(d)).toEqual(['needs', 'wants', 'not-mine']);
+    expect(sorting(d).split).toEqual(['needs', 'not-mine', 'wants']);
   });
 
   it('14.2 A10 a difference from a charge pending on setup day can go to needs or wants, and cannot be a transfer', () => {
@@ -235,14 +235,14 @@ describe('4.10 what is left of a purchase the bank took back or dropped after a 
 });
 
 describe('4.9 money leaving savings that is not a transfer: always waits, with the usual choices', () => {
-  it('4.9 the choices are needs, wants, or a split; it can be a transfer to another account; no rule', () => {
+  it('4.9 7.7 the choices are needs, wants, not mine, or a split; it can be a transfer to another account; no rule', () => {
     const b = book();
     b.receive(withdrawal('w1', '2026-10-05', 6_410, 'BILL PAY WATER'));
     const d = detail(b, 'w1');
     expect(d.item).toMatchObject({ type: 'spending', reason: 'from-savings' });
     expect(d.account).toBe('savings');
-    expect(toOf(d)).toEqual(['needs', 'wants']);
-    expect(sorting(d).split).toEqual(['needs', 'wants']);
+    expect(toOf(d)).toEqual(['needs', 'wants', 'not-mine']);
+    expect(sorting(d).split).toEqual(['needs', 'not-mine', 'wants']);
     expect(sorting(d).transfer).toEqual(['checking', 'everyday-card', 'old-card']);
     expect(sorting(d).always).toEqual([]);
   });

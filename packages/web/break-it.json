@@ -3344,5 +3344,68 @@
     "find": ".roll__col > span {\n  height: 1.2em;\n  text-align: center;\n}",
     "replace": ".roll__col > span {\n  height: 1.2em;\n}",
     "why": "[finishing] a drawn digit at the left of its cell, a gap after a \"1\" in WebKit"
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/buckets-text.ts",
+    "find": "line.card === 'everyday-card' ? 'Paid' : 'Minimum paid'",
+    "replace": "line.card === 'old-card' ? 'Paid' : 'Minimum paid'",
+    "why": "[a61] 9.9 paid in the wrong words for the card"
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/buckets-text.ts",
+    "find": "if (line.card === 'everyday-card') parts.push(minimum);",
+    "replace": "parts.push(minimum);",
+    "why": "[a61] 9.9 the old card says its minimum twice"
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/buckets-text.ts",
+    "find": "if (line.paid > 0) parts.push",
+    "replace": "if (line.paid > 1) parts.push",
+    "why": "[a61] 9.9 one cent paid is not said"
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/buckets-text.ts",
+    "find": "line.card === 'everyday-card' ? 'Everyday card statement' : 'Old card minimum'",
+    "replace": "line.card === 'old-card' ? 'Everyday card statement' : 'Old card minimum'",
+    "why": "[a61] 9.9 the row names the wrong card"
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/buckets-text.ts",
+    "find": "const when = dueText(line.daysLeft);",
+    "replace": "const when = dueText(line.daysLeft + 1);",
+    "why": "[a61] 9.9 the days to the due date off by one"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Buckets.tsx",
+    "find": "cents={line.statementBalance ?? line.minimumPayment}",
+    "replace": "cents={line.minimumPayment}",
+    "why": "[a61] 9.9 the everyday card shows the minimum for the statement balance"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Buckets.tsx",
+    "find": "detail={cardStatementDetail(line)}",
+    "replace": "detail={cardStatementTitle(line)}",
+    "why": "[a61] 9.9 the row does not say when it is due"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Buckets.tsx",
+    "find": "{view.cards.off.map((off) => {",
+    "replace": "{view.cards.off.slice(1).map((off) => {",
+    "why": "[a61] 9.8 9.9 a card whose reminders are off is left out"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Buckets.tsx",
+    "find": "{(view.cards.statements.length > 0 || view.cards.off.length > 0) && (",
+    "replace": "{view.cards.statements.length > 0 && (",
+    "why": "[a61] 9.8 9.9 with every card off, the card is not shown"
   }
 ]

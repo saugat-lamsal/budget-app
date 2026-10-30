@@ -1135,6 +1135,18 @@ A59. ADDED Oct 18 (the redesign's PR 5, docs/redesign-plan.txt): the Trends
      all the recommended choices."): rulebook draft 30, 40.10 to 40.17 and
      42a.
 
+## Part A, added Oct 30, 2026. Both answered.
+
+A60. ANSWERED Oct 30 (his ask, his OK to build): a friend gives him cash, he
+     deposits it, and he sends it on through Zelle. The Zelle came out of
+     savings, read as money leaving savings, whose only choices were needs,
+     wants, a split, or a transfer. Now 7.7: "not mine" for money leaving
+     checking or savings. Rulebook draft 31, section 43.
+
+A61. ANSWERED Oct 30 (his ask): he could not tell whether a statement was
+     coming, since a card shows only from the first reminder day. Now 9.9: a
+     card on Buckets with each card's statement at any time.
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 WAITING FOR YOU TO CHECK (Oct 10, 2026, the end of Phase 4). Each was
@@ -3425,3 +3437,24 @@ B274. Found in the WebKit pictures (PR 5's finishing pass), fixed with a test
       Every rolling amount with a 1 in it, since PR 2. Each digit is now
       centred in its cell, as a tabular figure is. Test: rolling-amounts.test.ts
       (a drawn "1" sits in the middle of its cell; failed in WebKit before).
+B275. A60 as built (7.7). "Not mine" is offered for money leaving checking or
+      savings, not for a purchase on a card: he asked about money in his
+      accounts, and a card purchase for a friend is already answered by the
+      friend paying it back (7.5). A sorting rule cannot pick it, since a
+      purchase rule picks needs or wants (13.6), so 13.8 offers no rule for it.
+      A refund of one marked not mine goes back to held for others, where it
+      came from (4.5). It shows as "Purchase" on Held for others' list, the
+      word that kind of item has on every list.
+B276. Found in his live books (Oct 30, his OK, read-only): the bank words a
+      Zelle from savings one way while pending and another once posted. His
+      bank rule on savings names the pending words, and the rule naming the
+      posted words is on checking only. So the posted one reads as money
+      leaving savings, not as a payment to a person, with no "for mom" and no
+      mom rule. It is fixed for what comes next by a second bank rule on
+      savings, in Settings (his step). What was already read stays as it was
+      (section 2), so 7.7 is what sorts the ones already waiting.
+B277. A61 as built (9.9). The card sits on Buckets, not Home, since Home has
+      one main number and its own line from the first reminder day (9.6). A
+      due date past with what 9.3 asks for paid says paid. The everyday card
+      paid in part after the due date, with the minimum met, says so in words:
+      no overdue alert comes for it (9.4).

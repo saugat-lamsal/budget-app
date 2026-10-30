@@ -1320,3 +1320,39 @@ If the Oct 30 paycheck comes a day early, on Thu, Oct 29, the payday it is
 nearest is still Oct 30, so the next one is still Nov 13.
 
 Check: twice a month share 469.14 | every fourteen days share 390.95
+
+
+EXAMPLE 43. A friend's cash, deposited and sent on (rules 7.1, 7.2, 7.7; QUESTIONS.md A60)
+
+Made-up numbers. Needs 1,000.00, wants 500.00, nothing held for others.
+
+Oct 5. A friend gives him 200.00 in cash. He deposits it. It waits in review;
+       he picks Not mine. Held for others 200.00. Needs and wants do not move.
+Oct 6. He sends it on through Zelle, from savings. The bank's words read as
+       money leaving savings, and it waits in review; he picks Not mine.
+       Held for others 200.00 - 200.00 = 0.00. Needs and wants do not move.
+Oct 7. He sends 85.00, of which 15.00 was his share of a dinner. He splits it:
+       Wants 15.00 and Not mine 70.00.
+       Wants 500.00 - 15.00 = 485.00. Held for others 0.00 - 70.00 = -70.00,
+       which means someone owes him, until that friend pays him (7.3).
+
+Check: held after the deposit 200.00 | held after sending it on 0.00
+Check: last needs 1,000.00 | last wants 485.00 | last held -70.00
+
+
+EXAMPLE 44. A card's statement, at any time (rules 9.3, 9.4, 9.9; QUESTIONS.md A61)
+
+Made-up numbers. The everyday card's statement closed Oct 5 at 250.00, with a
+25.00 minimum, due Nov 1.
+
+On Oct 10 that is 22 days away, 15 days before the first reminder day, so Home
+says nothing and Buckets shows the statement: still to pay.
+After a 100.00 payment on Oct 10: 100.00 paid, still to pay, since the everyday
+card asks for the full statement balance (9.3).
+After 250.00 instead: paid.
+On Nov 2, the day after the due date:
+  with 100.00 paid, the minimum was met and the rest was not: no overdue alert
+  (9.4), and Buckets says so.
+  with nothing paid: overdue.
+
+Check: statement balance 250.00 | minimum 25.00 | paid in part 100.00
