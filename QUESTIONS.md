@@ -3492,3 +3492,9 @@ B280. A64 as built (7.7). The everyday card, not the old card, whose purchases
       raise the debt and touch no bucket (5.4). As on checking and savings, a split
       keeps Wants as the rest. A rule still picks needs or wants for a purchase, so
       one a rule sorted is changed from its bucket's list.
+B281. Found on CI's WebKit (PR 54, the same test twice), fixed with a test first.
+      13.7's second was counted from when the screen worked out the new numbers,
+      so a slow first frame could use it up before the change could be seen, and a
+      tap meant for what was there before went through. It now starts at the frame
+      that shows the change. Nothing about money changed: the server still refuses
+      an answer about an item that is not what the screen sent.

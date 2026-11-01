@@ -2193,6 +2193,10 @@ long). It replaces running everything before every commit:
     and a split offering a rule (a test whose every word was common, so no name
     was found; it now has other deposits beside it, and checks the same two
     sorted one way do offer it).
+  - B281, found by PR 54's CI (WebKit, twice, a test not touched): 13.7's second
+    ran from when the screen worked out the numbers, so a slow first frame used
+    it up. It now starts at the frame that shows the change (choose.tsx useFresh).
+    sync.test.ts "B281" holds that frame back on purpose. Breaks "[b281]".
 - Waiting on: the bank rule for posted Zelles on savings, and sorting the
   Zelles and deposits waiting (his, B276); Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);

@@ -3456,5 +3456,33 @@
     "find": "'owed-to-you': 'More went out than came in. Move money in to clear it.',",
     "replace": "'owed-to-you': 'Someone owes you',",
     "why": "[a62] 7.3 a negative says someone owes you"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "changedUntil.current.set(id, Infinity);",
+    "replace": "changedUntil.current.set(id, performance.now() + CHANGED_HOLD_MS);",
+    "why": "[b281] 13.7 the second starts before the change can be seen"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "const until = performance.now() + CHANGED_HOLD_MS;\n      for (const [id, at]",
+    "replace": "const until = performance.now();\n      for (const [id, at]",
+    "why": "[b281] 13.7 no second at all once the change is shown"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "if (at === Infinity) changedUntil.current.set(id, until);\n      redraw((n) => n + 1);",
+    "replace": "if (at === Infinity) changedUntil.current.set(id, until);",
+    "why": "[b281] 13.7 the item never takes a tap again"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "if (at === Infinity) changedUntil.current.set(id, until);\n",
+    "replace": "\n",
+    "why": "[b281] 13.7 the hold never ends"
   }
 ]
