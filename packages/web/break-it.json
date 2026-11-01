@@ -786,8 +786,8 @@
   {
     "section": "home",
     "file": "packages/web/src/screens/Buckets.tsx",
-    "find": "settled: 'Settled: nothing held either way',",
-    "replace": "settled: \"Holding money that isn't yours\",",
+    "find": "settled: 'Not in Needs or Wants. Nothing here now.',",
+    "replace": "settled: 'Not in Needs or Wants.',",
     "why": "[review] 7.3 settled is said as holding money"
   },
   {
@@ -3407,5 +3407,82 @@
     "find": "{(view.cards.statements.length > 0 || view.cards.off.length > 0) && (",
     "replace": "{view.cards.statements.length > 0 && (",
     "why": "[a61] 9.8 9.9 with every card off, the card is not shown"
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/review-text.ts",
+    "find": "return short ? 'Other' : 'Other (not Needs or Wants)';",
+    "replace": "return 'Other';",
+    "why": "[a62] the sheet can be taken for Other income"
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/review-text.ts",
+    "find": "text = `${label} marked Other.`;",
+    "replace": "text = `${label} marked not mine.`;",
+    "why": "[a62] the notice says the old word"
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/review-text.ts",
+    "find": "  'not-mine': 'Other',",
+    "replace": "  'not-mine': 'Not mine',",
+    "why": "[a62] a split says the old word"
+  },
+  {
+    "section": "words",
+    "file": "packages/web/src/screens/review-text.ts",
+    "find": "      return 'marked Other';",
+    "replace": "      return 'marked not mine';",
+    "why": "[a62] where it is now says the old word"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/ui/names.ts",
+    "find": "  heldForOthers: 'Other',",
+    "replace": "  heldForOthers: 'Held for others',",
+    "why": "[a62] the bucket keeps the old name"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Buckets.tsx",
+    "find": "title=\"Other\"",
+    "replace": "title=\"Held for others\"",
+    "why": "[a62] Buckets says the old name"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/Buckets.tsx",
+    "find": "'owed-to-you': 'More went out than came in. Move money in to clear it.',",
+    "replace": "'owed-to-you': 'Someone owes you',",
+    "why": "[a62] 7.3 a negative says someone owes you"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "changedUntil.current.set(id, Infinity);",
+    "replace": "changedUntil.current.set(id, performance.now() + CHANGED_HOLD_MS);",
+    "why": "[b281] 13.7 the second starts before the change can be seen"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "const until = performance.now() + CHANGED_HOLD_MS;\n      for (const [id, at]",
+    "replace": "const until = performance.now();\n      for (const [id, at]",
+    "why": "[b281] 13.7 no second at all once the change is shown"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "if (at === Infinity) changedUntil.current.set(id, until);\n      redraw((n) => n + 1);",
+    "replace": "if (at === Infinity) changedUntil.current.set(id, until);",
+    "why": "[b281] 13.7 the item never takes a tap again"
+  },
+  {
+    "section": "home",
+    "file": "packages/web/src/screens/choose.tsx",
+    "find": "if (at === Infinity) changedUntil.current.set(id, until);\n",
+    "replace": "\n",
+    "why": "[b281] 13.7 the hold never ends"
   }
 ]

@@ -415,8 +415,8 @@
   {
     "section": "4",
     "file": "packages/money/src/book.ts",
-    "find": "assertPositiveCents(part.amount, 'each part of a split');",
-    "replace": "assertCents(part.amount, 'each part of a split');",
+    "find": "        assertPositiveCents(part.amount, 'each part of a split');\n        return Object.freeze({ bucket: part.bucket, amount: part.amount });",
+    "replace": "        assertCents(part.amount, 'each part of a split');\n        return Object.freeze({ bucket: part.bucket, amount: part.amount });",
     "why": "4.4 allow zero and negative parts in a split"
   },
   {
@@ -513,8 +513,8 @@
   {
     "section": "5",
     "file": "packages/money/src/book.ts",
-    "find": "    this.#review.delete(id);\n  }\n\n  // 7.6, 7.7: a payment to a person, or money",
-    "replace": "  }\n\n  // 7.6, 7.7: a payment to a person, or money",
+    "find": "    this.#review.delete(id);\n  }\n\n  // 7.6, 7.7: a payment to a person, or a purchase",
+    "replace": "  }\n\n  // 7.6, 7.7: a payment to a person, or a purchase",
     "why": "5.4 seeing the flag does not clear it"
   },
   {
@@ -1745,8 +1745,8 @@
   {
     "section": "0",
     "file": "packages/money/src/book.ts",
-    "find": "    this.#setEffect(entry, effect);\n    entry.sortedTo = choice.to;\n    entry.incomeSplit = incomeSplit;",
-    "replace": "    entry.sortedTo = choice.to;\n    entry.incomeSplit = incomeSplit;\n    this.#setEffect(entry, effect);",
+    "find": "    this.#setEffect(entry, effect);\n    entry.sortedTo = choice.to;\n    entry.parts = null;\n    entry.incomeSplit = incomeSplit;",
+    "replace": "    entry.sortedTo = choice.to;\n    entry.parts = null;\n    entry.incomeSplit = incomeSplit;\n    this.#setEffect(entry, effect);",
     "why": "0.1 mark money in as sorted before its totals are checked"
   },
   {
@@ -2991,8 +2991,8 @@
   {
     "section": "4",
     "file": "packages/money/src/book.ts",
-    "find": "entry.sortedTo === 'other-income' ? 'other-income' : entry.sortedTo === 'not-mine' ? 'not-mine' : 'payback'",
-    "replace": "entry.sortedTo === 'other-income' ? 'payback' : entry.sortedTo === 'not-mine' ? 'not-mine' : 'other-income'",
+    "find": "entry.sortedTo === 'other-income' ? 'other-income' : entry.sortedTo === 'not-mine' || (split && pot === 'heldForOthers') ? 'not-mine' : 'payback'",
+    "replace": "entry.sortedTo === 'other-income' ? 'payback' : entry.sortedTo === 'not-mine' || (split && pot === 'heldForOthers') ? 'not-mine' : 'other-income'",
     "why": "[activity] B98 other income and a payback are mixed up"
   },
   {
@@ -3068,8 +3068,8 @@
   {
     "section": "4",
     "file": "packages/money/src/book.ts",
-    "find": "olderThanLastPaycheck: older, likely: likely.map((p) => p.id) });\n        if (options.type !== 'sort') throw new MoneyError('broken-book', 'money in has no choices');",
-    "replace": "olderThanLastPaycheck: false, likely: likely.map((p) => p.id) });\n        if (options.type !== 'sort') throw new MoneyError('broken-book', 'money in has no choices');",
+    "find": "olderThanLastPaycheck: older, likely: likely.map((p) => p.id), amount: txn.amount });\n        if (options.type !== 'sort') throw new MoneyError('broken-book', 'money in has no choices');",
+    "replace": "olderThanLastPaycheck: false, likely: likely.map((p) => p.id), amount: txn.amount });\n        if (options.type !== 'sort') throw new MoneyError('broken-book', 'money in has no choices');",
     "why": "[activity] B54 a deposit older than the last paycheck is offered to be your paycheck"
   },
   {
@@ -4013,29 +4013,29 @@
   {
     "section": "7",
     "file": "packages/money/src/review-options.ts",
-    "find": "const notMine = person || (f.kind === 'purchase' && f.leavesAnAccount && !f.countedAtSetup && !f.gone);",
+    "find": "const notMine = person || (f.kind === 'purchase' && (f.leavesAnAccount || f.account === 'everyday-card') && !f.countedAtSetup && !f.gone);",
     "replace": "const notMine = person;",
     "why": "[a60] 7.7 not mine is not offered for money leaving an account"
   },
   {
     "section": "7",
     "file": "packages/money/src/review-options.ts",
-    "find": "const notMine = person || (f.kind === 'purchase' && f.leavesAnAccount && !f.countedAtSetup && !f.gone);",
-    "replace": "const notMine = person || (f.kind === 'purchase' && !f.countedAtSetup && !f.gone);",
+    "find": "const notMine = person || (f.kind === 'purchase' && (f.leavesAnAccount || f.account === 'everyday-card') && !f.countedAtSetup && !f.gone);",
+    "replace": "const notMine = person || (f.kind === 'purchase' && f.leavesAnAccount && !f.countedAtSetup && !f.gone);",
     "why": "[a60] 7.7 not mine offered on a card"
   },
   {
     "section": "7",
     "file": "packages/money/src/review-options.ts",
-    "find": "const notMine = person || (f.kind === 'purchase' && f.leavesAnAccount && !f.countedAtSetup && !f.gone);",
-    "replace": "const notMine = person || (f.kind === 'purchase' && f.leavesAnAccount && !f.gone);",
+    "find": "const notMine = person || (f.kind === 'purchase' && (f.leavesAnAccount || f.account === 'everyday-card') && !f.countedAtSetup && !f.gone);",
+    "replace": "const notMine = person || (f.kind === 'purchase' && (f.leavesAnAccount || f.account === 'everyday-card') && !f.gone);",
     "why": "[a60] 7.7 not mine offered on a difference from setup day"
   },
   {
     "section": "7",
     "file": "packages/money/src/review-options.ts",
-    "find": "const notMine = person || (f.kind === 'purchase' && f.leavesAnAccount && !f.countedAtSetup && !f.gone);",
-    "replace": "const notMine = person || (f.kind === 'purchase' && f.leavesAnAccount && !f.countedAtSetup);",
+    "find": "const notMine = person || (f.kind === 'purchase' && (f.leavesAnAccount || f.account === 'everyday-card') && !f.countedAtSetup && !f.gone);",
+    "replace": "const notMine = person || (f.kind === 'purchase' && (f.leavesAnAccount || f.account === 'everyday-card') && !f.countedAtSetup);",
     "why": "[a60] 7.7 not mine offered on one the bank took back"
   },
   {
@@ -4048,22 +4048,22 @@
   {
     "section": "7",
     "file": "packages/money/src/book.ts",
-    "find": "const fromAnAccount = txn.kind === 'savings-withdrawal' || (txn.kind === 'purchase' && txn.account === 'checking');",
-    "replace": "const fromAnAccount = txn.kind === 'savings-withdrawal' || txn.kind === 'purchase';",
+    "find": "const fromAnAccount = txn.kind === 'savings-withdrawal' || (txn.kind === 'purchase' && (txn.account === 'checking' || txn.account === 'everyday-card'));",
+    "replace": "const fromAnAccount = txn.kind === 'savings-withdrawal' || (txn.kind === 'purchase' && txn.account === 'checking');",
     "why": "[a60] 7.7 the book takes not mine on a card"
   },
   {
     "section": "7",
     "file": "packages/money/src/book.ts",
-    "find": "const fromAnAccount = txn.kind === 'savings-withdrawal' || (txn.kind === 'purchase' && txn.account === 'checking');",
-    "replace": "const fromAnAccount = txn.kind === 'purchase' && txn.account === 'checking';",
+    "find": "const fromAnAccount = txn.kind === 'savings-withdrawal' || (txn.kind === 'purchase' && (txn.account === 'checking' || txn.account === 'everyday-card'));",
+    "replace": "const fromAnAccount = txn.kind === 'purchase' && (txn.account === 'checking' || txn.account === 'everyday-card');",
     "why": "[a60] 7.7 the book refuses not mine on money leaving savings"
   },
   {
     "section": "7",
     "file": "packages/money/src/book.ts",
-    "find": "const fromAnAccount = txn.kind === 'savings-withdrawal' || (txn.kind === 'purchase' && txn.account === 'checking');",
-    "replace": "const fromAnAccount = txn.kind === 'savings-withdrawal';",
+    "find": "const fromAnAccount = txn.kind === 'savings-withdrawal' || (txn.kind === 'purchase' && (txn.account === 'checking' || txn.account === 'everyday-card'));",
+    "replace": "const fromAnAccount = txn.kind === 'savings-withdrawal' || (txn.kind === 'purchase' && txn.account === 'everyday-card');",
     "why": "[a60] 7.7 the book refuses not mine on money leaving checking"
   },
   {
@@ -4135,5 +4135,124 @@
     "find": "const { paid, toPay } = paidAgainst(today, statement, payments);\n  const daysLeft = daysBetween(today, dueDate);\n  let standing",
     "replace": "const { paid, toPay } = paidAgainst(today, statement, []);\n  const daysLeft = daysBetween(today, dueDate);\n  let standing",
     "why": "[a61] 9.9 payments do not count"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/review-options.ts",
+    "find": "split: f.amount >= 2 ? ['not-mine', 'savings', 'needs', 'wants'] : null,",
+    "replace": "split: null,",
+    "why": "[a63] 7.8 money in cannot be split"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/review-options.ts",
+    "find": "split: f.amount >= 2 ? ['not-mine', 'savings', 'needs', 'wants'] : null,",
+    "replace": "split: ['not-mine', 'savings', 'needs', 'wants'],",
+    "why": "[a63] 7.8 one cent is offered a split"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/review-options.ts",
+    "find": "split: f.amount >= 2 ? ['not-mine', 'savings', 'needs', 'wants'] : null,",
+    "replace": "split: f.amount >= 2 ? ['wants', 'savings', 'needs', 'not-mine'] : null,",
+    "why": "[a63] 7.8 the rest goes to Other, not Wants"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "if (!Array.isArray(split) || split.length < 2) throw new MoneyError('bad-choice', 'a split needs at least two parts');\n    const effect: Effect = {};",
+    "replace": "const effect: Effect = {};",
+    "why": "[a63] 7.8 one part or not a list is a split"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "if (part.bucket !== 'not-mine' && part.bucket !== 'savings' && !isSpendingBucket(part.bucket)) {",
+    "replace": "if (false) {",
+    "why": "[a63] 7.8 any bucket can be a part"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "      assertPositiveCents(part.amount, 'each part of a split');\n      const pot =",
+    "replace": "      assertCents(part.amount, 'each part of a split');\n      const pot =",
+    "why": "[a63] 7.8 zero and negative parts"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "const pot = part.bucket === 'not-mine' ? 'heldForOthers' : part.bucket;\n      effect[pot] = addCents(effect[pot] ?? 0, part.amount);",
+    "replace": "const pot = part.bucket === 'not-mine' ? 'savings' : part.bucket;\n      effect[pot] = addCents(effect[pot] ?? 0, part.amount);",
+    "why": "[a63] 7.8 the Other part lands in savings"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "effect[pot] = addCents(effect[pot] ?? 0, part.amount);",
+    "replace": "effect[pot] = part.amount;",
+    "why": "[a63] 7.8 a bucket named twice keeps only its last part"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "if (total !== entry.txn.amount) throw new MoneyError('split-does-not-add-up',",
+    "replace": "if (total > entry.txn.amount) throw new MoneyError('split-does-not-add-up',",
+    "why": "[a63] 7.8 parts a cent short are taken"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "if (total !== entry.txn.amount) throw new MoneyError('split-does-not-add-up',",
+    "replace": "if (total < entry.txn.amount) throw new MoneyError('split-does-not-add-up',",
+    "why": "[a63] 7.8 parts a cent over are taken"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "    entry.sortedTo = 'split';\n    entry.parts = Object.freeze(parts);\n    entry.incomeSplit = null;\n    this.#review.delete(entry.id);",
+    "replace": "    entry.sortedTo = 'split';\n    entry.parts = Object.freeze(parts);\n    entry.incomeSplit = null;",
+    "why": "[a63] 7.8 a split deposit stays in review"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "    entry.sortedTo = 'split';\n    entry.parts = Object.freeze(parts);",
+    "replace": "    entry.sortedTo = 'split';\n    entry.parts = [];",
+    "why": "[a63] 7.8 sorting again does not know the parts"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "now: entry.sortedTo === 'split' ? Object.freeze({ split: entry.parts ?? [] }) : Object.freeze({ to: entry.sortedTo }),",
+    "replace": "now: Object.freeze({ to: entry.sortedTo as never }),",
+    "why": "[a63] 7.8 where a split deposit is now is not said"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "|| (split && pot === 'heldForOthers') ? 'not-mine' : 'payback';",
+    "replace": "? 'not-mine' : 'payback';",
+    "why": "[a63] 7.8 B97 the Other part is listed as a payback"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "refunded: 0, partOfSplit: split, resort });",
+    "replace": "refunded: 0, partOfSplit: false, resort });",
+    "why": "[a63] 7.8 B97 a part does not say it is part of a split"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "entry.byHand === true && entry.sortedTo !== 'unsorted' && entry.sortedTo !== 'split') return entry.sortedTo;",
+    "replace": "entry.byHand === true && entry.sortedTo !== 'unsorted') return entry.sortedTo === 'split' ? 'wants' : entry.sortedTo;",
+    "why": "[a63] 7.8 13.8 a split offers a rule"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "if (typeof choice === 'object' && choice !== null && 'split' in choice) return this.#splitMoneyIn(entry, choice.split);\n    if (!isMoneyInChoice(choice))",
+    "replace": "if (!isMoneyInChoice(choice))",
+    "why": "[a63] 7.8 the book refuses a split deposit"
   }
 ]

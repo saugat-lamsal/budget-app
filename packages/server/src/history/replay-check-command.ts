@@ -21,7 +21,7 @@ const NAMES: Readonly<Record<keyof Totals, string>> = {
   needs: 'Needs',
   wants: 'Wants',
   momReserve: 'Mom reserve',
-  heldForOthers: 'Held for others',
+  heldForOthers: 'Other',
   unsortedIn: 'Money in waiting in Review',
   unsortedOut: 'Spending waiting in Review',
   oldCardDebt: 'Old card owes',

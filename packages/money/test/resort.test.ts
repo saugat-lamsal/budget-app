@@ -18,7 +18,7 @@ function openBook(): Book {
 }
 
 describe('B100 a purchase can be sorted again, to where the rulebook allows', () => {
-  it('4.7 4.2 4.4 B100 a purchase on a card: needs or wants, or a split; no transfer, since it did not leave checking or savings', () => {
+  it('4.7 4.2 4.4 7.7 B100 a purchase on a card: needs, wants, Other, or a split; no transfer, since it did not leave checking or savings', () => {
     const b = openBook();
     b.receive(purchase('g1', '2026-10-02', 3_250, 'MADE UP GROCERY'));
     expect(b.resortDetail('g1')).toMatchObject({
@@ -33,8 +33,8 @@ describe('B100 a purchase can be sorted again, to where the rulebook allows', ()
       now: { to: 'needs' },
       options: {
         type: 'sort',
-        picks: [{ to: 'needs', final: false }, { to: 'wants', final: false }],
-        split: ['needs', 'wants'],
+        picks: [{ to: 'needs', final: false }, { to: 'wants', final: false }, { to: 'not-mine', final: false }],
+        split: ['needs', 'not-mine', 'wants'],
         transfer: [],
         always: ['needs', 'wants'],
         unavailable: [],

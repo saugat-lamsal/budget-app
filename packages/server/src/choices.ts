@@ -72,8 +72,8 @@ import type { BankRuleRequest, BankRuleSpec } from './views/bank-rules.js';
 // 13.1); and adding, changing, or removing a sorting rule (13.2).
 
 const PICKS: readonly PickTo[] = ['paycheck', 'other-income', 'savings', 'needs', 'wants', 'momReserve', 'not-mine', 'mom'];
-const SPLIT_BUCKETS: readonly ChoicePart['bucket'][] = ['needs', 'wants', 'not-mine'];
-const BUCKET_WORDS: Readonly<Record<string, string>> = { needs: 'Needs', wants: 'Wants', 'not-mine': 'Not mine', savings: 'Savings', momReserve: 'Mom reserve', heldForOthers: 'Held for others' };
+const SPLIT_BUCKETS: readonly ChoicePart['bucket'][] = ['needs', 'wants', 'not-mine', 'savings'];
+const BUCKET_WORDS: Readonly<Record<string, string>> = { needs: 'Needs', wants: 'Wants', 'not-mine': 'Other', savings: 'Savings', momReserve: 'Mom reserve', heldForOthers: 'Other' };
 
 const ID_FORMAT = /^[A-Za-z0-9_-]{8,64}$/;
 // An item's key as a screen saw it (item-key.ts).
@@ -471,7 +471,7 @@ export class ChoiceDesk {
       // Step 3: an answer about an item that changed since the screen showed
       // it (a sync brought something new about it) is refused, with how it is now.
       if (request.seen !== undefined && request.seen !== itemKey(detail)) return refuse('changed', changedWhy(detail));
-      subject = { options: detail.options, net: detail.item.type === 'spending' ? detail.item.amount : 0, storeRefund: detail.item.type === 'money-in' && detail.item.reason === 'refund', now: null };
+      subject = { options: detail.options, net: detail.item.type === 'spending' || detail.item.type === 'money-in' ? detail.item.amount : 0, storeRefund: detail.item.type === 'money-in' && detail.item.reason === 'refund', now: null };
     } else {
       // Only a tap on the list of what went in and out of a bucket may change
       // something that is not waiting.
@@ -479,7 +479,7 @@ export class ChoiceDesk {
       if (sorted === null) return refuse('not-waiting', 'That one was already dealt with.');
       if (!sorted.resortable) return refuse('refused', sorted.why);
       if (request.seen !== undefined && request.seen !== itemKey(sorted)) return refuse('changed', changedWhy(sorted));
-      subject = { options: sorted.options, net: sorted.type === 'spending' ? sorted.amount : 0, storeRefund: sorted.refund, now: sorted.now };
+      subject = { options: sorted.options, net: sorted.amount, storeRefund: sorted.refund, now: sorted.now };
     }
 
     // Only what the rulebook gives for this kind of item.
@@ -824,7 +824,7 @@ function alreadyThere(choice: ChoiceOf, now: SortedNow): string | null {
   if ('to' in choice && 'to' in now && choice.to === now.to) {
     switch (now.to) {
       case 'not-mine':
-        return 'marked not mine';
+        return 'marked Other';
       case 'mom':
         return 'marked for mom';
       case 'other-income':

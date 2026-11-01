@@ -1868,6 +1868,14 @@ class Life {
           this.#expectRefused(() => this.#book.sort(item.id, { to: 'paycheck' }, today), before, item.id, 'calling a deposit older than the last paycheck a paycheck (B54)');
           choice = 'other-income';
         }
+        // 7.8: now and then part of a friend's money was what the friend owed.
+        if (choice === 'not-mine' && item.amount % 5 === 0 && item.amount >= 2) {
+          const owed = Math.max(1, Math.floor(item.amount / 10));
+          this.#book.sort(item.id, { split: [{ bucket: 'not-mine', amount: item.amount - owed }, { bucket: 'wants', amount: owed }] }, today);
+          this.#note(`split money in ${item.id}`);
+          this.#expectChange(before, { heldForOthers: item.amount - owed, wants: owed, unsortedIn: -item.amount }, '7.8 splitting money in', item.id);
+          return;
+        }
         const asked = this.#openLeftovers();
         this.#book.sort(item.id, { to: choice }, today);
         this.#note(`sort money in ${item.id} -> ${choice}`);

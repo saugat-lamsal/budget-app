@@ -104,7 +104,8 @@ export type LeftoverAnswer = 'roll-over' | 'move-to-savings';
 // Part of a split (4.4). A payment to a person can also have a part that is
 // not mine (7.6).
 export interface SplitPart {
-  readonly bucket: SplitBucket | 'not-mine';
+  // 7.8: money in also takes savings.
+  readonly bucket: SplitBucket | 'not-mine' | 'savings';
   readonly amount: Cents;
 }
 
@@ -428,7 +429,9 @@ interface MoneyInEntry extends FromTheBank {
   // new paycheck rule matches it (A9).
   reason: MoneyInReason;
   // A deposit you call your paycheck becomes a paycheck entry instead.
-  sortedTo: 'unsorted' | DepositRuleChoice['to'];
+  sortedTo: 'unsorted' | DepositRuleChoice['to'] | 'split';
+  // 7.8: its parts, when it is split.
+  parts: readonly SplitPart[] | null;
   // 13.8: he sorted it himself (in review or from a bucket's list), not a rule.
   byHand?: boolean;
   // How it was split, when sorted as other income.
@@ -1160,8 +1163,9 @@ export class Book {
       case 'paycheck':
         return Object.freeze({ ...base, what: 'paycheck', description: entry.txn.description, date: entry.txn.date, account: entry.txn.account, other: null, pending: false, refunded: 0, partOfSplit: false, resort });
       case 'money-in': {
-        const what: ActivityWhat = entry.sortedTo === 'other-income' ? 'other-income' : entry.sortedTo === 'not-mine' ? 'not-mine' : 'payback';
-        return Object.freeze({ ...base, what, description: entry.txn.description, date: entry.txn.date, account: entry.txn.account, other: null, pending: false, refunded: 0, partOfSplit: false, resort });
+        const split = entry.sortedTo === 'split';
+        const what: ActivityWhat = entry.sortedTo === 'other-income' ? 'other-income' : entry.sortedTo === 'not-mine' || (split && pot === 'heldForOthers') ? 'not-mine' : 'payback';
+        return Object.freeze({ ...base, what, description: entry.txn.description, date: entry.txn.date, account: entry.txn.account, other: null, pending: false, refunded: 0, partOfSplit: split, resort });
       }
       case 'spend': {
         const shown = entry.postedTxn ?? entry.txn;
@@ -1244,7 +1248,7 @@ export class Book {
         // 3.7, B54: a deposit older than the last paycheck cannot start a pay period.
         const older = txn.kind === 'deposit' && daysBetween(this.#lastPaycheckDate, txn.date) < 0;
         const likely = this.#likelyFor(txn);
-        const options = reviewOptions({ type: 'money-in', reason: entry.reason, account: txn.account, olderThanLastPaycheck: older, likely: likely.map((p) => p.id) });
+        const options = reviewOptions({ type: 'money-in', reason: entry.reason, account: txn.account, olderThanLastPaycheck: older, likely: likely.map((p) => p.id), amount: txn.amount });
         if (options.type !== 'sort') throw new MoneyError('broken-book', 'money in has no choices');
         return Object.freeze({
           resortable: true,
@@ -1256,7 +1260,7 @@ export class Book {
           account: txn.account,
           pending: false,
           refund: txn.kind === 'refund',
-          now: Object.freeze({ to: entry.sortedTo }),
+          now: entry.sortedTo === 'split' ? Object.freeze({ split: entry.parts ?? [] }) : Object.freeze({ to: entry.sortedTo }),
           marked: null,
           options,
           likelyPurchases: likely,
@@ -1350,7 +1354,7 @@ export class Book {
       return to === 'needs' || to === 'wants' || to === 'not-mine' ? to : null;
     }
     if (entry.kind === 'mom' && entry.how === 'by-hand') return 'mom';
-    if (entry.kind === 'money-in' && entry.byHand === true && entry.sortedTo !== 'unsorted') return entry.sortedTo;
+    if (entry.kind === 'money-in' && entry.byHand === true && entry.sortedTo !== 'unsorted' && entry.sortedTo !== 'split') return entry.sortedTo;
     return null;
   }
 
@@ -1882,7 +1886,7 @@ export class Book {
   }
 
   #holdMoneyIn(txn: Deposit | Refund, reason: MoneyInReason): Received {
-    const entry: MoneyInEntry = { kind: 'money-in', id: txn.id, txn, reason, sortedTo: 'unsorted', incomeSplit: null, effect: {} };
+    const entry: MoneyInEntry = { kind: 'money-in', id: txn.id, txn, reason, sortedTo: 'unsorted', parts: null, incomeSplit: null, effect: {} };
     this.#add(entry, { unsortedIn: txn.amount });
     this.#review.add(entry.id);
     return { id: txn.id, outcome: 'review' };
@@ -2335,13 +2339,13 @@ export class Book {
     this.#review.delete(id);
   }
 
-  // 7.6, 7.7: a payment to a person, or money leaving checking or savings read
-  // as a purchase. Not the difference on one counted on setup day (14.2), or
+  // 7.6, 7.7: a payment to a person, or a purchase or money leaving checking,
+  // savings, or the everyday card. Not the difference on one counted on setup day (14.2), or
   // the money back on one the bank took back (4.10): those did not leave now.
   #canBeNotMine(entry: SpendEntry): boolean {
     if (entry.spendingKind === 'person-payment') return true;
     const txn = entry.txn;
-    const fromAnAccount = txn.kind === 'savings-withdrawal' || (txn.kind === 'purchase' && txn.account === 'checking');
+    const fromAnAccount = txn.kind === 'savings-withdrawal' || (txn.kind === 'purchase' && (txn.account === 'checking' || txn.account === 'everyday-card'));
     return entry.spendingKind === 'purchase' && fromAnAccount && entry.countedAtSetup === 0 && entry.dropped !== true && entry.takenBack !== true;
   }
 
@@ -2406,6 +2410,7 @@ export class Book {
   // store refund the app could not match can be payback or not mine, but
   // neither kind of income.
   #sortMoneyIn(entry: MoneyInEntry, choice: SortChoice): void {
+    if (typeof choice === 'object' && choice !== null && 'split' in choice) return this.#splitMoneyIn(entry, choice.split);
     if (!isMoneyInChoice(choice)) throw new MoneyError('bad-choice', 'money in is your paycheck, other income, payback into one bucket, or not mine');
     const txn = entry.txn;
     if (choice.to === 'paycheck' || choice.to === 'other-income') {
@@ -2427,7 +2432,31 @@ export class Book {
     }
     this.#setEffect(entry, effect);
     entry.sortedTo = choice.to;
+    entry.parts = null;
     entry.incomeSplit = incomeSplit;
+    this.#review.delete(entry.id);
+  }
+
+  // Rule 7.8: money in split across Other, savings, needs, and wants. Each part
+  // counts as Other (7.1) or as a payback into that bucket (6.1).
+  #splitMoneyIn(entry: MoneyInEntry, split: readonly SplitPart[]): void {
+    if (!Array.isArray(split) || split.length < 2) throw new MoneyError('bad-choice', 'a split needs at least two parts');
+    const effect: Effect = {};
+    const parts = split.map((part: SplitPart) => {
+      if (part.bucket !== 'not-mine' && part.bucket !== 'savings' && !isSpendingBucket(part.bucket)) {
+        throw new MoneyError('bad-choice', `money in splits across other, savings, needs and wants, not ${String(part.bucket)}`);
+      }
+      assertPositiveCents(part.amount, 'each part of a split');
+      const pot = part.bucket === 'not-mine' ? 'heldForOthers' : part.bucket;
+      effect[pot] = addCents(effect[pot] ?? 0, part.amount);
+      return Object.freeze({ bucket: part.bucket, amount: part.amount });
+    });
+    const total = addCents(0, ...parts.map((part) => part.amount));
+    if (total !== entry.txn.amount) throw new MoneyError('split-does-not-add-up', `the parts add up to ${total}, the money in is ${entry.txn.amount}`);
+    this.#setEffect(entry, effect);
+    entry.sortedTo = 'split';
+    entry.parts = Object.freeze(parts);
+    entry.incomeSplit = null;
     this.#review.delete(entry.id);
   }
 
@@ -2908,7 +2937,7 @@ export class Book {
         // 3.7, B54: a deposit older than the last paycheck cannot start a pay period.
         const older = txn.kind === 'deposit' && daysBetween(this.#lastPaycheckDate, txn.date) < 0;
         const likely = this.#likelyFor(txn);
-        const facts: ReviewFacts = { type: 'money-in', reason: entry.reason, account: txn.account, olderThanLastPaycheck: older, likely: likely.map((p) => p.id) };
+        const facts: ReviewFacts = { type: 'money-in', reason: entry.reason, account: txn.account, olderThanLastPaycheck: older, likely: likely.map((p) => p.id), amount: txn.amount };
         return {
           item,
           account: txn.account,

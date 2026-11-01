@@ -25,7 +25,7 @@ export const RULE_KIND_DETAIL: Readonly<Record<RuleSpec['for'], string>> = {
 export const RULE_CHOICE_NAMES: Readonly<Record<RuleSpec['to'], string>> = {
   ...POT_NAMES,
   'other-income': 'Other income (split)',
-  'not-mine': 'Not mine',
+  'not-mine': 'Other',
   mom: 'For mom',
 };
 
@@ -255,7 +255,7 @@ export const TOTAL_NAMES: Readonly<Record<Retotaled['changes'][number]['name'], 
   needs: 'Needs',
   wants: 'Wants',
   momReserve: 'Mom reserve',
-  heldForOthers: 'Held for others',
+  heldForOthers: 'Other',
   unsortedIn: 'Money in waiting',
   unsortedOut: 'Spending waiting',
   oldCardDebt: 'Old card owes',
