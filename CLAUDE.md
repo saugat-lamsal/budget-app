@@ -162,7 +162,8 @@ long). It replaces running everything before every commit:
 
 ## Status
 
-- Rulebook: draft 31 (7.7, 9.9 and section 43, Oct 30: not mine for money
+- Rulebook: draft 32 (7.1 to 7.3, 7.7, 7.8 and section 44, Nov 1: Other,
+  A62 to A65); draft 31 (7.7, 9.9 and section 43, Oct 30: not mine for money
   leaving an account, A60; each card's statement at any time, A61); draft 30
   (40.10 to 40.17 and section 42, Oct 19: Trends,
   Future and Habits, A59); draft 29 (sections 40 and 41, Oct 18: the
@@ -2167,6 +2168,31 @@ long). It replaces running everything before every commit:
   webhook address refuses GET and an unsigned call; the restore check on the
   machine: 205 events, "The backup works." The way back is the image
   deploy-check-20261023t231233z. Not yet seen on his iPhone.
+- Other (Nov 1, 2026, branch other-and-split-deposits, his "build all three").
+  Rulebook draft 32, section 44, A62 to A65, B278 to B280.
+  - A62: the screens say Other for "not mine" and "held for others"; a negative
+    says more went out than came in. Words only: inside, the books still say
+    heldForOthers and not-mine, and the address is still /buckets/held-for-others,
+    so the history replays as it was. The sheet says "Other (not Needs or
+    Wants)" beside "Other income" (review-text.ts pickLabel).
+  - A63, 7.8: money in can be split across Other, savings, needs and wants
+    (Book #splitMoneyIn, MoneyInEntry parts and sortedTo 'split'; review-options
+    money-in amount and split; choices.ts SPLIT_BUCKETS). Wants gets the rest on
+    the screen. Each bucket's list shows its own part. A rule cannot pick it.
+  - A64, 7.7: a purchase on the everyday card can be marked Other too; the old
+    card still cannot. A65: no cash balance.
+  - The simulator now splits some friends' money. Worked examples money 45, 46.
+  - Tests: money 7-split-money-in, 7-not-mine-from-accounts; server choices;
+    web review-text; browser review, buckets, activity, settings,
+    design-screens, the pay period (Chromium). 100 simulated lives of 3 years,
+    every check passing.
+  - Break-it: "[a63]" money 17 and server 3, "[a62]" 8, "[a60]" 13 pointed at
+    the code again, and 6 older ones on moved lines: all caught, each judged by
+    its own tests. Two survived at first: the desk's parser reading savings as a
+    part (the test went straight to the desk; a parsing test now catches it),
+    and a split offering a rule (a test whose every word was common, so no name
+    was found; it now has other deposits beside it, and checks the same two
+    sorted one way do offer it).
 - Waiting on: the bank rule for posted Zelles on savings, and sorting the
   Zelles and deposits waiting (his, B276); Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);

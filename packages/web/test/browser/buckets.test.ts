@@ -144,11 +144,11 @@ describe.each(ENGINES)('Buckets in %s', (_name, engine) => {
     const context = await browser().newContext(phone());
     const page = await openScenario(context, base(), 'normal', '/buckets');
     expect(await centsAt(page, 'held-for-others')).toBe(0);
-    expect(await textAt(page, 'row-held')).toBe('Held for others Settled: nothing held either way $0.00');
+    expect(await textAt(page, 'row-held')).toBe('Other Not in Needs or Wants. Nothing here now. $0.00');
     // The same page, moved to the other life (showLive in live.ts says why).
     await showScenario(page, base(), 'buckets-busy', '/buckets');
     expect(await centsAt(page, 'held-for-others')).toBe(life('buckets-busy').book.othersMoney().heldForOthers);
-    expect(await textAt(page, 'row-held')).toBe("Held for others Holding money that isn't yours $120.00");
+    expect(await textAt(page, 'row-held')).toBe('Other Not in Needs or Wants. $120.00');
     await context.close();
   });
 
@@ -328,7 +328,7 @@ describe.each(ENGINES)('Buckets, books made for the test, in %s', (_name, engine
   it('7.3 someone owes you shows as a negative with words, not color alone', async () => {
     const book = openTestBook({ pots: { heldForOthers: -3_500 } });
     const { page, context } = await show(book);
-    expect(await textAt(page, 'row-held')).toBe('Held for others Someone owes you −$35.00');
+    expect(await textAt(page, 'row-held')).toBe('Other More went out than came in. Move money in to clear it. −$35.00');
     expect(await page.getByTestId('held-for-others').getAttribute('aria-label')).toBe('minus $35.00');
     expect(await centsAt(page, 'held-for-others')).toBe(-3_500);
     await context.close();

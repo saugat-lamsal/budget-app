@@ -6109,5 +6109,33 @@
     "find": "why: this.#whyNow(), statements: this.#statements(), cardsOff: this.#cardsOff() });",
     "replace": "why: this.#whyNow(), statements: this.#statements() });",
     "why": "[a61] 9.9 9.8 the real server gives Buckets no cards off"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "net: detail.item.type === 'spending' || detail.item.type === 'money-in' ? detail.item.amount : 0,",
+    "replace": "net: detail.item.type === 'spending' ? detail.item.amount : 0,",
+    "why": "[a63] 7.8 the rest of a waiting deposit is worked out from nothing"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "subject = { options: sorted.options, net: sorted.amount,",
+    "replace": "subject = { options: sorted.options, net: sorted.type === 'spending' ? sorted.amount : 0,",
+    "why": "[a63] 7.8 the rest of a deposit sorted again is worked out from nothing"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "['needs', 'wants', 'not-mine', 'savings'];",
+    "replace": "['needs', 'wants', 'not-mine'];",
+    "why": "[a63] 7.8 savings is not read as a part"
+  },
+  {
+    "section": "review",
+    "file": "packages/server/src/choices.ts",
+    "find": "        return 'marked Other';",
+    "replace": "        return 'marked not mine';",
+    "why": "[a62] the desk says the old word"
   }
 ]

@@ -34,7 +34,7 @@ export type ReviewOptions =
       // In the order to show them.
       readonly picks: readonly ReviewPick[];
       // Which buckets it can be split across (4.4, 7.6); null when it cannot be split.
-      readonly split: readonly ('needs' | 'wants' | 'not-mine')[] | null;
+      readonly split: readonly ('needs' | 'wants' | 'not-mine' | 'savings')[] | null;
       // Which of your accounts it can be marked a transfer with (5.6).
       readonly transfer: readonly AccountId[];
       // Which picks "always do this" can make a rule for (13.6); empty when none.
@@ -67,6 +67,8 @@ export type ReviewFacts =
       // 20d: for a refund, or money in to checking (A29), the purchases it
       // likely belongs to.
       readonly likely: readonly string[];
+      // 7.8: a part of at least a cent each.
+      readonly amount: Cents;
     }
   | {
       readonly type: 'spending';
@@ -123,7 +125,8 @@ function moneyInOptions(f: Extract<ReviewFacts, { type: 'money-in' }>): ReviewOp
   return {
     type: 'sort',
     picks,
-    split: null,
+    // 7.8: the last gets the rest on the screen.
+    split: f.amount >= 2 ? ['not-mine', 'savings', 'needs', 'wants'] : null,
     transfer,
     transferOutcome: Object.fromEntries(transfer.map((a) => [a, 'no-bucket-change'])),
     // A18: a refund can be matched to a purchase it likely belongs to (4.5);
@@ -143,10 +146,10 @@ function spendingOptions(f: Extract<ReviewFacts, { type: 'spending' }>): ReviewO
   if (f.kind === 'debt-payoff') return { type: 'sort', picks: [plain('savings'), plain('needs')], split: null, transfer: [], transferOutcome: {}, always: [], unavailable: [], match: [], unmark: f.markedFromSavings };
 
   const person = f.kind === 'person-payment';
-  // 7.6, 7.7: a payment to a person, or money leaving checking or savings read
-  // as a purchase. Not the difference on one counted on setup day (14.2), or
-  // the money back on one the bank took back (4.10): those did not leave now.
-  const notMine = person || (f.kind === 'purchase' && f.leavesAnAccount && !f.countedAtSetup && !f.gone);
+  // 7.6, 7.7: a payment to a person, or a purchase or money leaving checking,
+  // savings, or the everyday card. Not the difference on one counted on setup
+  // day (14.2), or the money back on one the bank took back (4.10): those did not leave now.
+  const notMine = person || (f.kind === 'purchase' && (f.leavesAnAccount || f.account === 'everyday-card') && !f.countedAtSetup && !f.gone);
   const picks: ReviewPick[] = [plain('needs'), plain('wants')];
   if (notMine) picks.push(plain('not-mine'));
   if (person && f.canBeForMom) picks.push(plain('mom'));

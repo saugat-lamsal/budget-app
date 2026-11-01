@@ -1,7 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Book } from '../src/index.js';
-import { TestBank, appSide, codeOf, deposit, openTestBook, posted, purchase, refund, takenBack, withdrawal } from './helpers.js';
+import { TestBank, appSide, cardCharge, codeOf, deposit, openTestBook, posted, purchase, refund, takenBack, withdrawal } from './helpers.js';
 
 // Rule 7.7 (QUESTIONS.md A60): money leaving checking or savings that the app
 // read as a purchase or a withdrawal can be marked "not mine": a friend's cash
@@ -46,14 +46,56 @@ describe('7.7 money leaving an account can be marked not mine', () => {
     expect(b.pots()).toMatchObject({ needs: 100_000, wants: 50_000, heldForOthers: -8_640, unsortedOut: 0 });
   });
 
-  it('7.7 a purchase on a card is not offered it, and the book refuses it, changing nothing', () => {
+  it('7.7 a purchase on the everyday card is offered it too: Other goes down, and the check with the bank holds', () => {
+    const b = book();
+    const bank = new TestBank({ checking: appSide(b.pots()) });
+    const bought = purchase('c1', DAY, 2_000, 'MADE UP SHOP', { account: 'everyday-card' });
+    b.receive(bought);
+    bank.apply(bought);
+    expect(picks(b, 'c1')).toEqual(['needs', 'wants', 'not-mine']);
+    expect(splitOf(b, 'c1')).toEqual(['needs', 'not-mine', 'wants']);
+    b.sort('c1', { to: 'not-mine' }, DAY);
+    expect(b.pots()).toMatchObject({ needs: 100_000, wants: 50_000, heldForOthers: -2_000, unsortedOut: 0 });
+    expect(b.selfCheck({ checking: bank.checking, savings: bank.savings, everydayCard: bank.everydayCard }).ok).toBe(true);
+    expect(b.recountPots()).toEqual(b.pots());
+  });
+
+  it('7.7 7.1 bought for a friend on the card, the friend pays back: it cancels, and safe to spend never moved', () => {
+    const b = book();
+    const safe = b.safeToSpend(DAY).amount;
+    b.receive(purchase('c1', DAY, 2_000, 'MADE UP SHOP', { account: 'everyday-card' }));
+    b.sort('c1', { to: 'not-mine' }, DAY);
+    b.receive(deposit('d1', '2026-10-06', 2_000, 'MADE UP FRIEND'));
+    b.sort('d1', { to: 'not-mine' }, '2026-10-06');
+    expect(b.pots().heldForOthers).toBe(0);
+    expect(b.safeToSpend('2026-10-06').amount).toBe(safe);
+  });
+
+  it('7.7 4.5 on the card, a refund goes back to Other too', () => {
     const b = book();
     b.receive(purchase('c1', DAY, 2_000, 'MADE UP SHOP', { account: 'everyday-card' }));
-    expect(picks(b, 'c1')).toEqual(['needs', 'wants']);
-    expect(splitOf(b, 'c1')).toEqual(['needs', 'wants']);
+    b.sort('c1', { to: 'not-mine' }, DAY);
+    b.receive(refund('r1', '2026-10-06', 500, 'c1'));
+    expect(b.pots()).toMatchObject({ heldForOthers: -1_500, needs: 100_000, wants: 50_000 });
+  });
+
+  it('7.7 5.4 a purchase on the old card is not offered it, and the book refuses it, changing nothing', () => {
+    const b = book();
+    const debt = b.oldCardDebt();
+    b.receive(purchase('o1', DAY, 2_000, 'MADE UP SHOP', { account: 'old-card' }));
     const before = b.pots();
-    expect(codeOf(() => b.sort('c1', { to: 'not-mine' }, DAY))).toBe('bad-choice');
-    expect(codeOf(() => b.sort('c1', { split: [{ bucket: 'needs', amount: 1 }, { bucket: 'not-mine', amount: 1_999 }] }, DAY))).toBe('bad-choice');
+    expect(codeOf(() => b.sort('o1', { to: 'not-mine' }, DAY))).not.toBeNull();
+    expect(b.pots()).toEqual(before);
+    expect(b.oldCardDebt()).toBe(debt + 2_000);
+  });
+
+  it('7.7 a card fee is not offered it, and the book refuses it, changing nothing', () => {
+    const b = book();
+    b.receive(cardCharge('f1', DAY, 2_900, 'fee'));
+    expect(picks(b, 'f1')).toEqual(['needs', 'wants']);
+    const before = b.pots();
+    expect(codeOf(() => b.sort('f1', { to: 'not-mine' }, DAY))).toBe('bad-choice');
+    expect(codeOf(() => b.sort('f1', { split: [{ bucket: 'needs', amount: 1 }, { bucket: 'not-mine', amount: 2_899 }] }, DAY))).toBe('bad-choice');
     expect(b.pots()).toEqual(before);
   });
 

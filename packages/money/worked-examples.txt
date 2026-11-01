@@ -1356,3 +1356,35 @@ On Nov 2, the day after the due date:
   with nothing paid: overdue.
 
 Check: statement balance 250.00 | minimum 25.00 | paid in part 100.00
+
+
+EXAMPLE 45. A friend's cash, part theirs and part what they owed, sent on first (rules 7.3, 7.7, 7.8; QUESTIONS.md A62, A63)
+
+Made-up numbers. Needs 1,000.00, wants 500.00, nothing in Other.
+
+A friend hands him 140.00 in cash: 125.00 to send back to them, and 15.00 they
+owed him. The app reads only the bank, so the cash is not in it yet.
+
+Oct 5. He sends the 125.00 through Zelle. He marks it Other.
+       Other 0.00 - 125.00 = -125.00: more went out than came in, for now.
+Oct 8. He deposits the 140.00 and splits it: Other 125.00, and Wants gets the
+       rest, 15.00.
+       Other -125.00 + 125.00 = 0.00. Wants 500.00 + 15.00 = 515.00.
+       Needs does not move.
+
+Check: other after sending it on -125.00 | other after the deposit 0.00
+Check: last wants 515.00 | last needs 1,000.00
+
+
+EXAMPLE 46. Something bought for a friend on the everyday card (rules 7.1, 7.7, 11.3; QUESTIONS.md A64)
+
+Made-up numbers. Needs 1,000.00, wants 500.00, nothing in Other, and nothing
+waiting in review, so safe to spend is 500.00.
+
+Oct 5. He buys tickets for a friend on the everyday card, 80.00. He marks them
+       Other. Other 0.00 - 80.00 = -80.00. Wants does not move, so safe to
+       spend is still 500.00.
+Oct 9. The friend pays him back, 80.00. He marks it Other.
+       Other -80.00 + 80.00 = 0.00.
+
+Check: other after buying -80.00 | other after being paid back 0.00 | safe to spend 500.00

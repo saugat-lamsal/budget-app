@@ -6,5 +6,5 @@ export const POT_NAMES: Readonly<Record<Pot, string>> = {
   needs: 'Needs',
   wants: 'Wants',
   momReserve: 'Mom reserve',
-  heldForOthers: 'Held for others',
+  heldForOthers: 'Other',
 };

@@ -23,7 +23,7 @@ import type { BankRulePreview, BankRuleSpec } from './bank-rules.js';
 // A part of a split (4.4, 7.6). 'rest' is whatever the other parts leave: the
 // money math works it out, so the screen never subtracts.
 export interface ChoicePart {
-  readonly bucket: 'needs' | 'wants' | 'not-mine';
+  readonly bucket: 'needs' | 'wants' | 'not-mine' | 'savings';
   readonly amount: Cents | 'rest';
 }
 

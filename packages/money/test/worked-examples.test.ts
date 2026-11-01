@@ -796,6 +796,30 @@ const examples: Record<number, () => Record<string, Cents>> = {
     expect(cardStanding('2026-11-02', statement, []).standing).toBe('overdue');
     return { 'statement balance': before.statementBalance ?? -1, minimum: before.minimumPayment, 'paid in part': cardStanding('2026-10-10', statement, some).paid };
   },
+
+  45: () => {
+    const book = openTestBook({ pots: { needs: 100_000, wants: 50_000 } });
+    book.receive(withdrawal('sent', '2026-10-05', 12_500, 'MADE UP ZELLE PAYMENT'));
+    book.sort('sent', { to: 'not-mine' }, '2026-10-05');
+    const afterSending = book.pots().heldForOthers;
+    book.receive(deposit('cash', '2026-10-08', 14_000, 'MADE UP ATM DEPOSIT'));
+    book.sort('cash', { split: [{ bucket: 'not-mine', amount: 12_500 }, { bucket: 'wants', amount: 1_500 }] }, '2026-10-08');
+    const pots = book.pots();
+    return { 'other after sending it on': afterSending, 'other after the deposit': pots.heldForOthers, 'last wants': pots.wants, 'last needs': pots.needs };
+  },
+
+  46: () => {
+    const book = openTestBook({ pots: { needs: 100_000, wants: 50_000 } });
+    const safe = book.safeToSpend('2026-10-05').amount;
+    book.receive(purchase('tickets', '2026-10-05', 8_000, 'MADE UP TICKETS', { account: 'everyday-card' }));
+    book.sort('tickets', { to: 'not-mine' }, '2026-10-05');
+    const afterBuying = book.pots().heldForOthers;
+    const unchanged = book.safeToSpend('2026-10-05').amount;
+    expect(unchanged).toBe(safe);
+    book.receive(deposit('back', '2026-10-09', 8_000, 'MADE UP FRIEND'));
+    book.sort('back', { to: 'not-mine' }, '2026-10-09');
+    return { 'other after buying': afterBuying, 'other after being paid back': book.pots().heldForOthers, 'safe to spend': unchanged };
+  },
 };
 
 describe('worked examples (worked-examples.txt)', () => {

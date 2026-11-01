@@ -63,9 +63,9 @@ type Tracking = Extract<BucketsView, { state: 'tracking' }>;
 
 // 7.3, B22
 const HELD_WORDS = {
-  settled: 'Settled: nothing held either way',
-  'holding-for-others': "Holding money that isn't yours",
-  'owed-to-you': 'Someone owes you',
+  settled: 'Not in Needs or Wants. Nothing here now.',
+  'holding-for-others': 'Not in Needs or Wants.',
+  'owed-to-you': 'More went out than came in. Move money in to clear it.',
 } as const;
 
 function BucketsReady({ view, reload, onChanged }: { readonly view: Tracking; readonly reload: Reload; readonly onChanged: Reload }) {
@@ -121,7 +121,7 @@ function BucketsReady({ view, reload, onChanged }: { readonly view: Tracking; re
         />
         <ListRow
           icon="people"
-          title="Held for others"
+          title="Other"
           detail={HELD_WORDS[heldForOthers.meaning]}
           trailing={<Money cents={heldForOthers.heldForOthers} roll testId="held-for-others" />}
           href={activityPath('heldForOthers')}
@@ -130,7 +130,7 @@ function BucketsReady({ view, reload, onChanged }: { readonly view: Tracking; re
       </Card>
 
       <Card title="Move money" testId="move-money">
-        <ListRow icon="move" title="Move money between buckets" detail="Needs, wants, savings, the mom reserve, or money held for others" onClick={() => setMoving(true)} testId="move-open" />
+        <ListRow icon="move" title="Move money between buckets" detail="Needs, wants, savings, the mom reserve, or Other" onClick={() => setMoving(true)} testId="move-open" />
       </Card>
 
       {/* 8.2: what was sent this month, apart from what the reserve holds. */}

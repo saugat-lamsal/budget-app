@@ -749,7 +749,7 @@ function SplitForm({
   onChoose,
 }: {
   readonly subject: Subject;
-  readonly buckets: readonly ('needs' | 'wants' | 'not-mine')[];
+  readonly buckets: readonly ('needs' | 'wants' | 'not-mine' | 'savings')[];
   readonly busy: boolean;
   readonly onChoose: Choose;
 }) {
