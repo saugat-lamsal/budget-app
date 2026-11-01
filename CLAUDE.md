@@ -2197,6 +2197,15 @@ long). It replaces running everything before every commit:
     ran from when the screen worked out the numbers, so a slow first frame used
     it up. It now starts at the frame that shows the change (choose.tsx useFresh).
     sync.test.ts "B281" holds that frame back on purpose. Breaks "[b281]".
+- PR #54 merged and deployed Nov 1, 2026 (5:29 PM), at his word: CI green on
+  Linux (run 41355959161, all four jobs), the deploy check on the branch's tree
+  (226 events, every one replays, "The backup works."), main's tree after the
+  merge checked to be the same, then that exact image
+  (deploy-check-20261101t221230z). /health and /health/backups ok, /api/home and
+  /api/buckets 401 without a login, http sent to https, the webhook address
+  refuses GET and an unsigned call; the restore check on the machine: 226 events,
+  "The backup works." The way back is the image deploy-check-20261030t213249z
+  (PR #53). Not yet seen on his iPhone.
 - Waiting on: the bank rule for posted Zelles on savings, and sorting the
   Zelles and deposits waiting (his, B276); Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);
