@@ -2247,8 +2247,24 @@ long). It replaces running everything before every commit:
     Other's list and pick For mom; add a bank rule on savings for the posted
     Zelle words ("Zelle payment to", a payment to a person), so the mom rule
     catches the next one (B276).
-- Waiting on: the bank rule for posted Zelles on savings, and sorting the
-  Zelles and deposits waiting (his, B276); Pay schedule
+- PR #55 (7.9) and PR #56 (the server tests' port guard) merged and deployed
+  Nov 4, 2026 (3:38 PM), at his word ("both when green", then "deploy now"):
+  CI green on Linux for both (all four jobs). The deploy check could not run:
+  its image built on main's tree (deploy-check-20261104t200642z), but Fly's
+  tunnel gateway (iad2.gateway.6pn.dev) took no connection from his PC for
+  over half an hour while Fly's API, its status page and the app were fine,
+  so the throwaway machine could not be reached ("tunnel unavailable"). His
+  call: deploy without it. That exact image deployed; the server started on
+  the real bank, so every event replayed (0.6: it would not have started
+  otherwise). /health and /health/backups ok, /api/home, /api/buckets and
+  /api/review 401 without a login, http sent to https, the webhook address
+  refuses GET and an unsigned call. The restore check on the machine waits
+  for the tunnel. The way back is the image deploy-check-20261101t221230z
+  (PR #54).
+- Waiting on: the restore check on the machine once Fly's tunnel works again;
+  his two steps for 7.9 (sort the Zelle to mom from savings again from
+  Other's list, For mom; and the bank rule for posted Zelles on savings,
+  B276); sorting the Zelles and deposits waiting (his, B276); Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);
   A51 (the shape of the weekly statement check); his check of part B (the
   list at its top), and the items in docs/later.txt marked DECIDE. To see
