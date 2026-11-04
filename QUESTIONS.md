@@ -1165,6 +1165,19 @@ A65. ANSWERED Nov 1: no cash balance. Everything in the app is checked against
      the bank, and nothing could check a wallet. Moving money in by hand (13.3)
      covers money sent on against cash he keeps.
 
+## Part A, added Nov 4, 2026. Answered.
+
+A66. ANSWERED Nov 4 (his ask, his OK to the rule text): a Zelle to mom from
+     savings was worded by the bank, once posted, so that no bank rule on
+     savings read it as a payment to a person (B276). It was read as money
+     leaving savings, whose choices were needs, wants, and Other, so it could
+     not come out of the mom reserve. He sorted it to Other: the reserve kept
+     money it should not have, Other was low by as much, and Payday asked him
+     to move that much more to savings (3.8). Options were a new "for mom"
+     choice for money leaving checking or savings, or a hand move from the
+     reserve to Other (the buckets right, but the month's total for mom short
+     by as much); he took the choice. Now 7.9. Rulebook draft 33, section 45.
+
 ## Part B. Built on the plain reading. Tell me if any is wrong.
 
 WAITING FOR YOU TO CHECK (Oct 10, 2026, the end of Phase 4). Each was
@@ -3498,3 +3511,26 @@ B281. Found on CI's WebKit (PR 54, the same test twice), fixed with a test first
       tap meant for what was there before went through. It now starts at the frame
       that shows the change. Nothing about money changed: the server still refuses
       an answer about an item that is not what the screen sent.
+
+## Part B, added with for mom from checking or savings (A66, Nov 4). Tell me if any is wrong.
+
+B282. A66 as built (7.9). "For mom" is offered on money leaving checking read
+      as a purchase and on money leaving savings, once it has posted. While it
+      is pending it is not offered, and no notice says so: a pending item there
+      already says to mark it as a transfer once it posts, and every pending
+      debit card purchase would carry a second one. It counts toward the month
+      it posted, as the mom rule counts a payment to a person.
+B283. A66 as built (7.9). Sorted again from the mom reserve's list, it gets the
+      choices it had as money leaving that account: needs, wants, Other, for
+      mom, and a split where Wants gets the rest. No transfer and no rule from
+      there, as for a payment marked for mom under 7.6. It is made what the bank
+      sent again first, so a purchase on checking goes through the sorting rules
+      again and then takes the choice.
+B284. A66 as built (7.9). A refund of one marked for mom waits in review, not
+      matched to it, as with a payment to a person marked for mom (7.6). It is
+      on the mom reserve's list as a payment to mom, in the bank's posted words.
+B285. Found while building A66, in the simulator, not the app: two rare things
+      (an online order refunded in full while waiting in review, and that refund
+      taken back) each happened once in the lives npm test lives, so any change
+      to those lives could make the coverage check fail. The simulated person now
+      always leaves such an order waiting for its refund, not half the time.

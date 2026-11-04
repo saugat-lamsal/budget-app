@@ -480,13 +480,19 @@ interface RefundEntry extends FromTheBank {
 // A payment to mom (8.1). It takes what it can from the mom reserve; any
 // difference is a separate spending entry waiting in review (8.3). how:
 // the mom rule matched it (it always stays on the reserve), or a person
-// rule or you picked "for mom" (7.6), which can be sorted again.
+// rule or you picked "for mom" (7.6), which can be sorted again. 7.9: money
+// leaving checking or savings that the app read as a purchase or a
+// withdrawal, marked for mom by hand: original is then what the bank sent,
+// which sorting it some other way brings back.
 interface MomEntry extends FromTheBank {
   readonly kind: 'mom';
   readonly id: string;
   readonly txn: PersonPayment;
   readonly fromReserve: Cents;
   readonly how: 'mom-rule' | 'person-rule' | 'by-hand';
+  original?: Purchase | SavingsWithdrawal;
+  // The posted version, when what you marked had been pending.
+  originalPosted?: Purchase | SavingsWithdrawal;
   effect: Effect;
 }
 
@@ -1221,8 +1227,13 @@ export class Book {
         if (entry.how === 'mom-rule') return no('This payment matches your mom rule, so it always comes out of the mom reserve.');
         const txn = entry.txn;
         // Sorting it again can pick another bucket or split it, but a rule or a transfer starts
-        // from a payment waiting to be sorted, not one already counted for mom.
-        const options = reviewOptions({ type: 'spending', kind: 'person-payment', fromSavings: false, account: txn.account, leavesAnAccount: false, pending: false, partlyRefunded: false, countedAtSetup: false, gone: false, canBeForMom: true, markedFromSavings: false, net: txn.amount });
+        // from a payment waiting to be sorted, not one already counted for mom. 7.9: one
+        // marked from a purchase or a withdrawal gets the choices that one had.
+        const original = entry.original;
+        const kind = original === undefined ? 'person-payment' : 'purchase';
+        const fromSavings = original?.kind === 'savings-withdrawal';
+        const found = reviewOptions({ type: 'spending', kind, fromSavings, account: txn.account, leavesAnAccount: original !== undefined, pending: false, partlyRefunded: false, countedAtSetup: false, gone: false, canBeForMom: true, markedFromSavings: false, net: txn.amount });
+        const options = found.type === 'sort' && original !== undefined ? { ...found, transfer: [], transferOutcome: {} } : found;
         if (options.type !== 'sort') throw new MoneyError('broken-book', 'a payment to a person has no choices');
         return Object.freeze({
           resortable: true,
@@ -1424,7 +1435,8 @@ export class Book {
       partlyRefunded: false,
       countedAtSetup: false,
       gone: false,
-      canBeForMom: person,
+      // 7.9: as the purchase or withdrawal it was, it can be for mom too.
+      canBeForMom: person || original.kind === 'savings-withdrawal' || (original.kind === 'purchase' && original.account === 'checking'),
       markedFromSavings: false,
       net: entry.amount,
     };
@@ -1465,7 +1477,7 @@ export class Book {
       partlyRefunded: entry.refunded > 0,
       countedAtSetup: entry.countedAtSetup > 0,
       gone: entry.dropped === true || entry.takenBack === true,
-      canBeForMom: entry.spendingKind === 'person-payment' && txn.kind === 'payment-to-person' && entry.refunded === 0,
+      canBeForMom: (entry.spendingKind === 'person-payment' && txn.kind === 'payment-to-person' && entry.refunded === 0) || this.#canBeForMomFromAnAccount(entry),
       markedFromSavings: this.#markedFromSavings(entry),
       net: netOf(entry),
     };
@@ -2173,6 +2185,11 @@ export class Book {
         // sorted again. One the mom rule matched always stays on the reserve (8.1).
         if (entry.how === 'mom-rule') throw new MoneyError('not-sortable', `${id} matches the mom rule, so it always comes out of the mom reserve (8.1)`);
         if (isPersonPaymentChoice(choice) && choice.to === 'mom') return;
+        // 7.9: one marked from a purchase or a withdrawal is what the bank sent again first.
+        if (entry.original !== undefined) {
+          this.#atomically(() => this.sort(this.#restoreFromMom(entry), choice, date));
+          return;
+        }
         this.#atomically(() => {
           this.#unMom(entry);
           this.#sortSpending(this.#spendEntry(entry.id), choice);
@@ -2349,7 +2366,51 @@ export class Book {
     return entry.spendingKind === 'purchase' && fromAnAccount && entry.countedAtSetup === 0 && entry.dropped !== true && entry.takenBack !== true;
   }
 
-  // Rules 4.3, 4.4, 4.7, 4.8, 7.2, 7.6, 7.7.
+  // 7.9: money leaving checking or savings that the app read as a purchase or
+  // a withdrawal, once it has posted. Not one partly refunded, the difference
+  // on one counted on setup day (14.2), or what is left of one the bank took
+  // back (4.10).
+  #canBeForMomFromAnAccount(entry: SpendEntry): boolean {
+    const txn = entry.txn;
+    const fromAnAccount = txn.kind === 'savings-withdrawal' || (txn.kind === 'purchase' && txn.account === 'checking');
+    return entry.spendingKind === 'purchase' && fromAnAccount && !entry.pending && entry.refunded === 0 && entry.countedAtSetup === 0 && entry.dropped !== true && entry.takenBack !== true;
+  }
+
+  // 7.9 (QUESTIONS.md A66): such money marked for mom. It is paid out of the
+  // reserve as the payment to a person it was, like 7.6's for mom (8.1 to
+  // 8.3), on the day it posted. What the bank sent is kept, so sorting it
+  // some other way later brings it back.
+  #markForMom(entry: SpendEntry): void {
+    const txn = entry.txn;
+    if (!this.#canBeForMomFromAnAccount(entry) || (txn.kind !== 'purchase' && txn.kind !== 'savings-withdrawal')) {
+      throw new MoneyError('bad-choice', `${entry.id} cannot be for mom: only money that left checking or savings and has posted, with none of it refunded, counted on setup day, or taken back`);
+    }
+    const shown = entry.postedTxn ?? txn;
+    const payment: PersonPayment = { kind: 'payment-to-person', id: entry.id, account: txn.kind === 'savings-withdrawal' ? 'savings' : 'checking', date: shown.date, amount: entry.amount, description: shown.description };
+    this.#atomically(() => {
+      this.#remove(entry);
+      this.#payMom(payment, 'by-hand');
+      const made = this.#entry(entry.id);
+      if (made.kind !== 'mom') throw new MoneyError('broken-book', `${entry.id} did not come out of the mom reserve`);
+      made.original = txn;
+      if (entry.postedTxn !== null) made.originalPosted = entry.postedTxn;
+    });
+  }
+
+  // 7.9: one marked for mom from a purchase or a withdrawal, made back into
+  // what the bank sent, as the book would have taken it then. Returns its id.
+  #restoreFromMom(entry: MomEntry): string {
+    const { original, originalPosted } = entry;
+    if (original === undefined) throw new MoneyError('broken-book', `${entry.id} was not marked for mom from a purchase`);
+    const difference = this.#entries.get(`${entry.id}:difference`);
+    if (difference !== undefined) this.#remove(difference);
+    this.#remove(entry);
+    this.#dispatch(original);
+    if (originalPosted !== undefined) this.#dispatch(originalPosted);
+    return original.id;
+  }
+
+  // Rules 4.3, 4.4, 4.7, 4.8, 7.2, 7.6, 7.7, 7.9.
   #sortSpending(entry: SpendEntry, choice: SortChoice): void {
     const before = { sortedTo: entry.sortedTo, splitChanged: entry.splitChanged };
     if (!('split' in choice) && !('to' in choice)) throw new MoneyError('bad-choice', `not a way to sort spending: ${JSON.stringify(choice)}`);
@@ -2367,6 +2428,8 @@ export class Book {
         return;
       }
       entry.sortedTo = Object.freeze({ to: choice.to });
+    } else if (!('split' in choice) && choice.to === 'mom') {
+      return this.#markForMom(entry);
     } else if (entry.spendingKind === 'debt-payoff') {
       // QUESTIONS.md A4: a payment to the old card from savings comes out of
       // the savings bucket once you confirm it, or out of needs if you pick

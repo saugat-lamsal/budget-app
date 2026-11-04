@@ -122,6 +122,20 @@ describe.each(ENGINES)('Review in %s', (_name, engine) => {
     await page.context().close();
   });
 
+  it('7.9 8.1 money out of savings can be marked For mom: the mom reserve pays it, and Other, Needs and Wants do not move', async () => {
+    const twin = life('review-busy');
+    const id = idOf(twin.book, 'BILL PAY WATER UTILITY');
+    const page = await openReview(await browser().newContext(phone()), base(), 'review-busy');
+    await item(page, id).getByTestId('more').click();
+    expect(await textAt(page, 'choice-mom')).toBe('For mom');
+    await page.getByTestId('choice-mom').click();
+    await item(page, id).waitFor({ state: 'detached' });
+    twin.book.sort(id, { to: 'mom' }, twin.today);
+    expect(await textAt(page, 'notice')).toBe('BILL PAY WATER UTILITY marked for mom. OK');
+    expect(await bucketsOnScreen(page)).toEqual(bucketsOf(twin.book));
+    await page.context().close();
+  });
+
   it('7.8 a deposit can be split: a part in Other, Wants gets the rest', async () => {
     const twin = life('review-busy');
     const found = twin.book.reviewItems().find((i) => i.type === 'money-in' && i.reason === 'deposit');

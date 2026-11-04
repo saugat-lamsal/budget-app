@@ -117,7 +117,8 @@ describe('4.2 4.3 4.4 a purchase with no rule: needs or wants, or split between 
     b.receive(purchase('p1', '2026-10-05', 1_150, 'CORNER STORE', { account: 'checking' }));
     const d = detail(b, 'p1');
     expect(d.item).toMatchObject({ type: 'spending', reason: 'no-rule' });
-    expect(toOf(d)).toEqual(['needs', 'wants', 'not-mine']);
+    // 7.9: once posted, money leaving checking can also be for mom.
+    expect(toOf(d)).toEqual(['needs', 'wants', 'not-mine', 'mom']);
     expect(sorting(d).picks.some((p) => p.final)).toBe(false);
     expect(codeOf(() => b.sort('p1', { to: 'savings' }, '2026-10-06'))).toBe('bad-choice');
   });
@@ -241,7 +242,8 @@ describe('4.9 money leaving savings that is not a transfer: always waits, with t
     const d = detail(b, 'w1');
     expect(d.item).toMatchObject({ type: 'spending', reason: 'from-savings' });
     expect(d.account).toBe('savings');
-    expect(toOf(d)).toEqual(['needs', 'wants', 'not-mine']);
+    // 7.9: once posted, money leaving savings can also be for mom.
+    expect(toOf(d)).toEqual(['needs', 'wants', 'not-mine', 'mom']);
     expect(sorting(d).split).toEqual(['needs', 'not-mine', 'wants']);
     expect(sorting(d).transfer).toEqual(['checking', 'everyday-card', 'old-card']);
     expect(sorting(d).always).toEqual([]);

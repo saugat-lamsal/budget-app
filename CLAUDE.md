@@ -162,7 +162,8 @@ long). It replaces running everything before every commit:
 
 ## Status
 
-- Rulebook: draft 32 (7.1 to 7.3, 7.7, 7.8 and section 44, Nov 1: Other,
+- Rulebook: draft 33 (7.9 and section 45, Nov 4: for mom from checking or
+  savings, A66); draft 32 (7.1 to 7.3, 7.7, 7.8 and section 44, Nov 1: Other,
   A62 to A65); draft 31 (7.7, 9.9 and section 43, Oct 30: not mine for money
   leaving an account, A60; each card's statement at any time, A61); draft 30
   (40.10 to 40.17 and section 42, Oct 19: Trends,
@@ -2206,6 +2207,39 @@ long). It replaces running everything before every commit:
   refuses GET and an unsigned call; the restore check on the machine: 226 events,
   "The backup works." The way back is the image deploy-check-20261030t213249z
   (PR #53). Not yet seen on his iPhone.
+- For mom from checking or savings (Nov 4, 2026, branch for-mom-from-accounts,
+  his ask and his OK to the rule text; a read-only look at his live books with
+  his OK). Rulebook draft 33, 7.9, section 45, A66, B282 to B285.
+  - Found in his live books: a Zelle to mom from savings, posted in words no
+    savings bank rule names (B276), was read as money leaving savings, whose
+    choices had no "for mom". Sorted to Other, the mom reserve kept what it
+    had paid, Other was low by as much, and Payday (3.8: savings plus the mom
+    reserve) asked for that much more to be moved to savings. The totals still
+    matched the bank: only which bucket held the money was wrong.
+  - Money: Book #canBeForMomFromAnAccount (posted, from checking read as a
+    purchase or from savings, nothing refunded, counted on setup day, or taken
+    back), #markForMom (paid from the reserve as the payment to a person it
+    was, through #payMom, on the day it posted; MomEntry original and
+    originalPosted keep what the bank sent), #restoreFromMom (sorting it
+    another way makes it what the bank sent again first, as 5.6's #restore
+    does); ReviewFacts.canBeForMom now also says 7.9, and spendingOptions
+    offers mom for it. Sorted again from the reserve's list it has the choices
+    of money leaving that account, with no transfer and no rule. No server or
+    screen code changed: the desk and the sheets already take "for mom".
+  - Tests: money 7-for-mom-from-accounts (22, with random amounts and
+    reserves), 8 older tests that listed the exact choices now list mom too;
+    server for-mom-from-accounts (the desk, Buckets' month, restarts); browser
+    review and activity (Chromium: For mom in Review, and from Other's list).
+    The simulator marks some bills from savings for mom (from the amount), and
+    sorts some again (#notForMom). B285: it now always leaves an online order
+    waiting for its full refund, so the two rare things after it stay covered
+    in npm test's lives. Worked example money 47.
+  - Break-it "[a66]", and five older breaks on changed lines pointed at the
+    code again.
+  - His steps once deployed: sort the Zelle to mom from savings again on
+    Other's list and pick For mom; add a bank rule on savings for the posted
+    Zelle words ("Zelle payment to", a payment to a person), so the mom rule
+    catches the next one (B276).
 - Waiting on: the bank rule for posted Zelles on savings, and sorting the
   Zelles and deposits waiting (his, B276); Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);

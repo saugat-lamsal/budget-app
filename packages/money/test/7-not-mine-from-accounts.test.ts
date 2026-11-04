@@ -29,7 +29,7 @@ describe('7.7 money leaving an account can be marked not mine', () => {
   it('7.7 money leaving savings is offered not mine, and it lowers held for others, not a bucket', () => {
     const b = book();
     b.receive(withdrawal('w1', DAY, 72_300, 'MADE UP ZELLE PAYMENT'));
-    expect(picks(b, 'w1')).toEqual(['needs', 'wants', 'not-mine']);
+    expect(picks(b, 'w1')).toEqual(['needs', 'wants', 'not-mine', 'mom']);
     expect(splitOf(b, 'w1')).toEqual(['needs', 'not-mine', 'wants']);
     b.sort('w1', { to: 'not-mine' }, DAY);
     expect(b.pots()).toMatchObject({ needs: 100_000, wants: 50_000, heldForOthers: -72_300, unsortedOut: 0 });
@@ -40,7 +40,7 @@ describe('7.7 money leaving an account can be marked not mine', () => {
   it('7.7 money leaving checking read as a purchase is offered it too', () => {
     const b = book();
     b.receive(purchase('p1', DAY, 8_640, 'MADE UP PAYMENT', { account: 'checking' }));
-    expect(picks(b, 'p1')).toEqual(['needs', 'wants', 'not-mine']);
+    expect(picks(b, 'p1')).toEqual(['needs', 'wants', 'not-mine', 'mom']);
     expect(splitOf(b, 'p1')).toEqual(['needs', 'not-mine', 'wants']);
     b.sort('p1', { to: 'not-mine' }, DAY);
     expect(b.pots()).toMatchObject({ needs: 100_000, wants: 50_000, heldForOthers: -8_640, unsortedOut: 0 });

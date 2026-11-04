@@ -260,6 +260,7 @@ export const STAT_NAMES = [
   'friendsPaidBack',
   'personPaymentsFromSavings',
   'paymentsForMom',
+  'withdrawalsForMom',
   'forMomRules',
   'forMomResorted',
   'personPaymentsSplit',
@@ -365,7 +366,7 @@ type PersonSorting = 'needs' | 'wants' | 'not-mine' | 'mom' | 'split';
 type Intent =
   | { readonly type: 'store'; readonly sorting: Sorting; readonly store: string }
   | { readonly type: 'person'; readonly sorting: PersonSorting }
-  | { readonly type: 'from-savings'; readonly sorting: 'needs' | 'wants' | 'not-mine' }
+  | { readonly type: 'from-savings'; readonly sorting: 'needs' | 'wants' | 'not-mine' | 'mom' }
   | { readonly type: 'money-in'; readonly choice: 'paycheck' | 'other-income' | 'not-mine' | 'needs' | 'wants' }
   | { readonly type: 'refund'; readonly bucket: 'needs' | 'wants' };
 
@@ -1124,7 +1125,9 @@ class Life {
     const linked = r.chance(17, 20);
     const bucket = store.sorting === 'wants' ? 'wants' : 'needs';
     const waitsForIt = this.#firstId.get(purchaseId) ?? purchaseId;
-    if (linked && back === amount && this.#standing.get(waitsForIt) === 'unsorted' && r.chance(1, 2)) this.#awaitingReturn.add(waitsForIt);
+    // Not sorted yet, it waits for its refund (A26). Every time, not half the
+    // time: rare as it is, the lives in npm test met it only once before 7.9.
+    if (linked && back === amount && this.#standing.get(waitsForIt) === 'unsorted') this.#awaitingReturn.add(waitsForIt);
     this.#laterOn(addDays(this.#date, r.int(5, 20)), () => {
       const first = this.#firstId.get(purchaseId) ?? purchaseId;
       this.#awaitingReturn.delete(first);
@@ -1282,10 +1285,11 @@ class Life {
     this.#stats.savingsBills++;
     const before = this.#book.pots();
     const txn = this.#bank.payFromSavings(this.#date, r.int(5_000, 60_000), r.pick(['MADE UP INSURANCE', 'MADE UP UTILITY'] as const));
-    // 7.7: now and then it was a friend's money sent on (from the amount, so the
-    // lives' random numbers stay as they were).
+    // 7.7: now and then it was a friend's money sent on; 7.9: now and then a
+    // payment to mom the bank worded as money leaving savings (both from the
+    // amount, so the lives' random numbers stay as they were).
     const bucket = r.chance(4, 5) ? 'needs' : 'wants';
-    this.#intents.set(txn.id, { type: 'from-savings', sorting: txn.amount % 5 === 0 ? 'not-mine' : bucket });
+    this.#intents.set(txn.id, { type: 'from-savings', sorting: txn.amount % 5 === 0 ? 'not-mine' : txn.amount % 7 === 0 ? 'mom' : bucket });
     const outcome = this.#receive(txn);
     const item = this.#book.reviewItems().find((i) => i.id === txn.id);
     if (outcome !== 'review' || item?.type !== 'spending' || item.reason !== 'from-savings') {
@@ -1987,8 +1991,15 @@ class Life {
       // it out of savings, the person then moves the money by hand (13.3).
       if (intent?.type !== 'from-savings') throw new CheckFailed('4.9 only money leaving savings waits as from savings', JSON.stringify(item));
       this.#book.sort(item.id, { to: intent.sorting }, today);
-      change = intent.sorting === 'not-mine' ? { heldForOthers: -item.amount } : { [intent.sorting]: -item.amount };
-      if (r.chance(1, 2) && intent.sorting !== 'not-mine') cover = intent.sorting;
+      if (intent.sorting === 'mom') {
+        // 7.9 (A66): for mom, out of the reserve as far as it goes, like 7.6;
+        // the rest waits as a mom difference (8.3). It can be sorted again.
+        const fromReserve = this.#forMomPayment(item.id, item.date, item.amount, before.momReserve);
+        change = { momReserve: -fromReserve, unsortedOut: -fromReserve };
+        this.#checkMomMonth(item.date);
+        this.#stats.withdrawalsForMom++;
+      } else change = intent.sorting === 'not-mine' ? { heldForOthers: -item.amount } : { [intent.sorting]: -item.amount };
+      if (r.chance(1, 2) && intent.sorting !== 'not-mine' && intent.sorting !== 'mom') cover = intent.sorting;
     } else if (intent?.type === 'person') {
       const sorting = intent.sorting === 'split' && item.amount < 3 ? 'wants' : intent.sorting;
       if (sorting === 'mom') {

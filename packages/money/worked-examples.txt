@@ -1388,3 +1388,28 @@ Oct 9. The friend pays him back, 80.00. He marks it Other.
        Other -80.00 + 80.00 = 0.00.
 
 Check: other after buying -80.00 | other after being paid back 0.00 | safe to spend 500.00
+
+
+EXAMPLE 47. A payment to mom from savings the bank worded as money leaving savings (rules 3.8, 7.7, 7.9, 8.2; QUESTIONS.md A66)
+
+Made-up numbers. Savings 4,000.00, mom reserve 2,400.00, and the savings
+account holds 6,400.00, which is savings plus the mom reserve, so there is
+nothing to move (3.8).
+
+Nov 2. He sends mom 1,500.00 from savings. The bank words it so that no bank
+       rule reads it as a payment to a person, so it waits in review as money
+       leaving savings (4.9). The savings account now holds 6,400.00 - 1,500.00
+       = 4,900.00.
+       He marks it Other. Other 0.00 - 1,500.00 = -1,500.00. The mom reserve
+       is still 2,400.00, so the savings account should hold 4,000.00 +
+       2,400.00 = 6,400.00, and Payday asks him to move 6,400.00 - 4,900.00 =
+       1,500.00 that he does not need to move.
+       He sorts it again from Other's list and picks For mom (7.9). Other goes
+       back to -1,500.00 + 1,500.00 = 0.00. The mom reserve pays it: 2,400.00
+       - 1,500.00 = 900.00. The account should hold 4,000.00 + 900.00 =
+       4,900.00, which it does: nothing to move. Sent to mom in November:
+       1,500.00 (8.2).
+
+Check: to move when marked other 1,500.00 | reserve when marked other 2,400.00
+Check: other after for mom 0.00 | reserve after for mom 900.00 | to move after for mom 0.00
+Check: sent to mom in november 1,500.00
