@@ -2228,8 +2228,8 @@
   {
     "section": "7",
     "file": "packages/money/src/book.ts",
-    "find": "    if (difference !== undefined) this.#remove(difference);\n",
-    "replace": "",
+    "find": "    if (difference !== undefined) this.#remove(difference);\n    this.#remove(entry);\n    this.#addSpending(entry.txn, 'person-payment', { to: 'unsorted' });\n",
+    "replace": "    this.#remove(entry);\n    this.#addSpending(entry.txn, 'person-payment', { to: 'unsorted' });\n",
     "why": "7.6 keep the mom difference after a payment for mom is sorted another way (B20)"
   },
   {
@@ -2284,8 +2284,8 @@
   {
     "section": "5",
     "file": "packages/money/src/book.ts",
-    "find": "    if (originalPosted !== undefined) this.#dispatch(originalPosted);\n",
-    "replace": "",
+    "find": "was not marked as a transfer`);\n    this.#remove(entry);\n    this.#dispatch(original);\n    if (originalPosted !== undefined) this.#dispatch(originalPosted);\n",
+    "replace": "was not marked as a transfer`);\n    this.#remove(entry);\n    this.#dispatch(original);\n",
     "why": "5.6 lose the posted version when a marked transfer is sorted another way (A12)"
   },
   {
@@ -2431,8 +2431,8 @@
   {
     "section": "7",
     "file": "packages/money/src/review-options.ts",
-    "find": "if (person && f.canBeForMom) picks.push(plain('mom'));",
-    "replace": "if (person) picks.push(plain('mom'));",
+    "find": "if ((person || (f.kind === 'purchase' && f.leavesAnAccount)) && f.canBeForMom) picks.push(plain('mom'));",
+    "replace": "if (person || (f.kind === 'purchase' && f.leavesAnAccount && f.canBeForMom)) picks.push(plain('mom'));",
     "why": "[review] B73 a partly refunded payment can be for mom"
   },
   {
@@ -2690,8 +2690,8 @@
   {
     "section": "7",
     "file": "packages/money/src/book.ts",
-    "find": "canBeForMom: entry.spendingKind === 'person-payment' && txn.kind === 'payment-to-person' && entry.refunded === 0,",
-    "replace": "canBeForMom: entry.spendingKind === 'person-payment' && txn.kind === 'payment-to-person',",
+    "find": "canBeForMom: (entry.spendingKind === 'person-payment' && txn.kind === 'payment-to-person' && entry.refunded === 0) || this.#canBeForMomFromAnAccount(entry),",
+    "replace": "canBeForMom: (entry.spendingKind === 'person-payment' && txn.kind === 'payment-to-person') || this.#canBeForMomFromAnAccount(entry),",
     "why": "[review] B73 a partly refunded payment can be marked for mom (facts)"
   },
   {
@@ -3201,8 +3201,8 @@
   {
     "section": "5",
     "file": "packages/money/src/book.ts",
-    "find": "      canBeForMom: person,\n      markedFromSavings: false,",
-    "replace": "      canBeForMom: false,\n      markedFromSavings: false,",
+    "find": "      canBeForMom: person || original.kind === 'savings-withdrawal' || (original.kind === 'purchase' && original.account === 'checking'),\n      markedFromSavings: false,",
+    "replace": "      canBeForMom: original.kind === 'savings-withdrawal' || (original.kind === 'purchase' && original.account === 'checking'),\n      markedFromSavings: false,",
     "why": "[activity] 7.6 A20 a marked payment to a person cannot be for mom"
   },
   {
@@ -4254,5 +4254,131 @@
     "find": "if (typeof choice === 'object' && choice !== null && 'split' in choice) return this.#splitMoneyIn(entry, choice.split);\n    if (!isMoneyInChoice(choice))",
     "replace": "if (!isMoneyInChoice(choice))",
     "why": "[a63] 7.8 the book refuses a split deposit"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/review-options.ts",
+    "find": "if ((person || (f.kind === 'purchase' && f.leavesAnAccount)) && f.canBeForMom) picks.push(plain('mom'));",
+    "replace": "if (person && f.canBeForMom) picks.push(plain('mom'));",
+    "why": "[a66] 7.9 for mom is not offered for money leaving an account"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "const fromAnAccount = txn.kind === 'savings-withdrawal' || (txn.kind === 'purchase' && txn.account === 'checking');\n    return entry.spendingKind === 'purchase' && fromAnAccount && !entry.pending",
+    "replace": "const fromAnAccount = txn.kind === 'savings-withdrawal' || txn.kind === 'purchase';\n    return entry.spendingKind === 'purchase' && fromAnAccount && !entry.pending",
+    "why": "[a66] 7.9 for mom on a card purchase"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "return entry.spendingKind === 'purchase' && fromAnAccount && !entry.pending && entry.refunded === 0",
+    "replace": "return entry.spendingKind === 'purchase' && fromAnAccount && entry.refunded === 0",
+    "why": "[a66] 7.9 for mom while still pending"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "fromAnAccount && !entry.pending && entry.refunded === 0 && entry.countedAtSetup === 0",
+    "replace": "fromAnAccount && !entry.pending && entry.countedAtSetup === 0",
+    "why": "[a66] 7.9 for mom on one partly refunded"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "&& entry.refunded === 0 && entry.countedAtSetup === 0 && entry.dropped !== true",
+    "replace": "&& entry.refunded === 0 && entry.dropped !== true",
+    "why": "[a66] 7.9 for mom on the difference from setup day"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "!entry.pending && entry.refunded === 0 && entry.countedAtSetup === 0 && entry.dropped !== true && entry.takenBack !== true;",
+    "replace": "!entry.pending && (entry.refunded === 0 || entry.takenBack === true) && entry.countedAtSetup === 0 && entry.dropped !== true;",
+    "why": "[a66] 7.9 for mom on what is left of one the bank took back"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "account: txn.kind === 'savings-withdrawal' ? 'savings' : 'checking', date: shown.date, amount: entry.amount,",
+    "replace": "account: txn.kind === 'savings-withdrawal' ? 'savings' : 'checking', date: txn.date, amount: entry.amount,",
+    "why": "[a66] 7.9 8.2 counted in the month it was pending, not the month it posted"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "'checking', date: shown.date, amount: entry.amount, description: shown.description };",
+    "replace": "'checking', date: shown.date, amount: entry.amount - 1, description: shown.description };",
+    "why": "[a66] 7.9 one cent short out of the reserve"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "      this.#payMom(payment, 'by-hand');\n      const made = this.#entry(entry.id);",
+    "replace": "      this.#payMom(payment, 'mom-rule');\n      const made = this.#entry(entry.id);",
+    "why": "[a66] 7.9 marked for mom cannot be sorted again"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "      made.original = txn;\n",
+    "replace": "",
+    "why": "[a66] 7.9 4.7 sorted again, it becomes a payment to a person, not what the bank sent"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "      if (entry.postedTxn !== null) made.originalPosted = entry.postedTxn;\n",
+    "replace": "",
+    "why": "[a66] 7.9 4.6 sorted again, the posted version is lost"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "was not marked for mom from a purchase`);\n    const difference = this.#entries.get(`${entry.id}:difference`);\n    if (difference !== undefined) this.#remove(difference);\n",
+    "replace": "was not marked for mom from a purchase`);\n",
+    "why": "[a66] 7.9 8.3 sorted again, the mom difference stays"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "    } else if (!('split' in choice) && choice.to === 'mom') {\n      return this.#markForMom(entry);\n",
+    "replace": "",
+    "why": "[a66] 7.9 the book refuses for mom on money leaving an account"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "        if (entry.original !== undefined) {\n          this.#atomically(() => this.sort(this.#restoreFromMom(entry), choice, date));\n          return;\n        }\n",
+    "replace": "",
+    "why": "[a66] 7.9 4.7 sorted again, made a payment to a person instead of what the bank sent"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "const kind = original === undefined ? 'person-payment' : 'purchase';",
+    "replace": "const kind = 'person-payment';",
+    "why": "[a66] 7.9 4.7 sorted again from its list, the choices of a payment to a person"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "leavesAnAccount: original !== undefined, pending: false,",
+    "replace": "leavesAnAccount: false, pending: false,",
+    "why": "[a66] 7.9 4.7 sorted again from its list, Other is not offered"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "const options = found.type === 'sort' && original !== undefined ? { ...found, transfer: [], transferOutcome: {} } : found;",
+    "replace": "const options = found;",
+    "why": "[a66] 7.9 4.7 sorted again from its list, a transfer is offered"
+  },
+  {
+    "section": "7",
+    "file": "packages/money/src/book.ts",
+    "find": "      canBeForMom: (entry.spendingKind === 'person-payment' && txn.kind === 'payment-to-person' && entry.refunded === 0) || this.#canBeForMomFromAnAccount(entry),",
+    "replace": "      canBeForMom: entry.spendingKind === 'person-payment' && txn.kind === 'payment-to-person' && entry.refunded === 0,",
+    "why": "[a66] 7.9 the facts never say money leaving an account can be for mom"
   }
 ]

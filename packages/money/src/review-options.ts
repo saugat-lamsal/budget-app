@@ -81,6 +81,9 @@ export type ReviewFacts =
       readonly partlyRefunded: boolean;
       readonly countedAtSetup: boolean;
       readonly gone: boolean;
+      // 7.6: a payment to a person with none of it refunded; 7.9: money that
+      // left checking or savings, read as a purchase or a withdrawal, posted,
+      // with none of it refunded, counted on setup day, or taken back.
       readonly canBeForMom: boolean;
       // A21: a payment to the old card from savings that you marked by hand (5.6).
       readonly markedFromSavings: boolean;
@@ -152,7 +155,7 @@ function spendingOptions(f: Extract<ReviewFacts, { type: 'spending' }>): ReviewO
   const notMine = person || (f.kind === 'purchase' && (f.leavesAnAccount || f.account === 'everyday-card') && !f.countedAtSetup && !f.gone);
   const picks: ReviewPick[] = [plain('needs'), plain('wants')];
   if (notMine) picks.push(plain('not-mine'));
-  if (person && f.canBeForMom) picks.push(plain('mom'));
+  if ((person || (f.kind === 'purchase' && f.leavesAnAccount)) && f.canBeForMom) picks.push(plain('mom'));
   // 4.4: parts of at least a cent each. 8.3, B23: the difference on a mom payment goes to one bucket.
   const canSplit = f.kind !== 'mom-difference' && f.net >= 2;
   // The last one gets the rest on the screen: on a purchase (7.7) it stays Wants, as before Not mine was offered.

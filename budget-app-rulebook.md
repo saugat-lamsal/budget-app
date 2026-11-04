@@ -1,4 +1,4 @@
-# Budget App Rulebook (draft 32)
+# Budget App Rulebook (draft 33)
 
 This is how the app treats every kind of money movement. Each rule has a
 number so a test can point at it. Nothing gets coded until you approve this.
@@ -295,6 +295,14 @@ number so a test can point at it. Nothing gets coded until you approve this.
      it. Each part counts as Other (7.1) or as a payback into that bucket
      (6.1), such as cash that was part a friend's and part what the friend
      owed you. It starts no pay period, and a rule cannot pick it.
+7.9  Money leaving checking or savings that the app read as a purchase or a
+     withdrawal (4.1, 4.9), once it has posted, can also be marked "for
+     mom", in review or when sorting it again, such as a payment to mom the
+     bank worded so that no bank rule read it as a payment to a person. It
+     then counts exactly like "for mom" in 7.6: out of the mom reserve and
+     toward the month (8.1 to 8.3), and it can be sorted again later. Not one
+     partly refunded, the difference on one counted on setup day, or what is
+     left of one the bank took back. A sorting rule cannot pick it.
 
 
 ## 8. Mom
@@ -1118,3 +1126,11 @@ b.  Money in can be split across Other, savings, needs, and wants (7.8, A63).
 c.  A purchase on the everyday card can be marked Other too (7.7, A64).
 d.  The app does not keep a cash balance: nothing could check it against the
     bank (7.7, A65).
+
+
+## 45. Answers on a payment to mom read as money leaving savings (Nov 4, 2026)
+
+a.  The bank worded a Zelle to mom from savings so that no bank rule read it
+    as a payment to a person, and review had no "for mom" for it. Money
+    leaving checking or savings that was read as a purchase or a withdrawal
+    can now be marked "for mom" once it has posted (7.9, QUESTIONS.md A66).

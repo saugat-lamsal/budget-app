@@ -478,7 +478,7 @@ const examples: Record<number, () => Record<string, Cents>> = {
     const marked = book.pots();
     // The row on Needs' list offers what the purchase could be, and Wants makes it that purchase again.
     const offered = book.resortDetail('landlord');
-    expect(offered).toMatchObject({ resortable: true, marked: 'old-card', options: { picks: [{ to: 'needs' }, { to: 'wants' }, { to: 'not-mine' }] } });
+    expect(offered).toMatchObject({ resortable: true, marked: 'old-card', options: { picks: [{ to: 'needs' }, { to: 'wants' }, { to: 'not-mine' }, { to: 'mom' }] } });
     book.sort('landlord', { to: 'wants' }, '2026-10-06');
     const undone = book.pots();
     book.sort('landlord', { transfer: 'old-card' }, '2026-10-07');
@@ -819,6 +819,24 @@ const examples: Record<number, () => Record<string, Cents>> = {
     book.receive(deposit('back', '2026-10-09', 8_000, 'MADE UP FRIEND'));
     book.sort('back', { to: 'not-mine' }, '2026-10-09');
     return { 'other after buying': afterBuying, 'other after being paid back': book.pots().heldForOthers, 'safe to spend': unchanged };
+  },
+
+  47: () => {
+    const book = openTestBook({ pots: { savings: 400_000, momReserve: 240_000 } });
+    expect(book.savingsTransfer(640_000).stillToMove).toBe(0);
+    book.receive(withdrawal('to-mom', '2026-11-02', 150_000, 'MADE UP ZELLE TRANSFER CONF# AB12CD; MOM'));
+    book.sort('to-mom', { to: 'not-mine' }, '2026-11-02');
+    const marked = { toMove: book.savingsTransfer(490_000).stillToMove, reserve: book.pots().momReserve };
+    book.sort('to-mom', { to: 'mom' }, '2026-11-02');
+    const pots = book.pots();
+    return {
+      'to move when marked other': marked.toMove,
+      'reserve when marked other': marked.reserve,
+      'other after for mom': pots.heldForOthers,
+      'reserve after for mom': pots.momReserve,
+      'to move after for mom': book.savingsTransfer(490_000).stillToMove,
+      'sent to mom in november': book.momSentInMonth('2026-11').sent,
+    };
   },
 };
 

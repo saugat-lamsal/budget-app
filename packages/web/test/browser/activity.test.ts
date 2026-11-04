@@ -2,7 +2,7 @@ import { MOVABLE_POTS, type BankBalances, type Book, type IsoDate, type Pot } fr
 import type { Server } from 'node:http';
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { START_DATE, appSide, openTestBook, purchase, refund, takenBack } from '../../../money/test/helpers.js';
+import { START_DATE, appSide, openTestBook, purchase, refund, takenBack, withdrawal } from '../../../money/test/helpers.js';
 import { demoScenario } from '../../../server/src/demo/scenarios.js';
 import { activityOf, amountAt, numbersOf, pathOfPot, readActivity, rowOf } from './activity-screens.js';
 import { ENGINES, close, openScenario, phone, showScenario, textAt, untilQuiet, useEngine, launch } from './harness.js';
@@ -521,6 +521,36 @@ describe.each(ENGINES)('sorting again: books made for the test, in %s', (_name, 
     const context = await browser.newContext(phone());
     return { page: await openLive(context, live.base, path), context };
   }
+
+  it('7.9 4.7 money out of savings marked Other, sorted again from the list of Other, For mom: Other gets it back and the mom reserve pays, as the twin', async () => {
+    const made = (): Book => {
+      const b = openTestBook({ pots: { needs: 50_000, wants: 20_000, momReserve: 240_000 } });
+      b.receive(withdrawal('w1', '2026-10-02', 150_000, 'MADE UP ZELLE TRANSFER; MOM'));
+      b.sort('w1', { to: 'not-mine' }, '2026-10-02');
+      return b;
+    };
+    const book = made();
+    const twin = made();
+    const { page, context } = await show(book, pathOfPot('heldForOthers'));
+    const watch = watchChoices(page);
+    await page.getByTestId('row-w1').click();
+    const sheet = page.getByTestId('activity-sheet');
+    expect(await sheet.getByTestId('choice-mom').innerText()).toBe('For mom');
+    await sheet.getByTestId('choice-mom').click();
+    await page.getByTestId('notice').waitFor();
+    expect(await textAt(page, 'notice')).toContain('MADE UP ZELLE TRANSFER; MOM marked for mom.');
+    expect(watch.posts.length).toBe(1);
+    expect(JSON.parse(watch.posts[0]?.postData() ?? '{}')).toMatchObject({ item: 'w1', choice: { to: 'mom' }, resort: true });
+    await page.getByTestId('row-w1').waitFor({ state: 'detached' });
+    twin.sort('w1', { to: 'mom' }, START_DATE);
+    expect(book.pots()).toEqual(twin.pots());
+    expect(book.pots()).toMatchObject({ heldForOthers: 0, momReserve: 90_000, needs: 50_000, wants: 20_000 });
+    await untilQuiet(page);
+    await page.goto(new URL(pathOfPot('momReserve'), page.url()).href);
+    await page.locator('main[aria-busy="false"]').waitFor();
+    expect(numbersOf(await readActivity(page))).toEqual(numbersOf(activityOf(twin, 'momReserve')));
+    await context.close();
+  });
 
   it('4.10 an item the bank took back after the list was shown: the tap is refused, says why, and changes nothing', async () => {
     const book = openTestBook({ pots: { needs: 50_000, wants: 20_000 }, rules: RULES });
