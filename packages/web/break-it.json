@@ -1464,8 +1464,8 @@
   },
   {
     "section": "ci",
-    "file": "packages/web/test/browser/harness.ts",
-    "find": ".port <= HIGHEST_PORT_A_BROWSER_REFUSES) {",
+    "file": "packages/server/test/listen.ts",
+    "find": ".port <= HIGHEST_REFUSED_PORT) {",
     "replace": ".port < 0) {",
     "why": "[ci] a test server keeps a port the browsers refuse (3659, 6000, ...)"
   },

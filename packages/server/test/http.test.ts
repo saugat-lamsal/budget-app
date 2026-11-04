@@ -9,6 +9,7 @@ import type { BucketsView } from '../src/views/buckets.js';
 import type { ChoiceResponse } from '../src/views/choice.js';
 import type { HomeView } from '../src/views/home.js';
 import type { ReviewView } from '../src/views/review.js';
+import { listenLocally } from './listen.js';
 
 // The web server for the screens: it serves the built app and Home's
 // numbers, nothing else, and never anything outside the app's folder.
@@ -62,7 +63,7 @@ beforeAll(async () => {
       return true;
     },
   });
-  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  await listenLocally(server);
   port = (server.address() as AddressInfo).port;
 });
 
@@ -287,7 +288,7 @@ describe('the web server', () => {
 
   it('without a desk to hand choices to, nothing can be sent, and without the views they are not found', async () => {
     const bare = createAppServer({ webRoot: folder, home: () => VIEW });
-    await new Promise<void>((done) => bare.listen(0, '127.0.0.1', done));
+    await listenLocally(bare);
     try {
       const barePort = (bare.address() as AddressInfo).port;
       const ask = (path: string, method: string): Promise<Answer> =>

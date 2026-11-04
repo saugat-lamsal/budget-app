@@ -736,6 +736,13 @@ long). It replaces running everything before every commit:
     ports from 1024 up, one after another; CI starts at 32768 or 49152. A
     test server given such a port now listens again (listen in harness.ts;
     test/test-server.test.ts).
+    Node's fetch refuses the same ports ("fetch failed", caused by "bad
+    port": status-page.test.ts once, Nov 4). Every server test that fetches
+    its own server now listens through the same guard, moved to
+    packages/server/test/listen.ts (listenLocally, test/listen.test.ts),
+    which the browser harness uses too. The fake push service, the fake R2,
+    and the image and start tests' free ports are left: nothing fetches them.
+    Breaks "[bad-port]", and the "[ci]" port break pointed at the guard.
   - Tests: page-quiet.test.ts (22, both engines), test-server.test.ts.
     Break-it: 9 breaks of the helpers, tagged "[ci]", all caught (node
     scripts/break-it.mjs --match "\[ci\]" --only

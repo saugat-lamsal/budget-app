@@ -3,6 +3,7 @@ import { createDemoServer } from '../src/demo/demo-server.js';
 import { BACKUP_BEAT_PATH, BACKUP_HEALTH_PATH, BACKUP_SILENCE_MS, BackupWatch } from '../src/backup/backup-watch.js';
 import { HEALTH_PATH, ROUTES } from '../src/http/server.js';
 import { HOSTED_HOST, ask, firstLogin, servedAt, stop, type Running } from './hosted-harness.js';
+import { listenLocally } from './listen.js';
 
 // Phase 6: the health address, for an outside uptime monitor (and Fly's own
 // check). It needs no login and answers under any host name (Fly's check
@@ -77,7 +78,7 @@ describe('Phase 6 the health address', () => {
 
   it('Phase 6 the demo has no health address: it is the real server\'s', async () => {
     const server = createDemoServer({ webRoot: '.' });
-    await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+    await listenLocally(server);
     const address = server.address();
     const port = typeof address === 'object' && address !== null ? address.port : 0;
     const answer = await ask({ port, origin: `http://localhost:${port}` } as Running, 'GET', '/health');

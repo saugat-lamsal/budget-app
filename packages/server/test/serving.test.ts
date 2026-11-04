@@ -15,6 +15,7 @@ import type { WebhookDesk } from '../src/sync/webhook-desk.js';
 import { WEBHOOK_PATH } from '../src/plaid/webhook.js';
 import { readConnection } from '../src/db/store.js';
 import { loginForTests } from './login-for-tests.js';
+import { listenLocally } from './listen.js';
 
 // serveBooks (serve/serving.ts): what npm run serve runs once the books are
 // open, and what the full pay period through the screens runs too: the
@@ -50,7 +51,7 @@ async function served(hold?: () => Promise<void> | null): Promise<{ life: Life; 
   let base = '';
   const phone = new FakePhone(() => life.now);
   const { server, timer, alerts, webhooks } = serveBooks({ keeper: life.keeper, bank: { plaid, box: life.h.box, log: memoryLog([]), pageSize: 3 }, clock, webRoot: 'C:/made-up/no-screens/', origin: () => base, sender: phone, now: () => life.now });
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
+  await listenLocally(server);
   const address = server.address();
   base = `http://localhost:${typeof address === 'object' && address !== null ? address.port : 0}`;
   running.push({ life, server, timer, alerts, webhooks });

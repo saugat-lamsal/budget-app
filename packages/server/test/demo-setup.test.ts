@@ -9,6 +9,7 @@ import { DEMO_SCENARIOS, SETUP_SCENARIOS, demoScenario } from '../src/demo/scena
 import type { SetupResponse, SetupStep } from '../src/views/choice.js';
 import type { HomeView } from '../src/views/home.js';
 import type { SetupReadyView, SetupView } from '../src/views/setup.js';
+import { listenLocally } from './listen.js';
 
 // The demo's lives that are not set up yet (rulebook section 14): Setup day
 // on a made-up bank, through the same addresses as the real screens. Every
@@ -24,7 +25,7 @@ beforeAll(async () => {
   mkdirSync(join(folder, 'dist'), { recursive: true });
   writeFileSync(join(folder, 'dist', 'index.html'), '<!doctype html><title>app</title>');
   server = createDemoServer({ webRoot: join(folder, 'dist') });
-  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  await listenLocally(server);
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 

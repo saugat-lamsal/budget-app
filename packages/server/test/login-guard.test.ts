@@ -9,6 +9,7 @@ import { APP_PATHS, AUTH_ROUTES, LOGIN_PATH, ROUTES, SCREEN_PATHS, SETUP_PATHS, 
 import { serverLinesIn } from '../src/server-log.js';
 import { lifeInAFile, setUpThroughTheDesk, type Life } from './keeper-harness.js';
 import { loginForTests } from './login-for-tests.js';
+import { listenLocally } from './listen.js';
 
 // Every screen and every /api request on the real server needs him logged
 // in, except the login page and what it needs (Step 2). Like the screens'
@@ -43,7 +44,7 @@ async function realServer(): Promise<Running> {
   writeFileSync(join(webRoot, 'manifest.webmanifest'), '{}');
   let origin = '';
   const server = life.keeper.server(webRoot, () => origin);
-  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  await listenLocally(server);
   const address = server.address();
   const port = typeof address === 'object' && address !== null ? address.port : 0;
   origin = `http://localhost:${port}`;
@@ -210,7 +211,7 @@ describe('login: every route on the real server needs a login', () => {
         },
       },
     });
-    await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+    await listenLocally(server);
     try {
       const address = server.address();
       const port = typeof address === 'object' && address !== null ? address.port : 0;
@@ -269,7 +270,7 @@ describe('login: no way in but a passkey', () => {
 
   it('login the demo stays as it was, with no login: its numbers need none', async () => {
     const server = createDemoServer({ webRoot: join(process.cwd(), 'no-such-folder') });
-    await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+    await listenLocally(server);
     try {
       const address = server.address();
       const port = typeof address === 'object' && address !== null ? address.port : 0;

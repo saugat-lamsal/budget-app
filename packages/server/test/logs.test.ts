@@ -12,6 +12,7 @@ import { TOKEN_KEY } from './harness.js';
 import { HOSTED, ask, firstLogin, type Running } from './hosted-harness.js';
 import { lifeInAFile, noonInNewYork, setUpThroughTheDesk } from './keeper-harness.js';
 import { loginForTests } from './login-for-tests.js';
+import { listenLocally } from './listen.js';
 
 // Phase 6's checklist: nothing sensitive in the logs. Hosted, the server's
 // log is kept by Fly. A hosted server is run through a login, notifications
@@ -47,7 +48,7 @@ describe('Phase 6 nothing sensitive in the logs', () => {
     mkdirSync(webRoot, { recursive: true });
     writeFileSync(join(webRoot, 'index.html'), '<!doctype html><title>app</title>');
     const server: Server = life.keeper.server(webRoot, () => HOSTED, (error) => log.error('a request failed', { error: error instanceof Error ? error.message : String(error) }));
-    await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+    await listenLocally(server);
     cleanUp.push(() => new Promise<void>((done) => server.close(() => done())));
     const address = server.address();
     const r: Running = { life, server, port: typeof address === 'object' && address !== null ? address.port : 0, origin: HOSTED };

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { BackupWatch } from '../src/backup/backup-watch.js';
 import { lifeInAFile, setUpThroughTheDesk, type Life } from './keeper-harness.js';
 import { SoftPasskey } from './soft-passkey.js';
+import { listenLocally } from './listen.js';
 
 // Phase 6, for the tests: the real server's books behind the web server as
 // they are hosted on Fly.io, at a made-up https address. Fly's proxy takes
@@ -45,7 +46,7 @@ export async function servedAt(origin: string = HOSTED, setUp = true, backups?: 
   writeFileSync(join(webRoot, 'assets', 'index-abc123.js'), 'console.log(1)');
   let own = origin;
   const server = life.keeper.server(webRoot, () => own, undefined, backups === undefined ? {} : { backups });
-  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  await listenLocally(server);
   const address = server.address();
   const port = typeof address === 'object' && address !== null ? address.port : 0;
   if (origin === 'local') own = `http://localhost:${port}`;

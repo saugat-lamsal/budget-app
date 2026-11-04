@@ -15,6 +15,7 @@ import { WebhookDesk, webhookAction } from '../src/sync/webhook-desk.js';
 import { FakeClock } from './fake-clock.js';
 import { FakeKeySource, FakeWebhookSigner, MADE_UP_ITEM, webhookBody, type Signed } from './fake-plaid-webhooks.js';
 import { everything, lifeInAFile, noonInNewYork, setUpThroughTheDesk, type Life } from './keeper-harness.js';
+import { listenLocally } from './listen.js';
 
 // Section 2 (QUESTIONS.md A47, his call Oct 14): the app syncs with the bank
 // as soon as Plaid says it has something new (a webhook), and the 60-minute
@@ -526,7 +527,7 @@ async function hosted(): Promise<Hosted> {
   mkdirSync(webRoot, { recursive: true });
   writeFileSync(join(webRoot, 'index.html'), '<!doctype html><title>app</title>');
   const server = life.keeper.server(webRoot, () => 'https://made-up-budget.fly.dev', undefined, { bank, webhook: desk });
-  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  await listenLocally(server);
   const address = server.address();
   const port = typeof address === 'object' && address !== null ? address.port : 0;
   Object.assign(h, {

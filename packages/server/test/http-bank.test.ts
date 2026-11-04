@@ -17,6 +17,7 @@ import { POSTED_AT_START, TOKEN_KEY } from './harness.js';
 import { ask, type Running } from './hosted-harness.js';
 import { noonInNewYork } from './keeper-harness.js';
 import { loginForTests } from './login-for-tests.js';
+import { listenLocally } from './listen.js';
 
 // Rules 1.1 to 1.3 over HTTP: the Bank connection screen's addresses on the
 // real server, behind the login, parsed strictly; and the Bank page, the one
@@ -42,7 +43,7 @@ async function bankServer(): Promise<{ readonly r: Running; readonly cookie: str
   const keeper = Keeper.open({ db, now: () => now, log });
   let origin = 'http://localhost:0';
   const server: Server = keeper.server(webRoot, () => origin, undefined, { bank: { plaid, box: new TokenBox(TOKEN_KEY), log, pageSize: 3 } });
-  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  await listenLocally(server);
   const address = server.address();
   const port = typeof address === 'object' && address !== null ? address.port : 0;
   origin = `http://localhost:${port}`;
@@ -127,7 +128,7 @@ describe('1.1 to 1.3 the Bank connection screen over HTTP', () => {
 
   it('1.1 the demo has no bank: its addresses are not there', async () => {
     const server = createDemoServer({ webRoot: '.' });
-    await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+    await listenLocally(server);
     const address = server.address();
     const port = typeof address === 'object' && address !== null ? address.port : 0;
     const r = { port, origin: `http://localhost:${port}` } as Running;

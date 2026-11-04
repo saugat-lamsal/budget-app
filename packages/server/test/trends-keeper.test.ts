@@ -9,6 +9,7 @@ import { ACCOUNT_IDS, type FakePlaid } from './fake-plaid.js';
 import { dump } from './harness.js';
 import { decision, lifeInAFile, noonInNewYork, setUpThroughTheDesk, type Life } from './keeper-harness.js';
 import { loginForTests } from './login-for-tests.js';
+import { listenLocally } from './listen.js';
 
 // The Trends tab on the real server (section 40): the books, and the bank
 // history the app kept from before setup day, read by today's rules. It
@@ -139,7 +140,7 @@ describe('40.1 40.3 Trends on the real server', () => {
       mkdirSync(webRoot, { recursive: true });
       writeFileSync(join(webRoot, 'index.html'), '<!doctype html><title>app</title>');
       const server = life.keeper.server(webRoot, () => `http://localhost:${(server.address() as AddressInfo | null)?.port ?? 0}`);
-      await new Promise<void>((done) => server.listen(0, '127.0.0.1', () => done()));
+      await listenLocally(server);
       try {
         const base = `http://localhost:${(server.address() as AddressInfo).port}`;
         expect((await fetch(`${base}/api/trends`)).status).toBe(401);
