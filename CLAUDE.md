@@ -2258,13 +2258,17 @@ long). It replaces running everything before every commit:
   the real bank, so every event replayed (0.6: it would not have started
   otherwise). /health and /health/backups ok, /api/home, /api/buckets and
   /api/review 401 without a login, http sent to https, the webhook address
-  refuses GET and an unsigned call. The restore check on the machine waits
-  for the tunnel. The way back is the image deploy-check-20261101t221230z
-  (PR #54).
-- Waiting on: the restore check on the machine once Fly's tunnel works again;
-  his two steps for 7.9 (sort the Zelle to mom from savings again from
-  Other's list, For mom; and the bank rule for posted Zelles on savings,
-  B276); sorting the Zelles and deposits waiting (his, B276); Pay schedule
+  refuses GET and an unsigned call. The way back is the image
+  deploy-check-20261101t221230z (PR #54).
+  - The tunnel came back about 20 minutes later. The restore check on the
+    machine: 272 events, then 277 after his steps, every one replays, "The
+    backup works."
+  - His steps the same day: the Zelle to mom from savings sorted again from
+    Other's list, For mom (the reserve and Other now as they should be,
+    nothing waiting), and the bank rule on savings for the posted Zelle words
+    (bank-rule-12, B276). A read-only look with his OK: the last reads of the
+    bank match (no gap), and Payday has nothing to move.
+- Waiting on: Pay schedule
   "Twice a month" (his); the split paycheck (docs/later.txt 4, his call);
   A51 (the shape of the weekly statement check); his check of part B (the
   list at its top), and the items in docs/later.txt marked DECIDE. To see
