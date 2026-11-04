@@ -8,6 +8,7 @@ import { APP_PATHS, SECURITY_HEADERS, createAppServer } from '../src/http/server
 import type { ChoiceResponse, MoveResponse, RuleRequest, RuleResponse, SettingsRequest, SettingsResponse } from '../src/views/choice.js';
 import type { HomeView } from '../src/views/home.js';
 import type { SettingsView } from '../src/views/settings.js';
+import { listenLocally } from './listen.js';
 
 // The Settings screen's address (Phase 4): its numbers are read from
 // /api/settings, and a change to the settings or to a sorting rule is sent
@@ -61,7 +62,7 @@ beforeAll(async () => {
     },
     onError: (error) => errors.push(error),
   });
-  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  await listenLocally(server);
   port = (server.address() as AddressInfo).port;
 });
 
@@ -203,7 +204,7 @@ describe('13.1 13.2 a settings change or a rule change goes to the desk through 
 
   it('without the handlers, a settings or rule change is not found, and the rest still works', async () => {
     const bare = createAppServer({ webRoot: join(folder, 'dist'), home: () => HOME, choice: () => DONE });
-    await new Promise<void>((done) => bare.listen(0, '127.0.0.1', done));
+    await listenLocally(bare);
     try {
       const barePort = (bare.address() as AddressInfo).port;
       expect((await sendChoice(JSON.stringify(GOOD_SETTINGS), {}, barePort)).status).toBe(404);

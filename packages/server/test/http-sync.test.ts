@@ -7,6 +7,7 @@ import { serverLinesIn } from '../src/server-log.js';
 import { ACCOUNT_IDS } from './fake-plaid.js';
 import { lifeInAFile, noonInNewYork, setUpThroughTheDesk, type Life } from './keeper-harness.js';
 import { loginForTests } from './login-for-tests.js';
+import { listenLocally } from './listen.js';
 
 // Step 3 on the real server's web side: Settings shows how often it syncs
 // with the bank and when it last read it, and the setting is changed through
@@ -36,7 +37,7 @@ async function realServer(): Promise<Running> {
   writeFileSync(join(webRoot, 'index.html'), '<!doctype html><title>app</title>');
   let origin = '';
   const server = life.keeper.server(webRoot, () => origin);
-  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  await listenLocally(server);
   const address = server.address();
   const port = typeof address === 'object' && address !== null ? address.port : 0;
   origin = `http://localhost:${port}`;
@@ -116,7 +117,7 @@ describe('Step 3: syncing with the bank on Settings', () => {
 
   it('section 2 the demo has no bank: no sync card, and the setting cannot be sent', async () => {
     const server = createDemoServer({ webRoot: join(process.cwd(), 'no-such-folder') });
-    await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+    await listenLocally(server);
     try {
       const address = server.address();
       const port = typeof address === 'object' && address !== null ? address.port : 0;

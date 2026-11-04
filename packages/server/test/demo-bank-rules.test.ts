@@ -8,6 +8,7 @@ import { createDemoServer } from '../src/demo/demo-server.js';
 import type { BankRuleRequest, BankRuleResponse } from '../src/views/bank-rules.js';
 import type { SettingsView } from '../src/views/settings.js';
 import type { SetupView } from '../src/views/setup.js';
+import { listenLocally } from './listen.js';
 
 // Bank rule changes (rulebook section 2, 24c) reach the demo's lives through
 // the same address as every other tap, /api/choice: on Setup day the setup
@@ -23,7 +24,7 @@ beforeAll(async () => {
   mkdirSync(join(folder, 'dist'), { recursive: true });
   writeFileSync(join(folder, 'dist', 'index.html'), '<!doctype html><title>app</title>');
   server = createDemoServer({ webRoot: join(folder, 'dist') });
-  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  await listenLocally(server);
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 

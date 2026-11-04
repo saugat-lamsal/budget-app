@@ -14,6 +14,7 @@ import { FakePushService, type TestPhone } from './fake-push-service.js';
 import { lifeInAFile, noonInNewYork, setUpThroughTheDesk, type Life } from './keeper-harness.js';
 import { loginForTests } from './login-for-tests.js';
 import { SoftPasskey } from './soft-passkey.js';
+import { listenLocally } from './listen.js';
 
 // Phase 5, the phone, on the real server: Settings' Notifications card for the
 // device asking (POST /api/push/on, /off, /test, logged in, from the app's own
@@ -54,7 +55,7 @@ async function realServer(withKeys = true): Promise<Running> {
   writeFileSync(join(webRoot, 'index.html'), '<!doctype html><title>app</title>');
   let origin = '';
   const server = life.keeper.server(webRoot, () => origin);
-  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  await listenLocally(server);
   const address = server.address();
   const port = typeof address === 'object' && address !== null ? address.port : 0;
   origin = `http://localhost:${port}`;

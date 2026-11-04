@@ -11,6 +11,7 @@ import type { ChoiceResponse } from '../src/views/choice.js';
 import { homeView, type HomeView } from '../src/views/home.js';
 import type { ReviewView } from '../src/views/review.js';
 import { settingsView, type SettingsView } from '../src/views/settings.js';
+import { listenLocally } from './listen.js';
 
 // The demo: the screens on made-up lives only. It must never reach the bank
 // or the database, so it is safe to open over wifi.
@@ -160,7 +161,7 @@ describe('the demo server', () => {
   let base = '';
   beforeAll(async () => {
     server = createDemoServer({ webRoot: fileURLToPath(new URL('../../web/dist/', import.meta.url)), onError: () => undefined });
-    await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+    await listenLocally(server);
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   });
   afterAll(async () => {

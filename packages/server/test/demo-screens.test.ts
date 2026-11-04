@@ -8,6 +8,7 @@ import { DEMO_SCENARIOS, demoBook, demoScenario } from '../src/demo/scenarios.js
 import { POT_SLUGS, type ActivityView } from '../src/views/activity.js';
 import type { ChoiceResponse, MoveResponse } from '../src/views/choice.js';
 import type { PaydayView } from '../src/views/payday.js';
+import { listenLocally } from './listen.js';
 
 // The demo on the screens of Phase 4 step 5: what went in and out of a
 // bucket, hand moves, and Payday. Made-up lives only.
@@ -91,7 +92,7 @@ describe('the demo server serves the new screens', () => {
   let base = '';
   beforeAll(async () => {
     server = createDemoServer({ webRoot: fileURLToPath(new URL('../../web/dist/', import.meta.url)), onError: () => undefined });
-    await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+    await listenLocally(server);
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   });
   afterAll(async () => {

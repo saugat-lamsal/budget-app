@@ -6137,5 +6137,40 @@
     "find": "        return 'marked Other';",
     "replace": "        return 'marked not mine';",
     "why": "[a62] the desk says the old word"
+  },
+  {
+    "section": "bad-port",
+    "file": "packages/server/test/listen.ts",
+    "find": "export const HIGHEST_REFUSED_PORT = 10_080;",
+    "replace": "export const HIGHEST_REFUSED_PORT = 10_079;",
+    "why": "[bad-port] the list is taken to end one port early (10079)"
+  },
+  {
+    "section": "bad-port",
+    "file": "packages/server/test/listen.ts",
+    "find": ".port <= HIGHEST_REFUSED_PORT) {",
+    "replace": ".port < HIGHEST_REFUSED_PORT) {",
+    "why": "[bad-port] the last port on the list (10080) is kept"
+  },
+  {
+    "section": "bad-port",
+    "file": "packages/server/test/listen.ts",
+    "find": "  return (server.address() as AddressInfo).port;\n}",
+    "replace": "  return port;\n}",
+    "why": "[bad-port] the port asked for is said, not the one it listens on"
+  },
+  {
+    "section": "bad-port",
+    "file": "packages/server/test/listen.ts",
+    "find": "    server.listen(port, '127.0.0.1', () => {",
+    "replace": "    server.listen(port, () => {",
+    "why": "[bad-port] it listens on every address, not 127.0.0.1"
+  },
+  {
+    "section": "bad-port",
+    "file": "packages/server/test/listen.ts",
+    "find": "    server.once('error', fail);\n",
+    "replace": "",
+    "why": "[bad-port] a port that is taken is never said"
   }
 ]

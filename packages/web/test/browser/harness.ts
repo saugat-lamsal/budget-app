@@ -1,11 +1,11 @@
 import { parseDollars, type Cents } from '@budget-app/money';
 import { execFileSync } from 'node:child_process';
 import type { Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { chromium, devices, webkit, type Browser, type BrowserContext, type BrowserContextOptions, type BrowserType, type Page, type Request } from 'playwright';
 import { afterAll, beforeAll, beforeEach } from 'vitest';
 import { createDemoServer } from '../../../server/src/demo/demo-server.js';
+import { listenLocally } from '../../../server/test/listen.js';
 import { MINUS } from '../../src/ui/money-format.js';
 
 // Browser tests: the built screens in real browsers, used like a person
@@ -77,8 +77,8 @@ export async function listen(server: Server, port = 0): Promise<string> {
   server.prependListener('request', (_request, response) => {
     response.setHeader('Connection', 'close');
   });
-  await listenOn(server, port);
-  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  // Browsers refuse to open some ports, like Node's fetch (listenLocally).
+  const base = `http://127.0.0.1:${await listenLocally(server, port)}`;
   const log: ServerLogEntry[] = [];
   serverLogs.set(base, log);
   const open = new Map<number | undefined, number>();
@@ -98,31 +98,6 @@ export async function listen(server: Server, port = 0): Promise<string> {
     });
   });
   return base;
-}
-
-// Browsers refuse to open some ports: Chromium's and WebKit's lists all end at
-// 10080 (3659, 4045, 5060, 6000, 6665 to 6669, ...). This PC hands out ports
-// from 1024 up, one after another, and gave a test server 3659 (Oct 9): every
-// test on it failed with net::ERR_UNSAFE_PORT. The CI machines start at 32768
-// (Linux) and 49152 (Windows). A server given such a port listens again.
-const HIGHEST_PORT_A_BROWSER_REFUSES = 10_080;
-
-async function listenOn(server: Server, port: number): Promise<void> {
-  await listenAt(server, port);
-  while ((server.address() as AddressInfo).port <= HIGHEST_PORT_A_BROWSER_REFUSES) {
-    await new Promise<void>((done) => server.close(() => done()));
-    await listenAt(server, 0);
-  }
-}
-
-function listenAt(server: Server, port: number): Promise<void> {
-  return new Promise<void>((done, fail) => {
-    server.once('error', fail);
-    server.listen(port, '127.0.0.1', () => {
-      server.off('error', fail);
-      done();
-    });
-  });
 }
 
 // What the page's own code has asked for with fetch and is still waiting on,

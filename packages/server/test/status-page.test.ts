@@ -7,6 +7,7 @@ import { readOutbox } from '../src/alerts/outbox.js';
 import { loginForTests } from './login-for-tests.js';
 import { ACCOUNT_IDS } from './fake-plaid.js';
 import { lifeInAFile, setUpThroughTheDesk, type Life } from './keeper-harness.js';
+import { listenLocally } from './listen.js';
 
 // Rule 0.7 (QUESTIONS.md A57): the status page, which only reads: the last
 // good read of the bank and how the last sync went, the backups, when the
@@ -185,7 +186,7 @@ describe('0.7 the status page', () => {
     const life = await setUp();
     try {
       const server = serve(life);
-      await new Promise<void>((done) => server.listen(0, '127.0.0.1', () => done()));
+      await listenLocally(server);
       try {
         const base = `http://localhost:${(server.address() as AddressInfo).port}`;
         expect((await fetch(`${base}/api/status`)).status).toBe(401);
@@ -203,7 +204,7 @@ describe('0.7 the status page', () => {
       const watch = new BackupWatch(() => clock);
       watch.beat();
       const hosted = life.keeper.server(join(life.dir, 'dist'), () => `http://localhost:${(hosted.address() as AddressInfo).port}`, undefined, { backups: watch });
-      await new Promise<void>((done) => hosted.listen(0, '127.0.0.1', () => done()));
+      await listenLocally(hosted);
       try {
         const base = `http://localhost:${(hosted.address() as AddressInfo).port}`;
         const cookie = loginForTests(life.h.db, life.now);

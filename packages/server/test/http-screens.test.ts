@@ -10,6 +10,7 @@ import type { ActivityView } from '../src/views/activity.js';
 import type { ChoiceResponse, MoveRequest, MoveResponse } from '../src/views/choice.js';
 import type { HomeView } from '../src/views/home.js';
 import type { PaydayView } from '../src/views/payday.js';
+import { listenLocally } from './listen.js';
 
 // The web server's newer addresses: the screen of each bucket's activity and
 // Payday (QUESTIONS.md B97, B104), and hand moves (B103). It only reads,
@@ -60,7 +61,7 @@ beforeAll(async () => {
     },
     onError: (error) => errors.push(error),
   });
-  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  await listenLocally(server);
   port = (server.address() as AddressInfo).port;
 });
 
@@ -245,7 +246,7 @@ describe('B103 a hand move is handed to the money math, and the answer comes bac
 
   it('without a handler for moves, a move is not found (and choices still work)', async () => {
     const bare = createAppServer({ webRoot: join(folder, 'dist'), home: () => HOME, choice: () => DONE });
-    await new Promise<void>((done) => bare.listen(0, '127.0.0.1', done));
+    await listenLocally(bare);
     try {
       const barePort = (bare.address() as AddressInfo).port;
       expect((await sendChoice(JSON.stringify(GOOD_MOVE), {}, barePort)).status).toBe(404);
